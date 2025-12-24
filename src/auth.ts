@@ -19,7 +19,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 console.log("=== DEMO MODE: AUTH BYPASS ===");
                 // RETURN STATIC USER - NO DATABASE CONNECTION REQUIRED
                 return {
-                    id: "demo-user-123",
+                    id: "demo-user-1",
                     name: "Demo Trader",
                     email: "demo@projectx.com",
                     image: null,
