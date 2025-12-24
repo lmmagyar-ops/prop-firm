@@ -21,11 +21,11 @@ import { OnboardingHandler } from "@/components/dashboard/OnboardingHandler";
 export default async function DashboardPage() {
     const session = await auth();
 
+    // DEMO MODE: Auth disabled for testing
     // Redirect if not authenticated
-    if (!session?.user?.id) {
-        // redirect('/login');
-        // Commented out for testing - uncomment for production
-    }
+    // if (!session?.user?.id) {
+    //     redirect('/login');
+    // }
 
     const userId = session?.user?.id || "demo-user-1"; // Fallback for testing
 
