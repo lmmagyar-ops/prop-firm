@@ -1,4 +1,6 @@
 import { redirect } from "next/navigation";
+
+export const dynamic = "force-dynamic";
 import { auth } from "@/auth";
 // Sidebar import removed
 import { LifetimeStatsGrid } from "@/components/dashboard/LifetimeStatsGrid";
@@ -143,7 +145,7 @@ export default async function DashboardPage() {
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
                             <div className="lg:col-span-2">
                                 <EquityDisplay
-                                    currentBalance="104250.00"
+                                    currentBalance={104250.00}
                                     dailyPnL={1250.50}
                                 />
                             </div>
@@ -159,7 +161,7 @@ export default async function DashboardPage() {
                         <RiskMeters
                             drawdownUsage={1.2}
                             dailyDrawdownUsage={0.8}
-                            startOfDayBalance="103000"
+                            startOfDayBalance={103000}
                         />
 
                         <div className="mt-8">

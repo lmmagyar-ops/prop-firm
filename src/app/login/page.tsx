@@ -1,7 +1,7 @@
 "use client";
 
 import { signIn } from "next-auth/react";
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { Loader2, AlertCircle } from "lucide-react";
 
-export default function LoginPage() {
+function LoginContent() {
     const searchParams = useSearchParams();
     const redirect = searchParams.get("redirect") || "/dashboard";
     const error = searchParams.get("error");
@@ -159,5 +159,13 @@ export default function LoginPage() {
                 </p>
             </div>
         </div>
+    );
+}
+
+export default function LoginPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen bg-black flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-white" /></div>}>
+            <LoginContent />
+        </Suspense>
     );
 }

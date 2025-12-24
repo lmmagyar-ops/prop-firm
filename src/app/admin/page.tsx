@@ -509,7 +509,7 @@ function ConfigurationTab() {
     const handleUpdate = (section: string, field: string, value: any) => {
         setRules((prev) => {
             if (!prev) return null;
-            const newRules = cloneDeep(prev); // Deep copy for safety
+            const newRules: any = cloneDeep(prev); // Deep copy for safety
 
             if (activeKey === "challenge_config") {
                 if (newRules[activeKey][section]) {
@@ -603,13 +603,13 @@ function ConfigurationTab() {
                                             <ConfigField
                                                 label="Challenge Fee ($)"
                                                 value={fields.challenge_fees}
-                                                onChange={(v) => handleUpdate(tier, "challenge_fees", parseFloat(v))}
+                                                onChange={(v) => handleUpdate(tier, "challenge_fees", v)}
                                                 type="number"
                                             />
                                             <ConfigField
                                                 label="Duration (Days)"
                                                 value={fields.duration_days}
-                                                onChange={(v) => handleUpdate(tier, "duration_days", parseFloat(v))}
+                                                onChange={(v) => handleUpdate(tier, "duration_days", v)}
                                                 type="number"
                                             />
                                             <ConfigField
@@ -652,14 +652,14 @@ function ConfigurationTab() {
                             <div className="grid grid-cols-2 gap-6">
                                 <ConfigField
                                     label="Max Position Size (%)"
-                                    value={dataContent.max_position_size_percent}
+                                    value={dataContent.max_position_size_percent as number}
                                     onChange={(v) => handleUpdate("", "max_position_size_percent", v)}
                                     type="percent"
                                 />
                                 <ConfigField
                                     label="Min Liquidity ($)"
-                                    value={dataContent.min_liquidity_usd}
-                                    onChange={(v) => handleUpdate("", "min_liquidity_usd", parseFloat(v))}
+                                    value={dataContent.min_liquidity_usd as number}
+                                    onChange={(v) => handleUpdate("", "min_liquidity_usd", v)}
                                     type="number"
                                 />
                                 <div className="col-span-2 space-y-2">
@@ -677,7 +677,7 @@ function ConfigurationTab() {
                                         <p className="text-xs text-zinc-500">Prevent trading before challenge end</p>
                                     </div>
                                     <Switch
-                                        checked={dataContent.trading_blackout_days_before_end > 0}
+                                        checked={(dataContent.trading_blackout_days_before_end as number) > 0}
                                         onCheckedChange={(c) => handleUpdate("", "trading_blackout_days_before_end", c ? 2 : 0)}
                                     />
                                 </div>

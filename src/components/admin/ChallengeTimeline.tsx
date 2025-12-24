@@ -44,7 +44,7 @@ export function ChallengeTimeline({ data, startingBalance }: { data: TimelinePoi
                     <Tooltip
                         contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', color: '#fff' }}
                         itemStyle={{ color: '#fff' }}
-                        formatter={(value: number) => [`$${value.toFixed(2)}`, "Equity"]}
+                        formatter={(value: any) => [`$${value?.toFixed(2)}`, "Equity"]}
                         labelFormatter={(label) => format(new Date(label), 'MMM d, yyyy')}
                     />
                     <ReferenceLine y={startingBalance} stroke="#ef4444" strokeDasharray="3 3" label={{ value: "Start", fill: "#ef4444", fontSize: 10, position: 'insideRight' }} />

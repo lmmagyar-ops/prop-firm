@@ -23,8 +23,7 @@ async function runDailyReset() {
 
         await db.update(challenges)
             .set({
-                startOfDayBalance: challenge.currentBalance,
-                updatedAt: new Date()
+                startOfDayBalance: challenge.currentBalance
             })
             .where(eq(challenges.id, challenge.id));
     }

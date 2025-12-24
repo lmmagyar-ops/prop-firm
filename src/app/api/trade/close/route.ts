@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
 
         // Fetch the challenge
         const challenge = await db.query.challenges.findFirst({
-            where: eq(challenges.id, position.challengeId),
+            where: eq(challenges.id, String(position.challengeId)),
         });
 
         // Verify ownership
