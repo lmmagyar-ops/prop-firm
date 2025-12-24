@@ -5,8 +5,18 @@ import { eq } from "drizzle-orm";
 
 export async function GET() {
     try {
-        // 1. Delete existing demo data
-        await db.delete(positions).where(eq(positions.challengeId, "demo-user-1" as any));
+        // 1. Get all challenges for demo user to delete their positions
+        const demoChallenges = await db.query.challenges.findMany({
+            where: eq(challenges.userId, "demo-user-1"),
+            columns: { id: true }
+        });
+
+        // 2. Delete positions for those challenges
+        for (const challenge of demoChallenges) {
+            await db.delete(positions).where(eq(positions.challengeId, challenge.id));
+        }
+
+        // 3. Delete challenges and user
         await db.delete(challenges).where(eq(challenges.userId, "demo-user-1"));
         await db.delete(users).where(eq(users.id, "demo-user-1"));
         await db.delete(businessRules).where(eq(businessRules.key, "challenge_config"));
