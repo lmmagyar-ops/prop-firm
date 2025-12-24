@@ -1,5 +1,7 @@
-import { RepurchaseVelocity } from "@/components/admin/analytics/RepurchaseVelocity";
-import { RetentionCohort } from "@/components/admin/analytics/RetentionCohort";
+import { RevenueWaterfall } from "@/components/admin/analytics/RevenueWaterfall";
+import { CohortRetention } from "@/components/admin/analytics/CohortRetention";
+import { LTVCACChart } from "@/components/admin/analytics/LTVCACChart";
+import { PayoutForecast } from "@/components/admin/analytics/PayoutForecast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DollarSign, UserMinus, RefreshCcw } from "lucide-react";
 
@@ -8,15 +10,15 @@ export default function AnalyticsPage() {
         <div className="space-y-8 animate-in fade-in duration-500">
             <div>
                 <h1 className="text-3xl font-bold tracking-tight text-white/90">Analytics Desk</h1>
-                <p className="text-zinc-500">Revenue intelligence, LTV cohorts, and user lifecycle behavior.</p>
+                <p className="text-zinc-500">CFO Office - Deep financial intelligence and customer economics</p>
             </div>
 
             {/* KPI Cards */}
             <div className="grid gap-6 md:grid-cols-3">
                 <StatsCard
                     title="Average LTV"
-                    value="$450.00"
-                    sub="+12% from last month"
+                    value="$510"
+                    sub="+18% from last month"
                     icon={DollarSign}
                     trend="up"
                     gradient="from-emerald-500/10 to-transparent"
@@ -32,9 +34,9 @@ export default function AnalyticsPage() {
                     text="text-blue-500"
                 />
                 <StatsCard
-                    title="Re-Purchase Rate"
-                    value="65.2%"
-                    sub="Top Tier (Ind. Avg 45%)"
+                    title="LTV/CAC Ratio"
+                    value="3.09x"
+                    sub="Healthy unit economics"
                     icon={RefreshCcw}
                     trend="up"
                     gradient="from-amber-500/10 to-transparent"
@@ -42,11 +44,17 @@ export default function AnalyticsPage() {
                 />
             </div>
 
+            {/* Revenue Waterfall - Full Width */}
+            <RevenueWaterfall />
+
             {/* Deep Dive Charts */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <RepurchaseVelocity />
-                <RetentionCohort />
+                <CohortRetention />
+                <LTVCACChart />
             </div>
+
+            {/* Payout Forecast - Full Width */}
+            <PayoutForecast />
         </div>
     );
 }

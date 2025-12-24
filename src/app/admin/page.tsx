@@ -19,9 +19,13 @@ import { exportToCSV } from "@/lib/export-csv";
 import { LiveTraderFeed } from "@/components/admin/LiveTraderFeed";
 import { RiskMatrix } from "@/components/admin/RiskMatrix";
 import { SystemStatusHeader } from "@/components/admin/SystemStatusHeader";
+import { SystemHeartbeat } from "@/components/admin/SystemHeartbeat";
+import { RevenueOdometer } from "@/components/admin/RevenueOdometer";
+import { GeoSpatialMap } from "@/components/admin/GeoSpatialMap";
 
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 
 // --- Types ---
 
@@ -58,6 +62,13 @@ export default function AdminDashboard() {
         <div className="space-y-8">
             <div className="relative z-10 max-w-7xl mx-auto space-y-6">
                 <SystemStatusHeader />
+
+                {/* System Heartbeat and Revenue Ticker */}
+                <div className="flex flex-col md:flex-row gap-4">
+                    <SystemHeartbeat />
+                    <RevenueOdometer targetValue={13500} />
+                </div>
+
                 <div className="flex justify-between items-center">
                     <div>
                         <h1 className="text-3xl font-bold tracking-tight text-white/90">Mission Control</h1>
@@ -145,6 +156,9 @@ function OverviewTab() {
 
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
                 <div className="md:col-span-2 lg:col-span-4 space-y-6">
+                    {/* 3D Geo-Spatial Map */}
+                    <GeoSpatialMap />
+
                     <Card className="bg-zinc-900/40 border-white/5 backdrop-blur-md shadow-2xl relative overflow-hidden h-[400px]">
                         <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent" />
                         <CardHeader className="pb-2">
@@ -265,7 +279,7 @@ function MetricCard({ title, value, icon: Icon, trend, sub, data, checkColor = "
                 </div>
 
                 <div className="space-y-1">
-                    <h3 className="text-3xl font-light font-sans tracking-tight text-white">{value}</h3>
+                    <h3 className="text-3xl font-light font-sans tracking-tight text-white tabular-nums">{value}</h3>
                     {(trend || sub) && (
                         <div className="flex items-center gap-2">
                             {trend ? (
@@ -450,7 +464,7 @@ function TradersTab() {
                                         <div className="font-bold">{c.userName}</div>
                                         <div className="text-xs text-zinc-500">{c.email}</div>
                                         <div className="md:hidden mt-2">
-                                            <Badge variant={c.status === 'passed' ? 'default' : c.status === 'failed' ? 'destructive' : 'secondary'} className="capitalize">{c.status}</Badge>
+                                            <StatusBadge status={c.status} />
                                         </div>
                                     </div>
                                 </div>
@@ -470,7 +484,7 @@ function TradersTab() {
                                             </>
                                         )}
                                         {c.status !== 'active' && (
-                                            <Badge variant={c.status === 'passed' ? 'default' : 'destructive'} className="capitalize px-4 py-1.5">{c.status}</Badge>
+                                            <StatusBadge status={c.status} className="px-3" />
                                         )}
                                     </div>
                                 </div>

@@ -1,4 +1,7 @@
-import { OutcomeExposure } from "@/components/admin/risk/OutcomeExposure";
+import { MarketExposureHeatmap } from "@/components/admin/risk/MarketExposureHeatmap";
+import { TraderRiskDistribution } from "@/components/admin/risk/TraderRiskDistribution";
+import { DrawdownWaterfall } from "@/components/admin/risk/DrawdownWaterfall";
+import { KillSwitchControls } from "@/components/admin/risk/KillSwitchControls";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ShieldAlert, Activity, TrendingDown, Scale } from "lucide-react";
 
@@ -7,7 +10,7 @@ export default function RiskDeskPage() {
         <div className="space-y-8 animate-in fade-in duration-700">
             <div>
                 <h1 className="text-3xl font-bold tracking-tight text-white/90">Risk Desk</h1>
-                <p className="text-zinc-500">Monitor firm-wide outcome liabilities and exposure caps.</p>
+                <p className="text-zinc-500">War Room - Monitor firm-wide exposure, trader risk, and emergency controls</p>
             </div>
 
             {/* Risk KPIs */}
@@ -42,12 +45,17 @@ export default function RiskDeskPage() {
                 />
             </div>
 
+            {/* Market Exposure Heatmap - Full Width */}
+            <MarketExposureHeatmap />
+
+            {/* Risk Analysis Charts */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Feature #1: Outcome Exposure */}
-                <div className="col-span-1 lg:col-span-2">
-                    <OutcomeExposure />
-                </div>
+                <TraderRiskDistribution />
+                <DrawdownWaterfall />
             </div>
+
+            {/* Kill Switch Controls - Full Width */}
+            <KillSwitchControls />
         </div>
     );
 }
@@ -75,7 +83,7 @@ function RiskMetricCard({ title, value, icon: Icon, status, sub }: any) {
                     <Icon className={`h-4 w-4 ${(statusColors as any)[status]}`} />
                 </div>
                 <div className="space-y-1">
-                    <div className="text-2xl font-bold text-white tracking-tight">{value}</div>
+                    <div className="text-2xl font-bold text-white tracking-tight tabular-nums">{value}</div>
                     <p className="text-xs text-zinc-500 font-mono">{sub}</p>
                 </div>
             </div>
