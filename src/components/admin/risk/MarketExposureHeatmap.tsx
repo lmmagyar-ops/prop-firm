@@ -100,28 +100,24 @@ export function MarketExposureHeatmap() {
                     className="transition-opacity hover:opacity-100"
                 />
                 {width > 60 && height > 40 && (
-                    <>
-                        <text
-                            x={x + width / 2}
-                            y={y + height / 2 - 8}
-                            textAnchor="middle"
-                            fill="#fff"
-                            fontSize={12}
-                            fontWeight="600"
-                        >
-                            {name}
-                        </text>
-                        <text
-                            x={x + width / 2}
-                            y={y + height / 2 + 8}
-                            textAnchor="middle"
-                            fill="#fff"
-                            fontSize={10}
-                            opacity={0.8}
-                        >
-                            ${(size / 1000).toFixed(0)}k
-                        </text>
-                    </>
+                    <foreignObject
+                        x={x}
+                        y={y}
+                        width={width}
+                        height={height}
+                        style={{ pointerEvents: 'none' }}
+                    >
+                        <div className="h-full w-full flex flex-col items-center justify-center p-1">
+                            <div className="bg-black/20 backdrop-blur-[1px] rounded-md px-2 py-1 flex flex-col items-center justify-center">
+                                <span className="text-white text-xs font-bold text-center leading-tight drop-shadow-sm">
+                                    {name}
+                                </span>
+                                <span className="text-white/90 text-[10px] font-medium mt-0.5 drop-shadow-sm">
+                                    ${(size / 1000).toFixed(0)}k
+                                </span>
+                            </div>
+                        </div>
+                    </foreignObject>
                 )}
             </g>
         );
