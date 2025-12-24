@@ -54,8 +54,11 @@ export async function GET() {
             highWaterMark: "10500.00",
             rulesConfig: {
                 startingBalance: 10000,
+                profitTarget: 800, // 8% of 10000
                 profit_target_percent: 0.08,
+                maxDrawdown: 1000, // 10% of 10000
                 max_drawdown_percent: 0.10,
+                maxDailyDrawdown: 500, // 5% of 10000
                 daily_loss_percent: 0.05,
                 min_trades: 5,
                 profit_split: 0.70,
