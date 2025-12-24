@@ -1,36 +1,88 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Prediction Market Prop Firm (MVP)
 
-## Getting Started
+The world's first **Proprietary Trading Firm for Prediction Markets**. Built with Next.js 14, PostgreSQL, Redis, and Real-Time WebSockets.
 
-First, run the development server:
+## 🚀 Quick Start
 
+### Prerequisites
+- Node.js 18+
+- Docker Desktop (for Postgres & Redis)
+
+### 1. Start Infrastructure
+Run the database and cache services:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+docker-compose up -d
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Install Dependencies
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 3. Run the Application
+You need **two separate terminals** to run the full system:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+**Terminal 1: The Web App**
+```bash
+npm run dev
+```
+*Access at http://localhost:3000*
 
-## Learn More
+**Terminal 2: Data Ingestion Worker**
+```bash
+npx tsx src/workers/ingestion.ts
+```
+*Fetches live prices from Polymarket and broadcasts to Redis*
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 🧪 Verification Flows
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### A. The "Trader" Journey (Demo Mode)
+1.  **Landing Page**: Go to `http://localhost:3000/`. You will see the **"Live Teaser"**: real market data blurred in the background.
+2.  **Start Challenge**: Click "Start Challenge" to visit the redesigned Checkout.
+3.  **Payment**: Click "Pay $249.00" (Mock Simulation/No Card Required).
+4.  **Trade**: You will be redirected to the Dashboard with a **$10,000** funded account.
+5.  **Watch**: Observe real-time price updates (Odometer & Charts).
 
-## Deploy on Vercel
+### B. The "Admin" Console
+1.  **Access**: Go to `http://localhost:3000/admin`.
+2.  **Monitor**: View all active challenges.
+3.  **Control**: Click "Pass" or "Fail" to manually override a user's status.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 🏗 Architecture
+
+### Tech Stack
+-   **Frontend**: Next.js 14 (App Router), Tailwind CSS, Shadcn UI, Framer Motion.
+-   **Backend**: Next.js API Routes, Server Actions.
+-   **Database**: PostgreSQL (Drizzle ORM).
+-   **Real-Time**: Redis Pub/Sub, Custom WebSocket Server.
+-   **Charts**: TradingView Lightweight Charts.
+
+### Key Components
+-   `src/workers/ingestion.ts`: Connects to Gamma/Polymarket APIs.
+-   `src/lib/trade.ts`: The simulated matching engine (Slippage, Risk Checks).
+-   `src/app/checkout`: Mock payment flow implementation.
+
+## ⚡ Key Mechanics (The "Retention Engine")
+
+### 1. High-Velocity Inventory
+The system ingests **Interim Markets** (Expiry < 30 Days) from Polymarket to ensure steady volatility. Instead of "Election 2028", users trade "Weekly Polling" and "Monthly Econ Data".
+
+### 2. Velocity Fees (The "Stick")
+To discourage passive holding, any position held > 24 hours incurs a **0.1% Daily Carry Cost**. This mechanically forces turnover.
+
+### 3. Gamified Profit Taking (The "Carrot")
+The UI features a **"Profit Pulse"** that glows when a user is in the green, utilizing dopamine loops to encourage realized gains (and thus more trading).
+
+### 4. Integrity & Risk (FTMO Standard)
+*   **Real Slippage**: Orders match against the Polymarket CLOB. Large orders move the price.
+*   **Max Drawdown**: **10%** of Initial Balance (Static).
+*   **Daily Drawdown**: **5%** of Start-of-Day Balance (Trailing).
+
+## ⚠️ Known Notes
+-   **Database Permissions**: If you encounter `pg_filenode.map` errors on Mac, ensure Docker has file access or try resetting the volume (`docker-compose down -v`).
+-   **Demo Mode**: The simulation uses a `demo-user-123` ID to bypass complex auth flows during localhost testing.
+-   **Mocks**: Payment flows and News Feeds are simulated for the MVP.
