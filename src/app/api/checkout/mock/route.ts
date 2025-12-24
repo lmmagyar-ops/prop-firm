@@ -6,7 +6,7 @@ export async function POST() {
     const session = await auth();
 
     // Demo Fallback
-    const userId = session?.user?.id || "demo-user-123";
+    const userId = session?.user?.id || "demo-user-1";
 
     try {
         // 1. Check if user already has an active challenge (Optional rule)
