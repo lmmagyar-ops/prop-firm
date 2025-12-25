@@ -6,7 +6,7 @@ import { BarChart3, ChevronDown, Rocket } from "lucide-react";
 export function Navbar() {
     return (
         <nav className="absolute top-0 left-0 right-0 z-50 w-full border-b border-[#2E3A52] bg-[#0E1217]/80 backdrop-blur-md">
-            <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+            <div className="max-w-7xl mx-auto px-6 h-20 flex items-center">
 
                 {/* 1. Logo: Cleaner, less "Startuppy" */}
                 <div className="flex items-center gap-3 group cursor-pointer">
@@ -19,8 +19,8 @@ export function Navbar() {
                     </span>
                 </div>
 
-                {/* 2. Menu: Full width, uppercase, no "capsule" */}
-                <div className="hidden md:flex items-center gap-8">
+                {/* 2. Menu: Centered */}
+                <div className="hidden md:flex items-center gap-8 flex-1 justify-center">
                     {["How To Start", "Trading Rules", "FAQ", "About"].map((item) => (
                         <Link
                             key={item}
