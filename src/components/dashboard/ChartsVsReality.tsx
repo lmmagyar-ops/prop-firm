@@ -157,16 +157,16 @@ export function ChartsVsReality() {
 
                             {/* Trading Buttons */}
                             <div className="grid grid-cols-2 gap-3 mt-6">
-                                <button className="group/btn relative overflow-hidden bg-green-500/10 hover:bg-green-500/20 border border-green-500/30 hover:border-green-500/50 rounded-xl p-4 transition-all duration-300">
-                                    <div className="absolute inset-0 bg-gradient-to-t from-green-500/10 to-transparent opacity-0 group-hover/btn:opacity-100 transition-opacity" />
+                                <button className="group/btn relative overflow-hidden bg-green-500/10 hover:bg-green-500/20 active:bg-green-500/30 border border-green-500/30 hover:border-green-500/50 active:border-green-500 rounded-xl p-4 transition-all duration-300 active:scale-95 active:shadow-[0_0_20px_rgba(34,197,94,0.4)]">
+                                    <div className="absolute inset-0 bg-gradient-to-t from-green-500/10 to-transparent opacity-0 group-hover/btn:opacity-100 group-active/btn:opacity-100 transition-opacity" />
                                     <div className="relative space-y-1">
                                         <div className="text-xs font-bold text-green-400 uppercase tracking-wider">Yes</div>
                                         <div className="text-2xl font-black text-green-400">62¢</div>
                                     </div>
                                 </button>
 
-                                <button className="group/btn relative overflow-hidden bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 hover:border-red-500/50 rounded-xl p-4 transition-all duration-300">
-                                    <div className="absolute inset-0 bg-gradient-to-t from-red-500/10 to-transparent opacity-0 group-hover/btn:opacity-100 transition-opacity" />
+                                <button className="group/btn relative overflow-hidden bg-red-500/10 hover:bg-red-500/20 active:bg-red-500/30 border border-red-500/30 hover:border-red-500/50 active:border-red-500 rounded-xl p-4 transition-all duration-300 active:scale-95 active:shadow-[0_0_20px_rgba(239,68,68,0.4)]">
+                                    <div className="absolute inset-0 bg-gradient-to-t from-red-500/10 to-transparent opacity-0 group-hover/btn:opacity-100 group-active/btn:opacity-100 transition-opacity" />
                                     <div className="relative space-y-1">
                                         <div className="text-xs font-bold text-red-400 uppercase tracking-wider">No</div>
                                         <div className="text-2xl font-black text-red-400">38¢</div>
