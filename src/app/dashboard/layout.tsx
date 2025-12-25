@@ -14,7 +14,7 @@ export default async function DashboardLayout({
         <div className="min-h-screen bg-[#0E1217] flex font-sans text-white">
             <Sidebar active="dashboard" /> {/* Note: Active state might need context or route checking, but default is fine for now/layout */}
 
-            <main className="flex-1 ml-64 flex flex-col min-h-screen">
+            <main className="flex-1 ml-0 md:ml-64 flex flex-col min-h-screen">
                 <TopNav />
 
                 <div className="flex-1 p-6 max-w-[1800px] mx-auto w-full">
