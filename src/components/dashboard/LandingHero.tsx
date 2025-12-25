@@ -48,7 +48,7 @@ export function LandingHero() {
 
                     <div className="flex flex-col items-center gap-4">
                         <p className="text-xl md:text-2xl text-zinc-400 font-medium leading-relaxed max-w-3xl mx-auto">
-                            Trade Crypto & Prediction Markets. <span className="text-white font-bold">Zero Personal Liability.</span>
+                            Trade Polymarket with Our Capital. <span className="text-white font-bold">Zero Personal Liability.</span>
                         </p>
                     </div>
                 </motion.div>
