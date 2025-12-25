@@ -29,13 +29,12 @@ export default function Page() {
       <OfflineIndicator />
       <InstallPrompt />
 
-      {/* Background Layer (Blurred Dashboard) */}
-      <div className="fixed inset-0 z-0 opacity-40 blur-sm scale-[1.02] pointer-events-none">
-        <DashboardView demoMode />
+      {/* Simple Background Gradient (replaces expensive blurred dashboard) */}
+      <div className="fixed inset-0 z-0 pointer-events-none">
+        <div className="absolute inset-0 bg-gradient-to-b from-zinc-950 via-black to-black" />
+        <div className="absolute top-0 left-1/4 w-[800px] h-[800px] bg-[#2E81FF]/5 rounded-full blur-[150px]" />
+        <div className="absolute bottom-0 right-1/4 w-[600px] h-[600px] bg-violet-600/5 rounded-full blur-[150px]" />
       </div>
-
-      {/* Vignette Overlay for readability */}
-      <div className="absolute inset-0 z-10 bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none fixed" />
 
       {/* Foreground Content (Scrollable) */}
       <div className="relative z-20 overflow-y-auto h-screen">

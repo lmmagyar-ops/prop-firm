@@ -13,13 +13,7 @@ export function LandingContent() {
     const [selectedSize, setSelectedSize] = useState("5K");
 
     return (
-        <div className="min-h-screen bg-[#050505] text-white selection:bg-[#2E81FF]/30 overflow-x-hidden font-sans">
-            {/* Background Gradients for Content Sections */}
-            <div className="fixed inset-0 pointer-events-none z-0">
-                <div className="absolute top-[20%] left-0 w-[600px] h-[600px] bg-[#2E81FF]/5 rounded-full blur-[120px]" />
-                <div className="absolute bottom-0 right-0 w-[800px] h-[600px] bg-violet-500/5 rounded-full blur-[120px]" />
-            </div>
-
+        <div className="min-h-screen bg-transparent text-white selection:bg-[#2E81FF]/30 overflow-x-hidden font-sans">
 
             {/* As Seen On - Social Proof */}
             <div className="relative z-10 max-w-7xl mx-auto px-6 pb-20 pt-10 text-center border-t border-[#2E3A52]/30">
