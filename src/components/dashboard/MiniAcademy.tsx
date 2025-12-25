@@ -75,10 +75,6 @@ export function MiniAcademy() {
                     viewport={{ once: true }}
                     transition={{ duration: 0.6 }}
                 >
-                    <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 text-xs font-bold uppercase tracking-wider mb-6">
-                        <Sparkles className="w-3 h-3" /> Test Your Instincts
-                    </div>
-
                     <h2 className="text-4xl md:text-5xl font-black tracking-tighter text-white leading-tight">
                         You're Already an Analyst.
                         <br />
@@ -176,8 +172,8 @@ export function MiniAcademy() {
                                 >
                                     {/* Result Feedback */}
                                     <div className={`p-8 rounded-2xl border-2 ${isCorrect
-                                            ? 'bg-green-500/10 border-green-500/30'
-                                            : 'bg-red-500/10 border-red-500/30'
+                                        ? 'bg-green-500/10 border-green-500/30'
+                                        : 'bg-red-500/10 border-red-500/30'
                                         }`}>
                                         <div className="flex items-start gap-4 mb-4">
                                             {isCorrect ? (
