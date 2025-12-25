@@ -265,38 +265,52 @@ export function LandingContent() {
                             </ul>
                         </div>
 
-                        {/* Feature Visual */}
+                        {/* Feature Visual - Network Status Terminal */}
                         <div className="flex-1 w-full relative">
                             <div className="absolute -inset-1 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl opacity-20 blur-xl" />
                             <div className="relative bg-[#050505] border border-[#2E3A52] rounded-2xl p-6 md:p-8 shadow-2xl">
-                                <div className="flex justify-between items-center border-b border-white/5 pb-6 mb-6">
+                                {/* Terminal Header */}
+                                <div className="flex justify-between items-center border-b border-white/5 pb-4 mb-6">
                                     <div className="flex gap-2">
                                         <div className="w-3 h-3 rounded-full bg-red-500/20 border border-red-500/50" />
                                         <div className="w-3 h-3 rounded-full bg-yellow-500/20 border border-yellow-500/50" />
                                         <div className="w-3 h-3 rounded-full bg-green-500/20 border border-green-500/50" />
                                     </div>
-                                    <div className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest">Live Feed • <span className="text-green-500 animate-pulse">Connected</span></div>
+                                    <div className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest">Network Status</div>
                                 </div>
 
+                                {/* Terminal Title */}
+                                <div className="mb-6">
+                                    <div className="text-xs font-mono text-zinc-500 mb-1">$ polymarket --status</div>
+                                    <div className="text-sm font-mono text-[#2E81FF] font-bold">POLYMARKET NETWORK</div>
+                                </div>
+
+                                {/* Stats Grid */}
                                 <div className="space-y-4 font-mono text-sm">
                                     {[
-                                        { user: "User_992", profit: "+$2,490.00", time: "just now" },
-                                        { user: "CryptoWiz", profit: "+$8,100.00", time: "2s ago" },
-                                        { user: "PredictionKing", profit: "+$1,250.00", time: "5s ago" },
-                                        { user: "AlphaSeeker", profit: "+$5,000.00", time: "12s ago" },
-                                        { user: "MarketMaker_X", profit: "+$12,400.00", time: "30s ago" }
-                                    ].map((row, i) => (
-                                        <div key={i} className="flex justify-between items-center p-3 rounded-lg hover:bg-white/5 transition-colors cursor-default group">
+                                        { label: "Total Volume", value: "$2.1B+", color: "text-blue-400" },
+                                        { label: "Active Markets", value: "15,000+", color: "text-purple-400" },
+                                        { label: "24h Volume", value: "$45M", color: "text-cyan-400" },
+                                        { label: "Avg Execution", value: "< 100ms", color: "text-green-400" },
+                                        { label: "Network Uptime", value: "99.9%", color: "text-emerald-400" }
+                                    ].map((stat, i) => (
+                                        <div key={i} className="flex justify-between items-center p-3 rounded-lg hover:bg-white/5 transition-colors group">
                                             <div className="flex items-center gap-3">
-                                                <div className={`w-1.5 h-1.5 rounded-full ${i === 0 ? 'bg-green-500 animate-ping' : 'bg-zinc-700'}`} />
-                                                <span className="text-zinc-400 group-hover:text-white transition-colors">{row.user}</span>
+                                                <div className="w-1.5 h-1.5 rounded-full bg-zinc-700 group-hover:bg-[#2E81FF] transition-colors" />
+                                                <span className="text-zinc-500 group-hover:text-zinc-400 transition-colors">{stat.label}</span>
                                             </div>
-                                            <div className="flex items-center gap-4">
-                                                <span className="text-green-400 font-bold">{row.profit}</span>
-                                                <span className="text-zinc-600 text-xs hidden sm:block">{row.time}</span>
-                                            </div>
+                                            <span className={`font-bold ${stat.color}`}>{stat.value}</span>
                                         </div>
                                     ))}
+                                </div>
+
+                                {/* Status Footer */}
+                                <div className="mt-6 pt-4 border-t border-white/5 flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                                        <span className="text-xs font-mono text-green-500">CONNECTED</span>
+                                    </div>
+                                    <span className="text-xs font-mono text-zinc-600">Last updated: now</span>
                                 </div>
                             </div>
                         </div>
