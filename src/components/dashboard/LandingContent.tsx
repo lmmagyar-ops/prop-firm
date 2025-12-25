@@ -330,15 +330,20 @@ export function LandingContent() {
                     <div className="relative z-10 text-center space-y-8">
                         {/* Eyebrow */}
                         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#2E81FF]/10 border border-[#2E81FF]/20 text-[#2E81FF] text-xs font-bold uppercase tracking-[0.2em]">
-                            Join Us
+                            Ready to Trade?
                         </div>
 
                         {/* Headline */}
                         <h2 className="text-4xl md:text-6xl font-black text-white tracking-tighter leading-tight max-w-4xl mx-auto">
-                            The Secret Of Getting Ahead
+                            Your Edge Is Waiting.
                             <br />
-                            Is Getting Started.
+                            Your Capital Is Ready.
                         </h2>
+
+                        {/* Subtext */}
+                        <p className="text-xl md:text-2xl text-zinc-400 max-w-2xl mx-auto">
+                            Stop trading with your own money. Start trading with ours.
+                        </p>
 
                         {/* CTA Button */}
                         <Link
@@ -357,7 +362,7 @@ export function LandingContent() {
                         {/* Email Subscription */}
                         <div className="pt-8 space-y-4">
                             <p className="text-zinc-400 text-lg">
-                                Subscribe for the latest updates and exclusive promotions
+                                Get exclusive trading insights and promotions
                             </p>
                             <form className="max-w-md mx-auto">
                                 <div className="relative">
