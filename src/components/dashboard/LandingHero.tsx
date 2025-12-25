@@ -105,7 +105,7 @@ export function LandingHero() {
                             size="lg"
                             className="relative w-full h-16 text-xl font-black rounded-full transition-all duration-300 bg-[#2E81FF] text-white hover:bg-[#2E81FF] hover:brightness-110 hover:shadow-[0_0_40px_-5px_rgba(46,129,255,0.6)] hover:scale-[1.02] active:scale-95 border-none"
                         >
-                            START CHALLENGE <ChevronRight className="ml-2 w-6 h-6 group-hover:translate-x-1 transition-transform stroke-[3px]" />
+                            GET FUNDED <ChevronRight className="ml-2 w-6 h-6 group-hover:translate-x-1 transition-transform stroke-[3px]" />
                         </Button>
                     </Link>
 
