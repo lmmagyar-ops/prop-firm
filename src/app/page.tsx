@@ -3,6 +3,8 @@
 import { DashboardView } from "@/components/dashboard/DashboardView";
 import { LandingHero } from "@/components/dashboard/LandingHero";
 import { LandingContent } from "@/components/dashboard/LandingContent";
+import { InstallPrompt } from "@/components/pwa/InstallPrompt";
+import { OfflineIndicator } from "@/components/pwa/OfflineIndicator";
 import { useEffect, useState } from "react";
 
 export default function Page() {
@@ -23,6 +25,9 @@ export default function Page() {
   // 2. LANDING / TEASER VIEW
   return (
     <div className="relative min-h-screen bg-black overflow-hidden">
+      {/* PWA Components */}
+      <OfflineIndicator />
+      <InstallPrompt />
 
       {/* Background Layer (Blurred Dashboard) */}
       <div className="fixed inset-0 z-0 opacity-40 blur-sm scale-[1.02] pointer-events-none">

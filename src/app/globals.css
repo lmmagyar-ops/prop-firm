@@ -209,6 +209,50 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Mobile PWA Optimizations */
+  html {
+    /* Prevent text size adjustment on iOS */
+    -webkit-text-size-adjust: 100%;
+    /* Smooth scrolling */
+    scroll-behavior: smooth;
+  }
+
+  body {
+    /* iOS safe area insets for notch/island */
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+
+    /* Prevent pull-to-refresh on iOS */
+    overscroll-behavior-y: contain;
+
+    /* Optimize touch interactions */
+    touch-action: manipulation;
+  }
+
+  /* Ensure minimum touch target size (48x48px) */
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    min-height: 44px;
+    /* iOS recommended minimum */
+    touch-action: manipulation;
+  }
+
+  /* Prevent tap highlight on mobile */
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Optimize font rendering on mobile */
+  body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
 }
 
 @keyframes flash-green {

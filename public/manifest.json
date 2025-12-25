@@ -1,21 +1,55 @@
 {
     "name": "Project X Trading",
     "short_name": "Project X",
-    "description": "World-class prediction market prop trading",
+    "description": "Trade Polymarket with our capital. Zero personal liability.",
     "start_url": "/",
     "display": "standalone",
-    "background_color": "#000000",
-    "theme_color": "#000000",
+    "orientation": "portrait",
+    "background_color": "#050505",
+    "theme_color": "#2E81FF",
+    "categories": [
+        "finance",
+        "trading",
+        "business"
+    ],
     "icons": [
         {
             "src": "/icon-192.png",
             "sizes": "192x192",
-            "type": "image/png"
+            "type": "image/png",
+            "purpose": "any maskable"
         },
         {
             "src": "/icon-512.png",
             "sizes": "512x512",
-            "type": "image/png"
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ],
+    "shortcuts": [
+        {
+            "name": "Dashboard",
+            "short_name": "Dashboard",
+            "description": "View your trading dashboard",
+            "url": "/dashboard",
+            "icons": [
+                {
+                    "src": "/icon-192.png",
+                    "sizes": "192x192"
+                }
+            ]
+        },
+        {
+            "name": "Markets",
+            "short_name": "Markets",
+            "description": "Browse prediction markets",
+            "url": "/dashboard",
+            "icons": [
+                {
+                    "src": "/icon-192.png",
+                    "sizes": "192x192"
+                }
+            ]
         }
     ]
 }
