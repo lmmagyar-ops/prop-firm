@@ -236,10 +236,6 @@ export function LandingContent() {
 
                     <div className="relative z-10 flex flex-col md:flex-row items-center gap-16">
                         <div className="flex-1 space-y-8 text-center md:text-left">
-                            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#2E81FF]/10 border border-[#2E81FF]/20 text-[#2E81FF] text-xs font-bold uppercase tracking-[0.2em] shadow-lg shadow-blue-900/20 mx-auto md:mx-0">
-                                <Trophy className="w-3 h-3" /> World Class Tech
-                            </div>
-
                             <h2 className="text-4xl md:text-5xl font-black text-white tracking-tighter leading-tight">
                                 Built for <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#2E81FF] to-cyan-400">High Frequency</span> <br />
                                 Prediction Markets.
