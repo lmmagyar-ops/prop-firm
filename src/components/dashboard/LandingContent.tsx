@@ -6,6 +6,8 @@ import { CheckCircle2, ChevronRight, BarChart3, ShieldCheck, Zap, Trophy, Wallet
 import { MarketTicker } from "../MarketTicker";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ChartsVsReality } from "./ChartsVsReality";
+import { MiniAcademy } from "./MiniAcademy";
 
 export function LandingContent() {
     const [selectedSize, setSelectedSize] = useState("5K");
@@ -34,6 +36,9 @@ export function LandingContent() {
                     </a>
                 </div>
             </div>
+
+            {/* Charts vs Reality - The "Aha!" Moment */}
+            <ChartsVsReality />
 
             {/* How It Works - Premium Redesign */}
             <section className="relative z-10 max-w-7xl mx-auto px-6 py-32 border-t border-[#2E3A52]/50">
@@ -72,7 +77,7 @@ export function LandingContent() {
                             step: "03",
                             icon: Wallet,
                             title: "Professional Trader",
-                            desc: "Trade our capital. Keep up to 90% of the profits. Bi-weekly payouts via USDC.",
+                            desc: "Trade our capital. Keep up to 90% of the profits. Reliable bi-weekly USDC settlements—direct to your wallet.",
                             color: "text-emerald-400",
                             bg: "bg-emerald-500/10",
                             border: "group-hover:border-emerald-500/50"
@@ -101,6 +106,8 @@ export function LandingContent() {
                 </div>
             </section>
 
+            {/* Mini Academy - Prove They Can Trade */}
+            <MiniAcademy />
 
             {/* Pricing Section */}
             <section className="relative z-10 max-w-7xl mx-auto px-6 py-24 mb-20">
@@ -149,7 +156,7 @@ export function LandingContent() {
                             <li className="flex items-center gap-3 text-white text-sm"><CheckCircle2 className="w-5 h-5 text-purple-500" /> Up to 90% Profit Split</li>
                             <li className="flex items-center gap-3 text-white text-sm"><CheckCircle2 className="w-5 h-5 text-purple-500" /> 5% Daily Drawdown</li>
                             <li className="flex items-center gap-3 text-white text-sm"><CheckCircle2 className="w-5 h-5 text-purple-500" /> 10% Max Drawdown</li>
-                            <li className="flex items-center gap-3 text-white text-sm"><CheckCircle2 className="w-5 h-5 text-purple-500" /> Bi-weekly Payouts</li>
+                            <li className="flex items-center gap-3 text-white text-sm"><CheckCircle2 className="w-5 h-5 text-purple-500" /> Bi-weekly USDC Payouts</li>
                         </ul>
                         <button className="w-full py-4 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 hover:to-blue-500 text-white font-bold shadow-lg shadow-purple-900/40 hover:shadow-purple-900/60 transition-all duration-300 transform hover:-translate-y-1 cursor-pointer">
                             Get Funded
