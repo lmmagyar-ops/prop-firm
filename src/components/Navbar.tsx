@@ -36,13 +36,13 @@ export function Navbar() {
                 </div>
 
                 {/* 3. Actions: Minimalist Login + High Contrast Dashboard */}
-                <div className="flex items-center gap-6">
+                <div className="flex items-center gap-3 md:gap-6">
                     <Link href="/login" className="hidden md:block text-xs font-bold uppercase tracking-widest text-zinc-400 hover:text-white transition-colors">
                         Log In
                     </Link>
-                    <Link href="/signup" className="group relative px-6 py-2.5 bg-white text-black text-xs font-black uppercase tracking-wider rounded-lg overflow-hidden hover:scale-105 active:scale-95 transition-all">
+                    <Link href="/signup" className="group relative px-4 py-2 md:px-6 md:py-2.5 bg-white text-black text-[10px] md:text-xs font-black uppercase tracking-wider rounded-lg overflow-hidden hover:scale-105 active:scale-95 transition-all whitespace-nowrap">
                         <div className="absolute inset-0 bg-gradient-to-r from-green-400 to-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                        <span className="relative z-10 flex items-center gap-2">
+                        <span className="relative z-10">
                             Sign Up
                         </span>
                     </Link>
