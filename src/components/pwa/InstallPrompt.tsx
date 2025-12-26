@@ -10,12 +10,21 @@ export function InstallPrompt() {
     const [isDismissed, setIsDismissed] = useState(false);
     const [showIOSInstructions, setShowIOSInstructions] = useState(false);
 
+    const [isMobile, setIsMobile] = useState(false);
+
     useEffect(() => {
         // Check if user has previously dismissed the prompt
         const dismissed = localStorage.getItem("pwa-install-dismissed");
         if (dismissed) {
             setIsDismissed(true);
         }
+
+        // Check if device is mobile
+        const checkMobile = () => {
+            const userAgent = window.navigator.userAgent.toLowerCase();
+            return /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
+        };
+        setIsMobile(checkMobile());
     }, []);
 
     const handleDismiss = () => {
@@ -35,8 +44,8 @@ export function InstallPrompt() {
         }
     };
 
-    // Don't show if already installed, dismissed, or not installable
-    if (isInstalled || isDismissed || (!isInstallable && !isIOS)) {
+    // Don't show if already installed, dismissed, not installable, or NOT mobile
+    if (isInstalled || isDismissed || (!isInstallable && !isIOS) || !isMobile) {
         return null;
     }
 
