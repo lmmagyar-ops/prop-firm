@@ -10,6 +10,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartsVsReality } from "./ChartsVsReality";
 import { MiniAcademy } from "./MiniAcademy";
+import { EventTradingPlaybook } from "./EventTradingPlaybook";
 
 export function LandingContent() {
     const [selectedSize, setSelectedSize] = useState("5K");
@@ -35,6 +36,9 @@ export function LandingContent() {
 
             {/* Charts vs Reality - The "Aha!" Moment */}
             <ChartsVsReality />
+
+            {/* Event Trading Playbook - How To Trade */}
+            <EventTradingPlaybook />
 
             {/* How It Works - Premium Redesign */}
             <section className="relative z-10 max-w-7xl mx-auto px-6 py-32 border-t border-[#2E3A52]/50">
