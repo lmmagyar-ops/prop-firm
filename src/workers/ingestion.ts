@@ -6,7 +6,7 @@ dotenv.config();
 
 const CLOB_WS_URL = "wss://ws-live-data.polymarket.com";
 // Gamma API Base: We append filters dynamically in fetchActiveMarkets
-const GAMMA_API_URL = "https://gamma-api.polymarket.com/markets?limit=20&active=true&closed=false&order=volume&descending=true";
+const GAMMA_API_URL = "https://gamma-api.polymarket.com/markets?limit=100&active=true&closed=false&order=volume&descending=true";
 const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6380";
 
 class IngestionWorker {
@@ -127,12 +127,11 @@ class IngestionWorker {
                 });
 
                 // Metadata: Top 10 High Velocity
-                const topMarkets = markets.slice(0, 10);
-                this.activeTokenIds = topMarkets.map(m => m.id);
+                this.activeTokenIds = markets.map(m => m.id);
 
                 // Store List in Redis for Frontend
-                await this.redis.set("market:active_list", JSON.stringify(topMarkets));
-                console.log(`[Ingestion] Stored ${topMarkets.length} markets in Redis.`);
+                await this.redis.set("market:active_list", JSON.stringify(markets));
+                console.log(`[Ingestion] Stored ${markets.length} markets in Redis.`);
             }
         } catch (err) {
             console.error("[Ingestion] Failed to fetch markets:", err);
