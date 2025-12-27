@@ -1,0 +1,18 @@
+# Dockerfile for Ingestion Worker
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+COPY tsconfig.json ./
+
+# Install dependencies
+RUN npm ci
+
+# Copy source code
+COPY src/workers/ingestion.ts ./src/workers/
+COPY src/lib ./src/lib
+
+# Run the ingestion worker
+CMD ["npx", "tsx", "src/workers/ingestion.ts"]
