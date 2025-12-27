@@ -1,10 +1,11 @@
-
 "use client";
 
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { MarketCard } from "@/components/trading/MarketCard";
 import { TradingWidget } from "@/components/dashboard/TradingWidget";
+import { TopNavActions } from "@/components/dashboard/TopNavActions";
+import { useSession } from "next-auth/react";
 import type { MockMarket } from "@/lib/mock-markets";
 import { ChevronDown, Filter, ListFilter, SlidersHorizontal, TrendingUp } from "lucide-react";
 
@@ -172,6 +173,11 @@ export function FilterBar({ isOpen }: { isOpen: boolean }) {
 export function TradePageHeader() {
     return (
         <div className="flex flex-col gap-6">
+            {/* Title */}
+            <div className="flex items-center justify-between">
+                <h1 className="text-2xl font-bold text-white">All Markets</h1>
+            </div>
+
             {/* Tier 2: Categories */}
             <CategoryStrip />
 

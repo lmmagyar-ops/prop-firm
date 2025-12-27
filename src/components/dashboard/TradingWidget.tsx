@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { TrendingUp } from "lucide-react";
 import { TradingModal } from "@/components/trading/TradingModal";
+import { useSelectedChallengeContext } from "@/contexts/SelectedChallengeContext";
 import { ProbabilityLineChart } from "@/components/trading/ProbabilityLineChart";
 import { OrderBook } from "@/components/trading/OrderBook";
 import { MarketHeader } from "@/components/trading/MarketHeader";
@@ -34,51 +35,120 @@ export function TradingWidget({
 }: TradingWidgetProps) {
     const [balance, setBalance] = useState(initialBalance);
     const [price, setPrice] = useState(0.56);
-    const [position, setPosition] = useState<any>(null); // TODO: Type this properly
+    const [position, setPosition] = useState<any>(null);
+    const [isLive, setIsLive] = useState(false);
+    const [currentMarketId, setCurrentMarketId] = useState(marketId);
 
-    // Mock Live Price Updates
+    // Get selected challenge from context
+    const { selectedChallengeId } = useSelectedChallengeContext();
+
+    // WebSocket for Live Price Updates
     useEffect(() => {
+        if (!open) return; // Only connect when modal is open
+
+        let ws: WebSocket;
+        let reconnectTimeout: NodeJS.Timeout;
+
+        const connectWebSocket = () => {
+            try {
+                ws = new WebSocket("ws://localhost:3001");
+
+                ws.onopen = () => {
+                    console.log("🟢 TradingWidget connected to price feed");
+                    setIsLive(true);
+                };
+
+                ws.onmessage = (event) => {
+                    try {
+                        const payload = JSON.parse(event.data);
+                        if (payload.price && payload.asset_id) {
+                            setPrice(parseFloat(payload.price));
+                            setCurrentMarketId(payload.asset_id);
+                        }
+                    } catch (e) {
+                        console.error("WS parse error", e);
+                    }
+                };
+
+                ws.onerror = (error) => {
+                    console.error("WS error:", error);
+                    setIsLive(false);
+                };
+
+                ws.onclose = () => {
+                    console.log("🔴 TradingWidget disconnected");
+                    setIsLive(false);
+                    // Attempt reconnect after 3 seconds
+                    reconnectTimeout = setTimeout(connectWebSocket, 3000);
+                };
+            } catch (e) {
+                console.error("Failed to connect to WebSocket", e);
+            }
+        };
+
+        connectWebSocket();
+
+        return () => {
+            clearTimeout(reconnectTimeout);
+            if (ws) ws.close();
+        };
+    }, [open]);
+
+    // Fallback: Simulated price updates when WebSocket is not connected
+    useEffect(() => {
+        if (isLive || !open) return;
+
         const interval = setInterval(() => {
             const change = (Math.random() - 0.5) * 0.005;
             const newPrice = Math.max(0.01, Math.min(0.99, price + change));
             setPrice(newPrice);
         }, 3000);
+
         return () => clearInterval(interval);
-    }, [price]);
+    }, [price, isLive, open]);
 
     // Sync balance prop if it changes
     useEffect(() => {
         setBalance(initialBalance);
     }, [initialBalance]);
 
-    // Fetch Position
-    const fetchPosition = async () => {
-        try {
-            const res = await fetch(`/api/trade/position?userId=${userId}&marketId=${marketId}`);
-            if (res.ok) {
-                const data = await res.json();
-                setPosition(data.position);
-            }
-        } catch (e) {
-            console.error("Failed to fetch position", e);
-        }
-    };
-
+    // Fetch Position on Mount
     useEffect(() => {
+        const fetchPosition = async () => {
+            try {
+                const res = await fetch(`/api/trade/position?userId=${userId}&marketId=${currentMarketId}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.position) {
+                        console.log("📦 Fetched position:", data.position);
+                        setPosition(data.position);
+                    }
+                }
+            } catch (e) {
+                console.error("Failed to fetch position", e);
+            }
+        };
+
         if (open) {
             fetchPosition();
         }
-    }, [open, userId, marketId]);
+    }, [open, userId, currentMarketId]);
 
     const handleTrade = async (outcome: "YES" | "NO", amount: number) => {
+        if (!selectedChallengeId) {
+            console.error("No challenge selected");
+            return;
+        }
+
         try {
-            const res = await fetch("/api/trade/execute", {
+            const res = await fetch("/api/trade", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     userId,
-                    marketId,
-                    outcome,
+                    challengeId: selectedChallengeId,
+                    marketId: currentMarketId,
+                    side: outcome === "YES" ? "BUY" : "SELL",
                     amount,
                 }),
             });
@@ -88,18 +158,34 @@ export function TradingWidget({
 
             if (data.success) {
                 setBalance(prev => prev - amount);
-                // Use position from response (no race condition!)
                 if (data.position) {
                     console.log("✅ Setting position:", data.position);
                     setPosition(data.position);
                 } else {
                     console.log("⚠️ No position data in response");
                 }
+
+                // Check if challenge status changed
+                if (data.challengeStatus && data.challengeStatus !== 'active') {
+                    console.log(`🚨 Challenge ${data.challengeStatus} !`);
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 2000);
+                }
             } else {
                 console.error("Trade failed:", data.error);
+
+                // Better error messaging for closed markets
+                if (data.error && data.error.includes("closed or halted")) {
+                    alert("⚠️ This market is no longer accepting trades.\n\nPlease try a different market from the list.");
+                    onClose(); // Close the modal
+                } else {
+                    alert(`Trade failed: ${data.error} `);
+                }
             }
         } catch (err) {
             console.error(err);
+            alert("Trade execution error. Check console.");
         }
     };
 
@@ -121,13 +207,8 @@ export function TradingWidget({
             const data = await res.json();
 
             if (res.ok && data.success) {
-                // Update balance
                 setBalance(parseFloat(data.newBalance));
-
-                // Clear position (it's now closed)
                 setPosition(null);
-
-                // Optionally close the modal or show success message
                 console.log("Position closed successfully");
             } else {
                 console.error("Close position failed:", data.error);
@@ -153,6 +234,14 @@ export function TradingWidget({
                         volume={volume}
                         activeTraders={activeTraders}
                     />
+
+                    {/* Live Feed Indicator */}
+                    {isLive && (
+                        <div className="absolute top-4 right-4 flex items-center gap-2 bg-green-500/10 border border-green-500/20 px-3 py-1.5 rounded-full z-10">
+                            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                            <span className="text-xs font-bold text-green-400 uppercase tracking-wider">Live Feed</span>
+                        </div>
+                    )}
 
                     {/* CHART CONTAINER - Flex 1 to fill available space */}
                     <div className="flex-1 relative min-h-[300px] mb-6 overflow-hidden group">
@@ -188,7 +277,7 @@ export function TradingWidget({
                                 Market Insight
                             </h4>
                             <p className="text-xs text-blue-200/50 leading-relaxed font-medium">
-                                Trump's odds have surged 2.4% in the last hour following the new poll release. Volume is spiking.
+                                {isLive ? "Connected to live market data feed." : "Using simulated market data."}
                             </p>
                         </div>
                     </div>

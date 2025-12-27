@@ -7,9 +7,27 @@ import { addDays } from "date-fns";
 const DEFAULT_RULES = {
     tier: "10k",
     startingBalance: 10000,
-    maxDrawdownPercent: 0.06, // 6%
-    dailyLossPercent: 0.03, // 3%
-    profitTargetPercent: 0.08, // 8%
+
+    // Drawdown & Profit
+    profitTarget: 0.10, // 10%
+    maxDrawdown: 0.08, // 8%
+    maxTotalDrawdownPercent: 0.08, // 8%
+    maxDailyDrawdownPercent: 0.04, // 4%
+
+    // Position Sizing
+    maxPositionSizePercent: 0.05, // 5% per market
+    maxCategoryExposurePercent: 0.10, // 10% per category
+    lowVolumeThreshold: 10_000_000, // $10M
+    lowVolumeMaxPositionPercent: 0.025, // 2.5%
+
+    // Liquidity
+    maxVolumeImpactPercent: 0.10, // 10% of 24h volume
+    minMarketVolume: 100_000, // $100k
+
+    // Legacy (for backwards compatibility)
+    maxDrawdownPercent: 0.08,
+    dailyLossPercent: 0.04,
+    profitTargetPercent: 0.10,
     durationDays: 60,
     profitSplit: 0.7, // 70% to trader
 };
@@ -18,7 +36,7 @@ export class ChallengeManager {
 
     /**
      * Creates a new Challenge for a user.
-     * In production, this would be called after Stripe webhook verification.
+     * In production, this is called after Confirmo/PayPal webhook verification.
      */
     static async createChallenge(userId: string) {
         // 1. Fetch active rulesConfig from DB or use defaults.

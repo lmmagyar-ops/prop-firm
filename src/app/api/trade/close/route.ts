@@ -62,6 +62,7 @@ export async function POST(req: NextRequest) {
         // Execute SELL trade for the current market value
         const trade = await TradeExecutor.executeTrade(
             userId,
+            challenge.id,
             position.marketId,
             "SELL",
             marketValue // Sell at current market value

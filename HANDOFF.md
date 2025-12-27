@@ -19,13 +19,13 @@ Unlike competitors who rely on high-leverage churn (Casino Model), this platform
 *   **Data Pipeline**: `IngestionWorker` fetches real-time prices & order books from Polymarket.
 
 ## 3. "Demo Mode" Logic
-To allow investor demos without Stripe/Auth friction:
+To allow investor demos without payment/auth friction:
 -   `src/app/checkout/page.tsx`: Does NOT require login.
 -   `src/app/api/checkout/mock/route.ts`: Uses `demo-user-123` if no session exists.
 -   **Action**: Uncomment Auth checks before Production Deploy.
 
 ## 4. Launch Roadmap (Post-Handoff)
-1.  **Stripe Live Mode**: Interchange the mock payment route with real Stripe Webhooks.
+1.  **Payment Integration**: Confirmo (crypto) and PayPal are configured. Webhook handlers are in place.
 2.  **Cloud Deploy**: Deploy `IngestionWorker` to a persistent service (Railway/Render) to ensure 24/7 price updates.
 3.  **Legal**: Add Terms of Service.
 

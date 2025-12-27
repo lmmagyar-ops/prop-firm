@@ -1,103 +1,108 @@
 import { db } from "@/db";
-import { positions, challenges } from "@/db/schema";
-import { eq, and, lt, isNull, or, sql } from "drizzle-orm";
+import { positions, challenges, businessRules } from "@/db/schema";
+import { eq, and, lte, isNull } from "drizzle-orm";
+import { TRADING_CONFIG } from "@/config/trading";
+
+// Configuration from centralized config
+const FEE_RATE = TRADING_CONFIG.fees.carryFeeRate;
+const THRESHOLD_MS = TRADING_CONFIG.fees.stalePeriodMs;
 
 /**
- * FeeSweeper: The "Stick" of the Velocity Engine.
- * Penalizes passive holding by charging 0.1% per day on open positions.
+ * FeeSweeper: Simulates "Carry Cost" or "Funding Fees"
+ * 
+ * In a real prop firm, holding positions overnight costs money (swaps).
+ * Since this is a high-velocity demo, we charge fees every X minutes/hours
+ * to force the user to manage their PnL actively.
  */
-async function runFeeSweep() {
-    console.log("[FeeSweeper] Starting sweep...");
+export async function runFeeSweep() {
+    console.log("🧹 [FeeSweeper] Starting sweep...");
 
-    // 1. Find Stale Positions
-    // Criteria: Status OPEN AND
-    // (openedAt < 24h ago AND lastFeeChargedAt IS NULL) OR (lastFeeChargedAt < 24h ago)
+    try {
+        const now = new Date();
+        const staleThreshold = new Date(now.getTime() - THRESHOLD_MS);
 
-    // For MVP Demo simplicity: We'll check for anything opened > 1 minute ago to demonstrate it working
-    // In PROD: Replace '1 minute' with '24 hours'
-    const STALE_INTERVAL = "1 minute"; // DEMO MODE VELOCITY
-    const FEE_RATE = 0.001; // 0.1%
-
-    const stalePositions = await db.execute(sql`
-        SELECT * FROM positions 
-        WHERE status = 'OPEN' 
-        AND (
-            (last_fee_charged_at IS NULL AND opened_at < NOW() - INTERVAL ${sql.raw(`'${STALE_INTERVAL}'`)})
-            OR 
-            (last_fee_charged_at < NOW() - INTERVAL ${sql.raw(`'${STALE_INTERVAL}'`)})
-        )
-    `);
-
-    // Drizzle `execute` returns exact rows in PostgreSQL? It returns a Result object. 
-    // Let's use Query Builder for safety if possible, but complex interval math is easier in raw SQL.
-    // Actually, let's just query all OPEN positions and filter in JS for safety/clarity in this MVP.
-
-    // Use standard Query Builder for robustness
-    const allOpenPositions = await db.select({
-        id: positions.id,
-        challengeId: positions.challengeId,
-        sizeAmount: positions.sizeAmount,
-        lastFeeChargedAt: positions.lastFeeChargedAt,
-        openedAt: positions.openedAt,
-        feesPaid: positions.feesPaid,
-        marketId: positions.marketId,
-        // We need challenge balance, so let's use a join or just fetch separately inside loop (n+1 but safer for this cron)
-        // Or Join:
-    }).from(positions)
-        .where(eq(positions.status, "OPEN"));
-
-    // Fetch challenges separately to avoid complex JOIN typing issues in this worker
-    let chargedCount = 0;
-
-    for (const pos of allOpenPositions) {
-        if (!pos.challengeId) continue;
-
-        const challenge = await db.query.challenges.findFirst({
-            where: eq(challenges.id, pos.challengeId)
+        // 1. Find Open Positions that haven't been charged recently
+        // Logic: openedAt < threshold AND (lastFeeChargedAt IS NULL OR lastFeeChargedAt < threshold)
+        const stalePositions = await db.query.positions.findMany({
+            where: and(
+                eq(positions.status, "OPEN"),
+                lte(positions.openedAt, staleThreshold)
+            )
         });
 
-        if (!challenge) continue;
+        // Refined Filter in memory for granular control
+        const chargeablePositions = stalePositions.filter(pos => {
+            const openedAt = pos.openedAt ? new Date(pos.openedAt) : new Date();
+            const lastCharged = pos.lastFeeChargedAt ? new Date(pos.lastFeeChargedAt) : null;
 
-        const now = new Date();
-        const lastCharge = pos.lastFeeChargedAt ? new Date(pos.lastFeeChargedAt) : new Date(pos.openedAt!);
-        const diffMs = now.getTime() - lastCharge.getTime();
+            // Position must have been opened before the threshold
+            if (openedAt.getTime() >= staleThreshold.getTime()) {
+                return false;
+            }
 
-        // Demo: 1 Minute = 60000ms. Prod: 24 Hours = 86400000ms
-        const THRESHOLD_MS = 60 * 1000;
+            // If never charged, it's chargeable
+            if (!lastCharged) {
+                return true;
+            }
 
-        if (diffMs > THRESHOLD_MS) {
-            // CHARGE!
-            const size = parseFloat(pos.sizeAmount);
-            const fee = size * FEE_RATE;
+            // If last charged before the threshold, it's chargeable again
+            return lastCharged.getTime() < staleThreshold.getTime();
+        });
 
-            await db.transaction(async (tx) => {
-                // 1. Deduct from Balance
-                // We fetched 'challenge' above
-                const currentBal = parseFloat(challenge.currentBalance);
-                const newBal = currentBal - fee;
+        console.log(`🧹 [FeeSweeper] Found ${chargeablePositions.length} positions to charge.`);
 
-                await tx.update(challenges)
-                    .set({ currentBalance: newBal.toString() })
-                    .where(eq(challenges.id, pos.challengeId!));
-
-                // 2. Update Position
-                const currentFees = parseFloat(pos.feesPaid || "0");
-                await tx.update(positions)
-                    .set({
-                        feesPaid: (currentFees + fee).toString(),
-                        lastFeeChargedAt: new Date()
-                    })
-                    .where(eq(positions.id, pos.id));
-
-                console.log(`[FeeSweeper] ⚡ CHARGED $${fee.toFixed(2)} on Position ${pos.marketId}. New Bal: $${newBal.toFixed(2)}`);
-            });
+        let chargedCount = 0;
+        for (const pos of chargeablePositions) {
+            await chargeFee(pos);
             chargedCount++;
         }
-    }
 
-    if (chargedCount > 0) console.log(`[FeeSweeper] Sweep complete. Charged ${chargedCount} positions.`);
+        if (chargedCount > 0) console.log(`🧹 [FeeSweeper] Sweep complete. Charged ${chargedCount} positions.`);
+
+    } catch (error) {
+        console.error("🧹 [FeeSweeper] Error:", error);
+    }
 }
 
-// Run loop
-console.log("[FeeSweeper] Daemon started.");
-setInterval(runFeeSweep, 10000); // Check every 10s
+async function chargeFee(position: any) {
+    // Transaction to ensure balance deduction and position update happen together
+    await db.transaction(async (tx) => {
+        // 1. Calculate Fee
+        const entryPrice = parseFloat(position.entryPrice);
+        const shares = parseFloat(position.shares);
+        const notional = entryPrice * shares;
+        const fee = notional * FEE_RATE;
+
+        // 2. Deduct from Challenge Balance
+        const challenge = await tx.query.challenges.findFirst({
+            where: eq(challenges.id, position.challengeId)
+        });
+
+        if (!challenge) return; // Should not happen
+
+        const currentBalance = parseFloat(challenge.currentBalance);
+        const newBalance = currentBalance - fee;
+
+        await tx.update(challenges)
+            .set({ currentBalance: newBalance.toString() })
+            .where(eq(challenges.id, challenge.id));
+
+        // 3. Update Position Metadata
+        const currentFees = parseFloat(position.feesPaid || "0");
+        await tx.update(positions)
+            .set({
+                feesPaid: (currentFees + fee).toString(),
+                lastFeeChargedAt: new Date()
+            })
+            .where(eq(positions.id, position.id));
+
+        console.log(`   💸 Charged $${fee.toFixed(2)} on Position ${position.id} (Challenge ${challenge.id})`);
+    });
+}
+
+// Start the worker if this file is run directly (e.g. via separate process)
+// In Next.js, this might be called via a Cron Job or API route.
+// For the DEMO, we can start a lightweight interval if imported.
+if (process.env.NEXT_RUNTIME === 'nodejs') {
+    setInterval(runFeeSweep, TRADING_CONFIG.fees.sweepIntervalMs);
+}

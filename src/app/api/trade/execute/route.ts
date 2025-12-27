@@ -4,6 +4,7 @@ import { TradeExecutor } from "@/lib/trade";
 import { db } from "@/db";
 import { challenges, positions } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
+import { ChallengeEvaluator } from "@/lib/evaluator";
 
 export async function POST(req: NextRequest) {
     const session = await auth();
@@ -26,12 +27,25 @@ export async function POST(req: NextRequest) {
     }
 
     try {
+        // Get active challenge for this user
+        const activeChallenge = await db.query.challenges.findFirst({
+            where: and(
+                eq(challenges.userId, userId),
+                eq(challenges.status, "active")
+            )
+        });
+
+        if (!activeChallenge) {
+            return NextResponse.json({ error: "No active challenge found" }, { status: 400 });
+        }
+
         let trade;
 
         try {
             // Execute trade using TradeExecutor (handles position updates properly)
             trade = await TradeExecutor.executeTrade(
                 userId,
+                activeChallenge.id,
                 marketId,
                 "BUY", // Always BUY for now
                 parseFloat(amount)
@@ -63,6 +77,7 @@ export async function POST(req: NextRequest) {
                 console.log("[Auto-Provision] Retrying execution...");
                 trade = await TradeExecutor.executeTrade(
                     userId,
+                    activeChallenge.id,
                     marketId,
                     "BUY",
                     parseFloat(amount)
@@ -147,7 +162,16 @@ export async function POST(req: NextRequest) {
             side: outcome as "YES" | "NO" // Use the correct outcome
         };
 
-        return NextResponse.json({
+        // ... existing imports ...
+
+        // Inside POST function, after position update logic (around line 158)
+
+        // --- NEW: Evaluate Challenge Status ---
+        // Fire and forget (don't block response) or await if critical
+        // For MVP we await to capture immediate fail state if needed
+        const evalResult = await ChallengeEvaluator.evaluate(challenge.id);
+
+        const responsePayload: any = {
             success: true,
             trade: {
                 id: trade.id,
@@ -155,7 +179,13 @@ export async function POST(req: NextRequest) {
                 price: parseFloat(trade.price),
             },
             position: positionData
-        });
+        };
+
+        if (evalResult && evalResult.status !== 'active') {
+            responsePayload.challengeStatus = evalResult.status;
+        }
+
+        return NextResponse.json(responsePayload);
 
     } catch (error: any) {
         console.error("Trade execution failed:", error);

@@ -20,6 +20,45 @@ class IngestionWorker {
         this.init();
     }
 
+    /**
+     * Detect market category based on question keywords
+     */
+    private detectCategory(question: string): string {
+        const q = question.toLowerCase();
+
+        // Crypto keywords
+        if (q.includes('bitcoin') || q.includes('btc') || q.includes('ethereum') ||
+            q.includes('eth') || q.includes('crypto') || q.includes('solana') ||
+            q.includes('sol') || q.includes('xrp') || q.includes('doge') ||
+            q.includes('bnb') || q.includes('ada') || q.includes('avax')) {
+            return 'Crypto';
+        }
+
+        // Politics keywords
+        if (q.includes('trump') || q.includes('biden') || q.includes('election') ||
+            q.includes('president') || q.includes('senate') || q.includes('congress') ||
+            q.includes('democrat') || q.includes('republican') || q.includes('political')) {
+            return 'Politics';
+        }
+
+        // Sports keywords
+        if (q.includes('nfl') || q.includes('nba') || q.includes('mlb') ||
+            q.includes('nhl') || q.includes('super bowl') || q.includes('world cup') ||
+            q.includes('olympics') || q.includes('championship')) {
+            return 'Sports';
+        }
+
+        // Finance/Economics keywords
+        if (q.includes('fed') || q.includes('interest rate') || q.includes('inflation') ||
+            q.includes('gdp') || q.includes('stock') || q.includes('s&p') ||
+            q.includes('dow') || q.includes('nasdaq')) {
+            return 'Finance';
+        }
+
+        // Default
+        return 'Other';
+    }
+
     private async init() {
         await this.fetchActiveMarkets();
         this.connectWS();
@@ -29,11 +68,6 @@ class IngestionWorker {
     private async fetchActiveMarkets() {
         try {
             console.log("[Ingestion] Fetching High-Velocity Markets (Interim)...");
-
-            // VELOCITY FILTER:
-            // 1. Expiring within 30 days (High Theta/Gamma)
-            // 2. High Volume (Liquidity)
-            // 3. Relevant Tags (Sports, Crypto, Politics) - implicit in Volume usually
 
             const thirtyDaysFromNow = new Date();
             thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
@@ -49,19 +83,57 @@ class IngestionWorker {
 
             if (Array.isArray(data)) {
                 // Filter and Map
-                const tokens = data.map(m => {
-                    // Safety check for valid CLOB token
-                    try {
-                        const t = JSON.parse(m.clobTokenIds);
-                        return t[0]; // YES token
-                    } catch (e) { return null; }
-                })
-                    .filter(Boolean)
-                    .slice(0, 10); // Track Top 10 Velocity Markets
+                const markets: any[] = [];
+                const tokens: string[] = [];
 
-                this.activeTokenIds = tokens as string[];
+                data.forEach(m => {
+                    try {
+                        // Skip explicitly closed or archived markets
+                        if (m.closed === true || m.archived === true) {
+                            return;
+                        }
+
+                        // FILTER: Illiquid Markets
+                        // User Rule: No illiquid markets (< $100k volume).
+                        // Dev Config: Lowered to $1k to ensure market visibility during testing if live volume is low.
+                        const volume24h = m.volume24hr || 0;
+                        const liquidity = parseFloat(m.liquidity || "0");
+
+                        // if (volume24h < 1000 && liquidity < 1000) {
+                        //    return; // Keeping disabled for now to ensure we see "New" markets for UI testing
+                        // }
+
+                        const clobTokens = JSON.parse(m.clobTokenIds);
+                        const yesToken = clobTokens[0]; // YES token
+
+                        if (yesToken) {
+                            tokens.push(yesToken);
+                            markets.push({
+                                id: yesToken,
+                                question: m.question,
+                                description: m.description,
+                                image: m.image,
+                                volume: m.volume,
+                                outcomes: JSON.parse(m.outcomes),
+                                end_date: m.endDate,
+                                category: this.detectCategory(m.question), // NEW: Category detection
+                                closed: m.closed,
+                                accepting_orders: m.accepting_orders
+                            });
+                        }
+                    } catch (e) {
+                        // Skip invalid
+                    }
+                });
+
+                // Metadata: Top 10 High Velocity
+                const topMarkets = markets.slice(0, 10);
+                this.activeTokenIds = topMarkets.map(m => m.id);
+
+                // Store List in Redis for Frontend
+                await this.redis.set("market:active_list", JSON.stringify(topMarkets));
+                console.log(`[Ingestion] Stored ${topMarkets.length} markets in Redis.`);
             }
-            console.log(`[Ingestion] Found ${this.activeTokenIds.length} Velocity tokens to track.`);
         } catch (err) {
             console.error("[Ingestion] Failed to fetch markets:", err);
         }

@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, MessageSquare, Check, ShieldCheck, Lock } from "lucide-react";
+import { Loader2, MessageSquare, Check, ShieldCheck, Lock, CreditCard, Bitcoin, Copy, ExternalLink, ArrowRight } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
 
 function CheckoutContent() {
     const router = useRouter();
@@ -17,8 +18,7 @@ function CheckoutContent() {
 
     // params
     const size = searchParams.get("size") || "5000";
-    const plan = searchParams.get("plan") || "classic";
-    const step = searchParams.get("step") || "1";
+    const tierId = size === "5000" ? "5k" : size === "25000" ? "25k" : "10k";
     const basePrice = parseFloat(searchParams.get("price") || "60");
 
     const [loading, setLoading] = useState(false);
@@ -26,38 +26,70 @@ function CheckoutContent() {
     const [agreedRules, setAgreedRules] = useState(false);
     const [agreedRefund, setAgreedRefund] = useState(false);
 
+    // Payment Method State
+    const [paymentMethod, setPaymentMethod] = useState<"card" | "crypto">("card");
+    const [invoiceUrl, setInvoiceUrl] = useState<string | null>(null);
+
     // Mock addon price
     const splitAddonPrice = basePrice * 0.2; // 20% addon
     const total = basePrice + (profitSplit ? splitAddonPrice : 0);
 
-    const handlePayment = async () => {
-        if (!agreedRules || !agreedRefund) return;
-
-        setLoading(true);
-        // Simulate network
-        await new Promise(r => setTimeout(r, 1500));
-        router.push("/payment-success");
-    };
-
     // Soft Lock: Ensure user came from a valid internal flow
     useEffect(() => {
         const fromDashboard = searchParams.get("from_dashboard");
-        // Optional: Allow if user has a session cookie (but we can't check easily clientside without context)
-        // For now, strict enforcement of the flow param.
         if (!fromDashboard) {
-            // Redirect to signup, preserving intent
-            const currentSize = searchParams.get("size") || "10000";
-            const currentPrice = searchParams.get("price") || "99";
-            // Map size to ID (simplified)
-            const tierId = currentSize === "5000" ? "5k" : currentSize === "25000" ? "25k" : "10k";
-
-            router.push(`/signup?intent=buy_evaluation&tier=${tierId}&price=${currentPrice}`);
+            router.push(`/signup?intent=buy_evaluation&tier=${tierId}&price=${basePrice}`);
         }
-    }, [searchParams, router]);
+    }, [searchParams, router, tierId, basePrice]);
+
+    const handlePurchase = async () => {
+        if (!agreedRules || !agreedRefund) return;
+        setLoading(true);
+
+        try {
+            // 1. Create Invoice via Confirmo
+            const res = await fetch("/api/checkout/create-confirmo-invoice", {
+                method: "POST",
+                body: JSON.stringify({
+                    tier: tierId,
+                    price: total,
+                }),
+                headers: { "Content-Type": "application/json" }
+            });
+
+            if (!res.ok) throw new Error("Failed to create invoice");
+
+            const data = await res.json();
+
+            // 2. Handle Logic based on Method
+            if (paymentMethod === "card") {
+                // If MoonPay, we might redirect to a MoonPay flow or 
+                // for this MVP, just show the Confirmo invoice which HAS "Buy with Card" options often,
+                // OR simpler: Redirect to the Invoice URL which is the payment gateway.
+                // Polymarket flow: "Deposit" -> MoonPay.
+
+                // For MVP: Both flows lead to the Payment Gateway (Confirmo Invoice)
+                // In production, "Card" might specificy a MoonPay-specific link.
+                window.location.href = data.invoiceUrl;
+            } else {
+                // Crypto: Redirect to invoice or show QR
+                window.location.href = data.invoiceUrl;
+            }
+
+            // For checking flow without leaving page (Dev Mode)
+            // setInvoiceUrl(data.invoiceUrl);
+            // setLoading(false);
+
+        } catch (error) {
+            console.error(error);
+            setLoading(false);
+            alert("Error creating payment. Please try again.");
+        }
+    };
 
     return (
         <div className="min-h-screen bg-[#05101a] text-white flex justify-center p-4 lg:p-8 font-sans">
-            <div className="w-full max-w-6xl">
+            <div className="w-full max-w-5xl">
                 {/* Header */}
                 <div className="flex justify-between items-center mb-6">
                     <Link href="/buy-evaluation">
@@ -65,148 +97,157 @@ function CheckoutContent() {
                             &lt; Back
                         </Button>
                     </Link>
-                    <h1 className="text-xl font-bold flex-1">Purchase Evaluation</h1>
+                    <h1 className="text-xl font-bold flex-1">Secure Checkout</h1>
                 </div>
 
                 <div className="grid lg:grid-cols-2 gap-8">
-                    {/* Left: Billing Info */}
-                    <div className="bg-[#0f1926] border border-blue-900/30 rounded-xl p-6 lg:p-8">
-                        <div className="flex items-center gap-2 mb-6 border-l-4 border-blue-500 pl-3">
-                            <h2 className="text-lg font-bold">Billing Info</h2>
+                    {/* Left: Account & Payment Method */}
+                    <div className="space-y-6">
+
+                        {/* 1. Identity */}
+                        <div className="bg-[#0f1926] border border-blue-900/30 rounded-xl p-6">
+                            <div className="flex items-center gap-2 mb-4 border-l-4 border-blue-500 pl-3">
+                                <h2 className="text-lg font-bold">Trader Identity</h2>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                    <label className="text-xs font-bold text-blue-400">First Name</label>
+                                    <Input placeholder="John" className="bg-[#162231] border-0 h-10" />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs font-bold text-blue-400">Last Name</label>
+                                    <Input placeholder="Doe" className="bg-[#162231] border-0 h-10" />
+                                </div>
+                            </div>
+                            <div className="space-y-1 mt-4">
+                                <label className="text-xs font-bold text-blue-400">Email Address</label>
+                                <Input value="sliponchain@gmail.com" readOnly className="bg-[#162231] border-0 h-10 font-mono text-zinc-400 cursor-not-allowed" />
+                            </div>
                         </div>
 
-                        <div className="space-y-6">
-                            <div className="bg-[#162231] rounded-lg p-6 space-y-4">
-                                <h3 className="font-bold text-sm text-zinc-300">Customer Info</h3>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-bold text-blue-400">First Name *</label>
-                                        <Input placeholder="Type your first name here" className="bg-white text-black border-0 h-10 placeholder:text-zinc-400" />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-bold text-blue-400">Last Name *</label>
-                                        <Input placeholder="Type your last name here" className="bg-white text-black border-0 h-10 placeholder:text-zinc-400" />
-                                    </div>
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-xs font-bold text-blue-400">Email *</label>
-                                    <Input value="sliponchain@gmail.com" readOnly className="bg-white text-black border-0 h-10 font-bold" />
-                                </div>
+                        {/* 2. Payment Selector */}
+                        <div className="bg-[#0f1926] border border-blue-900/30 rounded-xl p-6">
+                            <div className="flex items-center gap-2 mb-4 border-l-4 border-green-500 pl-3">
+                                <h2 className="text-lg font-bold">Payment Method</h2>
                             </div>
 
-                            <div className="bg-[#162231] rounded-lg p-6 space-y-4">
-                                <h3 className="font-bold text-sm text-zinc-300">Billing Address</h3>
-                                <div className="space-y-1">
-                                    <label className="text-xs font-bold text-blue-400">Street Address *</label>
-                                    <Input placeholder="Type your Street Address here" className="bg-white text-black border-0 h-10 placeholder:text-zinc-400" />
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-bold text-blue-400">City *</label>
-                                        <Input placeholder="Type your city here" className="bg-white text-black border-0 h-10 placeholder:text-zinc-400" />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-bold text-blue-400">State *</label>
-                                        <Input placeholder="Type your state here" className="bg-white text-black border-0 h-10 placeholder:text-zinc-400" />
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-bold text-blue-400">Country *</label>
-                                        <Select>
-                                            <SelectTrigger className="bg-white text-black border-0 h-10 font-bold">
-                                                <SelectValue placeholder="Select country" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="gt">Guatemala</SelectItem>
-                                                <SelectItem value="us">United States</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-bold text-blue-400">Postal ZIP Code *</label>
-                                        <Input placeholder="Type your Zip Code here" className="bg-white text-black border-0 h-10 placeholder:text-zinc-400" />
-                                    </div>
-                                </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <button
+                                    onClick={() => setPaymentMethod("card")}
+                                    className={`p-4 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${paymentMethod === "card"
+                                            ? "bg-blue-600/10 border-blue-500 text-blue-400 shadow-[0_0_20px_-5px_rgba(37,99,235,0.3)]"
+                                            : "bg-[#162231] border-white/5 text-zinc-500 hover:bg-[#1e2d40] hover:text-white"
+                                        }`}
+                                >
+                                    <CreditCard className="w-6 h-6" />
+                                    <span className="text-sm font-bold">Credit Card</span>
+                                </button>
+
+                                <button
+                                    onClick={() => setPaymentMethod("crypto")}
+                                    className={`p-4 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${paymentMethod === "crypto"
+                                            ? "bg-orange-500/10 border-orange-500 text-orange-400 shadow-[0_0_20px_-5px_rgba(249,115,22,0.3)]"
+                                            : "bg-[#162231] border-white/5 text-zinc-500 hover:bg-[#1e2d40] hover:text-white"
+                                        }`}
+                                >
+                                    <Bitcoin className="w-6 h-6" />
+                                    <span className="text-sm font-bold">Crypto (USDC)</span>
+                                </button>
                             </div>
+
+                            <AnimatePresence mode="wait">
+                                {paymentMethod === "card" ? (
+                                    <motion.div
+                                        key="card-info"
+                                        initial={{ opacity: 0, height: 0 }}
+                                        animate={{ opacity: 1, height: "auto" }}
+                                        exit={{ opacity: 0, height: 0 }}
+                                        className="mt-4 bg-blue-500/5 border border-blue-500/20 rounded-lg p-4"
+                                    >
+                                        <div className="flex items-start gap-3">
+                                            <div className="bg-blue-500/20 p-2 rounded-full mt-1">
+                                                <CreditCard className="w-4 h-4 text-blue-400" />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm text-white font-medium">Powered by MoonPay</p>
+                                                <p className="text-xs text-zinc-400 mt-1">
+                                                    Use your Visa or Mastercard to purchase USDC directly. Fast verification, instant settlement.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                ) : (
+                                    <motion.div
+                                        key="crypto-info"
+                                        initial={{ opacity: 0, height: 0 }}
+                                        animate={{ opacity: 1, height: "auto" }}
+                                        exit={{ opacity: 0, height: 0 }}
+                                        className="mt-4 bg-orange-500/5 border border-orange-500/20 rounded-lg p-4"
+                                    >
+                                        <div className="flex items-start gap-3">
+                                            <div className="bg-orange-500/20 p-2 rounded-full mt-1">
+                                                <Bitcoin className="w-4 h-4 text-orange-400" />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm text-white font-medium">Pay with Any Crypto</p>
+                                                <p className="text-xs text-zinc-400 mt-1">
+                                                    We accept USDC (Polygon, Eth, Base), ETH, BTC, LTC, and more.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
                         </div>
                     </div>
 
-                    {/* Right: Order Info */}
-                    <div className="bg-[#0f1926] border border-blue-500/30 rounded-xl p-6 lg:p-8 flex flex-col shadow-[0_0_50px_-15px_rgba(37,99,235,0.15)] relative overflow-hidden group">
+                    {/* Right: Order Summary */}
+                    <div className="bg-[#0f1926] border border-blue-500/30 rounded-xl p-6 lg:p-8 flex flex-col shadow-[0_0_50px_-15px_rgba(37,99,235,0.15)] relative overflow-hidden h-fit">
                         <div className="absolute inset-0 bg-gradient-to-b from-blue-500/5 to-transparent pointer-events-none" />
-                        <div className="relative z-10 flex flex-col flex-1">
-                            <div className="flex items-center gap-2 mb-6 border-l-4 border-blue-500 pl-3">
-                                <h2 className="text-lg font-bold">Order Info</h2>
+
+                        <div className="relative z-10 space-y-6">
+                            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                                <h2 className="text-lg font-bold">Order Summary</h2>
+                                <span className="bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded text-xs font-mono font-bold uppercase">
+                                    LEVEL: {tierId.toUpperCase()}
+                                </span>
                             </div>
 
-                            <div className="space-y-6 flex-1">
-
-
-                                <div className="space-y-1">
-                                    <label className="text-xs font-bold text-blue-400">Account Balance *</label>
-                                    <Select defaultValue={size}>
-                                        <SelectTrigger className="bg-[#1f2d3d] text-white border-white/10 h-10 font-bold">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="5000">$5,000</SelectItem>
-                                            <SelectItem value="10000">$10,000</SelectItem>
-                                            <SelectItem value="25000">$25,000</SelectItem>
-                                        </SelectContent>
-                                    </Select>
+                            <div className="space-y-4">
+                                <div className="flex justify-between items-center text-sm">
+                                    <span className="text-zinc-300">Evaluation Account (${parseInt(size).toLocaleString()})</span>
+                                    <span className="text-white font-bold font-mono">${basePrice.toFixed(2)}</span>
                                 </div>
-
                                 <div className="space-y-2">
-                                    <label className="text-sm font-bold text-white">Add-Ons</label>
-                                    <div className="flex items-center gap-2">
+                                    <label className="flex items-center gap-2 cursor-pointer group">
                                         <Checkbox
-                                            id="profitSplit"
                                             checked={profitSplit}
                                             onCheckedChange={(c) => setProfitSplit(!!c)}
                                             className="border-white/30 data-[state=checked]:bg-blue-500"
                                         />
-                                        <label htmlFor="profitSplit" className="text-sm text-zinc-300">90/10 Profit Split</label>
-                                    </div>
-                                </div>
-                                <div className="bg-[#1f2d3d]/50 rounded-lg p-4 border border-white/5 space-y-3">
-                                    <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-2">What's Included</h4>
-                                    <ul className="space-y-2">
-                                        <li className="flex items-center gap-2 text-sm text-zinc-300">
-                                            <Check className="w-4 h-4 text-green-400" /> Instant Credentials
-                                        </li>
-                                        <li className="flex items-center gap-2 text-sm text-zinc-300">
-                                            <Check className="w-4 h-4 text-green-400" /> No Time Limits
-                                        </li>
-                                        <li className="flex items-center gap-2 text-sm text-zinc-300">
-                                            <Check className="w-4 h-4 text-green-400" /> Access to Professional Dashboard
-                                        </li>
-                                    </ul>
-                                </div>
-                                <div className="bg-[#1f2d3d] rounded-lg p-4 mt-4">
-                                    <div className="flex justify-between items-center text-sm text-zinc-300 border-b border-white/10 pb-4 mb-4">
-                                        <span>Product</span>
-                                        <span>Amount</span>
-                                    </div>
-                                    <div className="flex justify-between items-center mb-2">
-                                        <span className="text-white font-medium">${parseInt(size).toLocaleString()} Account - 1 Step Evaluation</span>
-                                        <span className="text-blue-400 font-bold">${basePrice.toFixed(2)}</span>
-                                    </div>
+                                        <span className="text-sm text-zinc-400 group-hover:text-white transition-colors">Add: 90/10 Profit Split</span>
+                                    </label>
                                     {profitSplit && (
-                                        <div className="flex justify-between items-center mb-2">
-                                            <span className="text-white font-medium">90/10 Split Addon</span>
-                                            <span className="text-blue-400 font-bold">${splitAddonPrice.toFixed(2)}</span>
+                                        <div className="flex justify-between items-center text-sm pl-6 animate-in fade-in slide-in-from-top-1">
+                                            <span className="text-zinc-500">+ Boost Profit Share</span>
+                                            <span className="text-blue-400 font-bold font-mono">${splitAddonPrice.toFixed(2)}</span>
                                         </div>
                                     )}
                                 </div>
+                            </div>
 
-                                <div className="flex justify-between items-center pt-4 border-t border-white/10 mt-4">
-                                    <span className="font-bold text-white">Purchase Price</span>
-                                    <span className="text-3xl font-bold text-blue-500">${total.toFixed(2)}</span>
+                            <div className="border-t border-white/10 pt-4 flex justify-between items-end">
+                                <div>
+                                    <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Total Due</span>
+                                    <div className="text-3xl font-bold text-white mt-1">${total.toFixed(2)}</div>
+                                </div>
+                                <div className="text-right">
+                                    <span className="text-xs text-zinc-500">Payable in</span>
+                                    <div className="font-bold text-blue-400">USD via {paymentMethod === "card" ? "MoonPay" : "Confirmo"}</div>
                                 </div>
                             </div>
 
-                            <div className="space-y-3">
+                            <div className="space-y-3 pt-2">
                                 <div className="flex items-start gap-2">
                                     <Checkbox
                                         id="rules"
@@ -214,8 +255,8 @@ function CheckoutContent() {
                                         onCheckedChange={(c) => setAgreedRules(!!c)}
                                         className="border-white/30 mt-1 data-[state=checked]:bg-blue-500"
                                     />
-                                    <label htmlFor="rules" className="text-xs text-zinc-400 leading-tight">
-                                        I have read, understood, and agree to the Program Rules (<span className="text-blue-400 hover:underline">See Here</span>) and the Evaluation Agreement (<span className="text-blue-400 hover:underline">See Here</span>)*
+                                    <label htmlFor="rules" className="text-xs text-zinc-400">
+                                        I agree to the <span className="text-blue-400 underline">Trading Rules</span> and <span className="text-blue-400 underline">Terms</span>.*
                                     </label>
                                 </div>
                                 <div className="flex items-start gap-2">
@@ -225,41 +266,35 @@ function CheckoutContent() {
                                         onCheckedChange={(c) => setAgreedRefund(!!c)}
                                         className="border-white/30 mt-1 data-[state=checked]:bg-blue-500"
                                     />
-                                    <label htmlFor="refund" className="text-xs text-zinc-400 leading-tight">
-                                        I agree to the Refund Policy (<span className="text-blue-400 hover:underline">See Here</span>) and Chargeback Policy (<span className="text-blue-400 hover:underline">See Here</span>)*
+                                    <label htmlFor="refund" className="text-xs text-zinc-400">
+                                        I understand the <span className="text-blue-400 underline">No Refund Policy</span>.*
                                     </label>
                                 </div>
                             </div>
 
                             <Button
-                                onClick={handlePayment}
+                                onClick={handlePurchase}
                                 disabled={loading || !agreedRules || !agreedRefund}
-                                className="w-full bg-[#0a1520] hover:bg-[#111f2e] text-white/50 hover:text-white font-bold text-lg py-6 border-2 border-transparent hover:border-blue-500/50 transition-all uppercase tracking-wider disabled:opacity-50"
+                                className="w-full h-14 text-lg font-bold bg-blue-600 hover:bg-blue-500 text-white rounded-xl shadow-[0_0_30px_rgba(37,99,235,0.4)] disabled:opacity-50 disabled:shadow-none transition-all hover:scale-[1.02] active:scale-95"
                             >
-                                {loading ? <Loader2 className="animate-spin" /> : "Purchase"}
+                                {loading ? (
+                                    <Loader2 className="animate-spin w-6 h-6" />
+                                ) : (
+                                    <span className="flex items-center gap-2">
+                                        Proceed to Payment <ArrowRight className="w-5 h-5" />
+                                    </span>
+                                )}
                             </Button>
 
-                            <div className="mt-6 flex justify-center items-center gap-6 opacity-60 grayscale hover:grayscale-0 transition-all duration-500">
-                                <div className="flex items-center gap-1.5 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
-                                    <ShieldCheck className="w-4 h-4 text-blue-400" /> Secure Payment
-                                </div>
-                                <div className="flex items-center gap-1.5 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
-                                    <Lock className="w-4 h-4 text-blue-400" /> 256-bit SSL
-                                </div>
+                            <div className="flex justify-center gap-4 text-zinc-500 opacity-60">
+                                <ShieldCheck className="w-5 h-5" />
+                                <Lock className="w-5 h-5" />
                             </div>
-
                         </div>
                     </div>
                 </div>
             </div>
-
-            <div className="fixed bottom-8 right-8">
-                <button className="bg-blue-500 hover:bg-blue-400 text-white p-3 rounded-full shadow-lg transition-transform hover:scale-110">
-                    <MessageSquare className="w-6 h-6" />
-                </button>
-            </div>
         </div>
-
     );
 }
 

@@ -3,11 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-// import { Bell, User } from "lucide-react"; // Removed as requested
 import { Button } from "@/components/ui/button";
+import { TopNavActions } from "./TopNavActions";
+import { useSession } from "next-auth/react";
 
 export function TopNav() {
     const pathname = usePathname();
+    const { data: session } = useSession();
+    const userId = session?.user?.id || "demo-user-1";
 
     return (
         <header className="sticky top-0 z-50 w-full border-b border-[#2E3A52] bg-[#0E1217]/80 backdrop-blur-md">
@@ -29,12 +32,12 @@ export function TopNav() {
                     </Link>
                 </div>
 
-                {/* Right: Actions */}
+                {/* Right: Challenge Selector + Portfolio + User */}
                 <div className="flex-1 flex items-center justify-end gap-4">
+                    <TopNavActions userId={userId} />
                 </div>
             </div>
         </header>
     );
 }
-
 

@@ -10,21 +10,21 @@ export async function POST(req: Request) {
         // TODO: Enforce Auth when login is working.
 
         const body = await req.json();
-        const { userId, marketId, side, amount } = body;
+        const { userId, challengeId, marketId, side, amount } = body;
 
         // Validation
-        if (!userId || !marketId || !side || !amount) {
-            return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+        if (!userId || !challengeId || !marketId || !side || !amount) {
+            return NextResponse.json({ error: "Missing required fields (userId, challengeId, marketId, side, amount)" }, { status: 400 });
         }
 
         let trade;
         try {
-            trade = await TradeExecutor.executeTrade(userId, marketId, side, parseFloat(amount));
+            trade = await TradeExecutor.executeTrade(userId, challengeId, marketId, side, parseFloat(amount));
         } catch (error: any) {
             let shouldRetry = false;
 
-            // 1. AUTO-PROVISION CHALLENGE & USER
-            if (error.message === "No active challenge found" && userId === "demo-user-1") {
+            // 1. AUTO-PROVISION CHALLENGE & USER (Fallback for demo mode)
+            if (error.code === "INVALID_CHALLENGE" && userId === "demo-user-1") {
                 console.log("[Auto-Provision] Creating new challenge for demo user...");
 
                 const { users } = await import("@/db/schema");
@@ -43,8 +43,11 @@ export async function POST(req: Request) {
                 }
 
                 const { ChallengeManager } = await import("@/lib/challenges");
-                await ChallengeManager.createChallenge(userId);
-                shouldRetry = true;
+                const newChallenge = await ChallengeManager.createChallenge(userId);
+
+                // Retry with the newly created challenge ID
+                trade = await TradeExecutor.executeTrade(userId, newChallenge.id, marketId, side, parseFloat(amount));
+                shouldRetry = false; // Already retried inline
             }
 
             // 2. AUTO-PROVISION MARKET DATA (Redis)
@@ -68,13 +71,9 @@ export async function POST(req: Request) {
                 }));
 
                 redis.disconnect();
-                shouldRetry = true;
-            }
-
-            if (shouldRetry) {
                 // Retry execution
                 console.log("[Auto-Provision] Retrying execution...");
-                trade = await TradeExecutor.executeTrade(userId, marketId, side, parseFloat(amount));
+                trade = await TradeExecutor.executeTrade(userId, challengeId, marketId, side, parseFloat(amount));
             } else {
                 throw error;
             }

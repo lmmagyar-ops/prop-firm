@@ -138,18 +138,18 @@ export function ChartsVsReality() {
                                         🇺🇸
                                     </div>
                                     <div className="absolute -bottom-2 -right-2 w-12 h-12 rounded-xl bg-zinc-900 flex items-center justify-center text-2xl border border-zinc-700 shadow-lg">
-                                        🐘
+                                        📉
                                     </div>
                                 </div>
 
                                 {/* Question */}
                                 <h3 className="text-2xl font-black text-white leading-tight max-w-sm">
-                                    Will Donald Trump win the 2024 Election?
+                                    US recession in 2026?
                                 </h3>
 
                                 {/* Market Info */}
                                 <div className="flex items-center gap-3 text-xs font-bold text-zinc-500">
-                                    <span className="text-blue-400">POLITICS</span>
+                                    <span className="text-blue-400">ECONOMY</span>
                                     <span>•</span>
                                     <span>VOL: $15.2M</span>
                                 </div>
@@ -161,7 +161,7 @@ export function ChartsVsReality() {
                                     <div className="absolute inset-0 bg-gradient-to-t from-green-500/10 to-transparent opacity-0 group-hover/btn:opacity-100 group-active/btn:opacity-100 transition-opacity" />
                                     <div className="relative space-y-1">
                                         <div className="text-xs font-bold text-green-400 uppercase tracking-wider">Yes</div>
-                                        <div className="text-2xl font-black text-green-400">62¢</div>
+                                        <div className="text-2xl font-black text-green-400">28¢</div>
                                     </div>
                                 </button>
 
@@ -169,7 +169,7 @@ export function ChartsVsReality() {
                                     <div className="absolute inset-0 bg-gradient-to-t from-red-500/10 to-transparent opacity-0 group-hover/btn:opacity-100 group-active/btn:opacity-100 transition-opacity" />
                                     <div className="relative space-y-1">
                                         <div className="text-xs font-bold text-red-400 uppercase tracking-wider">No</div>
-                                        <div className="text-2xl font-black text-red-400">38¢</div>
+                                        <div className="text-2xl font-black text-red-400">72¢</div>
                                     </div>
                                 </button>
                             </div>

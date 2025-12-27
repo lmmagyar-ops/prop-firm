@@ -78,6 +78,17 @@ export function UnifiedTradePanel({ yesPrice, noPrice, balance, onTrade, loading
                 </div>
             )}
 
+            {/* Position Card - Prominently at top when exists */}
+            {position && (
+                <div className="px-4 pt-4 bg-[#1A232E]">
+                    <CurrentPositionCard
+                        position={position}
+                        currentPrice={position.side === "YES" ? yesPrice : noPrice}
+                        onClose={onClosePosition}
+                    />
+                </div>
+            )}
+
             {/* Tabs: Buy / Sell */}
             <div className="flex px-4 pt-2 border-b border-[#2E3A52] bg-[#242E42]">
                 <button
@@ -237,20 +248,10 @@ export function UnifiedTradePanel({ yesPrice, noPrice, balance, onTrade, loading
                         By trading, you agree to the Terms of Use.
                     </span>
                 </div>
-
-                {/* Position Card - Now inside scrollable area */}
-                {position && (
-                    <div className="border-t border-[#2E3A52] pt-4 mt-4">
-                        <CurrentPositionCard
-                            position={position}
-                            currentPrice={position.side === "YES" ? yesPrice : noPrice}
-                            onClose={onClosePosition}
-                        />
-                    </div>
-                )}
             </div>
         </div>
     );
 }
 
 // Removed OutcomeToggle helper as it's now inline
+

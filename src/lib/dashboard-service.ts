@@ -76,12 +76,25 @@ export async function getDashboardData(userId: string) {
     // Common history data
     const challengeHistory = mapChallengeHistory(allChallenges);
 
+    // 3b. Find PENDING challenge (if no active one, or maybe even if there is one? Usually only one allowed)
+    const pendingChallenge = await db.query.challenges.findFirst({
+        where: and(
+            eq(challenges.userId, userId),
+            eq(challenges.status, "pending")
+        ),
+    });
+
     if (!activeChallenge) {
         return {
             user,
             lifetimeStats,
             hasActiveChallenge: false,
             challengeHistory,
+            pendingChallenge: pendingChallenge ? {
+                id: pendingChallenge.id,
+                status: pendingChallenge.status,
+                type: "10k Challenge" // hardcoded for MVP or derived
+            } : null,
             // Return empty structures for safety if UI expects them
             activeChallenge: undefined,
             positions: [],

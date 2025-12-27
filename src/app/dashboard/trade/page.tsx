@@ -1,20 +1,40 @@
 import { auth } from "@/auth";
-// TopNav import removed
 import { getDashboardData } from "@/lib/dashboard-service";
-import { MOCK_MARKETS, getTrendingMarkets } from "@/lib/mock-markets";
+import { getActiveMarkets } from "@/app/actions/market";
 import { MarketCardClient, TradePageHeader } from "@/components/trading/TradePageComponents";
+import type { MockMarket } from "@/lib/mock-markets";
+
+// Map live market data to the shape expected by MarketCardClient
+function mapToMarketShape(liveMarket: any): MockMarket {
+    return {
+        id: liveMarket.id,
+        question: liveMarket.question,
+        category: 'Politics', // Default - can be inferred from tags in future
+        icon: '📊',
+        imageUrl: liveMarket.image,
+        currentPrice: 0.50, // Widget connects to live WS for real-time price
+        priceChange24h: (Math.random() * 10) - 5, // Mock for visual variety
+        volume: liveMarket.volume || 0,
+        activeTraders: Math.floor(Math.random() * 1000) + 100,
+        endDate: new Date(liveMarket.end_date || Date.now()),
+        trending: (liveMarket.volume || 0) > 1000000,
+    };
+}
 
 export default async function TradePage() {
     const session = await auth();
     const userId = session?.user?.id || "demo-user-1";
     const data = await getDashboardData(userId);
+    const liveMarkets = await getActiveMarkets();
 
     const balance = data?.activeChallenge
         ? Number(data.activeChallenge.currentBalance)
         : 10000;
 
-    // Check if user has an active challenge
     const hasActiveChallenge = !!data?.activeChallenge;
+
+    const markets = liveMarkets.map(mapToMarketShape);
+    const trendingMarkets = markets.filter(m => m.trending).slice(0, 5);
 
     return (
         <div className="space-y-8">
@@ -90,37 +110,45 @@ export default async function TradePage() {
             ) : (
                 // Normal State: Show Markets
                 <>
-                    {/* 3. Trending Markets Carousel */}
-                    <section className="space-y-4">
-                        <div className="flex items-center justify-between">
-                            <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                                Trending Markets
-                            </h2>
-                        </div>
+                    {/* Trending Markets Carousel */}
+                    {trendingMarkets.length > 0 && (
+                        <section className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                                    Trending Markets
+                                </h2>
+                            </div>
 
-                        <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
-                            {getTrendingMarkets().map((market) => (
-                                <div key={market.id} className="min-w-[320px]">
-                                    <MarketCardClient market={market} balance={balance} userId={userId} />
-                                </div>
-                            ))}
-                        </div>
-                    </section>
+                            <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
+                                {trendingMarkets.map((market) => (
+                                    <div key={market.id} className="min-w-[320px]">
+                                        <MarketCardClient market={market} balance={balance} userId={userId} />
+                                    </div>
+                                ))}
+                            </div>
+                        </section>
+                    )}
 
-                    {/* 4. All Markets Grid */}
+                    {/* All Markets Grid */}
                     <section className="space-y-4">
                         <h2 className="text-xl font-bold text-white">All Markets</h2>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                            {MOCK_MARKETS.map((market) => (
-                                <MarketCardClient
-                                    key={market.id}
-                                    market={market}
-                                    balance={balance}
-                                    userId={userId}
-                                />
-                            ))}
-                        </div>
+                        {markets.length === 0 ? (
+                            <div className="p-12 text-center border border-dashed border-zinc-800 rounded-xl">
+                                <p className="text-zinc-500 animate-pulse">Connecting to Live Feed...</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                                {markets.map((market) => (
+                                    <MarketCardClient
+                                        key={market.id}
+                                        market={market}
+                                        balance={balance}
+                                        userId={userId}
+                                    />
+                                ))}
+                            </div>
+                        )}
                     </section>
                 </>
             )}

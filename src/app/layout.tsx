@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono, Playfair_Display } from "next/font/google";
 import "./globals.css";
+import { Toaster } from "@/components/ui/sonner";
+import { AuthProvider } from "@/components/providers/AuthProvider";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono" });
@@ -45,7 +47,10 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
       </head>
       <body className={`${inter.variable} ${mono.variable} ${serif.variable} font-sans bg-background text-foreground antialiased selection:bg-primary/30`} suppressHydrationWarning>
-        {children}
+        <AuthProvider>
+          {children}
+          <Toaster />
+        </AuthProvider>
       </body>
     </html>
   );

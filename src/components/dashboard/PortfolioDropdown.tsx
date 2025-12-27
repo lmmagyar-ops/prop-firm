@@ -1,0 +1,145 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { Briefcase, TrendingUp, TrendingDown, ArrowRight } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { cn } from "@/lib/utils";
+
+// Types matching our DB schema conceptually
+interface Position {
+    id: string;
+    marketTitle: string;
+    direction: "YES" | "NO";
+    shares: number;
+    avgPrice: number;
+    currentPrice: number;
+    unrealizedPnL: number;
+}
+
+export function PortfolioDropdown() {
+    const [isOpen, setIsOpen] = useState(false);
+    const [positions, setPositions] = useState<Position[]>([]);
+    const [loading, setLoading] = useState(false); // Init false to avoid layout shift, fetch on mount
+
+    // TODO: Add real data fetching hook
+    // For now, mocking the "empty state" or handling logic
+    // We will need a server action or API route to get current positions quickly
+
+    // Checking for recent update trigger (local storage or event)
+    useEffect(() => {
+        const fetchPositions = async () => {
+            try {
+                const res = await fetch("/api/trade/positions"); // Need to create this lightweight endpoint
+                if (res.ok) {
+                    const data = await res.json();
+                    setPositions(data.positions);
+                }
+            } catch (e) {
+                console.error("Failed to fetch positions", e);
+            }
+        };
+
+        fetchPositions();
+        // Poll every 5s for P&L updates
+        const interval = setInterval(fetchPositions, 5000);
+        return () => clearInterval(interval);
+    }, []);
+
+    const totalPnL = positions.reduce((acc, p) => acc + p.unrealizedPnL, 0);
+    const positionCount = positions.length;
+
+    return (
+        <div className="relative group z-50">
+            <button
+                className="flex items-center gap-2 px-3 py-2 text-zinc-400 hover:text-white transition-colors relative"
+                onMouseEnter={() => setIsOpen(true)}
+                onClick={() => setIsOpen(!isOpen)}
+            >
+                <Briefcase className="w-5 h-5" />
+                <span className="text-sm font-medium hidden md:block">Portfolio</span>
+
+                {/* Badge */}
+                <AnimatePresence>
+                    {positionCount > 0 && (
+                        <motion.span
+                            key={positionCount} // Triggers animation on change
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            exit={{ scale: 0 }}
+                            transition={{ type: "spring", stiffness: 500, damping: 25 }}
+                            className="absolute top-1 right-1 md:top-0 md:right-0 flex items-center justify-center w-4 h-4 bg-blue-600 text-[10px] font-bold text-white rounded-full ring-2 ring-black shadow-[0_0_10px_rgba(37,99,235,0.5)]"
+                        >
+                            {positionCount}
+                        </motion.span>
+                    )}
+                </AnimatePresence>
+            </button>
+
+            {/* Dropdown Menu */}
+            <AnimatePresence>
+                {isOpen && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        transition={{ duration: 0.15 }}
+                        className="absolute right-0 top-full mt-2 w-80 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl overflow-hidden"
+                        onMouseLeave={() => setIsOpen(false)}
+                    >
+                        <div className="p-4 border-b border-zinc-800 flex justify-between items-center">
+                            <h4 className="text-sm font-bold text-white">Active Positions</h4>
+                            <span className={cn("text-xs font-mono font-bold", totalPnL >= 0 ? "text-green-400" : "text-red-400")}>
+                                {totalPnL >= 0 ? "+" : ""}${totalPnL.toFixed(2)}
+                            </span>
+                        </div>
+
+                        <div className="max-h-64 overflow-y-auto">
+                            {positionCount === 0 ? (
+                                <div className="p-8 text-center text-zinc-500 text-sm">
+                                    No active positions.
+                                </div>
+                            ) : (
+                                <div className="divide-y divide-zinc-800/50">
+                                    {positions.map((pos) => (
+                                        <div key={pos.id} className="p-3 hover:bg-zinc-800/50 transition-colors group/item">
+                                            <div className="flex justify-between items-start mb-1">
+                                                <span className="text-xs font-medium text-white line-clamp-1 flex-1 pr-2">
+                                                    {pos.marketTitle}
+                                                </span>
+                                                <span className={cn("text-xs font-mono", pos.unrealizedPnL >= 0 ? "text-green-400" : "text-red-400")}>
+                                                    {pos.unrealizedPnL >= 0 ? "+" : ""}${pos.unrealizedPnL.toFixed(2)}
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between items-center text-[10px] text-zinc-500">
+                                                <div className="flex gap-2">
+                                                    <span className={cn("uppercase font-bold", pos.direction === "YES" ? "text-green-500" : "text-red-500")}>
+                                                        {pos.direction}
+                                                    </span>
+                                                    <span>{pos.shares} shares</span>
+                                                </div>
+                                                <div>
+                                                    {((pos.currentPrice - pos.avgPrice) / pos.avgPrice * 100).toFixed(1)}%
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="p-2 bg-zinc-950/30">
+                            <Link href="/dashboard" onClick={() => setIsOpen(false)}>
+                                <Button variant="ghost" className="w-full text-xs h-8 text-zinc-400 hover:text-white justify-between px-2">
+                                    Go to Dashboard
+                                    <ArrowRight className="w-3 h-3" />
+                                </Button>
+                            </Link>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+}

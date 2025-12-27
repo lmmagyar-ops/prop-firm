@@ -41,7 +41,7 @@ async function verifyTradingEngine() {
         // Buy $1000 worth. Price 0.50. Slippage 0.5% -> ExPrice 0.5025. Shares ~1990
         const buyAmount = 1000;
         console.log(`🔄 Executing BUY order for $${buyAmount}...`);
-        const buyTrade = await TradeExecutor.executeTrade(user.id, assetId, "BUY", buyAmount);
+        const buyTrade = await TradeExecutor.executeTrade(user.id, challenge.id, assetId, "BUY", buyAmount);
         console.log(`✅ BUY Filled! Price: ${buyTrade.price}, Shares: ${buyTrade.shares}`);
 
         // 5. Verify Position
@@ -66,7 +66,7 @@ async function verifyTradingEngine() {
         // User says "Sell $500". 
         // $500 / 0.60 (Bid) = 833 shares
         const sellAmount = 600; // Sell $600 worth
-        const sellTrade = await TradeExecutor.executeTrade(user.id, assetId, "SELL", sellAmount);
+        const sellTrade = await TradeExecutor.executeTrade(user.id, challenge.id, assetId, "SELL", sellAmount);
         console.log(`✅ SELL Filled! Price: ${sellTrade.price}, Shares Sold: ${sellTrade.shares}`);
 
         const finalChallenge = await ChallengeManager.getActiveChallenge(user.id);

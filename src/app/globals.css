@@ -199,6 +199,24 @@
     font-variant-numeric: tabular-nums;
     letter-spacing: -0.02em;
   }
+
+  /* Optical alignment utilities for heavy typography */
+  .optical-center {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+
+  .optical-center-heavy {
+    /* Compensate for font-black (900 weight) optical illusion */
+    padding-top: 0.1em;
+  }
+
+  .optical-center-uppercase {
+    /* Compensate for uppercase baseline shift */
+    padding-bottom: 0.05em;
+  }
 }
 
 @layer base {
@@ -232,15 +250,31 @@
     touch-action: manipulation;
   }
 
-  /* Ensure minimum touch target size (48x48px) */
-  button,
-  a,
-  input,
-  select,
-  textarea {
-    min-height: 44px;
-    /* iOS recommended minimum */
-    touch-action: manipulation;
+  /* Ensure minimum touch target size (44px) - MOBILE ONLY */
+  @media (max-width: 767px) {
+
+    button,
+    a,
+    input,
+    select,
+    textarea {
+      min-height: 44px;
+      /* iOS recommended minimum */
+      touch-action: manipulation;
+    }
+  }
+
+  /* Desktop: Allow natural sizing */
+  @media (min-width: 768px) {
+
+    button,
+    a,
+    input,
+    select,
+    textarea {
+      min-height: auto;
+      touch-action: manipulation;
+    }
   }
 
   /* Prevent tap highlight on mobile */

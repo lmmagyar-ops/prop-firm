@@ -1,70 +1,117 @@
+
 import { db } from "@/db";
 import { trades, positions, challenges } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { ChallengeManager } from "./challenges";
 import { MarketService } from "./market";
 import { RiskEngine } from "./risk";
+import { PositionManager } from "./trading/PositionManager";
+import { BalanceManager } from "./trading/BalanceManager";
+import { ChallengeEvaluator } from "./evaluator";
+import { TRADING_CONFIG } from "@/config/trading";
+import { createLogger } from "./logger";
+import {
+    TradingError,
+    InsufficientFundsError,
+    MarketClosedError,
+    PriceStaleError,
+    PositionNotFoundError,
+    RiskLimitExceededError
+} from "@/errors/trading-errors";
+
+const logger = createLogger('TradeExecutor');
 
 export class TradeExecutor {
 
     /**
      * Executes a simulated trade.
      * @param userId User ID
+     * @param challengeId Challenge ID (explicit selection for multi-account support)
      * @param marketId Polymarket Token ID (Asset ID)
      * @param side "BUY" or "SELL"
      * @param amount Dollar amount to trade
      */
-    static async executeTrade(userId: string, marketId: string, side: "BUY" | "SELL", amount: number) {
-        // 1. Get Active Challenge
-        const challenge = await ChallengeManager.getActiveChallenge(userId);
-        if (!challenge) throw new Error("No active challenge found");
+    static async executeTrade(
+        userId: string,
+        challengeId: string,
+        marketId: string,
+        side: "BUY" | "SELL",
+        amount: number
+    ) {
+        logger.info(`Requested ${side} $${amount} on ${marketId}`, { userId, challengeId });
+
+        // 1. Get Challenge by ID (validate ownership)
+        const [challenge] = await db
+            .select()
+            .from(challenges)
+            .where(and(
+                eq(challenges.id, challengeId),
+                eq(challenges.userId, userId)
+            ));
+
+        if (!challenge) {
+            throw new TradingError("Challenge not found or access denied", 'INVALID_CHALLENGE', 403);
+        }
+
+        if (challenge.status !== "active") {
+            throw new TradingError("Challenge is not active", 'CHALLENGE_INACTIVE', 400);
+        }
 
         // 2. Get Real-Time Price
         const marketData = await MarketService.getLatestPrice(marketId);
-        if (!marketData) throw new Error("Market data unavailable");
-        // DEMO MODE: Disabled staleness check for demo reliability
-        // if (!MarketService.isPriceFresh(marketData)) throw new Error("Price is stale");
+        if (!marketData) throw new MarketClosedError(marketId);
+
+        // Configurable Staleness Check
+        if (TRADING_CONFIG.risk.enableStalenessCheck) {
+            const freshAge = TRADING_CONFIG.risk.priceFreshnessMs;
+            if (!MarketService.isPriceFresh(marketData, freshAge)) {
+                // Determine age for error report (mock logic as isPriceFresh boolean doesn't return age)
+                // In production, isPriceFresh would return reason/age.
+                throw new PriceStaleError(marketId, 9999);
+            }
+        }
 
         const currentPrice = parseFloat(marketData.price);
 
         // 3. Risk Check
         if (side === "BUY") {
             if (parseFloat(challenge.currentBalance) < amount) {
-                throw new Error("Insufficient balance");
+                throw new InsufficientFundsError(userId, amount, parseFloat(challenge.currentBalance));
             }
 
-            const riskCheck = await RiskEngine.validateTrade(challenge.id);
+            const riskCheck = await RiskEngine.validateTrade(challenge.id, marketId, amount);
             if (!riskCheck.allowed) {
-                throw new Error(`Risk Check Failed: ${riskCheck.reason}`);
+                throw new RiskLimitExceededError(riskCheck.reason || "Risk Check Failed");
             }
         }
 
         // 4. INTEGIRTY CHECK: Calculate Impact Cost (Detailed Slippage)
         const book = await MarketService.getOrderBook(marketId);
 
-        // Fallback: If no book found (e.g. Ingestion cold start), we could:
-        // A) Reject (Strict Integrity)
-        // B) Use Static Model (Graceful Degradation)
-        // CEO requested "Must query real book". We default to Strict.
+        // Fallback: Strict Integrity Mode
         if (!book) {
-            console.warn(`[Trade] No book for ${marketId}, using static fallback`);
-            // TEMPORARY FALLBACK for smoothness during verification if poller is slow
-            // const executionPrice = side === "BUY" ? currentPrice * 1.01 : currentPrice * 0.99;
-            // return ...
-            // ACTUALLY: Let's Throw to prove it works
-            throw new Error("Market Liquidity Unavailable (Book Not Found)");
+            logger.warn(`No orderbook found for ${marketId}`, { userId });
+            throw new TradingError("Market Liquidity Unavailable (Book Not Found)", 'NO_LIQUIDITY', 503);
         }
 
         const simulation = MarketService.calculateImpact(book, side, amount);
 
         if (!simulation.filled) {
-            throw new Error(`Trade Rejected: ${simulation.reason}`);
+            throw new TradingError(`Trade Rejected: ${simulation.reason}`, 'SLIPPAGE_TOO_HIGH', 400);
         }
 
         const executionPrice = simulation.executedPrice;
         const shares = simulation.totalShares;
+        const slippage = (simulation.slippagePercent * 100).toFixed(2);
 
-        console.log(`[Trade] Executing $${amount} ${side}. Impact Price: ${executionPrice.toFixed(4)} (vs Spot ${currentPrice}). Slippage: ${(simulation.slippagePercent * 100).toFixed(2)}%`);
+        logger.info(`Execution Plan`, {
+            marketId,
+            amount,
+            side,
+            executionPrice: executionPrice.toFixed(4),
+            spotPrice: currentPrice,
+            slippage: `${slippage}%`
+        });
 
         // 5. DB Transaction
         const tradeResult = await db.transaction(async (tx) => {
@@ -90,76 +137,50 @@ export class TradeExecutor {
 
             if (existingPos) {
                 if (side === "BUY") {
-                    // Add to position
-                    const oldShares = parseFloat(existingPos.shares);
-                    const oldAvg = parseFloat(existingPos.entryPrice);
-                    const totalShares = oldShares + shares;
-                    const newAvg = ((oldShares * oldAvg) + (shares * executionPrice)) / totalShares;
-
-                    await tx.update(positions)
-                        .set({
-                            shares: totalShares.toString(),
-                            entryPrice: newAvg.toString(),
-                            sizeAmount: (parseFloat(existingPos.sizeAmount) + amount).toString(),
-                        })
-                        .where(eq(positions.id, existingPos.id));
+                    await PositionManager.addToPosition(
+                        tx,
+                        existingPos.id,
+                        shares,
+                        executionPrice,
+                        amount
+                    );
                 } else {
-                    // SELL logic 
-                    const oldShares = parseFloat(existingPos.shares);
-                    if (oldShares < shares) throw new Error("Not enough shares to sell");
-
-                    const remainingShares = oldShares - shares;
-
-                    if (remainingShares <= 0.0001) {
-                        await tx.update(positions).set({ status: "CLOSED", shares: "0" }).where(eq(positions.id, existingPos.id));
-                    } else {
-                        await tx.update(positions).set({ shares: remainingShares.toString() }).where(eq(positions.id, existingPos.id));
-                    }
-
-                    // Proceeds added back to balance
-                    const proceeds = shares * executionPrice;
-                    const newBalance = parseFloat(challenge.currentBalance) + proceeds;
-
-                    await tx.update(challenges).set({
-                        currentBalance: newBalance.toString()
-                    }).where(eq(challenges.id, challenge.id));
+                    const { proceeds } = await PositionManager.reducePosition(
+                        tx,
+                        existingPos.id,
+                        shares
+                    );
+                    await BalanceManager.creditProceeds(tx, challenge.id, proceeds);
                 }
             } else {
-                // New Position (Only if BUY)
-                if (side === "SELL") throw new Error("Cannot SELL without position");
+                if (side === "SELL") throw new PositionNotFoundError(`No open position for ${marketId}`);
 
-                await tx.insert(positions).values({
-                    challengeId: challenge.id,
-                    marketId: marketId,
-                    direction: "YES", // Assumption: Trading the 'YES' token or the specific assetId IS the direction.
-                    shares: shares.toString(),
-                    sizeAmount: amount.toString(),
-                    entryPrice: executionPrice.toString(),
-                    currentPrice: executionPrice.toString(), // Initialize with entry price
-                    status: "OPEN"
-                });
-
-                // Deduct Cost from Balance
-                const cost = amount;
-                const newBalance = parseFloat(challenge.currentBalance) - cost;
-                await tx.update(challenges).set({
-                    currentBalance: newBalance.toString()
-                }).where(eq(challenges.id, challenge.id));
+                await PositionManager.openPosition(
+                    tx,
+                    challenge.id,
+                    marketId,
+                    shares,
+                    executionPrice,
+                    amount
+                );
+                await BalanceManager.deductCost(tx, challenge.id, amount);
             }
 
             return newTrade;
         });
 
-        // 6. ADJUDICATION (Check for Pass/Fail)
+        // 6. ADJUDICATION
         // We run this AFTER the transaction so we don't block the trade if adjudication is slow,
         // but for this demo we await it to ensure immediate feedback.
         try {
             const { ChallengeEvaluator } = await import("./evaluator");
             await ChallengeEvaluator.evaluate(challenge.id);
         } catch (e) {
-            console.error("[Trade] Adjudication failed:", e);
+            logger.error("Adjudication failed post-trade", e);
+            // Non-blocking error, do not rethrow
         }
 
+        logger.info(`Trade Complete: ${tradeResult.id}`, { tradeId: tradeResult.id });
         return tradeResult;
     }
 }

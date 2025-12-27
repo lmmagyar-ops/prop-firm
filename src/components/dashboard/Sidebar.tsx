@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
     LayoutDashboard,
     User,
@@ -25,6 +27,23 @@ interface SidebarProps {
 }
 
 export function Sidebar({ active = "Dashboard", verificationStatus = "locked" }: SidebarProps) {
+    const searchParams = useSearchParams();
+    const [showTradeGlow, setShowTradeGlow] = useState(false);
+
+    useEffect(() => {
+        // Check if user just completed welcome tour
+        if (searchParams.get("welcome") === "true") {
+            setShowTradeGlow(true);
+
+            // Auto-dismiss after 10 seconds
+            const timer = setTimeout(() => {
+                setShowTradeGlow(false);
+            }, 10000);
+
+            return () => clearTimeout(timer);
+        }
+    }, [searchParams]);
+
     return (
         <aside className="hidden md:flex w-64 border-r border-[#2E3A52] bg-[#161B22] flex-col fixed inset-y-0 left-0 z-50">
             <div className="p-6">
@@ -35,7 +54,14 @@ export function Sidebar({ active = "Dashboard", verificationStatus = "locked" }:
                 <NavItem icon={User} label="Private Profile" href="/dashboard/private-profile" isActive={active === "Private Profile"} />
                 <NavItem icon={Users} label="Public Profile" href="/dashboard/public-profile" isActive={active === "Public Profile"} />
                 <NavItem icon={LayoutDashboard} label="Dashboard" href="/dashboard" isActive={active === "Dashboard"} />
-                <NavItem icon={TrendingUp} label="Trade" href="/dashboard/trade" isActive={active === "Trade"} />
+                <NavItem
+                    icon={TrendingUp}
+                    label="Trade"
+                    href="/dashboard/trade"
+                    isActive={active === "Trade"}
+                    glow={showTradeGlow}
+                    onClick={() => setShowTradeGlow(false)} // Dismiss on click
+                />
                 <NavItem icon={Award} label="Certificates" href="/dashboard/certificates" isActive={active === "Certificates"} />
                 <NavItem icon={ShoppingCart} label="Buy Evaluation" href="/buy-evaluation" highlight isActive={active === "Buy Evaluation"} />
 
@@ -74,19 +100,27 @@ export function Sidebar({ active = "Dashboard", verificationStatus = "locked" }:
     );
 }
 
-function NavItem({ icon: Icon, label, isActive, highlight, href = "#", className }: any) {
+function NavItem({ icon: Icon, label, isActive, highlight, href = "#", className, glow, onClick }: any) {
     return (
         <Link
             href={href}
+            onClick={onClick}
             className={`
-                flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all
+                relative flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all
                 ${isActive ? "bg-[#2E81FF]/10 text-[#2E81FF] border-l-2 border-[#2E81FF]" : "text-[#94A3B8] hover:text-white hover:bg-[#1A232E]"}
                 ${highlight && !isActive ? "bg-[#2E81FF]/10 text-[#2E81FF] hover:bg-[#2E81FF]/20 border border-[#2E81FF]/20" : ""}
+                ${glow ? "animate-pulse bg-gradient-to-r from-green-500/20 to-blue-500/20 border border-green-500/50 shadow-[0_0_20px_rgba(34,197,94,0.3)]" : ""}
                 ${className || ""}
             `}
         >
-            <Icon className={`w-4 h-4 ${highlight || isActive ? "text-blue-400" : ""}`} />
+            <Icon className={`w-4 h-4 ${highlight || isActive || glow ? "text-blue-400" : ""}`} />
             {label}
+            {glow && (
+                <span className="absolute -right-1 -top-1 flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                </span>
+            )}
         </Link>
     );
 }

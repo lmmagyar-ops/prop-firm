@@ -10,6 +10,7 @@ import { PLANS } from "@/config/plans";
 
 import { MarketTicker } from "@/components/MarketTicker";
 import { Navbar } from "@/components/Navbar";
+import { RulesTooltip } from "@/components/RulesTooltip";
 
 export function LandingHero() {
     // Default to grinder (10k)
@@ -48,7 +49,7 @@ export function LandingHero() {
 
                     <div className="flex flex-col items-center gap-4">
                         <p className="text-xl md:text-2xl text-zinc-400 font-medium leading-relaxed max-w-3xl mx-auto">
-                            Trade Polymarket with Our Capital. <span className="text-white font-bold">Zero Personal Liability.</span>
+                            Trade Prediction Markets with Our Capital. <span className="text-white font-bold">Zero Personal Liability.</span>
                         </p>
                     </div>
                 </motion.div>
@@ -109,10 +110,8 @@ export function LandingHero() {
                         </Button>
                     </Link>
 
-                    <Link href="/rules" className="text-sm font-bold text-zinc-500 hover:text-white transition-colors border-b border-transparent hover:border-white/20 pb-0.5">
-                        View Trading Rules
-                    </Link>
-
+                    {/* NEW Rules Tooltip */}
+                    <RulesTooltip />
 
                 </motion.div>
 
