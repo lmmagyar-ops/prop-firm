@@ -18,55 +18,74 @@ export async function POST(req: NextRequest) {
         if (!process.env.CONFIRMO_API_KEY) {
             console.log("[Confirmo] API Key missing, provisioning MOCK challenge + returning redirect");
 
-            // 1. Clean up old active/pending challenges for clean demo
-            await db.delete(challenges).where(eq(challenges.userId, userId));
+            try {
+                // 1. Clean up old active/pending challenges for clean demo
+                await db.delete(challenges).where(eq(challenges.userId, userId));
 
-            // 2. Determine starting balance from tier
-            const tierBalances: Record<string, number> = {
-                "5k": 5000,
-                "10k": 10000,
-                "25k": 25000,
-                "50k": 50000,
-                "100k": 100000,
-                "200k": 200000
-            };
+                // 2. Determine starting balance from tier
+                const tierBalances: Record<string, number> = {
+                    "5k": 5000,
+                    "10k": 10000,
+                    "25k": 25000,
+                    "50k": 50000,
+                    "100k": 100000,
+                    "200k": 200000
+                };
 
-            const startingBalance = tierBalances[tier] || 10000; // Default to 10k if tier not found
+                const startingBalance = tierBalances[tier] || 10000; // Default to 10k if tier not found
 
-            // 3. Create the Active Challenge immediately (Simulating Webhook)
-            await db.insert(challenges).values({
-                userId,
-                phase: "challenge",
-                status: "active", // Set to active immediately so dashboard works
-                startingBalance: startingBalance.toString(),
-                currentBalance: startingBalance.toString(),
-                startOfDayBalance: startingBalance.toString(),
-                highWaterMark: startingBalance.toString(),
-                rulesConfig: {
-                    // Drawdown & Profit
-                    profitTarget: 0.10, // 10%
-                    maxDrawdown: 0.08, // 8%
-                    maxTotalDrawdownPercent: 0.08, // 8%
-                    maxDailyDrawdownPercent: 0.04, // 4%
+                // 3. Create the Active Challenge immediately (Simulating Webhook)
+                await db.insert(challenges).values({
+                    userId,
+                    phase: "challenge",
+                    status: "active", // Set to active immediately so dashboard works
+                    startingBalance: startingBalance.toString(),
+                    currentBalance: startingBalance.toString(),
+                    startOfDayBalance: startingBalance.toString(),
+                    highWaterMark: startingBalance.toString(),
+                    rulesConfig: {
+                        // Drawdown & Profit
+                        profitTarget: 0.10, // 10%
+                        maxDrawdown: 0.08, // 8%
+                        maxTotalDrawdownPercent: 0.08, // 8%
+                        maxDailyDrawdownPercent: 0.04, // 4%
 
-                    // Position Sizing
-                    maxPositionSizePercent: 0.05, // 5% per market
-                    maxCategoryExposurePercent: 0.10, // 10% per category
-                    lowVolumeThreshold: 10_000_000, // $10M
-                    lowVolumeMaxPositionPercent: 0.025, // 2.5%
+                        // Position Sizing
+                        maxPositionSizePercent: 0.05, // 5% per market
+                        maxCategoryExposurePercent: 0.10, // 10% per category
+                        lowVolumeThreshold: 10_000_000, // $10M
+                        lowVolumeMaxPositionPercent: 0.025, // 2.5%
 
-                    // Liquidity
-                    maxVolumeImpactPercent: 0.10, // 10% of 24h volume
-                    minMarketVolume: 100_000, // $100k
-                },
-                startedAt: new Date(),
-                endsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-            });
+                        // Liquidity
+                        maxVolumeImpactPercent: 0.10, // 10% of 24h volume
+                        minMarketVolume: 100_000, // $100k
+                    },
+                    startedAt: new Date(),
+                    endsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+                });
 
-            return NextResponse.json({
-                invoiceUrl: `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/onboarding/setup?status=success&demomode=true`,
-                invoiceId: "inv-mock-123-456"
-            });
+                // 4. Build redirect URL using request headers (works on Vercel)
+                const protocol = req.headers.get('x-forwarded-proto') || 'http';
+                const host = req.headers.get('host') || 'localhost:3000';
+                const baseUrl = `${protocol}://${host}`;
+
+                return NextResponse.json({
+                    invoiceUrl: `${baseUrl}/onboarding/setup?status=success&demomode=true`,
+                    invoiceId: "inv-mock-123-456"
+                });
+            } catch (dbError) {
+                console.error("[Confirmo Mock] Database error:", dbError);
+                // If DB fails, still return success but without creating challenge
+                // This allows UI testing even if DB is down
+                const protocol = req.headers.get('x-forwarded-proto') || 'http';
+                const host = req.headers.get('host') || 'localhost:3000';
+                const baseUrl = `${protocol}://${host}`;
+
+                return NextResponse.json({
+                    invoiceUrl: `${baseUrl}/onboarding/setup?status=success&demomode=true&db_error=true`,
+                    invoiceId: "inv-mock-error"
+                });
+            }
         }
 
         const response = await fetch("https://confirmo.net/api/v3/invoices", {
