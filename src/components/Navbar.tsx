@@ -2,8 +2,6 @@
 
 import { useState } from "react";
 import { useSession } from "next-auth/react";
-import { PortfolioDropdown } from "@/components/dashboard/PortfolioDropdown";
-import { UserNav } from "@/components/dashboard/user-nav";
 import Link from "next/link";
 import { BarChart3, ChevronDown, Menu, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -71,11 +69,16 @@ export function Navbar() {
                                     </Link>
                                 </>
                             ) : (
-                                <>
-                                    {/* Portfolio & Profile - Show when logged in */}
-                                    <PortfolioDropdown />
-                                    <UserNav />
-                                </>
+                                <Link
+                                    href="/dashboard"
+                                    className="group relative inline-flex items-center justify-center px-6 py-3 bg-white text-black text-xs font-black uppercase tracking-wider rounded-lg overflow-hidden hover:scale-105 active:scale-95 transition-all whitespace-nowrap leading-none"
+                                >
+                                    <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-cyan-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                                    <span className="relative z-10 optical-center-heavy flex items-center gap-2">
+                                        Go to Dashboard
+                                        <ChevronDown className="w-3 h-3 -rotate-90" />
+                                    </span>
+                                </Link>
                             )}
                         </div>
 
