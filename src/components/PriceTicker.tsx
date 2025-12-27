@@ -17,6 +17,9 @@ export function PriceTicker() {
     const [messages, setMessages] = useState<any[]>([]);
     const [lastPrice, setLastPrice] = useState<string | null>(null);
 
+    // DISABLED: WebSocket not available on Vercel
+    // TODO: Re-enable when WS server is deployed
+    /*
     useEffect(() => {
         const ws = new WebSocket("ws://localhost:3001");
 
@@ -52,6 +55,7 @@ export function PriceTicker() {
             ws.close();
         };
     }, []);
+    */
 
     return (
         <Card className="w-[400px]">

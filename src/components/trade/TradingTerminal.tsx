@@ -58,6 +58,8 @@ export function TradingTerminal({ challenge }: TradingTerminalProps) {
     };
 
     // WebSocket Logic (Live Feed)
+    // DISABLED: Not available on Vercel serverless
+    /*
     useEffect(() => {
         fetchData(); // Fetch on mount
 
@@ -93,6 +95,7 @@ export function TradingTerminal({ challenge }: TradingTerminalProps) {
 
         return () => ws.close();
     }, []);
+    */
 
     // Trade Handler
     const handleTrade = async (outcome: "YES" | "NO", amount: number) => {
@@ -219,6 +222,6 @@ export function TradingTerminal({ challenge }: TradingTerminalProps) {
                 </div>
 
             </main>
-        </div>
+        </div >
     );
 }

@@ -92,7 +92,10 @@ export function DashboardView({ initialBalance = null, demoMode = false, userId 
         }
 
         let isLive = false;
-        // 1. WebSocket (The Real Feed)
+
+        // DISABLED: WebSocket (Not available on Vercel serverless)
+        // TODO: Re-enable when WS server is deployed to Railway/Render
+        /*
         const ws = new WebSocket("ws://localhost:3001");
 
         ws.onopen = () => {
@@ -125,7 +128,14 @@ export function DashboardView({ initialBalance = null, demoMode = false, userId 
             }
         };
 
-        // 2. Simulation (The Fallback / Filler)
+        ws.onerror = (e) => {
+            console.warn("WS Connection Failed. Using Polling Fallback.");
+        };
+
+        ws.onclose = () => {
+            console.log("WS Closed");
+        };
+        */        // 2. Simulation (The Fallback / Filler)
         const simInterval = setInterval(() => {
             if (!isLive) {
                 // Generate random walk for BTC simulation
@@ -137,7 +147,7 @@ export function DashboardView({ initialBalance = null, demoMode = false, userId 
         }, 1000);
 
         return () => {
-            ws.close();
+            // ws.close();
             clearInterval(simInterval);
         };
     }, [demoMode]);

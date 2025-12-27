@@ -43,6 +43,9 @@ export function TradingWidget({
     const { selectedChallengeId } = useSelectedChallengeContext();
 
     // WebSocket for Live Price Updates
+    // DISABLED: Not available on Vercel serverless
+    // TODO: Re-enable when WS server is deployed
+    /*
     useEffect(() => {
         if (!open) return; // Only connect when modal is open
 
@@ -93,6 +96,7 @@ export function TradingWidget({
             if (ws) ws.close();
         };
     }, [open]);
+    */
 
     // Fallback: Simulated price updates when WebSocket is not connected
     useEffect(() => {
@@ -282,7 +286,7 @@ export function TradingWidget({
                         </div>
                     </div>
                 </div>
-            </div>
-        </TradingModal>
+            </div >
+        </TradingModal >
     );
 }
