@@ -14,7 +14,17 @@ import {
 } from "@/components/ui/tooltip";
 import { PLANS, CHALLENGE_RULES } from "@/config/plans";
 
+import { Suspense } from "react";
+
 export default function BuyEvaluationPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen bg-background flex items-center justify-center text-white">Loading...</div>}>
+            <BuyEvaluationContent />
+        </Suspense>
+    );
+}
+
+function BuyEvaluationContent() {
     const plans = Object.values(PLANS);
 
     return (
