@@ -16,7 +16,20 @@ class IngestionWorker {
     private activeTokenIds: string[] = [];
 
     constructor() {
-        this.redis = new Redis(REDIS_URL);
+        if (process.env.REDIS_HOST && process.env.REDIS_PASSWORD) {
+            console.log(`[Ingestion] Connecting to Redis via HOST/PORT/PASS config...`);
+            this.redis = new Redis({
+                host: process.env.REDIS_HOST,
+                port: parseInt(process.env.REDIS_PORT || "6379"),
+                password: process.env.REDIS_PASSWORD,
+                tls: {} // Required for Upstash
+            });
+        } else {
+            const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6380";
+            console.log(`[Ingestion] Connecting to Redis via URL...`);
+            this.redis = new Redis(REDIS_URL);
+        }
+
         this.init();
     }
 
