@@ -140,10 +140,99 @@ class IngestionWorker {
     }
 
     private async init() {
-        await this.fetchActiveMarkets();
+        await this.fetchFeaturedEvents(); // Fetch curated trending events first
+        await this.fetchActiveMarkets(); // Then fetch remaining markets
         this.connectWS();
-        this.startBookPolling(); // Start the sidebar process
+        this.startBookPolling();
     }
+
+    /**
+     * Fetch featured/curated events from Polymarket's Events API
+     * These are the trending events displayed on Polymarket's homepage
+     */
+    private async fetchFeaturedEvents() {
+        try {
+            console.log("[Ingestion] Fetching Featured Events (Polymarket Trending)...");
+
+            const url = "https://gamma-api.polymarket.com/events?featured=true&active=true&closed=false&limit=50";
+            const response = await fetch(url);
+            const events = await response.json();
+
+            if (!Array.isArray(events)) {
+                console.error("[Ingestion] Invalid response from Events API");
+                return;
+            }
+
+            const processedEvents: any[] = [];
+            const allEventTokenIds: string[] = [];
+
+            for (const event of events) {
+                try {
+                    if (!event.markets || event.markets.length === 0) continue;
+
+                    // Process each market within the event
+                    const subMarkets: any[] = [];
+                    for (const market of event.markets) {
+                        if (market.closed || market.archived) continue;
+
+                        const clobTokens = JSON.parse(market.clobTokenIds || '[]');
+                        const outcomes = JSON.parse(market.outcomes || '[]');
+                        const prices = JSON.parse(market.outcomePrices || '[]');
+
+                        if (clobTokens.length === 0) continue;
+
+                        // For events, each market is typically binary (Yes/No for each outcome)
+                        const tokenId = clobTokens[0];
+                        const yesPrice = parseFloat(prices[0] || "0.5");
+
+                        if (yesPrice < 0.001) continue; // Skip near-zero markets
+
+                        allEventTokenIds.push(tokenId);
+
+                        subMarkets.push({
+                            id: tokenId,
+                            question: market.question,
+                            outcomes: outcomes,
+                            price: Math.max(yesPrice, 0.01),
+                            volume: parseFloat(market.volume || "0"),
+                        });
+                    }
+
+                    if (subMarkets.length === 0) continue;
+
+                    // Sort sub-markets by price descending (highest probability first)
+                    subMarkets.sort((a, b) => b.price - a.price);
+
+                    const categories = this.getCategories(null, event.title);
+
+                    processedEvents.push({
+                        id: event.id || event.slug,
+                        title: event.title,
+                        slug: event.slug,
+                        description: event.description,
+                        image: event.image,
+                        volume: event.volume || 0,
+                        categories: categories,
+                        markets: subMarkets,
+                        isMultiOutcome: subMarkets.length > 1,
+                    });
+                } catch (e) {
+                    // Skip invalid event
+                }
+            }
+
+            // Store events in Redis
+            await this.redis.set("event:active_list", JSON.stringify(processedEvents));
+            console.log(`[Ingestion] Stored ${processedEvents.length} featured events (${allEventTokenIds.length} total markets).`);
+
+            // Add event token IDs to active polling
+            this.activeTokenIds = [...this.activeTokenIds, ...allEventTokenIds];
+
+        } catch (err) {
+            console.error("[Ingestion] Failed to fetch featured events:", err);
+        }
+    }
+
 
     private async fetchActiveMarkets() {
         try {

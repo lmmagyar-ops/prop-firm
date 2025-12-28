@@ -84,3 +84,64 @@ export async function getActiveMarkets(): Promise<MarketMetadata[]> {
         return [];
     }
 }
+
+// --- Event Types (Multi-Outcome Markets like Elections) ---
+
+export interface SubMarket {
+    id: string;
+    question: string;
+    outcomes: string[];
+    price: number;
+    volume: number;
+}
+
+export interface EventMetadata {
+    id: string;
+    title: string;
+    slug: string;
+    description?: string;
+    image?: string;
+    volume: number;
+    categories?: string[];
+    markets: SubMarket[];
+    isMultiOutcome: boolean;
+}
+
+export async function getActiveEvents(): Promise<EventMetadata[]> {
+    noStore();
+    try {
+        const data = await redis.get("event:active_list");
+        if (!data) return [];
+
+        const events = JSON.parse(data) as EventMetadata[];
+
+        // Enrich sub-markets with current prices from order book
+        const enrichedEvents = await Promise.all(
+            events.map(async (event) => {
+                const enrichedMarkets = await Promise.all(
+                    event.markets.map(async (market) => {
+                        try {
+                            const bookData = await redis.get(`market:book:${market.id}`);
+                            if (bookData) {
+                                const book = JSON.parse(bookData);
+                                const price = extractPriceFromBook(book);
+                                if (price !== null) {
+                                    return { ...market, price };
+                                }
+                            }
+                        } catch { }
+                        return market;
+                    })
+                );
+                // Re-sort by price after enrichment
+                enrichedMarkets.sort((a, b) => b.price - a.price);
+                return { ...event, markets: enrichedMarkets };
+            })
+        );
+
+        return enrichedEvents;
+    } catch (e) {
+        console.error("Failed to fetch active events", e);
+        return [];
+    }
+}

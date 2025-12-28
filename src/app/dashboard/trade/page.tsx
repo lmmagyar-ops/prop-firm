@@ -1,6 +1,6 @@
 import { auth } from "@/auth";
 import { getDashboardData } from "@/lib/dashboard-service";
-import { getActiveMarkets } from "@/app/actions/market";
+import { getActiveMarkets, getActiveEvents } from "@/app/actions/market";
 import { MarketGridWithTabs } from "@/components/trading/MarketGridWithTabs";
 import type { MockMarket } from "@/lib/mock-markets";
 
@@ -27,7 +27,12 @@ export default async function TradePage() {
     const session = await auth();
     const userId = session?.user?.id || "demo-user-1";
     const data = await getDashboardData(userId);
-    const liveMarkets = await getActiveMarkets();
+
+    // Fetch both events and markets
+    const [liveMarkets, events] = await Promise.all([
+        getActiveMarkets(),
+        getActiveEvents(),
+    ]);
 
     const balance = data?.activeChallenge
         ? Number(data.activeChallenge.currentBalance)
@@ -109,6 +114,7 @@ export default async function TradePage() {
                 // Normal State: Show Markets with Category Tabs
                 <MarketGridWithTabs
                     markets={markets}
+                    events={events}
                     balance={balance}
                     userId={userId}
                 />

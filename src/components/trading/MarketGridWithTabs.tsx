@@ -2,12 +2,15 @@
 
 import { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
-import { TrendingUp, Flame, Sparkles } from "lucide-react";
+import { TrendingUp } from "lucide-react";
 import type { MockMarket } from "@/lib/mock-markets";
+import type { EventMetadata } from "@/app/actions/market";
 import { MarketCardClient } from "./TradePageComponents";
+import { EventCard } from "./EventCard";
 
 interface CategoryTabsProps {
     markets: MockMarket[];
+    events?: EventMetadata[];
     balance: number;
     userId: string;
 }
@@ -26,22 +29,36 @@ const CATEGORIES = [
     { id: 'Other', label: 'Other' },
 ];
 
-export function MarketGridWithTabs({ markets, balance, userId }: CategoryTabsProps) {
+export function MarketGridWithTabs({ markets, events = [], balance, userId }: CategoryTabsProps) {
     const [activeTab, setActiveTab] = useState('trending');
+    const [selectedMarketId, setSelectedMarketId] = useState<string | null>(null);
+    const [selectedQuestion, setSelectedQuestion] = useState<string | null>(null);
+
+    // Filter events based on active tab
+    const filteredEvents = useMemo(() => {
+        if (activeTab === 'trending') {
+            // Show all featured events on trending, sorted by volume
+            return [...events].sort((a, b) => (b.volume || 0) - (a.volume || 0));
+        } else if (activeTab === 'all') {
+            return [...events].sort((a, b) => (b.volume || 0) - (a.volume || 0));
+        } else {
+            // Filter by category
+            return events.filter(e => {
+                const cats = e.categories || [];
+                return cats.includes(activeTab);
+            }).sort((a, b) => (b.volume || 0) - (a.volume || 0));
+        }
+    }, [events, activeTab]);
 
     // Filter and sort markets based on active tab
     const filteredMarkets = useMemo(() => {
         let result = [...markets];
 
         if (activeTab === 'trending') {
-            // Sort by volume descending (trending = highest volume)
             result.sort((a, b) => (b.volume || 0) - (a.volume || 0));
         } else if (activeTab === 'all') {
-            // Show all, sorted by volume
             result.sort((a, b) => (b.volume || 0) - (a.volume || 0));
         } else {
-            // Filter by category - check if categories array includes the tab
-            // Markets can appear in multiple categories
             result = result.filter(m => {
                 const cats = (m as any).categories || [m.category];
                 return cats.includes(activeTab);
@@ -52,9 +69,17 @@ export function MarketGridWithTabs({ markets, balance, userId }: CategoryTabsPro
         return result;
     }, [markets, activeTab]);
 
+    const handleSelectOutcome = (marketId: string, question: string) => {
+        setSelectedMarketId(marketId);
+        setSelectedQuestion(question);
+        // TODO: Open trading widget for this specific outcome
+    };
+
+    const totalItems = filteredEvents.length + filteredMarkets.length;
+
     return (
         <div className="space-y-6">
-            {/* Category Tabs - Polymarket Style */}
+            {/* Category Tabs */}
             <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide border-b border-white/5 pb-2">
                 {CATEGORIES.map((cat) => (
                     <button
@@ -76,11 +101,6 @@ export function MarketGridWithTabs({ markets, balance, userId }: CategoryTabsPro
                             </div>
                         )}
                         {cat.label}
-                        {activeTab === cat.id && cat.id !== 'trending' && cat.id !== 'all' && (
-                            <span className="text-xs text-zinc-500 font-normal">
-                                ({filteredMarkets.length})
-                            </span>
-                        )}
                     </button>
                 ))}
             </div>
@@ -93,17 +113,27 @@ export function MarketGridWithTabs({ markets, balance, userId }: CategoryTabsPro
                             `${activeTab} Markets`}
                 </h2>
                 <span className="text-sm text-zinc-500">
-                    {filteredMarkets.length} markets
+                    {totalItems} markets
                 </span>
             </div>
 
-            {/* Markets Grid */}
-            {filteredMarkets.length === 0 ? (
+            {/* Empty State */}
+            {totalItems === 0 ? (
                 <div className="p-12 text-center border border-dashed border-zinc-800 rounded-xl">
                     <p className="text-zinc-500">No markets in this category</p>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    {/* Render Featured Events First (Multi-Outcome) */}
+                    {filteredEvents.map((event) => (
+                        <EventCard
+                            key={event.id}
+                            event={event}
+                            onSelectOutcome={handleSelectOutcome}
+                        />
+                    ))}
+
+                    {/* Render Binary Markets */}
                     {filteredMarkets.map((market) => (
                         <MarketCardClient
                             key={market.id}
