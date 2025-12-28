@@ -17,9 +17,13 @@ const CATEGORIES = [
     { id: 'trending', label: 'Trending', icon: TrendingUp, special: true },
     { id: 'all', label: 'All', special: false },
     { id: 'Politics', label: 'Politics' },
-    { id: 'Crypto', label: 'Crypto' },
-    { id: 'Finance', label: 'Finance' },
     { id: 'Sports', label: 'Sports' },
+    { id: 'Crypto', label: 'Crypto' },
+    { id: 'Business', label: 'Business' },
+    { id: 'Tech', label: 'Tech' },
+    { id: 'Science', label: 'Science' },
+    { id: 'Culture', label: 'Culture' },
+    { id: 'World', label: 'World' },
     { id: 'Other', label: 'Other' },
 ];
 

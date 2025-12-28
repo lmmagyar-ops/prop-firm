@@ -34,51 +34,67 @@ class IngestionWorker {
     }
 
     /**
-     * Detect market category based on question keywords
+     * Map Polymarket's native category to our UI categories
+     * Uses API category first, falls back to keyword detection
      */
-    private detectCategory(question: string): string {
-        const q = question.toLowerCase();
+    private mapCategory(apiCategory: string | null, question: string): string {
+        // Map Polymarket's native categories to our UI tabs
+        const categoryMap: Record<string, string> = {
+            'US-current-affairs': 'Politics',
+            'Crypto': 'Crypto',
+            'Sports': 'Sports',
+            'NBA Playoffs': 'Sports',
+            'Olympics': 'Sports',
+            'Business': 'Business',
+            'Tech': 'Tech',
+            'Science': 'Science',
+            'Pop-Culture': 'Culture',
+            'Pop-Culture ': 'Culture', // Handle trailing space
+            'NFTs': 'Crypto',
+            'Coronavirus': 'World',
+        };
 
-        // Crypto keywords
-        if (q.includes('bitcoin') || q.includes('btc') || q.includes('ethereum') ||
-            q.includes('eth') || q.includes('crypto') || q.includes('solana') ||
-            q.includes('sol') || q.includes('xrp') || q.includes('doge') ||
-            q.includes('bnb') || q.includes('ada') || q.includes('avax') ||
-            q.includes('tether') || q.includes('usdt') || q.includes('usdc')) {
-            return 'Crypto';
+        // Use native category if available
+        if (apiCategory && categoryMap[apiCategory]) {
+            return categoryMap[apiCategory];
         }
 
-        // Politics/Geopolitics keywords (expanded)
+        // Fallback to keyword detection for null categories
+        const q = question.toLowerCase();
+
+        // Politics/Geopolitics
         if (q.includes('trump') || q.includes('biden') || q.includes('election') ||
-            q.includes('president') || q.includes('senate') || q.includes('congress') ||
-            q.includes('democrat') || q.includes('republican') || q.includes('political') ||
-            q.includes('putin') || q.includes('ukraine') || q.includes('russia') ||
-            q.includes('nato') || q.includes('netanyahu') || q.includes('israel') ||
-            q.includes('iran') || q.includes('china') || q.includes('xi jinping') ||
-            q.includes('khamenei') || q.includes('ceasefire') || q.includes('war') ||
-            q.includes('nuclear') || q.includes('sanctions') || q.includes('tariff')) {
+            q.includes('president') || q.includes('congress') || q.includes('putin') ||
+            q.includes('ukraine') || q.includes('russia') || q.includes('nato') ||
+            q.includes('israel') || q.includes('iran') || q.includes('china') ||
+            q.includes('ceasefire') || q.includes('war') || q.includes('nuclear')) {
             return 'Politics';
         }
 
-        // Sports keywords
-        if (q.includes('nfl') || q.includes('nba') || q.includes('mlb') ||
-            q.includes('nhl') || q.includes('super bowl') || q.includes('world cup') ||
-            q.includes('olympics') || q.includes('championship') || q.includes('playoffs') ||
-            q.includes('premier league') || q.includes('champions league')) {
+        // Crypto
+        if (q.includes('bitcoin') || q.includes('btc') || q.includes('ethereum') ||
+            q.includes('crypto') || q.includes('solana') || q.includes('xrp')) {
+            return 'Crypto';
+        }
+
+        // Sports
+        if (q.includes('nfl') || q.includes('nba') || q.includes('super bowl') ||
+            q.includes('world cup') || q.includes('playoffs') || q.includes('championship')) {
             return 'Sports';
         }
 
-        // Finance/Economics keywords
-        if (q.includes('fed') || q.includes('interest rate') || q.includes('inflation') ||
-            q.includes('gdp') || q.includes('stock') || q.includes('s&p') ||
-            q.includes('dow') || q.includes('nasdaq') || q.includes('recession') ||
-            q.includes('market cap') || q.includes('nvidia') || q.includes('apple') ||
-            q.includes('microsoft') || q.includes('google') || q.includes('tesla') ||
-            q.includes('ceo') || q.includes('spacex')) {
-            return 'Finance';
+        // Business/Finance
+        if (q.includes('fed') || q.includes('recession') || q.includes('gdp') ||
+            q.includes('stock') || q.includes('ceo') || q.includes('market cap')) {
+            return 'Business';
         }
 
-        // Default
+        // Tech
+        if (q.includes('ai') || q.includes('openai') || q.includes('google') ||
+            q.includes('apple') || q.includes('microsoft') || q.includes('spacex')) {
+            return 'Tech';
+        }
+
         return 'Other';
     }
 
@@ -143,7 +159,7 @@ class IngestionWorker {
                     const yesToken = clobTokens[0];
                     if (!yesToken || seenIds.has(yesToken)) continue;
 
-                    const category = this.detectCategory(m.question);
+                    const category = this.mapCategory(m.category, m.question);
 
                     // Track counts for logging (no caps - let frontend handle filtering)
                     categoryCounts[category] = (categoryCounts[category] || 0) + 1;
