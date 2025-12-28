@@ -7,6 +7,7 @@ import type { MockMarket } from "@/lib/mock-markets";
 import type { EventMetadata } from "@/app/actions/market";
 import { MarketCardClient } from "./TradePageComponents";
 import { SmartEventCard } from "./SmartEventCard";
+import { EventDetailModal } from "./EventDetailModal";
 
 interface CategoryTabsProps {
     markets: MockMarket[];
@@ -31,8 +32,8 @@ const CATEGORIES = [
 
 export function MarketGridWithTabs({ markets, events = [], balance, userId }: CategoryTabsProps) {
     const [activeTab, setActiveTab] = useState('trending');
-    const [selectedMarketId, setSelectedMarketId] = useState<string | null>(null);
-    const [selectedQuestion, setSelectedQuestion] = useState<string | null>(null);
+    const [selectedEvent, setSelectedEvent] = useState<EventMetadata | null>(null);
+    const [detailModalOpen, setDetailModalOpen] = useState(false);
 
     // Filter events based on active tab
     const filteredEvents = useMemo(() => {
@@ -69,17 +70,19 @@ export function MarketGridWithTabs({ markets, events = [], balance, userId }: Ca
         return result;
     }, [markets, activeTab]);
 
-    // Handler for when user clicks trading button on an event
-    const handleTrade = (marketId: string, side: 'yes' | 'no') => {
-        setSelectedMarketId(marketId);
-        // Find the market question for trading widget
-        const event = events.find(e => e.markets.some(m => m.id === marketId));
-        const market = event?.markets.find(m => m.id === marketId);
-        if (market) {
-            setSelectedQuestion(market.question);
+    // Handler for when user clicks on an event card
+    const handleEventClick = (eventId: string) => {
+        const event = events.find(e => e.id === eventId);
+        if (event) {
+            setSelectedEvent(event);
+            setDetailModalOpen(true);
         }
-        // The trading widget will be triggered by the MarketCardClient interaction
-        console.log(`[Trade] ${side.toUpperCase()} on ${marketId}`);
+    };
+
+    // Handler for trading from within the detail modal
+    const handleTrade = (marketId: string, side: 'yes' | 'no', question: string) => {
+        console.log(`[Trade] ${side.toUpperCase()} on ${marketId}: ${question}`);
+        // TODO: Integrate with actual trading execution
     };
 
     const totalItems = filteredEvents.length + filteredMarkets.length;
@@ -133,11 +136,15 @@ export function MarketGridWithTabs({ markets, events = [], balance, userId }: Ca
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     {/* Render Featured Events First (Multi-Outcome) */}
                     {filteredEvents.map((event) => (
-                        <SmartEventCard
-                            key={event.id}
-                            event={event}
-                            onTrade={handleTrade}
-                        />
+                        <div key={event.id} onClick={() => handleEventClick(event.id)} className="cursor-pointer">
+                            <SmartEventCard
+                                event={event}
+                                onTrade={(marketId, side) => {
+                                    setSelectedEvent(event);
+                                    setDetailModalOpen(true);
+                                }}
+                            />
+                        </div>
                     ))}
 
                     {/* Render Binary Markets */}
@@ -151,6 +158,14 @@ export function MarketGridWithTabs({ markets, events = [], balance, userId }: Ca
                     ))}
                 </div>
             )}
+
+            {/* Event Detail Modal */}
+            <EventDetailModal
+                event={selectedEvent}
+                open={detailModalOpen}
+                onClose={() => setDetailModalOpen(false)}
+                onTrade={handleTrade}
+            />
         </div>
     );
 }
