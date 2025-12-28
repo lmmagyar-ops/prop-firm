@@ -174,14 +174,9 @@ export async function POST(req: NextRequest) {
             side: outcome as "YES" | "NO" // Use the correct outcome
         };
 
-        // ... existing imports ...
-
-        // Inside POST function, after position update logic (around line 158)
-
-        // --- NEW: Evaluate Challenge Status ---
-        // Fire and forget (don't block response) or await if critical
-        // For MVP we await to capture immediate fail state if needed
-        const evalResult = await ChallengeEvaluator.evaluate(challenge.id);
+        // --- Evaluate Challenge Status (fire-and-forget to avoid timeout) ---
+        // TradeExecutor already calls the evaluator, so we skip it here to avoid duplicate
+        // If needed, uncomment: ChallengeEvaluator.evaluate(challenge.id).catch(console.error);
 
         const responsePayload: any = {
             success: true,
@@ -192,10 +187,6 @@ export async function POST(req: NextRequest) {
             },
             position: positionData
         };
-
-        if (evalResult && evalResult.status !== 'active') {
-            responsePayload.challengeStatus = evalResult.status;
-        }
 
         return NextResponse.json(responsePayload);
 

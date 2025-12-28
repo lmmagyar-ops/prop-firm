@@ -187,16 +187,11 @@ export class TradeExecutor {
             return newTrade;
         });
 
-        // 6. ADJUDICATION
-        // We run this AFTER the transaction so we don't block the trade if adjudication is slow,
-        // but for this demo we await it to ensure immediate feedback.
-        try {
-            const { ChallengeEvaluator } = await import("./evaluator");
-            await ChallengeEvaluator.evaluate(challenge.id);
-        } catch (e) {
-            logger.error("Adjudication failed post-trade", e);
-            // Non-blocking error, do not rethrow
-        }
+        // 6. ADJUDICATION (fire-and-forget to avoid blocking trade response)
+        // Evaluation can run in the background - trade response doesn't need to wait
+        import("./evaluator")
+            .then(({ ChallengeEvaluator }) => ChallengeEvaluator.evaluate(challenge.id))
+            .catch((e) => logger.error("Adjudication failed post-trade", e));
 
         logger.info(`Trade Complete: ${tradeResult.id}`, { tradeId: tradeResult.id });
         return tradeResult;
