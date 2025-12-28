@@ -46,6 +46,7 @@ export function useTradeExecution(options: UseTradeExecutionOptions = {}) {
             const response = await fetch("/api/trade/execute", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
+                credentials: "include", // Required to send session cookies
                 body: JSON.stringify({
                     marketId,
                     outcome,
