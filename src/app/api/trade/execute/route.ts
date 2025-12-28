@@ -9,6 +9,13 @@ import { ChallengeEvaluator } from "@/lib/evaluator";
 export async function POST(req: NextRequest) {
     const session = await auth();
 
+    // Debug logging for production auth issues
+    console.log("[Trade API] Session check:", {
+        hasSession: !!session,
+        hasUser: !!session?.user,
+        userId: session?.user?.id || "NONE"
+    });
+
     const body = await req.json();
     let { userId, marketId, outcome, amount } = body;
 
@@ -18,6 +25,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (!userId) {
+        console.log("[Trade API] 401 - No userId found. Body:", { userId: body.userId, marketId, amount });
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
