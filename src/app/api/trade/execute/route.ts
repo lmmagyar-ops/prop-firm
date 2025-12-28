@@ -60,7 +60,11 @@ export async function POST(req: NextRequest) {
             );
         } catch (error: any) {
             // Auto-provision Redis market data for demo users
-            if ((error.message === "Market data unavailable" || error.message.includes("Book Not Found"))) {
+            // Check for: "Market xxx is currently closed or halted" OR "Book Not Found"
+            const isMarketDataMissing = error.message?.includes("is currently closed or halted")
+                || error.message?.includes("Book Not Found");
+
+            if (isMarketDataMissing) {
                 console.log("[Auto-Provision] Seeding Redis Market Data...");
                 const Redis = (await import("ioredis")).default;
                 const redis = new Redis(process.env.REDIS_URL || "redis://localhost:6380");
