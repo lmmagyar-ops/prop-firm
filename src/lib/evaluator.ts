@@ -47,16 +47,44 @@ export class ChallengeEvaluator {
             return { status: 'failed' };
         }
 
-        // 1. CHECK FAIL (Drawdown based on EQUITY)
-        if (equity <= startingBalance - maxDrawdown) {
-            console.log(`[Evaluator] Challenge ${challengeId} FAILED. Equity: ${equity.toFixed(2)} (Bal: ${currentBalance} + Pos: ${positionValue.toFixed(2)})`);
+        // 1. CHECK FAIL (Drawdown based on EQUITY) - With Confirmation Delay
+        const FAILURE_CONFIRMATION_DELAY_MS = 60_000; // 60 seconds
+        const equityFloor = startingBalance - maxDrawdown;
 
-            await db.update(challenges)
-                .set({ status: 'failed', endsAt: new Date() })
-                .where(eq(challenges.id, challengeId));
+        if (equity <= equityFloor) {
+            // Breach detected
+            if (!challenge.pendingFailureAt) {
+                // First breach: Set pending timestamp, don't fail yet
+                console.log(`[Evaluator] Challenge ${challengeId} BREACHED. Setting pending failure. Equity: ${equity.toFixed(2)}`);
+                await db.update(challenges)
+                    .set({ pendingFailureAt: new Date() })
+                    .where(eq(challenges.id, challengeId));
+                return { status: 'pending_failure' };
+            }
 
-            await publishAdminEvent("CHALLENGE_FAILED", { challengeId, reason: "Max Drawdown Breached" });
-            return { status: 'failed' };
+            // Breach persisted: Check if 60 seconds have passed
+            const timeSinceBreach = Date.now() - new Date(challenge.pendingFailureAt).getTime();
+            if (timeSinceBreach >= FAILURE_CONFIRMATION_DELAY_MS) {
+                console.log(`[Evaluator] Challenge ${challengeId} FAILED (Confirmed after ${Math.round(timeSinceBreach / 1000)}s). Equity: ${equity.toFixed(2)}`);
+                await db.update(challenges)
+                    .set({ status: 'failed', endsAt: new Date(), pendingFailureAt: null })
+                    .where(eq(challenges.id, challengeId));
+
+                await publishAdminEvent("CHALLENGE_FAILED", { challengeId, reason: "Max Drawdown Breached (Confirmed)" });
+                return { status: 'failed' };
+            }
+
+            // Still in grace period
+            console.log(`[Evaluator] Challenge ${challengeId} still pending failure. ${Math.round((FAILURE_CONFIRMATION_DELAY_MS - timeSinceBreach) / 1000)}s remaining.`);
+            return { status: 'pending_failure' };
+        } else {
+            // Equity recovered - clear pending failure if set
+            if (challenge.pendingFailureAt) {
+                console.log(`[Evaluator] Challenge ${challengeId} RECOVERED. Clearing pending failure.`);
+                await db.update(challenges)
+                    .set({ pendingFailureAt: null })
+                    .where(eq(challenges.id, challengeId));
+            }
         }
 
         // 2. CHECK PASS (Profit Target based on EQUITY)

@@ -10,25 +10,37 @@ import { eq } from "drizzle-orm";
 async function runDailyReset() {
     console.log("[DailyReset] 🌅 Starting Daily Snapshot...");
 
+    // Get today's date in UTC (YYYY-MM-DD)
+    const todayUTC = new Date().toISOString().split('T')[0];
+
     // 1. Fetch all ACTIVE challenges
     const activeChallenges = await db.select().from(challenges).where(eq(challenges.status, "active"));
 
-    console.log(`[DailyReset] Snapshotting ${activeChallenges.length} active accounts.`);
+    console.log(`[DailyReset] Checking ${activeChallenges.length} active accounts.`);
+
+    let resetCount = 0;
+    let skippedCount = 0;
 
     for (const challenge of activeChallenges) {
-        // 2. Set StartOfDay = Current
-        // If they had a great day yesterday (Bal $11,000), their new 5% loss limit is based on $11k.
-        // If they had a bad day (Bal $9,500), their new 5% loss limit is based on $9.5k.
-        // This is "Trailing Daily".
+        // Idempotency Check: Skip if already reset today
+        const lastResetDate = challenge.lastDailyResetAt?.toISOString().split('T')[0];
+        if (lastResetDate === todayUTC) {
+            skippedCount++;
+            continue; // Already reset today
+        }
 
+        // 2. Set StartOfDay = Current + Mark as reset
         await db.update(challenges)
             .set({
-                startOfDayBalance: challenge.currentBalance
+                startOfDayBalance: challenge.currentBalance,
+                lastDailyResetAt: new Date()
             })
             .where(eq(challenges.id, challenge.id));
+
+        resetCount++;
     }
 
-    console.log("[DailyReset] ✅ Snapshots complete.");
+    console.log(`[DailyReset] ✅ Snapshots complete. Reset: ${resetCount}, Skipped (already done): ${skippedCount}`);
 }
 
 // Daemon Check

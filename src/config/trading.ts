@@ -11,7 +11,7 @@ export const TRADING_CONFIG = {
     risk: {
         maxSlippagePercent: 0.05,
         priceFreshnessMs: 60000,
-        enableStalenessCheck: process.env.NODE_ENV === "production"
+        enableStalenessCheck: true // Security hardening: always check price staleness
     },
     market: {
         orderBookPollIntervalMs: 2000,

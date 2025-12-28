@@ -1,7 +1,7 @@
 
 import { db } from "@/db";
 import { trades, positions, challenges } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { ChallengeManager } from "./challenges";
 import { MarketService } from "./market";
 import { RiskEngine } from "./risk";
@@ -113,9 +113,27 @@ export class TradeExecutor {
             slippage: `${slippage}%`
         });
 
-        // 5. DB Transaction
+        // 5. DB Transaction (with Row Lock for Race Condition Prevention)
         const tradeResult = await db.transaction(async (tx) => {
-            // A. Create Trade Record
+            // A. Lock the challenge row to prevent concurrent trades
+            // This serializes trades per challenge, preventing exposure limit bypass
+            await tx.execute(sql`SELECT id FROM challenges WHERE id = ${challenge.id} FOR UPDATE`);
+
+            // B. Re-fetch challenge balance inside transaction (may have changed)
+            const [lockedChallenge] = await tx.select().from(challenges).where(eq(challenges.id, challenge.id));
+
+            // C. Re-validate risk inside transaction
+            if (side === "BUY") {
+                if (parseFloat(lockedChallenge.currentBalance) < amount) {
+                    throw new InsufficientFundsError(userId, amount, parseFloat(lockedChallenge.currentBalance));
+                }
+                const riskCheck = await RiskEngine.validateTrade(lockedChallenge.id, marketId, amount);
+                if (!riskCheck.allowed) {
+                    throw new RiskLimitExceededError(riskCheck.reason || "Risk Check Failed");
+                }
+            }
+
+            // D. Create Trade Record
             const [newTrade] = await tx.insert(trades).values({
                 challengeId: challenge.id,
                 marketId: marketId,

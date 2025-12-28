@@ -126,6 +126,10 @@ export const challenges = pgTable("challenges", {
     startedAt: timestamp("started_at").defaultNow(),
     endsAt: timestamp("ends_at"),
 
+    // Security Hardening (Phase 11)
+    pendingFailureAt: timestamp("pending_failure_at"), // Delay before final failure decision
+    lastDailyResetAt: timestamp("last_daily_reset_at"), // Idempotency for daily reset
+
     // Profile Visibility
     isPublicOnProfile: boolean("is_public_on_profile").default(true),
     showDropdownOnProfile: boolean("show_dropdown_on_profile").default(true),
