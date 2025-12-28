@@ -5,11 +5,13 @@ import { MarketGridWithTabs } from "@/components/trading/MarketGridWithTabs";
 import type { MockMarket } from "@/lib/mock-markets";
 
 // Map live market data to the shape expected by MarketCardClient
-function mapToMarketShape(liveMarket: any): MockMarket {
+function mapToMarketShape(liveMarket: any): MockMarket & { categories?: string[] } {
+    const categories = liveMarket.categories || ['Other'];
     return {
         id: liveMarket.id,
         question: liveMarket.question,
-        category: liveMarket.category || 'Other', // Use ingested category
+        category: categories[0] || 'Other', // Primary category for backward compat
+        categories: categories, // Full array for multi-category filtering
         icon: '📊',
         imageUrl: liveMarket.image,
         currentPrice: liveMarket.currentPrice || 0.50, // Use live price from order book

@@ -34,11 +34,14 @@ class IngestionWorker {
     }
 
     /**
-     * Map Polymarket's native category to our UI categories
-     * Uses API category first, falls back to keyword detection
+     * Get all applicable categories for a market
+     * Returns array so markets can appear in multiple tabs (like Polymarket)
      */
-    private mapCategory(apiCategory: string | null, question: string): string {
-        // Map Polymarket's native categories to our UI tabs
+    private getCategories(apiCategory: string | null, question: string): string[] {
+        const categories: string[] = [];
+        const q = question.toLowerCase();
+
+        // Map Polymarket's native category first
         const categoryMap: Record<string, string> = {
             'US-current-affairs': 'Politics',
             'Crypto': 'Crypto',
@@ -49,53 +52,79 @@ class IngestionWorker {
             'Tech': 'Tech',
             'Science': 'Science',
             'Pop-Culture': 'Culture',
-            'Pop-Culture ': 'Culture', // Handle trailing space
+            'Pop-Culture ': 'Culture',
             'NFTs': 'Crypto',
             'Coronavirus': 'World',
         };
 
-        // Use native category if available
         if (apiCategory && categoryMap[apiCategory]) {
-            return categoryMap[apiCategory];
+            categories.push(categoryMap[apiCategory]);
         }
 
-        // Fallback to keyword detection for null categories
-        const q = question.toLowerCase();
-
-        // Politics/Geopolitics
+        // US Politics (domestic)
         if (q.includes('trump') || q.includes('biden') || q.includes('election') ||
-            q.includes('president') || q.includes('congress') || q.includes('putin') ||
-            q.includes('ukraine') || q.includes('russia') || q.includes('nato') ||
-            q.includes('israel') || q.includes('iran') || q.includes('china') ||
-            q.includes('ceasefire') || q.includes('war') || q.includes('nuclear')) {
-            return 'Politics';
+            q.includes('president') || q.includes('congress') || q.includes('senate') ||
+            q.includes('democrat') || q.includes('republican') || q.includes('doge ') ||
+            q.includes('musk') || q.includes('elon') || q.includes('cabinet')) {
+            if (!categories.includes('Politics')) categories.push('Politics');
+        }
+
+        // Geopolitics (international)
+        if (q.includes('putin') || q.includes('ukraine') || q.includes('russia') ||
+            q.includes('zelensky') || q.includes('nato') || q.includes('israel') ||
+            q.includes('netanyahu') || q.includes('iran') || q.includes('china') ||
+            q.includes('xi') || q.includes('ceasefire') || q.includes('war') ||
+            q.includes('nuclear') || q.includes('maduro') || q.includes('venezuela') ||
+            q.includes('kim jong') || q.includes('north korea') || q.includes('sanctions')) {
+            if (!categories.includes('Geopolitics')) categories.push('Geopolitics');
         }
 
         // Crypto
         if (q.includes('bitcoin') || q.includes('btc') || q.includes('ethereum') ||
-            q.includes('crypto') || q.includes('solana') || q.includes('xrp')) {
-            return 'Crypto';
+            q.includes('eth') || q.includes('crypto') || q.includes('solana') ||
+            q.includes('xrp') || q.includes('tether') || q.includes('usdt')) {
+            if (!categories.includes('Crypto')) categories.push('Crypto');
         }
 
         // Sports
         if (q.includes('nfl') || q.includes('nba') || q.includes('super bowl') ||
-            q.includes('world cup') || q.includes('playoffs') || q.includes('championship')) {
-            return 'Sports';
+            q.includes('world cup') || q.includes('playoffs') || q.includes('championship') ||
+            q.includes('world series') || q.includes('stanley cup') || q.includes('ufc')) {
+            if (!categories.includes('Sports')) categories.push('Sports');
         }
 
         // Business/Finance
         if (q.includes('fed') || q.includes('recession') || q.includes('gdp') ||
-            q.includes('stock') || q.includes('ceo') || q.includes('market cap')) {
-            return 'Business';
+            q.includes('stock') || q.includes('ceo') || q.includes('market cap') ||
+            q.includes('ipo') || q.includes('earnings') || q.includes('s&p') ||
+            q.includes('nasdaq') || q.includes('dow')) {
+            if (!categories.includes('Business')) categories.push('Business');
         }
 
         // Tech
-        if (q.includes('ai') || q.includes('openai') || q.includes('google') ||
-            q.includes('apple') || q.includes('microsoft') || q.includes('spacex')) {
-            return 'Tech';
+        if (q.includes('ai') || q.includes('openai') || q.includes('chatgpt') ||
+            q.includes('google') || q.includes('apple') || q.includes('microsoft') ||
+            q.includes('spacex') || q.includes('nvidia') || q.includes('tesla') ||
+            q.includes('meta') || q.includes('amazon')) {
+            if (!categories.includes('Tech')) categories.push('Tech');
         }
 
-        return 'Other';
+        // Culture (Entertainment, Pop Culture)
+        if (q.includes('movie') || q.includes('oscar') || q.includes('grammy') ||
+            q.includes('emmy') || q.includes('marvel') || q.includes('disney') ||
+            q.includes('netflix') || q.includes('stranger things') || q.includes('kardashian') ||
+            q.includes('celebrity') || q.includes('epstein') || q.includes('youtube') ||
+            q.includes('tiktok') || q.includes('logan paul') || q.includes('mr beast') ||
+            q.includes('avatar') || q.includes('star wars') || q.includes('album')) {
+            if (!categories.includes('Culture')) categories.push('Culture');
+        }
+
+        // Default to Other if no categories matched
+        if (categories.length === 0) {
+            categories.push('Other');
+        }
+
+        return categories;
     }
 
     /**
@@ -159,10 +188,12 @@ class IngestionWorker {
                     const yesToken = clobTokens[0];
                     if (!yesToken || seenIds.has(yesToken)) continue;
 
-                    const category = this.mapCategory(m.category, m.question);
+                    const categories = this.getCategories(m.category, m.question);
 
-                    // Track counts for logging (no caps - let frontend handle filtering)
-                    categoryCounts[category] = (categoryCounts[category] || 0) + 1;
+                    // Track counts for logging (markets can appear in multiple categories)
+                    for (const cat of categories) {
+                        categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+                    }
 
                     seenIds.add(yesToken);
                     allMarkets.push({
@@ -173,7 +204,7 @@ class IngestionWorker {
                         volume: m.volume,
                         outcomes: JSON.parse(m.outcomes),
                         end_date: m.endDate,
-                        category: category,
+                        categories: categories, // Array of categories
                         closed: m.closed,
                         accepting_orders: m.accepting_orders
                     });

@@ -17,13 +17,12 @@ const CATEGORIES = [
     { id: 'trending', label: 'Trending', icon: TrendingUp, special: true },
     { id: 'all', label: 'All', special: false },
     { id: 'Politics', label: 'Politics' },
+    { id: 'Geopolitics', label: 'Geopolitics' },
     { id: 'Sports', label: 'Sports' },
     { id: 'Crypto', label: 'Crypto' },
     { id: 'Business', label: 'Business' },
     { id: 'Tech', label: 'Tech' },
-    { id: 'Science', label: 'Science' },
     { id: 'Culture', label: 'Culture' },
-    { id: 'World', label: 'World' },
     { id: 'Other', label: 'Other' },
 ];
 
@@ -41,8 +40,12 @@ export function MarketGridWithTabs({ markets, balance, userId }: CategoryTabsPro
             // Show all, sorted by volume
             result.sort((a, b) => (b.volume || 0) - (a.volume || 0));
         } else {
-            // Filter by category
-            result = result.filter(m => m.category === activeTab);
+            // Filter by category - check if categories array includes the tab
+            // Markets can appear in multiple categories
+            result = result.filter(m => {
+                const cats = (m as any).categories || [m.category];
+                return cats.includes(activeTab);
+            });
             result.sort((a, b) => (b.volume || 0) - (a.volume || 0));
         }
 

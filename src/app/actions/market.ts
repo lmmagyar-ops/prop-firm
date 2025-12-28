@@ -26,7 +26,7 @@ export interface MarketMetadata {
     volume: number;
     outcomes: string[];
     end_date: string;
-    category?: string; // "Crypto", "Politics", "Sports", etc.
+    categories?: string[]; // Array of categories (markets can be in multiple)
     currentPrice?: number; // Current YES probability (0-1)
 }
 
