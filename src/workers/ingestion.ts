@@ -201,7 +201,16 @@ class IngestionWorker {
                     let basePrice = 0.5; // Default fallback
                     try {
                         const prices = JSON.parse(m.outcomePrices || '["0.5", "0.5"]');
-                        basePrice = parseFloat(prices[0]) || 0.5;
+                        const yesPrice = parseFloat(prices[0]);
+                        const noPrice = parseFloat(prices[1]);
+
+                        // Skip stale markets where both prices are 0 or near-0
+                        if (yesPrice < 0.001 && noPrice < 0.001) {
+                            continue; // Skip this market entirely
+                        }
+
+                        // Use YES price with a minimum floor of 1%
+                        basePrice = Math.max(yesPrice, 0.01);
                     } catch { }
 
                     allMarkets.push({
