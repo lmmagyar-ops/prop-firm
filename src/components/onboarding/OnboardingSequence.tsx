@@ -146,9 +146,30 @@ export function OnboardingSequence({ challenge }: OnboardingProps) {
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                                <BriefCard icon={Target} color="blue" label="Target" value="$500.00" sub="reach $10,500" delay={0.4} />
-                                <BriefCard icon={Shield} color="zinc" label="Balance" value="$10,000" sub="simulated capital" delay={0.5} />
-                                <BriefCard icon={Shield} color="red" label="Max Loss" value="$1,000" sub="hard breach" delay={0.6} />
+                                <BriefCard
+                                    icon={Target}
+                                    color="blue"
+                                    label="Target"
+                                    value={`$${profitTarget.toLocaleString()}`}
+                                    sub={`reach $${(startingBalance + profitTarget).toLocaleString()}`}
+                                    delay={0.4}
+                                />
+                                <BriefCard
+                                    icon={Shield}
+                                    color="zinc"
+                                    label="Balance"
+                                    value={`$${startingBalance.toLocaleString()}`}
+                                    sub="simulated capital"
+                                    delay={0.5}
+                                />
+                                <BriefCard
+                                    icon={Shield}
+                                    color="red"
+                                    label="Max Loss"
+                                    value={`$${maxDrawdown.toLocaleString()}`}
+                                    sub="hard breach"
+                                    delay={0.6}
+                                />
                             </div>
 
                             <motion.div

@@ -2,8 +2,21 @@
 
 import Redis from "ioredis";
 
-const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6380";
-const redis = new Redis(REDIS_URL);
+import { unstable_noStore as noStore } from "next/cache";
+
+const getRedisConfig = () => {
+    if (process.env.REDIS_HOST && process.env.REDIS_PASSWORD) {
+        return {
+            host: process.env.REDIS_HOST,
+            port: parseInt(process.env.REDIS_PORT || "6379"),
+            password: process.env.REDIS_PASSWORD,
+            tls: {} // Required for Upstash
+        };
+    }
+    return process.env.REDIS_URL || "redis://localhost:6380";
+};
+
+const redis = new Redis(getRedisConfig() as any);
 
 export interface MarketMetadata {
     id: string;
@@ -17,6 +30,7 @@ export interface MarketMetadata {
 }
 
 export async function getActiveMarkets(): Promise<MarketMetadata[]> {
+    noStore(); // Opt out of static caching
     try {
         const data = await redis.get("market:active_list");
         if (!data) return [];
