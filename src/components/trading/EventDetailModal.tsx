@@ -3,9 +3,10 @@
 import { useState } from "react";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
-import { X, TrendingUp, Calendar, ChevronDown, ChevronUp } from "lucide-react";
+import { X, TrendingUp, Calendar, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { useTradeExecution } from "@/hooks/useTradeExecution";
 import type { EventMetadata, SubMarket } from "@/app/actions/market";
 
 interface EventDetailModalProps {
@@ -112,7 +113,7 @@ export function EventDetailModal({ event, open, onClose, onTrade }: EventDetailM
             <div className="w-full lg:w-80 border-t lg:border-t-0 lg:border-l border-white/10 bg-zinc-900/50 p-6">
                 <TradingSidebar
                     market={selectedMarket}
-                    onTrade={(side) => onTrade(selectedMarket.id, side, selectedMarket.question)}
+                    onTradeComplete={onClose}
                 />
             </div>
         </div>
@@ -212,18 +213,35 @@ function OutcomeRow({ market, isSelected, onSelect, onTrade }: OutcomeRowProps) 
 // --- Trading Sidebar Component ---
 interface TradingSidebarProps {
     market: SubMarket;
-    onTrade: (side: 'yes' | 'no') => void;
+    onTradeComplete?: () => void;
 }
 
-function TradingSidebar({ market, onTrade }: TradingSidebarProps) {
+function TradingSidebar({ market, onTradeComplete }: TradingSidebarProps) {
     const [side, setSide] = useState<'yes' | 'no'>('yes');
-    const [shares, setShares] = useState(0);
+    const [amount, setAmount] = useState(0); // Dollar amount (not shares)
+
+    const { executeTrade, isLoading } = useTradeExecution({
+        onSuccess: () => {
+            setAmount(0); // Reset after successful trade
+            onTradeComplete?.();
+        },
+    });
 
     const yesPrice = Math.round(market.price * 100);
     const noPrice = 100 - yesPrice;
     const price = side === 'yes' ? yesPrice : noPrice;
-    const total = shares * price / 100;
-    const toWin = shares - total;
+    const shares = amount / (price / 100);
+    const toWin = shares - amount;
+
+    const handleSubmit = async () => {
+        if (amount <= 0) return;
+
+        await executeTrade(
+            market.id,
+            side.toUpperCase() as "YES" | "NO",
+            amount
+        );
+    };
 
     return (
         <div className="space-y-6">
@@ -275,16 +293,16 @@ function TradingSidebar({ market, onTrade }: TradingSidebarProps) {
                 </button>
             </div>
 
-            {/* Shares Input */}
+            {/* Amount Input (Dollars) */}
             <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                    <span className="text-zinc-400">Shares</span>
+                    <span className="text-zinc-400">Amount ($)</span>
                     <span className="text-zinc-500">Max</span>
                 </div>
                 <input
                     type="number"
-                    value={shares || ''}
-                    onChange={(e) => setShares(Number(e.target.value))}
+                    value={amount || ''}
+                    onChange={(e) => setAmount(Number(e.target.value))}
                     placeholder="0"
                     className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-right text-lg font-mono focus:outline-none focus:border-blue-500"
                 />
@@ -292,10 +310,10 @@ function TradingSidebar({ market, onTrade }: TradingSidebarProps) {
                     {[10, 50, 100].map((amt) => (
                         <button
                             key={amt}
-                            onClick={() => setShares(shares + amt)}
+                            onClick={() => setAmount(amount + amt)}
                             className="px-3 py-1 text-xs font-medium rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 transition-colors"
                         >
-                            +{amt}
+                            +${amt}
                         </button>
                     ))}
                 </div>
@@ -304,28 +322,39 @@ function TradingSidebar({ market, onTrade }: TradingSidebarProps) {
             {/* Summary */}
             <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
+                    <span className="text-zinc-400">Shares</span>
+                    <span className="text-white font-mono">{shares > 0 ? shares.toFixed(2) : '0'}</span>
+                </div>
+                <div className="flex justify-between">
                     <span className="text-zinc-400">Total</span>
-                    <span className="text-emerald-400 font-semibold">${total.toFixed(2)}</span>
+                    <span className="text-emerald-400 font-semibold">${amount.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
                     <span className="text-zinc-400">To Win 🌿</span>
-                    <span className="text-emerald-400 font-semibold">${toWin.toFixed(2)}</span>
+                    <span className="text-emerald-400 font-semibold">${toWin > 0 ? toWin.toFixed(2) : '0.00'}</span>
                 </div>
             </div>
 
             {/* Submit Button */}
             <button
-                onClick={() => onTrade(side)}
-                disabled={shares <= 0}
+                onClick={handleSubmit}
+                disabled={amount <= 0 || isLoading}
                 className={cn(
-                    "w-full py-4 rounded-lg font-bold text-white transition-all",
+                    "w-full py-4 rounded-lg font-bold text-white transition-all flex items-center justify-center gap-2",
                     side === 'yes'
                         ? "bg-emerald-500 hover:bg-emerald-400 disabled:bg-emerald-500/50"
                         : "bg-rose-500 hover:bg-rose-400 disabled:bg-rose-500/50",
-                    shares <= 0 && "opacity-50 cursor-not-allowed"
+                    (amount <= 0 || isLoading) && "opacity-50 cursor-not-allowed"
                 )}
             >
-                Buy {side === 'yes' ? 'Yes' : 'No'}
+                {isLoading ? (
+                    <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Executing...
+                    </>
+                ) : (
+                    `Buy ${side === 'yes' ? 'Yes' : 'No'}`
+                )}
             </button>
 
             <p className="text-xs text-zinc-500 text-center">
