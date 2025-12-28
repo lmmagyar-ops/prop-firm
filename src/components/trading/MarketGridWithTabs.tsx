@@ -6,7 +6,7 @@ import { TrendingUp } from "lucide-react";
 import type { MockMarket } from "@/lib/mock-markets";
 import type { EventMetadata } from "@/app/actions/market";
 import { MarketCardClient } from "./TradePageComponents";
-import { EventCard } from "./EventCard";
+import { SmartEventCard } from "./SmartEventCard";
 
 interface CategoryTabsProps {
     markets: MockMarket[];
@@ -69,10 +69,17 @@ export function MarketGridWithTabs({ markets, events = [], balance, userId }: Ca
         return result;
     }, [markets, activeTab]);
 
-    const handleSelectOutcome = (marketId: string, question: string) => {
+    // Handler for when user clicks trading button on an event
+    const handleTrade = (marketId: string, side: 'yes' | 'no') => {
         setSelectedMarketId(marketId);
-        setSelectedQuestion(question);
-        // TODO: Open trading widget for this specific outcome
+        // Find the market question for trading widget
+        const event = events.find(e => e.markets.some(m => m.id === marketId));
+        const market = event?.markets.find(m => m.id === marketId);
+        if (market) {
+            setSelectedQuestion(market.question);
+        }
+        // The trading widget will be triggered by the MarketCardClient interaction
+        console.log(`[Trade] ${side.toUpperCase()} on ${marketId}`);
     };
 
     const totalItems = filteredEvents.length + filteredMarkets.length;
@@ -126,10 +133,10 @@ export function MarketGridWithTabs({ markets, events = [], balance, userId }: Ca
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     {/* Render Featured Events First (Multi-Outcome) */}
                     {filteredEvents.map((event) => (
-                        <EventCard
+                        <SmartEventCard
                             key={event.id}
                             event={event}
-                            onSelectOutcome={handleSelectOutcome}
+                            onTrade={handleTrade}
                         />
                     ))}
 
