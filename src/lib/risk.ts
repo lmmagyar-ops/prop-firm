@@ -80,15 +80,17 @@ export class RiskEngine {
         const markets = await getActiveMarkets();
         const market = markets.find(m => m.id === marketId);
 
-        if (market?.category) {
+        if (market?.categories && market.categories.length > 0) {
             const maxPerCategory = startBalance * (rules.maxCategoryExposurePercent || 0.10);
-            const categoryExposure = await this.getCategoryExposure(challengeId, market.category, markets);
-
-            if (categoryExposure + tradeAmount > maxPerCategory) {
-                return {
-                    allowed: false,
-                    reason: `Max ${market.category} exposure (10%) exceeded. Current: $${categoryExposure.toFixed(2)}, Limit: $${maxPerCategory.toFixed(2)}`
-                };
+            // Check exposure for each category the market is in
+            for (const category of market.categories) {
+                const categoryExposure = await this.getCategoryExposure(challengeId, category, markets);
+                if (categoryExposure + tradeAmount > maxPerCategory) {
+                    return {
+                        allowed: false,
+                        reason: `Max ${category} exposure (10%) exceeded. Current: $${categoryExposure.toFixed(2)}, Limit: $${maxPerCategory.toFixed(2)}`
+                    };
+                }
             }
         }
 
@@ -163,7 +165,7 @@ export class RiskEngine {
         let totalExposure = 0;
         for (const pos of openPositions) {
             const market = markets.find(m => m.id === pos.marketId);
-            if (market?.category === category) {
+            if (market?.categories?.includes(category)) {
                 totalExposure += parseFloat(pos.sizeAmount);
             }
         }
