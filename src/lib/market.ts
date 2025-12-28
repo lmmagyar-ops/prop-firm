@@ -49,30 +49,66 @@ export interface ExecutionSimulation {
 export class MarketService {
 
     /**
+     * Demo mode fallback data - used when Redis is unavailable
+     */
+    private static getDemoPrice(assetId: string): MarketPrice {
+        return {
+            price: "0.55",
+            asset_id: assetId,
+            timestamp: Date.now()
+        };
+    }
+
+    private static getDemoOrderBook(): OrderBook {
+        return {
+            bids: [
+                { price: "0.55", size: "50000" },
+                { price: "0.54", size: "50000" },
+                { price: "0.53", size: "50000" }
+            ],
+            asks: [
+                { price: "0.56", size: "50000" },
+                { price: "0.57", size: "50000" },
+                { price: "0.58", size: "50000" }
+            ]
+        };
+    }
+
+    /**
      * Fetches the latest price for an asset from Redis cache.
+     * Falls back to demo data if Redis is unavailable.
      */
     static async getLatestPrice(assetId: string): Promise<MarketPrice | null> {
-        const key = `market:price:${assetId}`;
-        const data = await getRedis().get(key);
-        if (!data) return null;
         try {
+            const key = `market:price:${assetId}`;
+            const data = await getRedis().get(key);
+            if (!data) {
+                console.log(`[MarketService] No Redis data for ${assetId}, using demo fallback`);
+                return this.getDemoPrice(assetId);
+            }
             return JSON.parse(data) as MarketPrice;
-        } catch (e) {
-            return null;
+        } catch (error: any) {
+            console.error(`[MarketService] Redis error, using demo fallback:`, error.message);
+            return this.getDemoPrice(assetId);
         }
     }
 
     /**
      * Fetches the full Order Book from Redis (Snapshot).
+     * Falls back to demo data if Redis is unavailable.
      */
     static async getOrderBook(assetId: string): Promise<OrderBook | null> {
-        const key = `market:book:${assetId}`;
-        const data = await getRedis().get(key);
-        if (!data) return null;
         try {
+            const key = `market:book:${assetId}`;
+            const data = await getRedis().get(key);
+            if (!data) {
+                console.log(`[MarketService] No Redis orderbook for ${assetId}, using demo fallback`);
+                return this.getDemoOrderBook();
+            }
             return JSON.parse(data) as OrderBook;
-        } catch (e) {
-            return null;
+        } catch (error: any) {
+            console.error(`[MarketService] Redis orderbook error, using demo fallback:`, error.message);
+            return this.getDemoOrderBook();
         }
     }
 
