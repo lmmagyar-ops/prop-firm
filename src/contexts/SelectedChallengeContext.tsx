@@ -8,7 +8,14 @@ interface SelectedChallengeContextType {
     isLoading: boolean;
 }
 
-const SelectedChallengeContext = createContext<SelectedChallengeContextType | undefined>(undefined);
+// Default context value for when provider isn't present
+const defaultContextValue: SelectedChallengeContextType = {
+    selectedChallengeId: null,
+    selectChallenge: () => { },
+    isLoading: false,
+};
+
+const SelectedChallengeContext = createContext<SelectedChallengeContextType>(defaultContextValue);
 
 export function SelectedChallengeProvider({
     children,
@@ -25,9 +32,6 @@ export function SelectedChallengeProvider({
 }
 
 export function useSelectedChallengeContext() {
-    const context = useContext(SelectedChallengeContext);
-    if (!context) {
-        throw new Error("useSelectedChallengeContext must be used within SelectedChallengeProvider");
-    }
-    return context;
+    // Returns default value if no provider exists (no error thrown)
+    return useContext(SelectedChallengeContext);
 }

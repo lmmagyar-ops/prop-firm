@@ -196,6 +196,14 @@ class IngestionWorker {
                     }
 
                     seenIds.add(yesToken);
+
+                    // Extract YES price from outcomePrices (baseline price from Polymarket)
+                    let basePrice = 0.5; // Default fallback
+                    try {
+                        const prices = JSON.parse(m.outcomePrices || '["0.5", "0.5"]');
+                        basePrice = parseFloat(prices[0]) || 0.5;
+                    } catch { }
+
                     allMarkets.push({
                         id: yesToken,
                         question: m.question,
@@ -205,6 +213,7 @@ class IngestionWorker {
                         outcomes: JSON.parse(m.outcomes),
                         end_date: m.endDate,
                         categories: categories, // Array of categories
+                        basePrice: basePrice, // Polymarket's price (fallback if no order book)
                         closed: m.closed,
                         accepting_orders: m.accepting_orders
                     });

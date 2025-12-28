@@ -60,6 +60,7 @@ export async function getActiveMarkets(): Promise<MarketMetadata[]> {
         // Fetch prices for each market from order book cache
         const marketsWithPrices = await Promise.all(
             markets.map(async (market) => {
+                const extendedMarket = market as MarketMetadata & { basePrice?: number };
                 try {
                     const bookData = await redis.get(`market:book:${market.id}`);
                     if (bookData) {
@@ -70,9 +71,10 @@ export async function getActiveMarkets(): Promise<MarketMetadata[]> {
                         }
                     }
                 } catch {
-                    // Silent fail - return market without price
+                    // Silent fail - use fallback price
                 }
-                return market;
+                // Use basePrice from Polymarket API as fallback
+                return { ...market, currentPrice: extendedMarket.basePrice || 0.5 };
             })
         );
 
