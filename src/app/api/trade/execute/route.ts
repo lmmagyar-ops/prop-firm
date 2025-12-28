@@ -64,36 +64,49 @@ export async function POST(req: NextRequest) {
             const isMarketDataMissing = error.message?.includes("is currently closed or halted")
                 || error.message?.includes("Book Not Found");
 
+            console.log("[Trade Error]", error.message, "isMarketDataMissing:", isMarketDataMissing);
+
             if (isMarketDataMissing) {
                 console.log("[Auto-Provision] Seeding Redis Market Data...");
-                const Redis = (await import("ioredis")).default;
-                const redis = new Redis(process.env.REDIS_URL || "redis://localhost:6380");
+                try {
+                    const Redis = (await import("ioredis")).default;
+                    const redis = new Redis(process.env.REDIS_URL || "redis://localhost:6380", {
+                        connectTimeout: 5000, // 5 second timeout
+                        commandTimeout: 5000,
+                        maxRetriesPerRequest: 1
+                    });
 
-                const now = Date.now();
-                // Seed Price
-                await redis.set(`market:price:${marketId}`, JSON.stringify({
-                    price: "0.56",
-                    asset_id: marketId,
-                    timestamp: now
-                }));
+                    const now = Date.now();
+                    // Seed Price
+                    await redis.set(`market:price:${marketId}`, JSON.stringify({
+                        price: "0.56",
+                        asset_id: marketId,
+                        timestamp: now
+                    }));
 
-                // Seed Book
-                await redis.set(`market:book:${marketId}`, JSON.stringify({
-                    bids: [{ price: "0.56", size: "10000" }, { price: "0.55", size: "10000" }],
-                    asks: [{ price: "0.57", size: "10000" }, { price: "0.58", size: "10000" }]
-                }));
+                    // Seed Book
+                    await redis.set(`market:book:${marketId}`, JSON.stringify({
+                        bids: [{ price: "0.56", size: "10000" }, { price: "0.55", size: "10000" }],
+                        asks: [{ price: "0.57", size: "10000" }, { price: "0.58", size: "10000" }]
+                    }));
 
-                redis.disconnect();
+                    console.log("[Auto-Provision] Redis data seeded successfully");
+                    redis.disconnect();
 
-                // Retry execution
-                console.log("[Auto-Provision] Retrying execution...");
-                trade = await TradeExecutor.executeTrade(
-                    userId,
-                    activeChallenge.id,
-                    marketId,
-                    "BUY",
-                    parseFloat(amount)
-                );
+                    // Retry execution
+                    console.log("[Auto-Provision] Retrying execution...");
+                    trade = await TradeExecutor.executeTrade(
+                        userId,
+                        activeChallenge.id,
+                        marketId,
+                        "BUY",
+                        parseFloat(amount)
+                    );
+                    console.log("[Auto-Provision] Retry succeeded");
+                } catch (redisError: any) {
+                    console.error("[Auto-Provision] Redis seeding failed:", redisError.message);
+                    throw new Error(`Trade failed: Market data unavailable and could not provision`);
+                }
             } else {
                 throw error;
             }

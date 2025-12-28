@@ -1,7 +1,25 @@
 import Redis from "ioredis";
 
 const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6380";
-const redis = new Redis(REDIS_URL);
+
+// Lazy Redis singleton with connection timeout to prevent hanging on serverless
+let redisInstance: Redis | null = null;
+
+function getRedis(): Redis {
+    if (!redisInstance) {
+        redisInstance = new Redis(REDIS_URL, {
+            connectTimeout: 5000,
+            commandTimeout: 5000,
+            maxRetriesPerRequest: 1,
+            lazyConnect: true, // Don't connect until first command
+        });
+
+        redisInstance.on('error', (err) => {
+            console.error('[MarketService] Redis error:', err.message);
+        });
+    }
+    return redisInstance;
+}
 
 export interface MarketPrice {
     price: string;
@@ -35,7 +53,7 @@ export class MarketService {
      */
     static async getLatestPrice(assetId: string): Promise<MarketPrice | null> {
         const key = `market:price:${assetId}`;
-        const data = await redis.get(key);
+        const data = await getRedis().get(key);
         if (!data) return null;
         try {
             return JSON.parse(data) as MarketPrice;
@@ -49,7 +67,7 @@ export class MarketService {
      */
     static async getOrderBook(assetId: string): Promise<OrderBook | null> {
         const key = `market:book:${assetId}`;
-        const data = await redis.get(key);
+        const data = await getRedis().get(key);
         if (!data) return null;
         try {
             return JSON.parse(data) as OrderBook;
