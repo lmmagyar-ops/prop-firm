@@ -28,9 +28,15 @@ export default async function OnboardingSetupPage() {
         <OnboardingSequence
             challenge={{
                 startingBalance: parseFloat(latestChallenge.startingBalance),
-                // Safe access to JSONB fields
-                profitTarget: (latestChallenge.rulesConfig as any)?.profitTarget || 500,
-                maxDrawdown: (latestChallenge.rulesConfig as any)?.maxDrawdown || 1000,
+                // Safe access to JSONB fields + Calculation logic
+                profitTarget: (() => {
+                    const target = (latestChallenge.rulesConfig as any)?.profitTarget || 0.1;
+                    return target < 1 ? parseFloat(latestChallenge.startingBalance) * target : target;
+                })(),
+                maxDrawdown: (() => {
+                    const drawdown = (latestChallenge.rulesConfig as any)?.maxDrawdown || 0.1;
+                    return drawdown < 1 ? parseFloat(latestChallenge.startingBalance) * drawdown : drawdown;
+                })(),
             }}
         />
     );
