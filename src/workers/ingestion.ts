@@ -185,47 +185,86 @@ class IngestionWorker {
                     if (volume < MIN_VOLUME) continue;
 
                     const clobTokens = JSON.parse(m.clobTokenIds);
-                    const yesToken = clobTokens[0];
-                    if (!yesToken || seenIds.has(yesToken)) continue;
+                    const outcomes = JSON.parse(m.outcomes);
+                    const prices = JSON.parse(m.outcomePrices || '[]');
 
-                    const categories = this.getCategories(m.category, m.question);
+                    // Determine if this is a multi-outcome market
+                    const isMultiOutcome = outcomes.length > 2;
 
-                    // Track counts for logging (markets can appear in multiple categories)
-                    for (const cat of categories) {
-                        categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
-                    }
+                    if (isMultiOutcome) {
+                        // MULTI-OUTCOME: Explode into separate markets, one per outcome
+                        for (let i = 0; i < outcomes.length; i++) {
+                            const tokenId = clobTokens[i];
+                            if (!tokenId || seenIds.has(tokenId)) continue;
 
-                    seenIds.add(yesToken);
+                            const outcomePrice = parseFloat(prices[i] || "0.5");
 
-                    // Extract YES price from outcomePrices (baseline price from Polymarket)
-                    let basePrice = 0.5; // Default fallback
-                    try {
-                        const prices = JSON.parse(m.outcomePrices || '["0.5", "0.5"]');
-                        const yesPrice = parseFloat(prices[0]);
-                        const noPrice = parseFloat(prices[1]);
+                            // Skip outcomes with near-zero probability
+                            if (outcomePrice < 0.001) continue;
 
-                        // Skip stale markets where both prices are 0 or near-0
-                        if (yesPrice < 0.001 && noPrice < 0.001) {
-                            continue; // Skip this market entirely
+                            const categories = this.getCategories(m.category, m.question);
+
+                            seenIds.add(tokenId);
+                            for (const cat of categories) {
+                                categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+                            }
+
+                            allMarkets.push({
+                                id: tokenId,
+                                question: `${m.question}: ${outcomes[i]}`, // Format: "Fed decision in January?: 50+ bps decrease"
+                                description: m.description,
+                                image: m.image,
+                                volume: m.volume,
+                                outcomes: ["Yes", "No"], // Each outcome is now binary
+                                end_date: m.endDate,
+                                categories: categories,
+                                basePrice: Math.max(outcomePrice, 0.01),
+                                closed: m.closed,
+                                accepting_orders: m.accepting_orders,
+                                parentQuestion: m.question, // For future grouping (Option C)
+                                outcomeLabel: outcomes[i], // Original outcome label
+                            });
+                        }
+                    } else {
+                        // BINARY MARKET: Process as before
+                        const yesToken = clobTokens[0];
+                        if (!yesToken || seenIds.has(yesToken)) continue;
+
+                        const categories = this.getCategories(m.category, m.question);
+
+                        for (const cat of categories) {
+                            categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
                         }
 
-                        // Use YES price with a minimum floor of 1%
-                        basePrice = Math.max(yesPrice, 0.01);
-                    } catch { }
+                        seenIds.add(yesToken);
 
-                    allMarkets.push({
-                        id: yesToken,
-                        question: m.question,
-                        description: m.description,
-                        image: m.image,
-                        volume: m.volume,
-                        outcomes: JSON.parse(m.outcomes),
-                        end_date: m.endDate,
-                        categories: categories, // Array of categories
-                        basePrice: basePrice, // Polymarket's price (fallback if no order book)
-                        closed: m.closed,
-                        accepting_orders: m.accepting_orders
-                    });
+                        let basePrice = 0.5;
+                        try {
+                            const yesPrice = parseFloat(prices[0]);
+                            const noPrice = parseFloat(prices[1]);
+
+                            // Skip stale markets where both prices are 0 or near-0
+                            if (yesPrice < 0.001 && noPrice < 0.001) {
+                                continue;
+                            }
+
+                            basePrice = Math.max(yesPrice, 0.01);
+                        } catch { }
+
+                        allMarkets.push({
+                            id: yesToken,
+                            question: m.question,
+                            description: m.description,
+                            image: m.image,
+                            volume: m.volume,
+                            outcomes: outcomes,
+                            end_date: m.endDate,
+                            categories: categories,
+                            basePrice: basePrice,
+                            closed: m.closed,
+                            accepting_orders: m.accepting_orders
+                        });
+                    }
                 } catch (e) {
                     // Skip invalid market
                 }
