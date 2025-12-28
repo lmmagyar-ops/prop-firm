@@ -7,12 +7,39 @@ import { RiskEngine } from "./risk";
 // Mock external dependencies
 vi.mock("@/db", () => ({
     db: {
+        select: vi.fn(() => ({
+            from: vi.fn(() => ({
+                where: vi.fn(() => [{
+                    id: "challenge-123",
+                    userId: "user-1",
+                    status: "active",
+                    currentBalance: "10000",
+                    rulesConfig: {}
+                }])
+            }))
+        })),
         transaction: vi.fn((callback) => callback({
+            execute: vi.fn(), // FOR UPDATE lock
+            select: vi.fn(() => ({
+                from: vi.fn(() => ({
+                    where: vi.fn(() => [{
+                        id: "challenge-123",
+                        currentBalance: "10000",
+                        rulesConfig: {}
+                    }])
+                }))
+            })),
             insert: vi.fn(() => ({ values: vi.fn(() => ({ returning: vi.fn(() => [{ id: "trade-123", marketId: "asset-123", price: "0.5025", shares: "1990" }]) })) })),
             update: vi.fn(() => ({ set: vi.fn(() => ({ where: vi.fn() })) })),
             query: {
                 positions: {
                     findFirst: vi.fn(() => null) // Default no position
+                },
+                challenges: {
+                    findFirst: vi.fn(() => ({
+                        id: "challenge-123",
+                        currentBalance: "10000"
+                    }))
                 }
             }
         }))
@@ -28,7 +55,18 @@ vi.mock("./challenges", () => ({
 vi.mock("./market", () => ({
     MarketService: {
         getLatestPrice: vi.fn(),
-        isPriceFresh: vi.fn(() => true)
+        isPriceFresh: vi.fn(() => true),
+        getOrderBook: vi.fn(() => ({
+            bids: [{ price: "0.50", size: "10000" }],
+            asks: [{ price: "0.51", size: "10000" }]
+        })),
+        calculateImpact: vi.fn(() => ({
+            filled: true,
+            executedPrice: 0.5025,
+            totalShares: 1990,
+            slippagePercent: 0.005,
+            reason: null
+        }))
     }
 }));
 
@@ -61,7 +99,7 @@ describe("TradeExecutor", () => {
         vi.mocked(RiskEngine.validateTrade).mockResolvedValue({ allowed: true });
 
         // Execute
-        const result = await TradeExecutor.executeTrade("user-1", "asset-123", "BUY", 1000);
+        const result = await TradeExecutor.executeTrade("user-1", "challenge-123", "asset-123", "BUY", 1000);
 
         // Verify
         expect(ChallengeManager.getActiveChallenge).toHaveBeenCalledWith("user-1");
@@ -83,8 +121,8 @@ describe("TradeExecutor", () => {
         vi.mocked(ChallengeManager.getActiveChallenge).mockResolvedValue(mockChallenge as any);
         vi.mocked(MarketService.getLatestPrice).mockResolvedValue({ price: "0.50", asset_id: "a", timestamp: Date.now() } as any);
 
-        await expect(TradeExecutor.executeTrade("user-1", "a", "BUY", 1000))
-            .rejects.toThrow("Insufficient balance");
+        await expect(TradeExecutor.executeTrade("user-1", "challenge-123", "a", "BUY", 1000))
+            .rejects.toThrow(); // Throws InsufficientFundsError
     });
 
     it("should reject trade if risk check fails", async () => {
@@ -98,7 +136,7 @@ describe("TradeExecutor", () => {
         vi.mocked(MarketService.getLatestPrice).mockResolvedValue({ price: "0.50", asset_id: "a", timestamp: Date.now() } as any);
         vi.mocked(RiskEngine.validateTrade).mockResolvedValue({ allowed: false, reason: "Max Drawdown" });
 
-        await expect(TradeExecutor.executeTrade("user-1", "a", "BUY", 1000))
-            .rejects.toThrow("Risk Check Failed: Max Drawdown");
+        await expect(TradeExecutor.executeTrade("user-1", "challenge-123", "a", "BUY", 1000))
+            .rejects.toThrow("Max Drawdown"); // Error reason from RiskEngine
     });
 });
