@@ -43,33 +43,55 @@ class IngestionWorker {
         if (q.includes('bitcoin') || q.includes('btc') || q.includes('ethereum') ||
             q.includes('eth') || q.includes('crypto') || q.includes('solana') ||
             q.includes('sol') || q.includes('xrp') || q.includes('doge') ||
-            q.includes('bnb') || q.includes('ada') || q.includes('avax')) {
+            q.includes('bnb') || q.includes('ada') || q.includes('avax') ||
+            q.includes('tether') || q.includes('usdt') || q.includes('usdc')) {
             return 'Crypto';
         }
 
-        // Politics keywords
+        // Politics/Geopolitics keywords (expanded)
         if (q.includes('trump') || q.includes('biden') || q.includes('election') ||
             q.includes('president') || q.includes('senate') || q.includes('congress') ||
-            q.includes('democrat') || q.includes('republican') || q.includes('political')) {
+            q.includes('democrat') || q.includes('republican') || q.includes('political') ||
+            q.includes('putin') || q.includes('ukraine') || q.includes('russia') ||
+            q.includes('nato') || q.includes('netanyahu') || q.includes('israel') ||
+            q.includes('iran') || q.includes('china') || q.includes('xi jinping') ||
+            q.includes('khamenei') || q.includes('ceasefire') || q.includes('war') ||
+            q.includes('nuclear') || q.includes('sanctions') || q.includes('tariff')) {
             return 'Politics';
         }
 
         // Sports keywords
         if (q.includes('nfl') || q.includes('nba') || q.includes('mlb') ||
             q.includes('nhl') || q.includes('super bowl') || q.includes('world cup') ||
-            q.includes('olympics') || q.includes('championship')) {
+            q.includes('olympics') || q.includes('championship') || q.includes('playoffs') ||
+            q.includes('premier league') || q.includes('champions league')) {
             return 'Sports';
         }
 
         // Finance/Economics keywords
         if (q.includes('fed') || q.includes('interest rate') || q.includes('inflation') ||
             q.includes('gdp') || q.includes('stock') || q.includes('s&p') ||
-            q.includes('dow') || q.includes('nasdaq')) {
+            q.includes('dow') || q.includes('nasdaq') || q.includes('recession') ||
+            q.includes('market cap') || q.includes('nvidia') || q.includes('apple') ||
+            q.includes('microsoft') || q.includes('google') || q.includes('tesla') ||
+            q.includes('ceo') || q.includes('spacex')) {
             return 'Finance';
         }
 
         // Default
         return 'Other';
+    }
+
+    /**
+     * Check if market is short-term spam (e.g., 5-minute crypto bets)
+     */
+    private isSpamMarket(question: string): boolean {
+        const q = question.toLowerCase();
+        // Filter out "Up or Down" minute-by-minute markets
+        if (q.includes('up or down') && (q.includes('am') || q.includes('pm') || q.includes('et'))) {
+            return true;
+        }
+        return false;
     }
 
     private async init() {
@@ -80,72 +102,80 @@ class IngestionWorker {
 
     private async fetchActiveMarkets() {
         try {
-            console.log("[Ingestion] Fetching High-Velocity Markets (Interim)...");
+            console.log("[Ingestion] Fetching Diverse Markets (Category-Balanced)...");
 
             const thirtyDaysFromNow = new Date();
             thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
             const endDateMax = thirtyDaysFromNow.toISOString();
 
-            // Gamma API params
-            const url = `${GAMMA_API_URL}&end_date_max=${endDateMax}`;
-
-            console.log(`[Ingestion] Query: ${url}`);
+            // Fetch a large pool of active markets (high number to account for spam filtering)
+            // Note: Removed end_date filter to get more variety
+            const url = `https://gamma-api.polymarket.com/markets?limit=1000&active=true&closed=false`;
+            console.log(`[Ingestion] Fetching pool of 1000 markets...`);
 
             const response = await fetch(url);
             const data = await response.json();
 
-            if (Array.isArray(data)) {
-                // Filter and Map
-                const markets: any[] = [];
-                const tokens: string[] = [];
-
-                data.forEach(m => {
-                    try {
-                        // Skip explicitly closed or archived markets
-                        if (m.closed === true || m.archived === true) {
-                            return;
-                        }
-
-                        // FILTER: Illiquid Markets
-                        // User Rule: No illiquid markets (< $100k volume).
-                        // Dev Config: Lowered to $1k to ensure market visibility during testing if live volume is low.
-                        const volume24h = m.volume24hr || 0;
-                        const liquidity = parseFloat(m.liquidity || "0");
-
-                        // if (volume24h < 1000 && liquidity < 1000) {
-                        //    return; // Keeping disabled for now to ensure we see "New" markets for UI testing
-                        // }
-
-                        const clobTokens = JSON.parse(m.clobTokenIds);
-                        const yesToken = clobTokens[0]; // YES token
-
-                        if (yesToken) {
-                            tokens.push(yesToken);
-                            markets.push({
-                                id: yesToken,
-                                question: m.question,
-                                description: m.description,
-                                image: m.image,
-                                volume: m.volume,
-                                outcomes: JSON.parse(m.outcomes),
-                                end_date: m.endDate,
-                                category: this.detectCategory(m.question), // NEW: Category detection
-                                closed: m.closed,
-                                accepting_orders: m.accepting_orders
-                            });
-                        }
-                    } catch (e) {
-                        // Skip invalid
-                    }
-                });
-
-                // Metadata: Top 10 High Velocity
-                this.activeTokenIds = markets.map(m => m.id);
-
-                // Store List in Redis for Frontend
-                await this.redis.set("market:active_list", JSON.stringify(markets));
-                console.log(`[Ingestion] Stored ${markets.length} markets in Redis.`);
+            if (!Array.isArray(data)) {
+                console.error("[Ingestion] Invalid response from Gamma API");
+                return;
             }
+
+            // Category limits for diversity
+            const categoryLimits: Record<string, number> = {
+                'Crypto': 15,
+                'Politics': 15,
+                'Sports': 10,
+                'Finance': 10,
+                'Other': 15
+            };
+            const categoryCounts: Record<string, number> = {};
+            const allMarkets: any[] = [];
+            const seenIds = new Set<string>();
+
+            for (const m of data) {
+                try {
+                    if (m.closed === true || m.archived === true) continue;
+
+                    // Filter out spam markets (5-minute crypto bets)
+                    if (this.isSpamMarket(m.question)) continue;
+
+                    const clobTokens = JSON.parse(m.clobTokenIds);
+                    const yesToken = clobTokens[0];
+                    if (!yesToken || seenIds.has(yesToken)) continue;
+
+                    const category = this.detectCategory(m.question);
+                    const limit = categoryLimits[category] || 10;
+                    const count = categoryCounts[category] || 0;
+
+                    // Skip if we've hit the limit for this category
+                    if (count >= limit) continue;
+
+                    seenIds.add(yesToken);
+                    categoryCounts[category] = count + 1;
+                    allMarkets.push({
+                        id: yesToken,
+                        question: m.question,
+                        description: m.description,
+                        image: m.image,
+                        volume: m.volume,
+                        outcomes: JSON.parse(m.outcomes),
+                        end_date: m.endDate,
+                        category: category,
+                        closed: m.closed,
+                        accepting_orders: m.accepting_orders
+                    });
+                } catch (e) {
+                    // Skip invalid market
+                }
+            }
+
+            // Store in Redis
+            this.activeTokenIds = allMarkets.map(m => m.id);
+            await this.redis.set("market:active_list", JSON.stringify(allMarkets));
+            console.log(`[Ingestion] Stored ${allMarkets.length} diverse markets in Redis.`);
+            console.log(`[Ingestion] Category breakdown:`, categoryCounts);
+
         } catch (err) {
             console.error("[Ingestion] Failed to fetch markets:", err);
         }
