@@ -1,8 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { ChevronDown, TrendingUp, Users } from "lucide-react";
+import { TrendingUp, Users } from "lucide-react";
 import type { EventMetadata, SubMarket } from "@/app/actions/market";
 
 interface MultiRunnerCardProps {
@@ -12,15 +11,12 @@ interface MultiRunnerCardProps {
 
 /**
  * MultiRunnerCard - Election/List style with multiple outcomes
- * Shows top outcomes with prices and Yes/No buttons
+ * Shows TOP 2 outcomes only (like Polymarket), rest shown in detail view
  */
 export function MultiRunnerCard({ event, onTrade }: MultiRunnerCardProps) {
-    const [expanded, setExpanded] = useState(false);
-
-    // Show top 4 outcomes, rest in expanded view
-    const topOutcomes = event.markets.slice(0, 4);
-    const remainingOutcomes = event.markets.slice(4);
-    const hasMore = remainingOutcomes.length > 0;
+    // Show only top 2 outcomes on card (Polymarket style)
+    const topOutcomes = event.markets.slice(0, 2);
+    const remainingCount = event.markets.length - 2;
 
     const formatVolume = (volume: number) => {
         if (volume >= 1_000_000) return `$${(volume / 1_000_000).toFixed(1)}m`;
@@ -83,7 +79,7 @@ export function MultiRunnerCard({ event, onTrade }: MultiRunnerCardProps) {
                 </div>
             </div>
 
-            {/* Outcomes List */}
+            {/* Outcomes List - Top 2 only */}
             <div className="divide-y divide-white/5">
                 {topOutcomes.map((market) => (
                     <OutcomeRow
@@ -93,26 +89,15 @@ export function MultiRunnerCard({ event, onTrade }: MultiRunnerCardProps) {
                         onTrade={onTrade}
                     />
                 ))}
-
-                {/* Expanded outcomes */}
-                {expanded && remainingOutcomes.map((market) => (
-                    <OutcomeRow
-                        key={market.id}
-                        market={market}
-                        label={getOutcomeLabel(market)}
-                        onTrade={onTrade}
-                    />
-                ))}
             </div>
 
-            {/* Show More Button */}
-            {hasMore && (
+            {/* See All Options Link */}
+            {remainingCount > 0 && (
                 <button
-                    onClick={() => setExpanded(!expanded)}
-                    className="w-full px-4 py-2.5 text-xs text-zinc-400 hover:text-white hover:bg-white/5 flex items-center justify-center gap-1 transition-colors border-t border-white/5"
+                    onClick={() => onTrade(topOutcomes[0]?.id || '', 'yes')}
+                    className="w-full px-4 py-2.5 text-xs text-blue-400 hover:text-blue-300 hover:bg-white/5 flex items-center justify-center gap-1 transition-colors border-t border-white/5"
                 >
-                    {expanded ? "Show less" : `Show ${remainingOutcomes.length} more`}
-                    <ChevronDown className={cn("w-3 h-3 transition-transform", expanded && "rotate-180")} />
+                    See all {event.markets.length} options →
                 </button>
             )}
         </div>
