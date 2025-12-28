@@ -1,7 +1,7 @@
 import { auth } from "@/auth";
 import { getDashboardData } from "@/lib/dashboard-service";
 import { getActiveMarkets } from "@/app/actions/market";
-import { MarketCardClient, TradePageHeader } from "@/components/trading/TradePageComponents";
+import { MarketGridWithTabs } from "@/components/trading/MarketGridWithTabs";
 import type { MockMarket } from "@/lib/mock-markets";
 
 // Map live market data to the shape expected by MarketCardClient
@@ -9,7 +9,7 @@ function mapToMarketShape(liveMarket: any): MockMarket {
     return {
         id: liveMarket.id,
         question: liveMarket.question,
-        category: 'Politics', // Default - can be inferred from tags in future
+        category: liveMarket.category || 'Other', // Use ingested category
         icon: '📊',
         imageUrl: liveMarket.image,
         currentPrice: 0.50, // Widget connects to live WS for real-time price
@@ -34,13 +34,9 @@ export default async function TradePage() {
     const hasActiveChallenge = !!data?.activeChallenge;
 
     const markets = liveMarkets.map(mapToMarketShape);
-    const trendingMarkets = markets.filter(m => m.trending).slice(0, 5);
 
     return (
-        <div className="space-y-8">
-            {/* Search, Filters, Pills, and Categories */}
-            <TradePageHeader />
-
+        <div className="space-y-6">
             {!hasActiveChallenge ? (
                 // Empty State: No Active Evaluation
                 <div className="flex items-center justify-center min-h-[60vh]">
@@ -108,49 +104,12 @@ export default async function TradePage() {
                     </div>
                 </div>
             ) : (
-                // Normal State: Show Markets
-                <>
-                    {/* Trending Markets Carousel */}
-                    {trendingMarkets.length > 0 && (
-                        <section className="space-y-4">
-                            <div className="flex items-center justify-between">
-                                <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                                    Trending Markets
-                                </h2>
-                            </div>
-
-                            <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
-                                {trendingMarkets.map((market) => (
-                                    <div key={market.id} className="min-w-[320px]">
-                                        <MarketCardClient market={market} balance={balance} userId={userId} />
-                                    </div>
-                                ))}
-                            </div>
-                        </section>
-                    )}
-
-                    {/* All Markets Grid */}
-                    <section className="space-y-4">
-                        <h2 className="text-xl font-bold text-white">All Markets</h2>
-
-                        {markets.length === 0 ? (
-                            <div className="p-12 text-center border border-dashed border-zinc-800 rounded-xl">
-                                <p className="text-zinc-500 animate-pulse">Connecting to Live Feed...</p>
-                            </div>
-                        ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                                {markets.map((market) => (
-                                    <MarketCardClient
-                                        key={market.id}
-                                        market={market}
-                                        balance={balance}
-                                        userId={userId}
-                                    />
-                                ))}
-                            </div>
-                        )}
-                    </section>
-                </>
+                // Normal State: Show Markets with Category Tabs
+                <MarketGridWithTabs
+                    markets={markets}
+                    balance={balance}
+                    userId={userId}
+                />
             )}
         </div>
     );

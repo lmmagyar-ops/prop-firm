@@ -121,14 +121,9 @@ class IngestionWorker {
                 return;
             }
 
-            // Category limits for diversity
-            const categoryLimits: Record<string, number> = {
-                'Crypto': 15,
-                'Politics': 15,
-                'Sports': 10,
-                'Finance': 10,
-                'Other': 15
-            };
+            // Minimum volume threshold for liquidity protection
+            const MIN_VOLUME = 50000; // $50k minimum
+
             const categoryCounts: Record<string, number> = {};
             const allMarkets: any[] = [];
             const seenIds = new Set<string>();
@@ -140,19 +135,20 @@ class IngestionWorker {
                     // Filter out spam markets (5-minute crypto bets)
                     if (this.isSpamMarket(m.question)) continue;
 
+                    // LIQUIDITY FILTER: Minimum volume to prevent manipulation
+                    const volume = parseFloat(m.volume || "0");
+                    if (volume < MIN_VOLUME) continue;
+
                     const clobTokens = JSON.parse(m.clobTokenIds);
                     const yesToken = clobTokens[0];
                     if (!yesToken || seenIds.has(yesToken)) continue;
 
                     const category = this.detectCategory(m.question);
-                    const limit = categoryLimits[category] || 10;
-                    const count = categoryCounts[category] || 0;
 
-                    // Skip if we've hit the limit for this category
-                    if (count >= limit) continue;
+                    // Track counts for logging (no caps - let frontend handle filtering)
+                    categoryCounts[category] = (categoryCounts[category] || 0) + 1;
 
                     seenIds.add(yesToken);
-                    categoryCounts[category] = count + 1;
                     allMarkets.push({
                         id: yesToken,
                         question: m.question,
