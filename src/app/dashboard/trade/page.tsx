@@ -12,7 +12,7 @@ function mapToMarketShape(liveMarket: any): MockMarket {
         category: liveMarket.category || 'Other', // Use ingested category
         icon: '📊',
         imageUrl: liveMarket.image,
-        currentPrice: 0.50, // Widget connects to live WS for real-time price
+        currentPrice: liveMarket.currentPrice || 0.50, // Use live price from order book
         priceChange24h: (Math.random() * 10) - 5, // Mock for visual variety
         volume: liveMarket.volume || 0,
         activeTraders: Math.floor(Math.random() * 1000) + 100,

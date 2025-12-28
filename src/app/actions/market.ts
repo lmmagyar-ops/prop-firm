@@ -27,6 +27,26 @@ export interface MarketMetadata {
     outcomes: string[];
     end_date: string;
     category?: string; // "Crypto", "Politics", "Sports", etc.
+    currentPrice?: number; // Current YES probability (0-1)
+}
+
+/**
+ * Extract current price from order book data
+ * Uses best bid as the current price (most someone is willing to pay for YES)
+ */
+function extractPriceFromBook(bookData: any): number | null {
+    try {
+        if (bookData?.bids && bookData.bids.length > 0) {
+            // Best bid is highest price someone will pay = current YES probability
+            const bids = bookData.bids.sort((a: any, b: any) =>
+                parseFloat(b.price) - parseFloat(a.price)
+            );
+            return parseFloat(bids[0].price);
+        }
+        return null;
+    } catch {
+        return null;
+    }
 }
 
 export async function getActiveMarkets(): Promise<MarketMetadata[]> {
@@ -34,7 +54,29 @@ export async function getActiveMarkets(): Promise<MarketMetadata[]> {
     try {
         const data = await redis.get("market:active_list");
         if (!data) return [];
-        return JSON.parse(data) as MarketMetadata[];
+
+        const markets = JSON.parse(data) as MarketMetadata[];
+
+        // Fetch prices for each market from order book cache
+        const marketsWithPrices = await Promise.all(
+            markets.map(async (market) => {
+                try {
+                    const bookData = await redis.get(`market:book:${market.id}`);
+                    if (bookData) {
+                        const book = JSON.parse(bookData);
+                        const price = extractPriceFromBook(book);
+                        if (price !== null) {
+                            return { ...market, currentPrice: price };
+                        }
+                    }
+                } catch {
+                    // Silent fail - return market without price
+                }
+                return market;
+            })
+        );
+
+        return marketsWithPrices;
     } catch (e) {
         console.error("Failed to fetch active markets", e);
         return [];
