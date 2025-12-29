@@ -44,10 +44,11 @@ export async function POST(req: NextRequest) {
                     startOfDayBalance: startingBalance.toString(),
                     highWaterMark: startingBalance.toString(),
                     rulesConfig: {
-                        // Drawdown & Profit
-                        profitTarget: 0.10, // 10%
-                        maxDrawdown: 0.08, // 8%
-                        maxTotalDrawdownPercent: 0.08, // 8%
+                        // CRITICAL: profitTarget and maxDrawdown must be ABSOLUTE DOLLAR VALUES
+                        // Evaluator compares: equity >= startingBalance + profitTarget
+                        profitTarget: startingBalance * 0.10, // 10% in absolute $
+                        maxDrawdown: startingBalance * 0.08, // 8% in absolute $
+                        maxTotalDrawdownPercent: 0.08, // 8% (kept as percent for display)
                         maxDailyDrawdownPercent: 0.04, // 4%
 
                         // Position Sizing

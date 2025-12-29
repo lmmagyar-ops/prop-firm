@@ -8,10 +8,11 @@ const DEFAULT_RULES = {
     tier: "10k",
     startingBalance: 10000,
 
-    // Drawdown & Profit
-    profitTarget: 0.10, // 10%
-    maxDrawdown: 0.08, // 8%
-    maxTotalDrawdownPercent: 0.08, // 8%
+    // CRITICAL: profitTarget and maxDrawdown are ABSOLUTE DOLLAR VALUES
+    // Evaluator compares: equity >= startingBalance + profitTarget
+    profitTarget: 1000, // 10% of $10k = $1000
+    maxDrawdown: 800, // 8% of $10k = $800
+    maxTotalDrawdownPercent: 0.08, // 8% (for display)
     maxDailyDrawdownPercent: 0.04, // 4%
 
     // Position Sizing
