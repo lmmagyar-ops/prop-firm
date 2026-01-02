@@ -32,6 +32,12 @@ export const users = pgTable("users", {
     metadata: jsonb("metadata").default({}),
     createdAt: timestamp("created_at").defaultNow(),
 
+    // Auth Fields
+    passwordHash: text("password_hash"), // bcrypt hashed password for email/password auth
+    role: varchar("role", { length: 20 }).default("user"), // 'user' | 'admin'
+    isActive: boolean("is_active").default(true), // For account suspension
+    agreedToTermsAt: timestamp("agreed_to_terms_at", { mode: "date" }), // TOS compliance tracking
+
     // Profile Fields
     showOnLeaderboard: boolean("show_on_leaderboard").default(false),
 
@@ -43,6 +49,18 @@ export const users = pgTable("users", {
     tiktok: text("tiktok"),
     instagram: text("instagram"),
     youtube: text("youtube"),
+
+    // Social Visibility (for public profile)
+    twitterPublic: boolean("twitter_public").default(true),
+    discordPublic: boolean("discord_public").default(true),
+    telegramPublic: boolean("telegram_public").default(true),
+    instagramPublic: boolean("instagram_public").default(true),
+    facebookPublic: boolean("facebook_public").default(true),
+
+    // Profile Customization
+    tradingBio: text("trading_bio"),
+    tradingStyle: text("trading_style"), // "Day Trader", "Swing Trader", "Scalper"
+    favoriteMarkets: text("favorite_markets"), // "Crypto, Forex, Politics"
 
     // Personal Info
     firstName: text("first_name"),
@@ -61,6 +79,15 @@ export const users = pgTable("users", {
     addressState: text("address_state"),
     addressZip: text("address_zip"),
     addressCountry: text("address_country"),
+
+    // Security Enhancements
+    emailVerifiedStatus: boolean("email_verified_status").default(false), // Manual verification flag
+    twoFactorEnabled: boolean("two_factor_enabled").default(false),
+
+    // Privacy Controls
+    leaderboardPrivacy: varchar("leaderboard_privacy", { length: 20 }).default("semi_private"), // 'public', 'semi_private', 'fully_private'
+    showCountry: boolean("show_country").default(false),
+    showStatsPublicly: boolean("show_stats_publicly").default(true),
 });
 
 export const accounts = pgTable(
@@ -123,6 +150,9 @@ export const challenges = pgTable("challenges", {
     // Snapshotted rules at time of creation
     rulesConfig: jsonb("rules_config").notNull(),
 
+    // Trading platform selection (Polymarket or Kalshi)
+    platform: varchar("platform", { length: 20 }).notNull().default("polymarket"), // 'polymarket' | 'kalshi'
+
     startedAt: timestamp("started_at").defaultNow(),
     endsAt: timestamp("ends_at"),
 
@@ -133,6 +163,16 @@ export const challenges = pgTable("challenges", {
     // Profile Visibility
     isPublicOnProfile: boolean("is_public_on_profile").default(true),
     showDropdownOnProfile: boolean("show_dropdown_on_profile").default(true),
+
+    // Funded Stage Fields
+    profitSplit: decimal("profit_split", { precision: 4, scale: 2 }).default("0.80"), // 80% default, 90% with add-on
+    payoutCap: decimal("payout_cap", { precision: 12, scale: 2 }), // Max payout per cycle (= starting balance)
+    lastPayoutAt: timestamp("last_payout_at"), // For payout cycle tracking
+    totalPaidOut: decimal("total_paid_out", { precision: 12, scale: 2 }).default("0"), // Lifetime payouts
+    activeTradingDays: integer("active_trading_days").default(0), // Trading days in current cycle
+    consistencyFlagged: boolean("consistency_flagged").default(false), // Soft flag for >50% single-day profit
+    lastActivityAt: timestamp("last_activity_at"), // For inactivity detection (30-day termination)
+    payoutCycleStart: timestamp("payout_cycle_start"), // Start of current payout period
 });
 
 export const positions = pgTable("positions", {
@@ -232,15 +272,24 @@ export const userBadges = pgTable("user_badges", {
 export const payouts = pgTable("payouts", {
     id: text("id").primaryKey(),
     userId: text("user_id").notNull().references(() => users.id),
-    amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+    challengeId: uuid("challenge_id").references(() => challenges.id), // Link to funded challenge
+    amount: decimal("amount", { precision: 10, scale: 2 }).notNull(), // Net payout amount (after split)
     network: text("network").notNull(), // 'ERC20', 'POLYGON', 'SOLANA'
     walletAddress: text("wallet_address").notNull(),
-    status: text("status").notNull().default("pending"), // pending, processing, completed, failed
+    status: text("status").notNull().default("pending"), // pending, approved, processing, completed, failed
     requestedAt: timestamp("requested_at").notNull().defaultNow(),
     processedAt: timestamp("processed_at"),
     transactionHash: text("transaction_hash"),
     failureReason: text("failure_reason"),
     approvedBy: text("approved_by"), // Admin user ID
+
+    // Payout Calculation Details
+    cycleStart: timestamp("cycle_start"), // Payout period start
+    cycleEnd: timestamp("cycle_end"),     // Payout period end
+    grossProfit: decimal("gross_profit", { precision: 12, scale: 2 }), // Total profit before split
+    excludedPnl: decimal("excluded_pnl", { precision: 12, scale: 2 }).default("0"), // Resolution events excluded
+    profitSplit: decimal("profit_split", { precision: 4, scale: 2 }), // Split % at time of request
+
     metadata: jsonb("metadata"), // Gas fees, exchange rate, etc.
 });
 
@@ -262,3 +311,171 @@ export const leaderboardEntries = pgTable("leaderboard_entries", {
     profitRank: integer("profit_rank"),
     lastUpdated: timestamp("last_updated").notNull().defaultNow(),
 });
+
+// --- Security Enhancement Tables ---
+
+export const user2FA = pgTable("user_2fa", {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }).unique(),
+    secret: text("secret").notNull(), // Base32 encoded secret for TOTP
+    backupCodes: jsonb("backup_codes"), // Array of hashed backup codes
+    enabled: boolean("enabled").default(false),
+    createdAt: timestamp("created_at").defaultNow(),
+    lastUsedAt: timestamp("last_used_at"),
+});
+
+export const payoutMethods = pgTable("payout_methods", {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    type: varchar("type", { length: 20 }).notNull(), // 'crypto', 'paypal'
+    provider: varchar("provider", { length: 50 }), // 'confirmo', 'paypal', 'moonpay'
+    label: text("label"), // User-friendly name like "My Main Wallet"
+    details: jsonb("details").notNull(), // { walletAddress, network } or { email }
+    isDefault: boolean("is_default").default(false),
+    isActive: boolean("is_active").default(true),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const activityLogs = pgTable("activity_logs", {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    action: varchar("action", { length: 50 }).notNull(), // 'login', 'password_change', 'trade', '2fa_enabled', etc.
+    ipAddress: varchar("ip_address", { length: 45 }),
+    userAgent: text("user_agent"),
+    location: text("location"), // Optional: city/country derived from IP
+    metadata: jsonb("metadata"), // Additional context (e.g., device type, browser)
+    createdAt: timestamp("created_at").defaultNow(),
+});
+
+// --- Discount Codes & Affiliate Program ---
+
+export const discountCodes = pgTable("discount_codes", {
+    id: uuid("id").defaultRandom().primaryKey(),
+    code: varchar("code", { length: 50 }).unique().notNull(),
+    name: varchar("name", { length: 255 }).notNull(),
+    description: text("description"),
+
+    // Discount configuration
+    type: varchar("type", { length: 20 }).notNull(), // 'percentage', 'fixed_amount', 'tiered'
+    value: decimal("value", { precision: 10, scale: 2 }).notNull(), // Percentage (e.g., 25.00) or dollar amount
+
+    // Eligibility
+    eligibleTiers: jsonb("eligible_tiers"), // ['5k', '10k', '25k'] or null for all
+    newCustomersOnly: boolean("new_customers_only").default(false),
+    minPurchaseAmount: decimal("min_purchase_amount", { precision: 10, scale: 2 }),
+
+    // Validity
+    active: boolean("active").default(true),
+    validFrom: timestamp("valid_from").notNull(),
+    validUntil: timestamp("valid_until"),
+
+    // Usage limits
+    maxTotalUses: integer("max_total_uses"), // null = unlimited
+    maxUsesPerUser: integer("max_uses_per_user").default(1),
+    currentUses: integer("current_uses").default(0),
+
+    // Stacking
+    stackable: boolean("stackable").default(false),
+
+    // Metadata
+    createdBy: text("created_by").references(() => users.id),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+
+    // Analytics tags
+    campaignName: varchar("campaign_name", { length: 100 }),
+    source: varchar("source", { length: 50 }), // 'email', 'social', 'partner', 'referral'
+});
+
+export const discountRedemptions = pgTable("discount_redemptions", {
+    id: uuid("id").defaultRandom().primaryKey(),
+    discountCodeId: uuid("discount_code_id").notNull().references(() => discountCodes.id),
+    userId: text("user_id").notNull().references(() => users.id),
+    challengeId: uuid("challenge_id").references(() => challenges.id),
+
+    // Financial impact
+    originalPrice: decimal("original_price", { precision: 10, scale: 2 }).notNull(),
+    discountAmount: decimal("discount_amount", { precision: 10, scale: 2 }).notNull(),
+    finalPrice: decimal("final_price", { precision: 10, scale: 2 }).notNull(),
+
+    // Metadata
+    redeemedAt: timestamp("redeemed_at").defaultNow(),
+    ipAddress: varchar("ip_address", { length: 45 }),
+    userAgent: text("user_agent"),
+});
+
+export const affiliates = pgTable("affiliates", {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: text("user_id").references(() => users.id),
+
+    // Tier management
+    tier: integer("tier").notNull(), // 1, 2, 3
+    status: varchar("status", { length: 20 }).notNull(), // 'pending', 'active', 'suspended', 'rejected'
+
+    // Application data (Tier 2+)
+    applicationData: jsonb("application_data"), // {website, socialLinks, audienceSize, strategy}
+    approvedBy: text("approved_by").references(() => users.id),
+    approvedAt: timestamp("approved_at"),
+
+    // Commission settings
+    commissionRate: decimal("commission_rate", { precision: 5, scale: 2 }).notNull(), // e.g., 15.00 for 15%
+    lifetimeValueRate: decimal("lifetime_value_rate", { precision: 5, scale: 2 }).default("5.00"),
+
+    // Referral tracking
+    referralCode: varchar("referral_code", { length: 50 }).unique().notNull(),
+    referralLink: text("referral_link").notNull(),
+
+    // Limits (Tier 1)
+    monthlyEarningCap: decimal("monthly_earning_cap", { precision: 10, scale: 2 }),
+
+    // Contact
+    payoutMethod: varchar("payout_method", { length: 20 }), // 'paypal', 'stripe', 'wire'
+    payoutDetails: jsonb("payout_details"),
+
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const affiliateReferrals = pgTable("affiliate_referrals", {
+    id: uuid("id").defaultRandom().primaryKey(),
+    affiliateId: uuid("affiliate_id").notNull().references(() => affiliates.id),
+    userId: text("user_id").references(() => users.id), // Referred user
+
+    // Tracking
+    clickTimestamp: timestamp("click_timestamp"),
+    signupTimestamp: timestamp("signup_timestamp"),
+    purchaseTimestamp: timestamp("purchase_timestamp"),
+
+    // Attribution
+    source: varchar("source", { length: 50 }), // 'link', 'code', 'both'
+    discountCodeId: uuid("discount_code_id").references(() => discountCodes.id),
+
+    // Financial
+    purchaseAmount: decimal("purchase_amount", { precision: 10, scale: 2 }),
+    commissionEarned: decimal("commission_earned", { precision: 10, scale: 2 }),
+    commissionPaid: boolean("commission_paid").default(false),
+    payoutId: uuid("payout_id"),
+
+    // Analytics
+    referrerUrl: text("referrer_url"),
+    ipAddress: varchar("ip_address", { length: 45 }),
+    userAgent: text("user_agent"),
+});
+
+export const affiliatePayouts = pgTable("affiliate_payouts", {
+    id: uuid("id").defaultRandom().primaryKey(),
+    affiliateId: uuid("affiliate_id").notNull().references(() => affiliates.id),
+
+    amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+    periodStart: timestamp("period_start").notNull(),
+    periodEnd: timestamp("period_end").notNull(),
+
+    status: varchar("status", { length: 20 }).notNull(), // 'pending', 'processing', 'paid', 'failed'
+    paymentMethod: varchar("payment_method", { length: 20 }),
+    transactionId: varchar("transaction_id", { length: 100 }),
+
+    createdAt: timestamp("created_at").defaultNow(),
+    paidAt: timestamp("paid_at"),
+});
+
