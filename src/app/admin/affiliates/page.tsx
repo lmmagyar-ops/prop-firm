@@ -339,7 +339,7 @@ export default function AffiliatesPage() {
                                                 <div>
                                                     <div className="text-xs text-zinc-500">Earned</div>
                                                     <div className="font-mono text-sm text-purple-400 tabular-nums">
-                                                        ${affiliate.stats.total Commission.toFixed(0)}
+                                                        ${affiliate.stats.totalCommission.toFixed(0)}
                                                     </div>
                                                 </div>
                                             </div>

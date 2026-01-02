@@ -45,7 +45,7 @@ export default function DiscountsPage() {
         newCustomersOnly: false,
         validFrom: new Date().toISOString().split('T')[0],
         validUntil: "",
-        maxTotal Uses: "",
+        maxTotalUses: "",
         maxUsesPerUser: "1",
         campaignName: ""
     });
@@ -399,8 +399,8 @@ export default function DiscountsPage() {
                                                 <Badge
                                                     variant="outline"
                                                     className={`text-xs ${discount.active
-                                                            ? 'text-green-400 border-green-500/20 bg-green-500/10'
-                                                            : 'text-zinc-500 border-zinc-500/20 bg-zinc-500/10'
+                                                        ? 'text-green-400 border-green-500/20 bg-green-500/10'
+                                                        : 'text-zinc-500 border-zinc-500/20 bg-zinc-500/10'
                                                         }`}
                                                 >
                                                     {discount.active ? 'Active' : 'Inactive'}
