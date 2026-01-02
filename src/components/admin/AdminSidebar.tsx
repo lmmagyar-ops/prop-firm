@@ -2,14 +2,16 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, ShieldAlert, Users, Lock, BarChart3, Settings, LogOut, Rocket, BookOpen } from "lucide-react";
+import { LayoutDashboard, ShieldAlert, Users, Lock, BarChart3, Settings, LogOut, Rocket, BookOpen, UserCog } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
+import { signOut } from "next-auth/react";
 
 const navigation = [
     { name: "Overview", href: "/admin", icon: LayoutDashboard },
     { name: "Risk Desk", href: "/admin/risk", icon: ShieldAlert },
-    { name: "Traders", href: "/admin/traders", icon: Users },
+    { name: "Users", href: "/admin/users", icon: UserCog },
+    { name: "Traders DNA", href: "/admin/traders", icon: Users },
     { name: "Security", href: "/admin/security", icon: Lock },
     { name: "Analytics", href: "/admin/analytics", icon: BarChart3 },
     { name: "Growth", href: "/admin/growth", icon: Rocket },
@@ -77,7 +79,10 @@ export function AdminSidebar() {
                 <div className="text-xs font-semibold text-zinc-600 uppercase tracking-wider mb-2 px-3">System</div>
                 <nav className="space-y-1">
                     <NavItem item={{ name: "Settings", href: "/admin/settings", icon: Settings }} />
-                    <button className="w-full relative flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg text-red-500/70 hover:text-red-400 hover:bg-red-500/10 transition-all group">
+                    <button
+                        onClick={() => signOut({ callbackUrl: "/" })}
+                        className="w-full relative flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg text-red-500/70 hover:text-red-400 hover:bg-red-500/10 transition-all group"
+                    >
                         <LogOut className="h-4 w-4" />
                         Sign Out
                     </button>
