@@ -1,6 +1,7 @@
 import { db } from "@/db";
 import { challenges, positions, users } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
+import { FUNDED_RULES, type FundedTier } from "@/lib/funded-rules";
 
 export async function getDashboardData(userId: string) {
     // MOCK DATA BYPASS - REMOVED (Now using real DB for everyone)
@@ -58,6 +59,7 @@ export async function getDashboardData(userId: string) {
             finalPnL: parseFloat(c.currentBalance) - parseFloat(c.startingBalance),
             startedAt: c.startedAt,
             completedAt: c.status !== 'active' ? c.endsAt : null,
+            platform: c.platform || "polymarket",
         })).sort((a, b) => {
             const timeA = a.startedAt ? new Date(a.startedAt).getTime() : 0;
             const timeB = b.startedAt ? new Date(b.startedAt).getTime() : 0;
@@ -150,6 +152,62 @@ export async function getDashboardData(userId: string) {
         };
     });
 
+    // 7. Funded-specific data
+    const isFunded = activeChallenge.phase === 'funded';
+    let fundedStats = null;
+
+    if (isFunded) {
+        // Determine tier based on starting balance
+        let tier: FundedTier;
+        if (startingBalance <= 5000) {
+            tier = "5k";
+        } else if (startingBalance <= 10000) {
+            tier = "10k";
+        } else {
+            tier = "25k";
+        }
+
+        const fundedRules = FUNDED_RULES[tier];
+        const profitSplit = parseFloat(activeChallenge.profitSplit || "0.80");
+        const payoutCap = parseFloat(activeChallenge.payoutCap || fundedRules.payoutCap.toString());
+        const activeTradingDays = activeChallenge.activeTradingDays || 0;
+        const consistencyFlagged = activeChallenge.consistencyFlagged || false;
+        const lastActivityAt = activeChallenge.lastActivityAt;
+        const payoutCycleStart = activeChallenge.payoutCycleStart;
+
+        // Calculate days until next payout cycle (bi-weekly = 14 days)
+        const cycleLength = 14;
+        const daysSinceCycleStart = payoutCycleStart
+            ? Math.floor((Date.now() - new Date(payoutCycleStart).getTime()) / (1000 * 60 * 60 * 24))
+            : 0;
+        const daysUntilPayout = Math.max(0, cycleLength - daysSinceCycleStart);
+
+        // Net profit available for payout
+        const netProfit = Math.max(0, totalPnL);
+
+        // Eligibility check (simplified - full check in PayoutService)
+        const hasMinTradingDays = activeTradingDays >= fundedRules.minTradingDays;
+        const hasProfit = netProfit > 0;
+        const eligible = hasProfit && hasMinTradingDays;
+
+        fundedStats = {
+            tier,
+            profitSplit,
+            payoutCap,
+            activeTradingDays,
+            requiredTradingDays: fundedRules.minTradingDays,
+            consistencyFlagged,
+            lastActivityAt,
+            payoutCycleStart,
+            daysUntilPayout,
+            netProfit,
+            eligible,
+            hasViolations: false, // Would check actual violations in production
+            maxTotalDrawdown: fundedRules.maxTotalDrawdown,
+            maxDailyDrawdown: fundedRules.maxDailyDrawdown,
+        };
+    }
+
     return {
         user,
         lifetimeStats,
@@ -165,6 +223,7 @@ export async function getDashboardData(userId: string) {
             rulesConfig: rules,
             startedAt: activeChallenge.startedAt,
             endsAt: activeChallenge.endsAt,
+            platform: activeChallenge.platform || "polymarket",
         },
         positions: positionsWithPnL,
         stats: {
@@ -175,5 +234,8 @@ export async function getDashboardData(userId: string) {
             profitProgress,
         },
         challengeHistory,
+        // Funded-specific data
+        isFunded,
+        fundedStats,
     };
 }

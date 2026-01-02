@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { challenges, positions } from "@/db/schema";
+import { challenges, positions, trades } from "@/db/schema";
 import { auth } from "@/auth";
 import { eq, and } from "drizzle-orm";
 
@@ -38,11 +38,22 @@ export async function POST(req: NextRequest) {
         }
 
         if (action === "reset") {
-            // Delete EVERYTHING for this user
+            // Get all challenges for this user first
+            const userChallenges = await db.query.challenges.findMany({
+                where: eq(challenges.userId, userId)
+            });
+
+            // Delete in correct order (respecting foreign key constraints)
+            for (const challenge of userChallenges) {
+                // Delete trades first
+                await db.delete(trades).where(eq(trades.challengeId, challenge.id));
+                // Delete positions  
+                await db.delete(positions).where(eq(positions.challengeId, challenge.id));
+            }
+
+            // Now delete challenges
             await db.delete(challenges).where(eq(challenges.userId, userId));
-            // Also technically should delete positions but cascade might not be set up, so manual delete:
-            // Note: positions table requires challengeId, so simple delete checks might be complex without challenge ID.
-            // For now, just wiping challenges usually "hides" the positions effectively in the UI.
+            console.log(`[DevTools API] Reset complete - deleted ${userChallenges.length} challenges`);
         }
 
         if (action === "force_fail") {

@@ -1,7 +1,6 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { TrendingUp, Clock } from "lucide-react";
 import type { EventMetadata } from "@/app/actions/market";
 
 interface BinaryEventCardProps {
@@ -11,15 +10,20 @@ interface BinaryEventCardProps {
 
 /**
  * BinaryEventCard - Polymarket style Yes/No card
- * Used for single-outcome binary markets
+ * Includes price breakdown to add height naturally
  */
 export function BinaryEventCard({ event, onTrade }: BinaryEventCardProps) {
     const market = event.markets[0];
     if (!market) return null;
 
-    const yesPrice = market.price;
+    // Handle very low prices - display as "?" to indicate uncertainty
+    const rawYesPrice = market.price;
+    const yesPrice = rawYesPrice < 0.01 ? 0.5 : rawYesPrice; // Fallback to 50% for display
     const noPrice = 1 - yesPrice;
     const percentage = Math.round(yesPrice * 100);
+    const yesCents = Math.round(yesPrice * 100);
+    const noCents = Math.round(noPrice * 100);
+    const isUncertain = rawYesPrice < 0.01; // Mark as uncertain if original was ~0%
 
     const formatVolume = (volume: number) => {
         if (volume >= 1_000_000) return `$${(volume / 1_000_000).toFixed(1)}m`;
@@ -28,85 +32,63 @@ export function BinaryEventCard({ event, onTrade }: BinaryEventCardProps) {
     };
 
     return (
-        <div className="bg-zinc-900/50 border border-white/5 rounded-xl overflow-hidden hover:border-white/10 transition-all group">
-            {/* Header with Image */}
-            <div className="relative">
-                {event.image ? (
-                    <div className="h-24 overflow-hidden">
-                        <img
-                            src={event.image}
-                            alt=""
-                            className="w-full h-full object-cover opacity-60 group-hover:opacity-80 transition-opacity"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 to-transparent" />
-                    </div>
-                ) : (
-                    <div className="h-16 bg-gradient-to-br from-blue-500/20 to-purple-500/20" />
+        <div className="bg-zinc-900/50 border border-white/5 rounded-xl p-4 hover:border-white/10 transition-all min-h-[180px] h-full flex flex-col">
+            {/* Header Row: Icon + Title + Percentage Badge */}
+            <div className="flex items-start gap-3 mb-4">
+                {/* Small circular icon */}
+                {event.image && (
+                    <img
+                        src={event.image}
+                        alt=""
+                        className="w-12 h-12 rounded-full object-cover shrink-0"
+                    />
                 )}
 
-                {/* Probability Badge */}
-                <div className="absolute top-3 right-3">
-                    <div className={cn(
-                        "px-2 py-1 rounded-lg text-xs font-bold",
-                        percentage >= 50
-                            ? "bg-emerald-500/20 text-emerald-400"
-                            : "bg-rose-500/20 text-rose-400"
-                    )}>
-                        {percentage}%
-                    </div>
-                </div>
-            </div>
-
-            {/* Content */}
-            <div className="p-4 space-y-4">
                 {/* Title */}
-                <h3 className="font-semibold text-white text-sm leading-tight line-clamp-2">
+                <h3 className="flex-1 font-semibold text-white text-sm leading-tight line-clamp-2 min-w-0 pt-1">
                     {event.title}
                 </h3>
 
-                {/* Probability Bar */}
-                <div className="space-y-2">
-                    <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
-                        <div
-                            className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full transition-all"
-                            style={{ width: `${percentage}%` }}
-                        />
-                    </div>
-                    <div className="flex justify-between text-xs text-zinc-500">
-                        <span>Yes {percentage}%</span>
-                        <span>No {100 - percentage}%</span>
-                    </div>
+                {/* Percentage Badge */}
+                <div className={cn(
+                    "shrink-0 px-2.5 py-1.5 rounded-lg text-xs font-bold text-center",
+                    percentage >= 50
+                        ? "bg-emerald-500/20 text-emerald-400"
+                        : "bg-rose-500/20 text-rose-400"
+                )}>
+                    {percentage}%
+                    <div className="text-[10px] opacity-70">chance</div>
                 </div>
+            </div>
 
-                {/* Trading Buttons */}
-                <div className="flex gap-2">
-                    <button
-                        onClick={() => onTrade(market.id, 'yes')}
-                        className="flex-1 py-2.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 font-semibold text-sm transition-colors"
-                    >
-                        Yes {Math.round(yesPrice * 100)}¢
-                    </button>
-                    <button
-                        onClick={() => onTrade(market.id, 'no')}
-                        className="flex-1 py-2.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 font-semibold text-sm transition-colors"
-                    >
-                        No {Math.round(noPrice * 100)}¢
-                    </button>
-                </div>
+            {/* Price Breakdown Row */}
+            <div className="flex items-center justify-between text-xs text-zinc-400 mb-4 px-1">
+                <span>Buy Yes <span className="text-[#00C896] font-semibold">{yesCents}¢</span></span>
+                <span>Buy No <span className="text-[#E63E5D] font-semibold">{noCents}¢</span></span>
+            </div>
 
-                {/* Footer Stats */}
-                <div className="flex items-center justify-between text-xs text-zinc-500">
-                    <span className="flex items-center gap-1">
-                        <TrendingUp className="w-3 h-3" />
-                        {formatVolume(event.volume)} Vol.
-                    </span>
-                    {event.markets[0]?.outcomes && (
-                        <span className="flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            Annual
-                        </span>
-                    )}
-                </div>
+            {/* Trading Buttons - Polymarket hollow style */}
+            <div className="flex gap-3 mb-4">
+                <button
+                    onClick={(e) => { e.stopPropagation(); onTrade(market.id, 'yes'); }}
+                    className="flex-1 py-3 rounded-lg bg-transparent hover:bg-[#00C896]/10 text-[#00C896] font-bold text-sm transition-colors border-2 border-[#00C896]/40 hover:border-[#00C896]"
+                >
+                    Yes
+                </button>
+                <button
+                    onClick={(e) => { e.stopPropagation(); onTrade(market.id, 'no'); }}
+                    className="flex-1 py-3 rounded-lg bg-transparent hover:bg-[#E63E5D]/10 text-[#E63E5D] font-bold text-sm transition-colors border-2 border-[#E63E5D]/40 hover:border-[#E63E5D]"
+                >
+                    No
+                </button>
+            </div>
+
+            {/* Spacer */}
+            <div className="flex-1" />
+
+            {/* Footer Stats */}
+            <div className="flex items-center justify-between text-xs text-zinc-500 mt-auto">
+                <span>{formatVolume(event.volume)} Vol.</span>
             </div>
         </div>
     );

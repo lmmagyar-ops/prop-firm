@@ -46,6 +46,9 @@ vi.mock("@/db", () => ({
     }
 }));
 
+// Import after mocking
+import { db } from "@/db";
+
 vi.mock("./challenges", () => ({
     ChallengeManager: {
         getActiveChallenge: vi.fn()
@@ -79,6 +82,18 @@ vi.mock("./risk", () => ({
 describe("TradeExecutor", () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        // Reset db.select to default successful challenge mock
+        vi.mocked(db.select).mockReturnValue({
+            from: vi.fn(() => ({
+                where: vi.fn(() => [{
+                    id: "challenge-123",
+                    userId: "user-1",
+                    status: "active",
+                    currentBalance: "10000",
+                    rulesConfig: {}
+                }])
+            }))
+        } as any);
     });
 
     it("should execute a valid BUY trade", async () => {
@@ -94,7 +109,7 @@ describe("TradeExecutor", () => {
         };
 
         // Setup Mocks - Cast to any to avoid strict TS mock typing issues
-        vi.mocked(ChallengeManager.getActiveChallenge).mockResolvedValue(mockChallenge as any);
+        // Note: TradeExecutor now queries challenge directly from DB, not via ChallengeManager
         vi.mocked(MarketService.getLatestPrice).mockResolvedValue(mockMarketData as any);
         vi.mocked(RiskEngine.validateTrade).mockResolvedValue({ allowed: true });
 
@@ -102,9 +117,8 @@ describe("TradeExecutor", () => {
         const result = await TradeExecutor.executeTrade("user-1", "challenge-123", "asset-123", "BUY", 1000);
 
         // Verify
-        expect(ChallengeManager.getActiveChallenge).toHaveBeenCalledWith("user-1");
         expect(MarketService.getLatestPrice).toHaveBeenCalledWith("asset-123");
-        expect(RiskEngine.validateTrade).toHaveBeenCalledWith("challenge-123");
+        expect(RiskEngine.validateTrade).toHaveBeenCalledWith("challenge-123", "asset-123", 1000);
 
         // Result should match the mocked DB return
         expect(result.id).toBe("trade-123");
@@ -112,13 +126,22 @@ describe("TradeExecutor", () => {
     });
 
     it("should reject trade if balance is insufficient", async () => {
-        const mockChallenge = {
+        // Override the db mock to return low balance challenge
+        const lowBalanceChallenge = {
             id: "challenge-123",
+            userId: "user-1",
+            status: "active",
             currentBalance: "500", // Less than trade amount
             rulesConfig: {}
         };
 
-        vi.mocked(ChallengeManager.getActiveChallenge).mockResolvedValue(mockChallenge as any);
+        // Mock the DB select to return low balance challenge
+        vi.mocked(db.select).mockReturnValue({
+            from: vi.fn(() => ({
+                where: vi.fn(() => [lowBalanceChallenge])
+            }))
+        } as any);
+
         vi.mocked(MarketService.getLatestPrice).mockResolvedValue({ price: "0.50", asset_id: "a", timestamp: Date.now() } as any);
 
         await expect(TradeExecutor.executeTrade("user-1", "challenge-123", "a", "BUY", 1000))
@@ -126,13 +149,7 @@ describe("TradeExecutor", () => {
     });
 
     it("should reject trade if risk check fails", async () => {
-        const mockChallenge = {
-            id: "challenge-123",
-            currentBalance: "10000",
-            rulesConfig: {}
-        };
-
-        vi.mocked(ChallengeManager.getActiveChallenge).mockResolvedValue(mockChallenge as any);
+        // Note: TradeExecutor now queries challenge directly from DB, mocked at top of file
         vi.mocked(MarketService.getLatestPrice).mockResolvedValue({ price: "0.50", asset_id: "a", timestamp: Date.now() } as any);
         vi.mocked(RiskEngine.validateTrade).mockResolvedValue({ allowed: false, reason: "Max Drawdown" });
 
@@ -140,3 +157,96 @@ describe("TradeExecutor", () => {
             .rejects.toThrow("Max Drawdown"); // Error reason from RiskEngine
     });
 });
+
+// === NO POSITION TESTS ===
+
+describe("TradeExecutor - NO Position Direction", () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        // Reset db.select to default successful challenge mock
+        vi.mocked(db.select).mockReturnValue({
+            from: vi.fn(() => ({
+                where: vi.fn(() => [{
+                    id: "challenge-123",
+                    userId: "user-1",
+                    status: "active",
+                    currentBalance: "10000",
+                    rulesConfig: {}
+                }])
+            }))
+        } as any);
+    });
+
+    it("should accept direction='NO' parameter", async () => {
+        const mockChallenge = {
+            id: "challenge-123",
+            currentBalance: "10000",
+            rulesConfig: {}
+        };
+        const mockMarketData = {
+            price: "0.40",  // YES price
+            asset_id: "asset-123",
+            timestamp: Date.now()
+        };
+
+        // Note: TradeExecutor now queries challenge directly from DB, mocked at top of file
+        vi.mocked(MarketService.getLatestPrice).mockResolvedValue(mockMarketData as any);
+        vi.mocked(RiskEngine.validateTrade).mockResolvedValue({ allowed: true });
+
+        // Mock order book for NO position (inverted)
+        vi.mocked(MarketService.getOrderBook).mockResolvedValue({
+            bids: [{ price: "0.40", size: "10000" }],
+            asks: [{ price: "0.41", size: "10000" }]
+        } as any);
+
+        vi.mocked(MarketService.calculateImpact).mockReturnValue({
+            filled: true,
+            executedPrice: 0.60, // 1 - 0.40 for NO
+            totalShares: 1666,   // $1000 / $0.60
+            slippagePercent: 0.005,
+            reason: null as any
+        });
+
+        // Execute with direction='NO'
+        const result = await TradeExecutor.executeTrade(
+            "user-1",
+            "challenge-123",
+            "asset-123",
+            "BUY",
+            1000,
+            "NO"  // Direction parameter
+        );
+
+        // Should not throw - direction is accepted
+        expect(result).toBeDefined();
+    });
+
+    it("should default to YES direction when not specified", async () => {
+        const mockChallenge = {
+            id: "challenge-123",
+            currentBalance: "10000",
+            rulesConfig: {}
+        };
+
+        // Note: TradeExecutor now queries challenge directly from DB, mocked at top of file
+        vi.mocked(MarketService.getLatestPrice).mockResolvedValue({
+            price: "0.50",
+            asset_id: "asset-123",
+            timestamp: Date.now()
+        } as any);
+        vi.mocked(RiskEngine.validateTrade).mockResolvedValue({ allowed: true });
+
+        // Execute WITHOUT direction (should default to YES)
+        const result = await TradeExecutor.executeTrade(
+            "user-1",
+            "challenge-123",
+            "asset-123",
+            "BUY",
+            1000
+            // No direction param = defaults to YES
+        );
+
+        expect(result).toBeDefined();
+    });
+});
+

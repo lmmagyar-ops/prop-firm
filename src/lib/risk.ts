@@ -94,18 +94,27 @@ export class RiskEngine {
             }
         }
 
-        // --- RULE 5: LOW-VOLUME MARKET CAP (2.5%) ---
+        // --- RULE 5: VOLUME-TIERED EXPOSURE (Funded Stage Enhanced) ---
+        // >$10M = 5%, $1-10M = 2.5%, $100k-1M = 0.5%, <$100k = blocked (RULE 7)
         if (market) {
             const marketVolume = market.volume || 0;
-            if (marketVolume < (rules.lowVolumeThreshold || 10_000_000)) {
-                const lowVolMax = startBalance * (rules.lowVolumeMaxPositionPercent || 0.025);
-                if (tradeAmount > lowVolMax) {
-                    return {
-                        allowed: false,
-                        reason: `Low-volume market (<$10M). Max position: $${lowVolMax.toFixed(2)}`
-                    };
-                }
+            const exposureLimit = this.getExposureLimitByVolume(startBalance, marketVolume);
+            const volumeTier = this.getVolumeTierLabel(marketVolume);
+
+            console.log(`  [RULE 5] Volume-Tiered Exposure Check:`);
+            console.log(`    Market Volume: $${marketVolume.toLocaleString()}`);
+            console.log(`    Tier: ${volumeTier}`);
+            console.log(`    Max Exposure: $${exposureLimit.toFixed(2)}`);
+            console.log(`    Trade Amount: $${tradeAmount.toFixed(2)}`);
+
+            if (tradeAmount > exposureLimit && exposureLimit > 0) {
+                console.log(`  ❌ BLOCKED: Volume-Tiered Exposure Limit`);
+                return {
+                    allowed: false,
+                    reason: `Max exposure for ${volumeTier} market: $${exposureLimit.toFixed(2)} (trade: $${tradeAmount.toFixed(2)})`
+                };
             }
+            console.log(`  ✅ PASS`);
 
             // --- RULE 6: LIQUIDITY ENFORCEMENT (10% of 24h Volume) ---
             const maxImpact = marketVolume * (rules.maxVolumeImpactPercent || 0.10);
@@ -125,9 +134,67 @@ export class RiskEngine {
             }
         }
 
+        // --- RULE 8: MAX OPEN POSITIONS (Tiered by Account Size) ---
+        // 5k=10, 10k=15, 25k=20
+        const maxPositions = this.getMaxPositionsForTier(startBalance);
+        const openPositionCount = await this.getOpenPositionCount(challengeId);
+
+        if (openPositionCount >= maxPositions) {
+            console.log(`  ❌ BLOCKED: Max Positions Limit (${maxPositions})`);
+            return {
+                allowed: false,
+                reason: `Max ${maxPositions} open positions allowed for your account tier. Currently: ${openPositionCount}`
+            };
+        }
+        console.log(`  [RULE 8] Open Positions: ${openPositionCount}/${maxPositions} ✅`);
+
         console.log("\n✅ ALL RULES PASSED - Trade Allowed");
         console.log("=== RISK VALIDATION END ===\n");
         return { allowed: true };
+    }
+
+    /**
+     * Get max positions allowed based on account tier
+     */
+    private static getMaxPositionsForTier(startingBalance: number): number {
+        if (startingBalance >= 25000) return 20;
+        if (startingBalance >= 10000) return 15;
+        if (startingBalance >= 5000) return 10;
+        return 5; // Default for very small accounts
+    }
+
+    /**
+     * Count open positions for a challenge
+     */
+    private static async getOpenPositionCount(challengeId: string): Promise<number> {
+        const openPositions = await db.query.positions.findMany({
+            where: and(
+                eq(positions.challengeId, challengeId),
+                eq(positions.status, "OPEN")
+            )
+        });
+        return openPositions.length;
+    }
+
+    /**
+     * Get exposure limit based on market volume tier
+     * >$10M = 5%, $1-10M = 2.5%, $100k-1M = 0.5%, <$100k = 0 (blocked)
+     */
+    private static getExposureLimitByVolume(balance: number, volume: number): number {
+        if (volume >= 10_000_000) return balance * 0.05;   // 5% for high volume
+        if (volume >= 1_000_000) return balance * 0.025;   // 2.5% for medium volume
+        if (volume >= 100_000) return balance * 0.005;     // 0.5% for low volume
+        return 0; // Block trading on <$100k volume markets (handled by RULE 7)
+    }
+
+    /**
+     * Get human-readable volume tier label
+     */
+    private static getVolumeTierLabel(volume: number): string {
+        if (volume >= 10_000_000) return "high volume (>$10M)";
+        if (volume >= 1_000_000) return "medium volume ($1-10M)";
+        if (volume >= 100_000) return "low volume ($100k-1M)";
+        return "insufficient volume (<$100k)";
     }
 
     /**
@@ -175,9 +242,12 @@ export class RiskEngine {
 
     /**
      * Called to update High Water Mark after a profitable trade closed
+     * Note: HWM is now updated by the ChallengeEvaluator after each trade.
+     * This method is kept for backward compatibility but is effectively a no-op.
      */
     static async updateHighWaterMark(challengeId: string, newBalance: number) {
-        // Logic to fetch and update if newBalance > HWM
-        // ...
+        // HWM updates are handled by ChallengeEvaluator.evaluate()
+        // See evaluator.ts lines 102-107
+        console.log(`[RiskEngine] HWM update called for ${challengeId.slice(0, 8)}, delegating to evaluator`);
     }
 }

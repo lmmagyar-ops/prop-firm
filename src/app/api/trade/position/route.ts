@@ -7,6 +7,7 @@ export async function GET(req: NextRequest) {
     const searchParams = req.nextUrl.searchParams;
     const userId = searchParams.get("userId");
     const marketId = searchParams.get("marketId");
+    const direction = searchParams.get("direction") as "YES" | "NO" | null;
 
     if (!userId || !marketId) {
         return NextResponse.json({ error: "Missing required params" }, { status: 400 });
@@ -26,12 +27,20 @@ export async function GET(req: NextRequest) {
         }
 
         // 2. Get open position for this market
+        // If direction is provided, filter by it; otherwise get most recent
+        const whereConditions = [
+            eq(positions.challengeId, activeChallenge.id),
+            eq(positions.marketId, marketId),
+            eq(positions.status, "OPEN")
+        ];
+
+        if (direction) {
+            whereConditions.push(eq(positions.direction, direction));
+        }
+
         const position = await db.query.positions.findFirst({
-            where: and(
-                eq(positions.challengeId, activeChallenge.id),
-                eq(positions.marketId, marketId),
-                eq(positions.status, "OPEN")
-            )
+            where: and(...whereConditions),
+            orderBy: (positions, { desc }) => [desc(positions.openedAt)]
         });
 
         if (!position) {
@@ -43,9 +52,14 @@ export async function GET(req: NextRequest) {
         const current = parseFloat(position.currentPrice || position.entryPrice);
         const shares = parseFloat(position.shares);
         const invested = parseFloat(position.sizeAmount);
+        const posDirection = position.direction as "YES" | "NO";
 
-        // P&L Formula: (Current - Entry) * Shares
-        const currentPnl = (current - entry) * shares;
+        // P&L Formula: direction-aware calculation
+        // YES: profit when price goes UP (current - entry)
+        // NO: profit when price goes DOWN (entry - current)
+        const currentPnl = posDirection === "YES"
+            ? (current - entry) * shares
+            : (entry - current) * shares;
 
         // ROI metric
         const roi = invested > 0 ? (currentPnl / invested) * 100 : 0;
@@ -58,7 +72,7 @@ export async function GET(req: NextRequest) {
                 invested,
                 currentPnl,
                 roi,
-                side: position.direction as "YES" | "NO"
+                side: posDirection
             }
         });
 

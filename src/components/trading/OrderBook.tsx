@@ -1,86 +1,141 @@
-
 "use client";
 
-import { useMemo } from "react";
-import { generateOrderBook, type SimulatedOrderBook } from "@/lib/trading/orderbook-simulator";
+import { useState, useEffect } from "react";
+import { cn } from "@/lib/utils";
 
 interface OrderBookProps {
-    marketPrice: number;
-    outcome: "YES" | "NO";
+    tokenId?: string;
+    marketPrice?: number;
+    outcome?: "YES" | "NO";
 }
 
-export function OrderBook({ marketPrice, outcome }: OrderBookProps) {
-    // Regenerate book roughly when marketPrice changes significantly
-    // Using useMemo here is a bit "static" but sufficient for demo. 
-    // Ideally, we'd jitter this periodically.
+interface OrderLevel {
+    price: string;
+    size: string;
+}
 
-    const book = useMemo(() =>
-        generateOrderBook(marketPrice, 8),
-        [Math.round(marketPrice * 100) / 100] // Only regen if price changes by 1¢
+/**
+ * OrderBook - Displays bid/ask depth from Polymarket CLOB
+ * Fetches live data when tokenId is provided, otherwise shows empty state
+ */
+export function OrderBook({ tokenId, marketPrice, outcome }: OrderBookProps) {
+    const [bids, setBids] = useState<OrderLevel[]>([]);
+    const [asks, setAsks] = useState<OrderLevel[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [isOpen, setIsOpen] = useState(false);
+
+    useEffect(() => {
+        if (!tokenId || !isOpen) return;
+
+        const fetchBook = async () => {
+            setLoading(true);
+            try {
+                const res = await fetch(`/api/orderbook?token_id=${tokenId}`);
+                const data = await res.json();
+                setBids(data.bids || []);
+                setAsks(data.asks || []);
+            } catch (error) {
+                console.error("[OrderBook] Fetch error:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchBook();
+        // Refresh every 10 seconds while open
+        const interval = setInterval(fetchBook, 10000);
+        return () => clearInterval(interval);
+    }, [tokenId, isOpen]);
+
+    const formatPrice = (price: string) => {
+        const p = parseFloat(price);
+        return `${(p * 100).toFixed(1)}¢`;
+    };
+
+    const formatSize = (size: string) => {
+        const s = parseFloat(size);
+        if (s >= 1_000_000) return `${(s / 1_000_000).toFixed(1)}M`;
+        if (s >= 1_000) return `${(s / 1_000).toFixed(1)}K`;
+        return s.toFixed(0);
+    };
+
+    // Calculate max size for bar widths
+    const maxSize = Math.max(
+        ...bids.map(b => parseFloat(b.size)),
+        ...asks.map(a => parseFloat(a.size)),
+        1
     );
 
-    // Max depth for bars calculation
-    const maxTotal = Math.max(
-        book.bids[book.bids.length - 1]?.total || 0,
-        book.asks[book.asks.length - 1]?.total || 0
-    );
+    // Calculate spread
+    const bestBid = bids[0] ? parseFloat(bids[0].price) : 0;
+    const bestAsk = asks[0] ? parseFloat(asks[0].price) : 1;
+    const spread = bestAsk - bestBid;
 
     return (
-        <div className="bg-zinc-900/30 rounded-lg overflow-hidden border border-zinc-900/50">
-            {/* Header */}
-            <div className="p-3 border-b border-zinc-800 flex justify-between items-center">
-                <h3 className="text-xs font-bold uppercase text-zinc-400 tracking-wider">Order Book</h3>
-                <p className="text-xs text-zinc-600 font-mono">
-                    Spread: <span className="text-zinc-400">{(book.spread * 100).toFixed(1)}¢</span>
-                </p>
-            </div>
+        <details
+            className="group border-t border-white/5"
+            open={isOpen}
+            onToggle={(e) => setIsOpen((e.target as HTMLDetailsElement).open)}
+        >
+            <summary className="px-6 py-4 flex items-center justify-between cursor-pointer text-sm font-semibold text-white hover:bg-white/5 transition-colors">
+                <span className="flex items-center gap-2">
+                    Order Book
+                    <span className="text-xs text-zinc-500 font-normal">
+                        {isOpen && !loading && bids.length > 0 ? `Spread: ${(spread * 100).toFixed(1)}¢` : "(Live)"}
+                    </span>
+                </span>
+                <svg className="w-4 h-4 text-zinc-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+            </summary>
 
-            {/* Order Book Table */}
-            <div className="grid grid-cols-2 divide-x divide-zinc-800">
-                {/* Bids (Buy / YES side typically? Or just Bids) */}
-                <div className="flex flex-col">
-                    <div className="p-2 bg-zinc-900/50 border-b border-zinc-800 grid grid-cols-2 text-xs font-bold text-zinc-500 uppercase">
-                        <span>Bid</span>
-                        <span className="text-right">Shares</span>
-                    </div>
-                    {book.bids.map((bid, i) => (
-                        <div
-                            key={i}
-                            className="p-1 px-2 grid grid-cols-2 text-xs hover:bg-green-500/5 transition-colors relative h-7 items-center"
-                        >
-                            <div
-                                className="absolute inset-y-0 right-0 bg-green-500/10"
-                                style={{ width: `${(bid.total / maxTotal) * 100}%` }}
-                            />
-                            <span className="relative z-10 font-mono text-green-400">{(bid.price * 100).toFixed(1)}¢</span>
-                            <span className="relative z-10 font-mono text-zinc-400 text-right">{bid.shares.toLocaleString()}</span>
+            <div className="px-6 pb-4">
+                {!tokenId ? (
+                    <div className="text-center py-4 text-sm text-zinc-500">Select a market to view order book</div>
+                ) : loading && bids.length === 0 ? (
+                    <div className="text-center py-4 text-sm text-zinc-500">Loading...</div>
+                ) : bids.length === 0 && asks.length === 0 ? (
+                    <div className="text-center py-4 text-sm text-zinc-500">No orders available</div>
+                ) : (
+                    <div className="grid grid-cols-2 gap-4">
+                        {/* Bids (Buy Orders - Green) */}
+                        <div>
+                            <div className="flex justify-between text-xs text-zinc-500 font-medium mb-2 px-1">
+                                <span>BID</span>
+                                <span>SIZE</span>
+                            </div>
+                            {bids.map((bid, i) => (
+                                <div key={i} className="relative flex justify-between items-center py-1.5 px-2 text-xs">
+                                    <div
+                                        className="absolute inset-y-0 left-0 bg-emerald-500/15 rounded"
+                                        style={{ width: `${(parseFloat(bid.size) / maxSize) * 100}%` }}
+                                    />
+                                    <span className="relative text-emerald-400 font-mono">{formatPrice(bid.price)}</span>
+                                    <span className="relative text-zinc-400 font-mono">{formatSize(bid.size)}</span>
+                                </div>
+                            ))}
                         </div>
-                    ))}
-                </div>
 
-                {/* Asks (Sell / NO side) */}
-                <div className="flex flex-col">
-                    <div className="p-2 bg-zinc-900/50 border-b border-zinc-800 grid grid-cols-2 text-xs font-bold text-zinc-500 uppercase">
-                        <span>Ask</span>
-                        <span className="text-right">Shares</span>
-                    </div>
-                    {book.asks.map((ask, i) => (
-                        <div
-                            key={i}
-                            className="p-1 px-2 grid grid-cols-2 text-xs hover:bg-red-500/5 transition-colors relative h-7 items-center"
-                        >
-                            <div
-                                className="absolute inset-y-0 right-0 bg-red-500/10" // Bar grows from right for depth visual? Or left?
-                                // Standard is bar grows from right to left? or full width?
-                                // Let's make it grow from left for asks
-                                style={{ width: `${(ask.total / maxTotal) * 100}%` }}
-                            />
-                            <span className="relative z-10 font-mono text-red-500">{(ask.price * 100).toFixed(1)}¢</span>
-                            <span className="relative z-10 font-mono text-zinc-400 text-right">{ask.shares.toLocaleString()}</span>
+                        {/* Asks (Sell Orders - Red) */}
+                        <div>
+                            <div className="flex justify-between text-xs text-zinc-500 font-medium mb-2 px-1">
+                                <span>ASK</span>
+                                <span>SIZE</span>
+                            </div>
+                            {asks.map((ask, i) => (
+                                <div key={i} className="relative flex justify-between items-center py-1.5 px-2 text-xs">
+                                    <div
+                                        className="absolute inset-y-0 right-0 bg-rose-500/15 rounded"
+                                        style={{ width: `${(parseFloat(ask.size) / maxSize) * 100}%` }}
+                                    />
+                                    <span className="relative text-rose-400 font-mono">{formatPrice(ask.price)}</span>
+                                    <span className="relative text-zinc-400 font-mono">{formatSize(ask.size)}</span>
+                                </div>
+                            ))}
                         </div>
-                    ))}
-                </div>
+                    </div>
+                )}
             </div>
-        </div>
+        </details>
     );
 }

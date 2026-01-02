@@ -86,6 +86,11 @@ export function useTradeExecution(options: UseTradeExecutionOptions = {}) {
                 toast.success("🎉 Challenge Passed!");
             }
 
+            // Dispatch event to trigger balance refresh in header
+            window.dispatchEvent(new CustomEvent('balance-updated', {
+                detail: { newBalance: data.newBalance }
+            }));
+
             options.onSuccess?.(result);
             return result;
 

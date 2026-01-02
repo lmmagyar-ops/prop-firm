@@ -132,10 +132,18 @@ class IngestionWorker {
      */
     private isSpamMarket(question: string): boolean {
         const q = question.toLowerCase();
+
+        // Specific Spam Checks
+        if (q.includes('super bowl') && q.includes('cancelled')) return true;
+
         // Filter out "Up or Down" minute-by-minute markets
         if (q.includes('up or down') && (q.includes('am') || q.includes('pm') || q.includes('et'))) {
             return true;
         }
+
+        // Generic "Cancelled" spam (often low quality)
+        if (q.endsWith('cancelled?') || q.startsWith('cancelled:')) return true;
+
         return false;
     }
 
@@ -152,15 +160,32 @@ class IngestionWorker {
      */
     private async fetchFeaturedEvents() {
         try {
-            console.log("[Ingestion] Fetching Featured Events (Polymarket Trending)...");
+            console.log("[Ingestion] Fetching High-Volume Events (Sorted by 24h Volume)...");
 
-            const url = "https://gamma-api.polymarket.com/events?featured=true&active=true&closed=false&limit=50";
+            // Primary query: high-volume active events sorted by recent activity
+            const url = "https://gamma-api.polymarket.com/events?active=true&closed=false&order=volume24hr&ascending=false&limit=100";
             const response = await fetch(url);
-            const events = await response.json();
+            let events = await response.json();
 
             if (!Array.isArray(events)) {
                 console.error("[Ingestion] Invalid response from Events API");
                 return;
+            }
+
+            // Secondary query: "breaking" tagged events to catch brand-new markets
+            console.log("[Ingestion] Fetching breaking news markets...");
+            const breakingUrl = "https://gamma-api.polymarket.com/events?tag=breaking&active=true&closed=false&limit=30";
+            const breakingRes = await fetch(breakingUrl);
+            const breakingEvents = await breakingRes.json();
+
+            if (Array.isArray(breakingEvents)) {
+                const seenSlugs = new Set(events.map((e: any) => e.slug));
+                for (const be of breakingEvents) {
+                    if (!seenSlugs.has(be.slug)) {
+                        events.push(be);
+                    }
+                }
+                console.log(`[Ingestion] Added ${breakingEvents.filter((be: any) => !seenSlugs.has(be.slug)).length} breaking events.`);
             }
 
             const processedEvents: any[] = [];
@@ -172,20 +197,46 @@ class IngestionWorker {
 
                     // Process each market within the event
                     const subMarkets: any[] = [];
+                    const seenQuestions = new Set<string>();
                     for (const market of event.markets) {
                         if (market.closed || market.archived) continue;
 
+                        // Filter out spam sub-markets (e.g., "Super Bowl cancelled")
+                        if (this.isSpamMarket(market.question)) continue;
+
+                        const prices = JSON.parse(market.outcomePrices || '[]');
+
+                        // Filter out empty prices
+                        if (!prices || prices.length < 2) continue;
+
+                        // Filter out "Individual [A-Z]" placeholders (confusing for users)
+                        if (market.question.includes("Individual ") || market.question.includes("Someone else")) continue;
+
+                        // Filter out "arch" prefix typos from Polymarket
+                        if (market.question.startsWith("arch")) continue;
+
                         const clobTokens = JSON.parse(market.clobTokenIds || '[]');
                         const outcomes = JSON.parse(market.outcomes || '[]');
-                        const prices = JSON.parse(market.outcomePrices || '[]');
 
                         if (clobTokens.length === 0) continue;
 
-                        // For events, each market is typically binary (Yes/No for each outcome)
-                        const tokenId = clobTokens[0];
-                        const yesPrice = parseFloat(prices[0] || "0.5");
+                        // Deduplication: Don't show the same outcome twice (e.g. "Rick Rieder")
+                        // Polymarket sometimes lists the same person twice with different IDs.
+                        // We use a normalized version of the question as the key.
+                        const normalizedQ = market.question.trim().toLowerCase();
+                        if (seenQuestions.has(normalizedQ)) {
+                            // If we already have this question, maybe keep the one with higher volume? 
+                            // For now, simpler is creating less noise -> Skip duplicate.
+                            continue;
+                        }
+                        seenQuestions.add(normalizedQ);
 
-                        if (yesPrice < 0.001) continue; // Skip near-zero markets
+                        const tokenId = clobTokens[0];
+                        let yesPrice = parseFloat(prices[0] || "0");
+
+                        // Skip markets with truly 0% prices (exactly 0) - these are
+                        // delisted or inactive. Keep low-probability markets (0.1%+).
+                        if (yesPrice < 0.001) continue;
 
                         allEventTokenIds.push(tokenId);
 
@@ -281,39 +332,9 @@ class IngestionWorker {
                     const isMultiOutcome = outcomes.length > 2;
 
                     if (isMultiOutcome) {
-                        // MULTI-OUTCOME: Explode into separate markets, one per outcome
-                        for (let i = 0; i < outcomes.length; i++) {
-                            const tokenId = clobTokens[i];
-                            if (!tokenId || seenIds.has(tokenId)) continue;
-
-                            const outcomePrice = parseFloat(prices[i] || "0.5");
-
-                            // Skip outcomes with near-zero probability
-                            if (outcomePrice < 0.001) continue;
-
-                            const categories = this.getCategories(m.category, m.question);
-
-                            seenIds.add(tokenId);
-                            for (const cat of categories) {
-                                categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
-                            }
-
-                            allMarkets.push({
-                                id: tokenId,
-                                question: `${m.question}: ${outcomes[i]}`, // Format: "Fed decision in January?: 50+ bps decrease"
-                                description: m.description,
-                                image: m.image,
-                                volume: m.volume,
-                                outcomes: ["Yes", "No"], // Each outcome is now binary
-                                end_date: m.endDate,
-                                categories: categories,
-                                basePrice: Math.max(outcomePrice, 0.01),
-                                closed: m.closed,
-                                accepting_orders: m.accepting_orders,
-                                parentQuestion: m.question, // For future grouping (Option C)
-                                outcomeLabel: outcomes[i], // Original outcome label
-                            });
-                        }
+                        // MULTI-OUTCOME: Skip these here. They are handled by fetchFeaturedEvents.
+                        // Exploding them into binary markets creates UI clutter (repetitive cards).
+                        continue;
                     } else {
                         // BINARY MARKET: Process as before
                         const yesToken = clobTokens[0];

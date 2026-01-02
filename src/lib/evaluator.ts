@@ -4,101 +4,163 @@ import { eq, and } from "drizzle-orm";
 import { publishAdminEvent } from "./events";
 import { ChallengeRules } from "@/types/trading";
 import { MarketService } from "./market";
+import { FUNDED_RULES, FundedTier } from "./funded-rules";
+
+interface EvaluationResult {
+    status: 'active' | 'passed' | 'failed' | 'pending_failure';
+    reason?: string;
+    equity?: number;
+}
 
 export class ChallengeEvaluator {
 
-    static async evaluate(challengeId: string) {
+    static async evaluate(challengeId: string): Promise<EvaluationResult> {
         const challenge = await db.query.challenges.findFirst({
             where: eq(challenges.id, challengeId)
         });
 
-        if (!challenge || challenge.status !== 'active') return;
+        if (!challenge) return { status: 'active' };
+        if (challenge.status === 'passed' || challenge.status === 'failed') {
+            return { status: challenge.status as 'passed' | 'failed' };
+        }
 
         const currentBalance = parseFloat(challenge.currentBalance);
         const startingBalance = parseFloat(challenge.startingBalance);
+        const highWaterMark = parseFloat(challenge.highWaterMark || challenge.startingBalance);
+        const startOfDayBalance = parseFloat(challenge.startOfDayBalance || challenge.startingBalance);
         const rules = challenge.rulesConfig as unknown as ChallengeRules;
+        const isFunded = challenge.phase === 'funded';
 
-        const profitTarget = rules.profitTarget || 1000;
-        const maxDrawdown = rules.maxDrawdown || 500;
+        // Get tier-specific funded rules if in funded phase
+        const fundedTier = this.getFundedTier(startingBalance);
+        const fundedRules = FUNDED_RULES[fundedTier];
 
-        // Calculate Equity (Cash + Unrealized Value of Positions)
+        // Default rules (absolute dollar amounts or percentages)
+        const profitTarget = rules.profitTarget || 1000;       // $1000 profit target
+
+        // FUNDED PHASE: Use static drawdown from initial balance (not HWM-based trailing)
+        // This is more lenient - a trader can profit, give some back, and not fail
+        const maxDrawdown = isFunded
+            ? fundedRules.maxTotalDrawdown  // Static: e.g. $1000 for 10k tier
+            : (rules.maxDrawdown || 1000);  // Trailing for challenge phase
+
+        // Daily loss limit from percentage
+        const maxDailyLoss = isFunded
+            ? fundedRules.maxDailyDrawdown  // Static daily limit
+            : (rules.maxDailyDrawdownPercent || 0.04) * startingBalance;
+
+        // Calculate Equity (Cash + Unrealized Value of Open Positions)
         const openPositions = await db.query.positions.findMany({
             where: and(eq(positions.challengeId, challengeId), eq(positions.status, 'OPEN'))
         });
 
         let positionValue = 0;
         for (const pos of openPositions) {
-            // Try to get live price, fallback to DB last known, fallback to entry
             const marketData = await MarketService.getLatestPrice(pos.marketId);
-            const price = marketData ? parseFloat(marketData.price) : (pos.currentPrice ? parseFloat(pos.currentPrice) : parseFloat(pos.entryPrice));
-            positionValue += parseFloat(pos.shares) * price;
+            // Market data returns YES price, so for NO positions we need (1 - yesPrice)
+            const yesPrice = marketData
+                ? parseFloat(marketData.price)
+                : (pos.currentPrice ? parseFloat(pos.currentPrice) : parseFloat(pos.entryPrice));
+
+            // For NO positions, value = shares * (1 - yesPrice)
+            const effectivePrice = pos.direction === 'NO' ? (1 - yesPrice) : yesPrice;
+            positionValue += parseFloat(pos.shares) * effectivePrice;
         }
 
         const equity = currentBalance + positionValue;
 
-        // 0. CHECK TIME EXPIRY
+        // === CHECK TIME EXPIRY ===
         if (challenge.endsAt && new Date() > new Date(challenge.endsAt)) {
-            console.log(`[Evaluator] Challenge ${challengeId} FAILED. Time Limit Exceeded.`);
+            console.log(`[Evaluator] ⏰ Challenge ${challengeId.slice(0, 8)} FAILED. Time Limit Exceeded.`);
             await db.update(challenges)
-                .set({ status: 'failed', endsAt: new Date() }) // Lock it
+                .set({ status: 'failed', endsAt: new Date() })
                 .where(eq(challenges.id, challengeId));
-
             await publishAdminEvent("CHALLENGE_FAILED", { challengeId, reason: "Time Limit Exceeded" });
-            return { status: 'failed' };
+            return { status: 'failed', reason: 'Time limit exceeded', equity };
         }
 
-        // 1. CHECK FAIL (Drawdown based on EQUITY) - With Confirmation Delay
-        const FAILURE_CONFIRMATION_DELAY_MS = 60_000; // 60 seconds
-        const equityFloor = startingBalance - maxDrawdown;
+        // === CHECK MAX DRAWDOWN ===
+        // FUNDED PHASE: Static drawdown from initial balance (more lenient)
+        // CHALLENGE PHASE: Trailing drawdown from High Water Mark (stricter)
+        const drawdownBase = isFunded ? startingBalance : highWaterMark;
+        const drawdownAmount = drawdownBase - equity;
+        const drawdownType = isFunded ? 'Total' : 'Trailing';
 
-        if (equity <= equityFloor) {
-            // Breach detected
+        if (drawdownAmount >= maxDrawdown) {
+            console.log(`[Evaluator] ❌ ${isFunded ? 'Funded' : 'Challenge'} ${challengeId.slice(0, 8)} FAILED. ${drawdownType} Drawdown $${drawdownAmount.toFixed(2)} >= max $${maxDrawdown}`);
+            await db.update(challenges)
+                .set({ status: 'failed', endsAt: new Date() })
+                .where(eq(challenges.id, challengeId));
+            await publishAdminEvent("CHALLENGE_FAILED", { challengeId, reason: `Max ${drawdownType} Drawdown Breached` });
+            return { status: 'failed', reason: `Max ${drawdownType.toLowerCase()} drawdown breached: $${drawdownAmount.toFixed(0)}`, equity };
+        }
+
+        // === CHECK DAILY LOSS LIMIT ===
+        const dailyLoss = startOfDayBalance - equity;
+        if (dailyLoss >= maxDailyLoss) {
+            // Set pending failure (user can recover if they profit back before end of day)
             if (!challenge.pendingFailureAt) {
-                // First breach: Set pending timestamp, don't fail yet
-                console.log(`[Evaluator] Challenge ${challengeId} BREACHED. Setting pending failure. Equity: ${equity.toFixed(2)}`);
+                console.log(`[Evaluator] ⚠️ Challenge ${challengeId.slice(0, 8)} PENDING FAILURE. Daily loss $${dailyLoss.toFixed(2)} >= max $${maxDailyLoss}`);
                 await db.update(challenges)
                     .set({ pendingFailureAt: new Date() })
                     .where(eq(challenges.id, challengeId));
-                return { status: 'pending_failure' };
             }
-
-            // Breach persisted: Check if 60 seconds have passed
-            const timeSinceBreach = Date.now() - new Date(challenge.pendingFailureAt).getTime();
-            if (timeSinceBreach >= FAILURE_CONFIRMATION_DELAY_MS) {
-                console.log(`[Evaluator] Challenge ${challengeId} FAILED (Confirmed after ${Math.round(timeSinceBreach / 1000)}s). Equity: ${equity.toFixed(2)}`);
-                await db.update(challenges)
-                    .set({ status: 'failed', endsAt: new Date(), pendingFailureAt: null })
-                    .where(eq(challenges.id, challengeId));
-
-                await publishAdminEvent("CHALLENGE_FAILED", { challengeId, reason: "Max Drawdown Breached (Confirmed)" });
-                return { status: 'failed' };
-            }
-
-            // Still in grace period
-            console.log(`[Evaluator] Challenge ${challengeId} still pending failure. ${Math.round((FAILURE_CONFIRMATION_DELAY_MS - timeSinceBreach) / 1000)}s remaining.`);
-            return { status: 'pending_failure' };
-        } else {
-            // Equity recovered - clear pending failure if set
-            if (challenge.pendingFailureAt) {
-                console.log(`[Evaluator] Challenge ${challengeId} RECOVERED. Clearing pending failure.`);
-                await db.update(challenges)
-                    .set({ pendingFailureAt: null })
-                    .where(eq(challenges.id, challengeId));
-            }
+            return { status: 'pending_failure', reason: `Daily loss limit hit: $${dailyLoss.toFixed(0)}`, equity };
+        } else if (challenge.pendingFailureAt) {
+            // Clear pending failure if they recovered
+            await db.update(challenges)
+                .set({ pendingFailureAt: null })
+                .where(eq(challenges.id, challengeId));
         }
 
-        // 2. CHECK PASS (Profit Target based on EQUITY)
-        if (equity >= startingBalance + profitTarget) {
-            console.log(`[Evaluator] Challenge ${challengeId} PASSED! Equity: ${equity.toFixed(2)}`);
+        // === CHECK PROFIT TARGET (Challenge/Verification phase only) ===
+        // Funded accounts do NOT have a profit target - they accumulate profit for payouts
+        const profit = equity - startingBalance;
+        if (!isFunded && profit >= profitTarget) {
+            // Transition to funded phase
+            console.log(`[Evaluator] 🎉 Challenge ${challengeId.slice(0, 8)} PASSED! Transitioning to FUNDED. Profit: $${profit.toFixed(2)}`);
+
+            const now = new Date();
+            const tier = this.getFundedTier(startingBalance);
+            const tierRules = FUNDED_RULES[tier];
 
             await db.update(challenges)
-                .set({ status: 'passed', endsAt: new Date() })
+                .set({
+                    phase: 'funded',
+                    status: 'active', // Stay active in funded phase
+                    // Reset for funded phase
+                    currentBalance: startingBalance.toString(), // Reset to starting balance
+                    highWaterMark: startingBalance.toString(),
+                    profitSplit: tierRules.profitSplit.toString(), // From tier config
+                    payoutCap: tierRules.payoutCap.toString(), // Max payout = tier cap
+                    payoutCycleStart: now,
+                    activeTradingDays: 0,
+                    lastActivityAt: now,
+                    endsAt: null, // No time limit for funded
+                })
                 .where(eq(challenges.id, challengeId));
 
-            await publishAdminEvent("CHALLENGE_PASSED", { challengeId, reason: "Profit Target Hit" });
-            return { status: 'passed' };
+            await publishAdminEvent("CHALLENGE_FUNDED", { challengeId, reason: "Profit Target Hit - Now Funded" });
+            return { status: 'passed', reason: `Congratulations! You are now FUNDED. Profit: $${profit.toFixed(0)}`, equity };
         }
 
-        return { status: 'active' };
+        // === UPDATE HIGH WATER MARK ===
+        if (equity > highWaterMark) {
+            await db.update(challenges)
+                .set({ highWaterMark: equity.toString() })
+                .where(eq(challenges.id, challengeId));
+            console.log(`[Evaluator] 📈 New high water mark: $${equity.toFixed(2)}`);
+        }
+
+        return { status: 'active', equity };
+    }
+
+    /**
+     * Determine the funded tier based on starting balance.
+     */
+    private static getFundedTier(startingBalance: number): FundedTier {
+        if (startingBalance >= 25000) return '25k';
+        if (startingBalance >= 10000) return '10k';
+        return '5k';
     }
 }

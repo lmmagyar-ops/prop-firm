@@ -11,8 +11,17 @@ interface Challenge {
     accountNumber: string;
     currentBalance: string;
     startingBalance: string;
+    equity?: string; // Cash + position value
+    positionValue?: string; // Value of open positions
     status: string;
+    platform?: "polymarket" | "kalshi";
 }
+
+// Platform icon helper
+const getPlatformIcon = (platform?: string) => {
+    if (platform === "kalshi") return "🇺🇸";
+    return "🌐";
+};
 
 interface ChallengeSelectorProps {
     challenges: Challenge[];
@@ -70,9 +79,10 @@ export function ChallengeSelector({ challenges, selectedChallengeId, onSelect }:
     }
 
     const calculatePnL = (challenge: Challenge) => {
-        const current = parseFloat(challenge.currentBalance);
+        // Use equity (cash + positions) if available, otherwise fall back to cash
+        const equity = challenge.equity ? parseFloat(challenge.equity) : parseFloat(challenge.currentBalance);
         const starting = parseFloat(challenge.startingBalance);
-        const pnl = current - starting;
+        const pnl = equity - starting;
         const pnlPercent = (pnl / starting) * 100;
         return { pnl, pnlPercent };
     };
@@ -86,6 +96,7 @@ export function ChallengeSelector({ challenges, selectedChallengeId, onSelect }:
                         onClick={() => setIsOpen(!isOpen)}
                         className="flex items-center gap-2 px-4 py-2 bg-zinc-900/50 border border-zinc-800 rounded-lg hover:bg-zinc-900 hover:border-zinc-700 transition-all text-sm"
                     >
+                        <span className="text-sm">{getPlatformIcon(selectedChallenge.platform)}</span>
                         <Briefcase className="w-4 h-4 text-blue-500" />
                         <span className="font-medium text-white">
                             ${parseInt(selectedChallenge.startingBalance).toLocaleString()} Eval
@@ -130,8 +141,13 @@ export function ChallengeSelector({ challenges, selectedChallengeId, onSelect }:
                                                 <button
                                                     key={challenge.id}
                                                     onClick={() => {
+                                                        const wasAlreadySelected = challenge.id === selectedChallengeId;
                                                         onSelect(challenge.id);
                                                         setIsOpen(false);
+                                                        // Reload page to fetch correct platform markets (only if switching)
+                                                        if (!wasAlreadySelected) {
+                                                            setTimeout(() => window.location.reload(), 100);
+                                                        }
                                                     }}
                                                     className={cn(
                                                         "w-full px-4 py-3 flex items-start gap-3 hover:bg-zinc-800/50 transition-colors border-b border-zinc-800/50 last:border-0",
@@ -152,6 +168,7 @@ export function ChallengeSelector({ challenges, selectedChallengeId, onSelect }:
                                                     {/* Challenge Info */}
                                                     <div className="flex-1 text-left">
                                                         <div className="flex items-center gap-2 mb-1">
+                                                            <span className="text-sm">{getPlatformIcon(challenge.platform)}</span>
                                                             <span className={cn(
                                                                 "font-medium text-sm",
                                                                 isSelected ? "text-blue-400" : "text-white"
@@ -246,8 +263,13 @@ export function ChallengeSelector({ challenges, selectedChallengeId, onSelect }:
                                                 <button
                                                     key={challenge.id}
                                                     onClick={() => {
+                                                        const wasAlreadySelected = challenge.id === selectedChallengeId;
                                                         onSelect(challenge.id);
                                                         setIsOpen(false);
+                                                        // Reload page to fetch correct platform markets (only if switching)
+                                                        if (!wasAlreadySelected) {
+                                                            setTimeout(() => window.location.reload(), 100);
+                                                        }
                                                     }}
                                                     className={cn(
                                                         "w-full p-4 rounded-xl border transition-all text-left",

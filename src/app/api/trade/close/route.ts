@@ -56,8 +56,11 @@ export async function POST(req: NextRequest) {
         }
 
         const currentPrice = parseFloat(marketData.price);
+        // For NO positions, use NO price (1 - YES price) for correct market value calculation
+        const posDirection = position.direction as "YES" | "NO";
+        const noAdjustedPrice = posDirection === "NO" ? (1 - currentPrice) : currentPrice;
         // Calculate the current market value of the position
-        const marketValue = shares * currentPrice;
+        const marketValue = shares * noAdjustedPrice;
 
         // Execute SELL trade for the current market value
         const trade = await TradeExecutor.executeTrade(
@@ -65,7 +68,8 @@ export async function POST(req: NextRequest) {
             challenge.id,
             position.marketId,
             "SELL",
-            marketValue // Sell at current market value
+            marketValue, // Sell at current market value
+            posDirection // Pass direction to correctly identify which position to close
         );
 
         // Fetch updated balance (challenge is updated by TradeExecutor)

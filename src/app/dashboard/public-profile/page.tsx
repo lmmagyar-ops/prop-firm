@@ -5,10 +5,17 @@ import { PublicProfileHeader } from "@/components/dashboard/PublicProfileHeader"
 import { ProfileMetricsGrid } from "@/components/dashboard/ProfileMetricsGrid";
 import { getPublicProfileData } from "@/lib/profile-service";
 import { db } from "@/db";
-import { users, challenges } from "@/db/schema";
+import { users, challenges, payouts } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { ClientPublicProfileWrapper } from "@/components/dashboard/ClientPublicProfileWrapper";
+import { SocialVisibilitySection } from "@/components/dashboard/SocialVisibilitySection";
+import { ProfileShareButtons } from "@/components/dashboard/ProfileShareButtons";
+import { ProfileCustomizationSection } from "@/components/dashboard/ProfileCustomizationSection";
+import { AchievementBadgesSection } from "@/components/dashboard/AchievementBadgesSection";
+import { Button } from "@/components/ui/button";
+import { Eye, Share2, Award, Settings2 } from "lucide-react";
+import Link from "next/link";
 
 export default async function PublicProfilePage() {
     const session = await auth();
@@ -28,6 +35,23 @@ export default async function PublicProfilePage() {
         );
     }
 
+    // Get additional data for new features
+    const user = await db.query.users.findFirst({
+        where: eq(users.id, session.user.id),
+    });
+
+    // Count completed payouts for achievements
+    const completedPayouts = await db.query.payouts.findMany({
+        where: eq(payouts.userId, session.user.id),
+    });
+
+    const totalPayouts = completedPayouts.filter(p => p.status === "completed").length;
+
+    // Calculate achievement data
+    const isFunded = data.accounts.some(acc => acc.status === "passed");
+    const totalTrades = 0; // TODO: Count from trades table
+    const activeDays = 0; // TODO: Calculate from trading activity
+
     // Server actions for toggles
     async function toggleLeaderboard(enabled: boolean) {
         "use server";
@@ -42,7 +66,6 @@ export default async function PublicProfilePage() {
         "use server";
         if (!session?.user?.id) return;
 
-        // Verify ownership
         const challenge = await db.query.challenges.findFirst({
             where: eq(challenges.id, accountId),
         });
@@ -61,21 +84,119 @@ export default async function PublicProfilePage() {
         revalidatePath('/dashboard/public-profile');
     }
 
-    return (
-        <div className="space-y-6">
-            {/* Header */}
-            <PublicProfileHeader user={data.user} />
+    // Server action for social visibility
+    async function toggleSocialVisibility(platform: 'twitter' | 'discord' | 'telegram' | 'instagram' | 'facebook', isPublic: boolean) {
+        "use server";
+        if (!session?.user?.id) return;
 
-            {/* Public Profile Settings Section */}
+        const field = `${platform}Public` as 'twitterPublic' | 'discordPublic' | 'telegramPublic' | 'instagramPublic' | 'facebookPublic';
+        await db.update(users)
+            .set({ [field]: isPublic })
+            .where(eq(users.id, session.user.id));
+        revalidatePath('/dashboard/public-profile');
+    }
+
+    // Server action for profile customization
+    async function saveProfileCustomization(formData: { tradingBio: string; tradingStyle: string; favoriteMarkets: string }) {
+        "use server";
+        if (!session?.user?.id) return;
+
+        await db.update(users)
+            .set({
+                tradingBio: formData.tradingBio,
+                tradingStyle: formData.tradingStyle,
+                favoriteMarkets: formData.favoriteMarkets,
+            })
+            .where(eq(users.id, session.user.id));
+        revalidatePath('/dashboard/public-profile');
+    }
+
+    return (
+        <div className="space-y-8">
+            {/* Header with Preview Button */}
+            <div className="flex items-start justify-between gap-4">
+                <PublicProfileHeader user={data.user} />
+
+                <Link href={`/profile/${session.user.id}`} target="_blank">
+                    <Button variant="outline" className="flex items-center gap-2 animate-pulse">
+                        <Eye className="w-4 h-4" />
+                        View Public Profile
+                    </Button>
+                </Link>
+            </div>
+
+            {/* Key Metrics Section */}
             <section>
-                <h2 className="text-lg font-bold text-white mb-4">Public Profile Settings</h2>
+                <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                    <Settings2 className="w-5 h-5 text-blue-400" />
+                    Performance Metrics
+                </h2>
                 <ProfileMetricsGrid metrics={data.metrics} isPublic />
+            </section>
+
+            {/* Profile Customization */}
+            <section>
+                <h2 className="text-lg font-bold text-white mb-4">About Me</h2>
+                <div className="bg-[#1A232E] border border-[#2E3A52] rounded-xl p-6">
+                    <ProfileCustomizationSection
+                        tradingBio={user?.tradingBio}
+                        tradingStyle={user?.tradingStyle}
+                        favoriteMarkets={user?.favoriteMarkets}
+                        onSave={saveProfileCustomization}
+                    />
+                </div>
+            </section>
+
+            {/* Achievement Badges */}
+            <section>
+                <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                    <Award className="w-5 h-5 text-yellow-400" />
+                    Achievements
+                </h2>
+                <div className="bg-[#1A232E] border border-[#2E3A52] rounded-xl p-6">
+                    <AchievementBadgesSection
+                        totalTrades={totalTrades}
+                        winRate={data.metrics.tradingWinRate}
+                        totalPayouts={totalPayouts}
+                        isFunded={isFunded}
+                        activeDays={activeDays}
+                    />
+                </div>
+            </section>
+
+            {/* Social Visibility */}
+            <section>
+                <h2 className="text-lg font-bold text-white mb-4">Social Links</h2>
+                <div className="bg-[#1A232E] border border-[#2E3A52] rounded-xl p-6">
+                    <SocialVisibilitySection
+                        socials={data.socials}
+                        visibility={{
+                            twitterPublic: user?.twitterPublic ?? true,
+                            discordPublic: user?.discordPublic ?? true,
+                            telegramPublic: user?.telegramPublic ?? true,
+                            instagramPublic: user?.instagramPublic ?? true,
+                            facebookPublic: user?.facebookPublic ?? true,
+                        }}
+                        onToggleVisibility={toggleSocialVisibility}
+                    />
+                </div>
+            </section>
+
+            {/* Profile Share */}
+            <section>
+                <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                    <Share2 className="w-5 h-5 text-blue-400" />
+                    Share Your Profile
+                </h2>
+                <div className="bg-[#1A232E] border border-[#2E3A52] rounded-xl p-6">
+                    <ProfileShareButtons userId={session.user.id} />
+                </div>
             </section>
 
             {/* Accounts Section with Visibility Controls */}
             <section>
                 <h2 className="text-lg font-bold text-white mb-2">Accounts</h2>
-                <p className="text-sm text-zinc-500 mb-4">A list of all of your accounts. Toggle visibility for public view.</p>
+                <p className="text-sm text-zinc-500 mb-4">Control which accounts appear on your public profile</p>
 
                 <ClientPublicProfileWrapper
                     data={data}

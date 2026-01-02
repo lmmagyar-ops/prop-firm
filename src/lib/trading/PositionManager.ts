@@ -13,12 +13,13 @@ export class PositionManager {
         marketId: string,
         shares: number,
         entryPrice: number,
-        sizeAmount: number
+        sizeAmount: number,
+        direction: "YES" | "NO" = "YES"
     ): Promise<Position> {
         const [position] = await tx.insert(positions).values({
             challengeId,
             marketId,
-            direction: 'YES',
+            direction,
             shares: shares.toString(),
             sizeAmount: sizeAmount.toString(),
             entryPrice: entryPrice.toString(),
@@ -55,6 +56,7 @@ export class PositionManager {
                 shares: totalShares.toString(),
                 entryPrice: newAvg.toString(),
                 sizeAmount: (parseFloat(position.sizeAmount) + additionalAmount).toString(),
+                currentPrice: additionalPrice.toString(), // Update current price to latest trade price
             })
             .where(eq(positions.id, positionId));
     }

@@ -20,6 +20,8 @@ export class BalanceManager {
         const currentBalance = parseFloat(challenge.currentBalance);
         const newBalance = currentBalance - amount;
 
+        console.log(`[BalanceManager] Deducting $${amount} from ${challengeId.slice(0, 8)}: $${currentBalance} → $${newBalance}`);
+
         await tx.update(challenges)
             .set({ currentBalance: newBalance.toString() })
             .where(eq(challenges.id, challengeId));

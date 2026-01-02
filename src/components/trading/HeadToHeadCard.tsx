@@ -78,7 +78,7 @@ export function HeadToHeadCard({ event, onTrade }: HeadToHeadCardProps) {
             </div>
 
             {/* Matchup Display */}
-            <div className="p-4">
+            <div className="p-4 flex-1 flex flex-col">
                 {/* Team Stats Row */}
                 <div className="flex items-center justify-between mb-4">
                     <div className="text-center flex-1">
@@ -104,25 +104,17 @@ export function HeadToHeadCard({ event, onTrade }: HeadToHeadCardProps) {
                     </div>
                 </div>
 
-                {/* Trading Buttons */}
-                <div className="flex gap-3">
+                {/* Trading Buttons - Softer style (like Yes/No cards) */}
+                <div className="flex gap-3 mt-auto">
                     <button
                         onClick={() => onTrade(team1.id, 'yes')}
-                        className={cn(
-                            "flex-1 py-3 rounded-lg font-semibold text-sm text-white transition-all",
-                            "bg-gradient-to-r", team1Color,
-                            "hover:opacity-90 hover:shadow-lg hover:shadow-blue-500/20"
-                        )}
+                        className="flex-1 py-3 rounded-lg font-semibold text-sm text-blue-400 transition-all bg-transparent border border-blue-500/40 hover:bg-blue-500/10 hover:border-blue-400"
                     >
                         {team1Name}
                     </button>
                     <button
                         onClick={() => onTrade(team2.id, 'yes')}
-                        className={cn(
-                            "flex-1 py-3 rounded-lg font-semibold text-sm text-white transition-all",
-                            "bg-gradient-to-r", team2Color,
-                            "hover:opacity-90 hover:shadow-lg hover:shadow-rose-500/20"
-                        )}
+                        className="flex-1 py-3 rounded-lg font-semibold text-sm text-rose-400 transition-all bg-transparent border border-rose-500/40 hover:bg-rose-500/10 hover:border-rose-400"
                     >
                         {team2Name}
                     </button>

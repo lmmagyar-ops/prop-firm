@@ -30,13 +30,15 @@ export class TradeExecutor {
      * @param marketId Polymarket Token ID (Asset ID)
      * @param side "BUY" or "SELL"
      * @param amount Dollar amount to trade
+     * @param direction "YES" or "NO" - the outcome direction to trade
      */
     static async executeTrade(
         userId: string,
         challengeId: string,
         marketId: string,
         side: "BUY" | "SELL",
-        amount: number
+        amount: number,
+        direction: "YES" | "NO" = "YES"
     ) {
         logger.info(`Requested ${side} $${amount} on ${marketId}`, { userId, challengeId });
 
@@ -100,8 +102,18 @@ export class TradeExecutor {
             throw new TradingError(`Trade Rejected: ${simulation.reason}`, 'SLIPPAGE_TOO_HIGH', 400);
         }
 
-        const executionPrice = simulation.executedPrice;
-        const shares = simulation.totalShares;
+        // For NO positions, convert YES-side order book price to NO price
+        // In prediction markets: NO price = 1 - YES price
+        const executionPrice = direction === "NO"
+            ? (1 - simulation.executedPrice)
+            : simulation.executedPrice;
+
+        // For NO positions, recalculate shares at NO price since order book used YES pricing
+        // shares = amount / price
+        const shares = direction === "NO"
+            ? amount / executionPrice  // Recalculate with correct NO price
+            : simulation.totalShares;
+
         const slippage = (simulation.slippagePercent * 100).toFixed(2);
 
         logger.info(`Execution Plan`, {
@@ -144,11 +156,12 @@ export class TradeExecutor {
                 executedAt: new Date(),
             }).returning();
 
-            // B. Update Position
+            // B. Update Position (filter by direction too - YES/NO are separate positions!)
             const existingPos = await tx.query.positions.findFirst({
                 where: and(
                     eq(positions.challengeId, challenge.id),
                     eq(positions.marketId, marketId),
+                    eq(positions.direction, direction),
                     eq(positions.status, "OPEN")
                 )
             });
@@ -162,6 +175,8 @@ export class TradeExecutor {
                         executionPrice,
                         amount
                     );
+                    // CRITICAL: Also deduct balance when adding to position!
+                    await BalanceManager.deductCost(tx, challenge.id, amount);
                 } else {
                     const { proceeds } = await PositionManager.reducePosition(
                         tx,
@@ -179,7 +194,8 @@ export class TradeExecutor {
                     marketId,
                     shares,
                     executionPrice,
-                    amount
+                    amount,
+                    direction  // Pass direction to position
                 );
                 await BalanceManager.deductCost(tx, challenge.id, amount);
             }
@@ -192,6 +208,17 @@ export class TradeExecutor {
         import("./evaluator")
             .then(({ ChallengeEvaluator }) => ChallengeEvaluator.evaluate(challenge.id))
             .catch((e) => logger.error("Adjudication failed post-trade", e));
+
+        // 7. ACTIVITY TRACKING (for funded accounts)
+        // Records trading days and checks consistency rules
+        if (challenge.phase === "funded") {
+            import("./activity-tracker")
+                .then(({ ActivityTracker }) => {
+                    ActivityTracker.recordTradingDay(challenge.id);
+                    ActivityTracker.checkConsistency(challenge.id);
+                })
+                .catch((e) => logger.error("Activity tracking failed", e));
+        }
 
         logger.info(`Trade Complete: ${tradeResult.id}`, { tradeId: tradeResult.id });
         return tradeResult;

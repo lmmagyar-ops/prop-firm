@@ -1,35 +1,71 @@
-
 import { auth } from "@/auth";
+import { db } from "@/db";
+import { users } from "@/db/schema";
+import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
-const ADMIN_EMAILS = [
-    "lesmagyar@gmail.com",
-    "admin@test.com",
-    "admin_verify@test.com",
-    "admin_verify_api@test.com",
-    "demo@projectx.com" // Demo user
+// Fallback admin emails for initial setup (before admins are created in DB)
+const BOOTSTRAP_ADMIN_EMAILS = [
+    "l.m.magyar@gmail.com",
+    // Add cofounder emails here once provided
 ];
 
 export async function requireAdmin() {
     const session = await auth();
-    
-    // DEMO MODE: Allow demo user as admin
-    if (session?.user?.email === "demo@projectx.com" || session?.user?.id === "demo-user-1") {
-        return { isAuthorized: true, user: { email: "demo@projectx.com", role: "admin" } };
-    }
-
-    // TEMPORARY: Allow localhost dev bypass if session fails (for verification agent)
-    if (process.env.NODE_ENV === "development") {
-        return { isAuthorized: true, user: { email: "admin_verify@test.com", role: "admin" } };
-    }
 
     if (!session || !session.user || !session.user.email) {
-        return { isAuthorized: false, response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
+        return {
+            isAuthorized: false,
+            response: NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+        };
     }
 
-    if (!ADMIN_EMAILS.includes(session.user.email)) {
-        return { isAuthorized: false, response: NextResponse.json({ error: "Forbidden: Admin Access Required" }, { status: 403 }) };
-    }
+    const email = session.user.email.toLowerCase();
 
-    return { isAuthorized: true, user: session.user };
+    try {
+        // Check database for admin role
+        const user = await db
+            .select({ role: users.role, isActive: users.isActive })
+            .from(users)
+            .where(eq(users.email, email))
+            .limit(1);
+
+        if (user.length > 0) {
+            // Check if account is suspended
+            if (user[0].isActive === false) {
+                return {
+                    isAuthorized: false,
+                    response: NextResponse.json({ error: "Account suspended" }, { status: 403 })
+                };
+            }
+
+            // Check role in database
+            if (user[0].role === "admin") {
+                return { isAuthorized: true, user: session.user };
+            }
+        }
+
+        // Fallback: Check bootstrap admin list (for initial setup)
+        if (BOOTSTRAP_ADMIN_EMAILS.includes(email)) {
+            console.log("[Admin Auth] Bootstrap admin access for:", email);
+            return { isAuthorized: true, user: session.user };
+        }
+
+        // Not an admin
+        return {
+            isAuthorized: false,
+            response: NextResponse.json({ error: "Forbidden: Admin Access Required" }, { status: 403 })
+        };
+
+    } catch (error) {
+        console.error("[Admin Auth] Database error:", error);
+        // In case of DB error, fall back to bootstrap list
+        if (BOOTSTRAP_ADMIN_EMAILS.includes(email)) {
+            return { isAuthorized: true, user: session.user };
+        }
+        return {
+            isAuthorized: false,
+            response: NextResponse.json({ error: "Authorization check failed" }, { status: 500 })
+        };
+    }
 }

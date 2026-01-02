@@ -1,7 +1,7 @@
 
 import { db } from "@/db";
-import { users, challenges } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { users, challenges, payouts } from "@/db/schema";
+import { eq, and } from "drizzle-orm";
 import type { Challenge } from "@/types/user";
 
 export async function getPrivateProfileData(userId: string) {
@@ -60,10 +60,22 @@ export async function getPrivateProfileData(userId: string) {
         where: eq(challenges.userId, userId),
     }) as Challenge[];
 
-    // 3. Calculate metrics
-    const metrics = calculateMetrics(allChallenges);
+    // 3. Get completed payouts for lifetime withdrawn calculation
+    const completedPayouts = await db.query.payouts.findMany({
+        where: and(
+            eq(payouts.userId, userId),
+            eq(payouts.status, "completed")
+        ),
+    });
 
-    // 4. Format accounts
+    const lifetimeProfitWithdrawn = completedPayouts.reduce((sum, p) =>
+        sum + parseFloat(p.amount), 0
+    );
+
+    // 4. Calculate metrics
+    const metrics = calculateMetrics(allChallenges, lifetimeProfitWithdrawn);
+
+    // 5. Format accounts
     const accounts = allChallenges.map((c, idx) => ({
         id: c.id,
         date: c.startedAt || new Date(),
@@ -72,7 +84,7 @@ export async function getPrivateProfileData(userId: string) {
         status: c.status,
     }));
 
-    // 5. Get socials (placeholder)
+    // 6. Get socials
     const socials = {
         twitter: user.twitter || undefined,
         discord: user.discord || undefined,
@@ -104,7 +116,7 @@ export async function getPublicProfileData(userId: string) {
     };
 }
 
-function calculateMetrics(challenges: Challenge[]) {
+function calculateMetrics(challenges: Challenge[], lifetimeProfitWithdrawn: number) {
     // Calculate from challenges data
     const totalVolume = challenges.reduce((sum, c) =>
         sum + parseFloat(c.startingBalance), 0
@@ -115,9 +127,16 @@ function calculateMetrics(challenges: Challenge[]) {
         sum + parseFloat(c.startingBalance), 0
     );
 
-    const totalProfit = challenges.reduce((sum, c) => {
+    // Calculate withdrawable profit from active funded accounts
+    const activeFundedChallenges = challenges.filter(c =>
+        c.status === 'active'
+    );
+
+    const currentWithdrawableProfit = activeFundedChallenges.reduce((sum, c) => {
         const profit = parseFloat(c.currentBalance) - parseFloat(c.startingBalance);
-        return sum + Math.max(0, profit);
+        const profitSplit = parseFloat((c as any).profitSplit || "0.80");
+        const withdrawable = Math.max(0, profit * profitSplit);
+        return sum + withdrawable;
     }, 0);
 
     // TODO: Calculate from actual trade data
@@ -128,9 +147,9 @@ function calculateMetrics(challenges: Challenge[]) {
     return {
         lifetimeTradingVolume: totalVolume,
         fundedTradingVolume: fundedVolume,
-        currentWithdrawableProfit: 0, // TODO: Calculate from funded accounts
+        currentWithdrawableProfit,
         highestWinRateAsset: "Politics", // TODO: Calculate from trade history
         tradingWinRate,
-        lifetimeProfitWithdrawn: 0, // TODO: Get from payouts table
+        lifetimeProfitWithdrawn,
     };
 }

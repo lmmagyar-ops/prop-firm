@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
         }
 
         // Check total usage limit
-        if (discount.maxTotalUses && discount.currentUses >= discount.maxTotalUses) {
+        if (discount.maxTotalUses && (discount.currentUses || 0) >= discount.maxTotalUses) {
             return NextResponse.json({
                 valid: false,
                 error: "This discount code has reached its usage limit"

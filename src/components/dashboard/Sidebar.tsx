@@ -24,9 +24,10 @@ import {
 interface SidebarProps {
     active?: string;
     verificationStatus?: "locked" | "pending" | "verified";
+    hasActiveChallenge?: boolean;
 }
 
-export function Sidebar({ active = "Dashboard", verificationStatus = "locked" }: SidebarProps) {
+export function Sidebar({ active = "Dashboard", verificationStatus = "locked", hasActiveChallenge = false }: SidebarProps) {
     const searchParams = useSearchParams();
     const [showTradeGlow, setShowTradeGlow] = useState(false);
 
@@ -54,14 +55,22 @@ export function Sidebar({ active = "Dashboard", verificationStatus = "locked" }:
                 <NavItem icon={User} label="Private Profile" href="/dashboard/private-profile" isActive={active === "Private Profile"} />
                 <NavItem icon={Users} label="Public Profile" href="/dashboard/public-profile" isActive={active === "Public Profile"} />
                 <NavItem icon={LayoutDashboard} label="Dashboard" href="/dashboard" isActive={active === "Dashboard"} />
-                <NavItem
-                    icon={TrendingUp}
-                    label="Trade"
-                    href="/dashboard/trade"
-                    isActive={active === "Trade"}
-                    glow={showTradeGlow}
-                    onClick={() => setShowTradeGlow(false)} // Dismiss on click
-                />
+                {/* Trade - Locked when no active challenge */}
+                {hasActiveChallenge ? (
+                    <NavItem
+                        icon={TrendingUp}
+                        label="Trade"
+                        href="/dashboard/trade"
+                        isActive={active === "Trade"}
+                        glow={showTradeGlow}
+                        onClick={() => setShowTradeGlow(false)}
+                    />
+                ) : (
+                    <div className="px-4 py-3 flex items-center gap-3 text-zinc-600 cursor-not-allowed">
+                        <Lock className="w-4 h-4" />
+                        <span className="text-sm font-medium">Trade (Locked)</span>
+                    </div>
+                )}
                 <NavItem icon={Award} label="Certificates" href="/dashboard/certificates" isActive={active === "Certificates"} />
                 <NavItem icon={ShoppingCart} label="Buy Evaluation" href="/buy-evaluation" highlight isActive={active === "Buy Evaluation"} />
 

@@ -55,8 +55,9 @@ export async function POST(req: NextRequest) {
                 userId,
                 activeChallenge.id,
                 marketId,
-                "BUY", // Always BUY for now
-                parseFloat(amount)
+                "BUY", // Always BUY for now (SELL is handled by close endpoint)
+                parseFloat(amount),
+                outcome as "YES" | "NO" // Pass direction to create correct position
             );
         } catch (error: any) {
             // Auto-provision Redis market data for demo users
@@ -100,7 +101,8 @@ export async function POST(req: NextRequest) {
                         activeChallenge.id,
                         marketId,
                         "BUY",
-                        parseFloat(amount)
+                        parseFloat(amount),
+                        outcome as "YES" | "NO"
                     );
                     console.log("[Auto-Provision] Retry succeeded");
                 } catch (redisError: any) {
@@ -112,20 +114,18 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        // Fetch the challenge
-        const challenge = await db.query.challenges.findFirst({
-            where: eq(challenges.userId, userId),
-        });
+        // Use the activeChallenge that was already found (not a new query that might return wrong one)
+        const challenge = activeChallenge;
 
-        if (!challenge) {
-            return NextResponse.json({ error: "Challenge not found" }, { status: 500 });
-        }
+        console.log("[Trade] Looking for position on challenge:", challenge.id, "market:", marketId);
 
         // Get the position that was just created/updated
+        // CRITICAL: Filter by direction to get the correct YES or NO position
         let position = await db.query.positions.findFirst({
             where: and(
                 eq(positions.challengeId, challenge.id),
                 eq(positions.marketId, marketId),
+                eq(positions.direction, outcome as "YES" | "NO"),
                 eq(positions.status, "OPEN")
             ),
             orderBy: (positions, { desc }) => [desc(positions.openedAt)]
@@ -137,7 +137,8 @@ export async function POST(req: NextRequest) {
             const anyPosition = await db.query.positions.findFirst({
                 where: and(
                     eq(positions.challengeId, challenge.id),
-                    eq(positions.marketId, marketId)
+                    eq(positions.marketId, marketId),
+                    eq(positions.direction, outcome as "YES" | "NO")
                 ),
                 orderBy: (positions, { desc }) => [desc(positions.openedAt)]
             });
@@ -161,13 +162,7 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        // Fix the direction if it doesn't match the outcome
-        // (TradeExecutor hardcodes "YES", so we need to update it)
-        if (position.direction !== outcome) {
-            await db.update(positions)
-                .set({ direction: outcome })
-                .where(eq(positions.id, position.id));
-        }
+        // Direction is now set correctly by TradeExecutor, no need to update post-hoc
 
         // Calculate position metrics with the correct direction
         const entry = parseFloat(position.entryPrice);

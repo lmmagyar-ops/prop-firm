@@ -14,7 +14,7 @@ import { OpenPositions } from "@/components/dashboard/OpenPositions";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { getDashboardData } from "@/lib/dashboard-service";
-import { LiveMarketSection } from "@/components/dashboard/LiveMarketSection";
+
 import { BuyEvaluationButton } from "@/components/dashboard/BuyEvaluationButton";
 import { StartChallengeButton } from "@/components/dashboard/StartChallengeButton";
 
@@ -22,6 +22,18 @@ import { OnboardingHandler } from "@/components/dashboard/OnboardingHandler";
 import { DashboardOutcomeHandler } from "@/components/dashboard/DashboardOutcomeHandler";
 import { DevTools } from "@/components/dashboard/DevTools";
 import { WelcomeTour } from "@/components/dashboard/WelcomeTour";
+import { TraderSpotlight } from "@/components/dashboard/TraderSpotlight";
+import { MilestoneCelebration } from "@/components/dashboard/MilestoneCelebration";
+import { QuickActions } from "@/components/dashboard/QuickActions";
+
+// Funded Account Components
+import {
+    FundedAccountHeader,
+    FundedRiskMeters,
+    PayoutEligibilityCard,
+    ActivityTracker,
+    PayoutProgressCard,
+} from "@/components/dashboard/funded";
 
 // Server component
 export default async function DashboardPage() {
@@ -36,14 +48,7 @@ export default async function DashboardPage() {
     const userId = session?.user?.id || "demo-user-1"; // Fallback for testing
 
     // Use service directly - no HTTP fetch
-    console.log(`[DashboardPage] Rendering for User ID: ${userId}`);
     const data = await getDashboardData(userId);
-    console.log(`[DashboardPage] Pending Challenge Found:`, data?.pendingChallenge);
-    console.log(`[DashboardPage] Has Active Challenge:`, data?.hasActiveChallenge);
-    console.log(`[DashboardPage] Challenge History Length:`, data?.challengeHistory?.length);
-    console.log(`[DashboardPage] Active Challenge Data:`, data?.activeChallenge ? 'EXISTS' : 'NULL');
-    console.log(`[DashboardPage] Stats Data:`, data?.stats ? 'EXISTS' : 'NULL');
-    console.log(`[DashboardPage] Positions Length:`, data?.positions?.length || 0);
 
     if (!data) {
         // Fallback for user not found
@@ -57,7 +62,7 @@ export default async function DashboardPage() {
         );
     }
 
-    const { user, lifetimeStats, hasActiveChallenge, activeChallenge, positions, stats, challengeHistory } = data;
+    const { user, lifetimeStats, hasActiveChallenge, activeChallenge, positions, stats, challengeHistory, isFunded, fundedStats } = data;
 
     // Helper for Locked State Logic
     const latestChallenge = challengeHistory && challengeHistory.length > 0 ? challengeHistory[0] : null;
@@ -76,54 +81,149 @@ export default async function DashboardPage() {
                 <DashboardOutcomeHandler challengeHistory={challengeHistory} />
             )}
 
+            {/* Milestone Celebrations - Client Component */}
+            {hasActiveChallenge && activeChallenge && stats && (
+                <MilestoneCelebration
+                    totalTrades={lifetimeStats.totalChallengesStarted}
+                    profitProgress={stats.profitProgress}
+                    currentStreak={lifetimeStats.currentWinStreak || 0}
+                    dailyProfitRecord={stats.dailyPnL}
+                    totalProfit={stats.totalPnL}
+                />
+            )}
+
             {/* Lifetime Stats Grid - ALWAYS VISIBLE */}
             <LifetimeStatsGrid stats={lifetimeStats} />
+
+            {/* Trader Spotlight Card - ONLY if hasActiveChallenge */}
+            {hasActiveChallenge && activeChallenge && stats && (
+                <TraderSpotlight
+                    totalTrades={lifetimeStats.totalChallengesStarted}
+                    winRate={lifetimeStats.successRate}
+                    currentStreak={lifetimeStats.currentWinStreak || 0}
+                    daysActive={Math.ceil((Date.now() - new Date(activeChallenge.startedAt || Date.now()).getTime()) / (1000 * 60 * 60 * 24))}
+                    profitProgress={stats.profitProgress}
+                    totalProfit={stats.totalPnL}
+                />
+            )}
 
             {/* Active Challenge Section - ONLY if hasActiveChallenge */}
             {hasActiveChallenge && activeChallenge && stats && (
                 <>
                     <div className="border-t border-white/5 pt-6 mt-8">
                         <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                            Active Challenge
+                            <span className={`w-2 h-2 rounded-full ${isFunded ? 'bg-amber-500' : 'bg-green-500'} animate-pulse`} />
+                            {isFunded ? 'Funded Account' : 'Active Challenge'}
                         </h2>
                     </div>
 
-                    <ChallengeHeader
-                        phase={activeChallenge.phase as any}
-                        status={activeChallenge.status as any}
-                        startingBalance={typeof activeChallenge.startingBalance === 'string' ? parseFloat(activeChallenge.startingBalance) : activeChallenge.startingBalance}
-                        daysRemaining={activeChallenge.endsAt
-                            ? Math.ceil((new Date(activeChallenge.endsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
-                            : 0
-                        }
-                    />
-
-                    {/* Equity + Profit Progress */}
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        <div className="lg:col-span-2">
-                            <EquityDisplay
+                    {/* FUNDED PHASE UI */}
+                    {isFunded && fundedStats ? (
+                        <>
+                            {/* Funded Account Header */}
+                            <FundedAccountHeader
+                                startingBalance={activeChallenge.startingBalance}
                                 currentBalance={activeChallenge.currentBalance}
-                                dailyPnL={stats.dailyPnL}
+                                tier={fundedStats.tier as "5k" | "10k" | "25k"}
+                                profitSplit={fundedStats.profitSplit}
+                                payoutCap={fundedStats.payoutCap}
+                                daysUntilPayout={fundedStats.daysUntilPayout}
+                                platform={activeChallenge.platform as "polymarket" | "kalshi"}
                             />
-                        </div>
-                        <div>
-                            <ProfitProgress
-                                totalPnL={stats.totalPnL}
-                                profitTarget={activeChallenge.rulesConfig.profitTarget}
-                                profitProgress={stats.profitProgress}
+
+                            {/* Equity Display (same as challenge) */}
+                            <div className="mt-6">
+                                <EquityDisplay
+                                    currentBalance={activeChallenge.currentBalance}
+                                    dailyPnL={stats.dailyPnL}
+                                />
+                            </div>
+
+                            {/* Funded Risk Meters (STATIC drawdown) */}
+                            <div className="mt-6">
+                                <FundedRiskMeters
+                                    currentBalance={activeChallenge.currentBalance}
+                                    startingBalance={activeChallenge.startingBalance}
+                                    maxTotalDrawdown={fundedStats.maxTotalDrawdown}
+                                    maxDailyDrawdown={fundedStats.maxDailyDrawdown}
+                                    startOfDayBalance={activeChallenge.startOfDayBalance}
+                                    platform={activeChallenge.platform as "polymarket" | "kalshi"}
+                                />
+                            </div>
+
+                            {/* Payout & Activity Grid */}
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                                <PayoutEligibilityCard
+                                    eligible={fundedStats.eligible}
+                                    tradingDays={fundedStats.activeTradingDays}
+                                    requiredTradingDays={fundedStats.requiredTradingDays}
+                                    consistencyFlagged={fundedStats.consistencyFlagged}
+                                    hasViolations={fundedStats.hasViolations}
+                                    netProfit={fundedStats.netProfit}
+                                    platform={activeChallenge.platform as "polymarket" | "kalshi"}
+                                />
+                                <ActivityTracker
+                                    tradingDays={fundedStats.activeTradingDays}
+                                    requiredDays={fundedStats.requiredTradingDays}
+                                    lastActivityAt={fundedStats.lastActivityAt}
+                                    payoutCycleStart={fundedStats.payoutCycleStart}
+                                    platform={activeChallenge.platform as "polymarket" | "kalshi"}
+                                />
+                            </div>
+
+                            {/* Payout Breakdown (show if profitable) */}
+                            {fundedStats.netProfit > 0 && (
+                                <div className="mt-6">
+                                    <PayoutProgressCard
+                                        grossProfit={fundedStats.netProfit}
+                                        excludedPnl={0}
+                                        profitSplit={fundedStats.profitSplit}
+                                        payoutCap={fundedStats.payoutCap}
+                                        platform={activeChallenge.platform as "polymarket" | "kalshi"}
+                                    />
+                                </div>
+                            )}
+                        </>
+                    ) : (
+                        /* CHALLENGE/VERIFICATION PHASE UI */
+                        <>
+                            <ChallengeHeader
+                                phase={activeChallenge.phase as any}
+                                status={activeChallenge.status as any}
+                                startingBalance={typeof activeChallenge.startingBalance === 'string' ? parseFloat(activeChallenge.startingBalance) : activeChallenge.startingBalance}
+                                daysRemaining={activeChallenge.endsAt
+                                    ? Math.ceil((new Date(activeChallenge.endsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+                                    : 0
+                                }
                             />
-                        </div>
-                    </div>
 
-                    {/* Risk Meters */}
-                    <RiskMeters
-                        drawdownUsage={stats.drawdownUsage}
-                        dailyDrawdownUsage={stats.dailyDrawdownUsage}
-                        startOfDayBalance={activeChallenge.startOfDayBalance}
-                    />
+                            {/* Equity + Profit Progress */}
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                <div className="lg:col-span-2">
+                                    <EquityDisplay
+                                        currentBalance={activeChallenge.currentBalance}
+                                        dailyPnL={stats.dailyPnL}
+                                    />
+                                </div>
+                                <div>
+                                    <ProfitProgress
+                                        totalPnL={stats.totalPnL}
+                                        profitTarget={activeChallenge.rulesConfig.profitTarget}
+                                        profitProgress={stats.profitProgress}
+                                    />
+                                </div>
+                            </div>
 
-                    {/* Open Positions */}
+                            {/* Risk Meters */}
+                            <RiskMeters
+                                drawdownUsage={stats.drawdownUsage}
+                                dailyDrawdownUsage={stats.dailyDrawdownUsage}
+                                startOfDayBalance={activeChallenge.startOfDayBalance}
+                            />
+                        </>
+                    )}
+
+                    {/* Open Positions - ALWAYS VISIBLE for both funded and challenge */}
                     <OpenPositions
                         positions={positions || []}
                         onClosePosition={async (id) => {
@@ -133,11 +233,6 @@ export default async function DashboardPage() {
                         }}
                     />
 
-                    {/* ACTIVE TRADING MARKETS */}
-                    <LiveMarketSection
-                        initialBalance={typeof activeChallenge.currentBalance === 'string' ? parseFloat(activeChallenge.currentBalance) : activeChallenge.currentBalance}
-                        userId={userId}
-                    />
                 </>
             )}
 
@@ -168,12 +263,7 @@ export default async function DashboardPage() {
                             </div>
                         </div>
                         <RiskMeters drawdownUsage={1.2} dailyDrawdownUsage={0.8} startOfDayBalance={103000} />
-                        <div className="mt-8">
-                            <h2 className="text-xl font-bold text-white mb-4">Live Markets</h2>
-                            <div className="h-[400px] w-full bg-[#0a0a0a] rounded-xl border border-white/10 flex items-center justify-center">
-                                <div className="text-zinc-600 font-mono">Terminal Offline</div>
-                            </div>
-                        </div>
+
                     </div>
 
                     {/* 2. Overlay Layer (Dynamic CTA) */}
@@ -270,6 +360,12 @@ export default async function DashboardPage() {
             </div>
 
             <DevTools userId={userId} />
+
+            {/* Quick Actions Floating Widget */}
+            <QuickActions
+                hasActiveChallenge={hasActiveChallenge}
+                hasPositions={(positions?.length || 0) > 0}
+            />
         </div>
     );
 }

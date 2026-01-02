@@ -99,16 +99,16 @@ function BuyEvaluationContent() {
                     <MetricRow
                         label="Max Daily Loss"
                         tooltip="Maximum allowed loss in a single trading day."
-                        values={plans.map(() => CHALLENGE_RULES.maxDailyLossPercent)}
-                        isUniform
+                        values={plans.map((p) => `${p.dailyLossPercent}%`)}
+                        isUniform={false}
                     />
 
                     {/* Max Drawdown Row */}
                     <MetricRow
                         label="Max Drawdown"
                         tooltip="Maximum total loss from high water mark."
-                        values={plans.map(() => CHALLENGE_RULES.maxDrawdownPercent)}
-                        isUniform
+                        values={plans.map((p) => `${p.maxDrawdownPercent}%`)}
+                        isUniform={false}
                     />
 
                     {/* Duration Row */}

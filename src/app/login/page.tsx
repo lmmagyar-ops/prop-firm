@@ -13,6 +13,9 @@ function LoginContent() {
     const searchParams = useSearchParams();
     const redirect = searchParams.get("redirect") || "/dashboard";
     const error = searchParams.get("error");
+    const resetSuccess = searchParams.get("reset") === "true";
+    const verifiedSuccess = searchParams.get("verified") === "true";
+    const registered = searchParams.get("registered") === "true";
 
     const [isLoading, setIsLoading] = useState(false);
     const [formData, setFormData] = useState({
@@ -58,10 +61,31 @@ function LoginContent() {
 
                 {/* Login Card */}
                 <div className="bg-zinc-900/50 border border-white/10 rounded-2xl p-8 space-y-6">
+                    {resetSuccess && (
+                        <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3 text-sm text-green-500">
+                            Password reset successful! You can now sign in with your new password.
+                        </div>
+                    )}
+
+                    {verifiedSuccess && (
+                        <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3 text-sm text-green-500">
+                            Email verified successfully! You can now sign in.
+                        </div>
+                    )}
+
+                    {registered && (
+                        <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 text-sm text-blue-400">
+                            Account created! Please check your email to verify your account before signing in.
+                        </div>
+                    )}
+
                     {error && (
                         <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 text-sm text-red-500 flex items-center gap-2">
                             <AlertCircle className="w-4 h-4" />
-                            {error === "CredentialsSignin" ? "Invalid details" : "Login failed"}
+                            {error === "CredentialsSignin" ? "Invalid credentials or email not verified" :
+                                error === "invalid_token" ? "Verification link is invalid or expired" :
+                                    error === "missing_token" ? "Invalid verification link" :
+                                        "Login failed"}
                         </div>
                     )}
 
@@ -126,9 +150,14 @@ function LoginContent() {
                         </div>
 
                         <div>
-                            <Label htmlFor="password" className="text-zinc-400">
-                                Password
-                            </Label>
+                            <div className="flex items-center justify-between">
+                                <Label htmlFor="password" className="text-zinc-400">
+                                    Password
+                                </Label>
+                                <Link href="/forgot-password" className="text-xs text-blue-400 hover:text-blue-300">
+                                    Forgot password?
+                                </Link>
+                            </div>
                             <Input
                                 id="password"
                                 type="password"

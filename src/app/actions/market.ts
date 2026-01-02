@@ -57,28 +57,14 @@ export async function getActiveMarkets(): Promise<MarketMetadata[]> {
 
         const markets = JSON.parse(data) as MarketMetadata[];
 
-        // Fetch prices for each market from order book cache
-        const marketsWithPrices = await Promise.all(
-            markets.map(async (market) => {
-                const extendedMarket = market as MarketMetadata & { basePrice?: number };
-                try {
-                    const bookData = await redis.get(`market:book:${market.id}`);
-                    if (bookData) {
-                        const book = JSON.parse(bookData);
-                        const price = extractPriceFromBook(book);
-                        if (price !== null) {
-                            return { ...market, currentPrice: price };
-                        }
-                    }
-                } catch {
-                    // Silent fail - use fallback price
-                }
-                // Use basePrice from Polymarket API as fallback
-                return { ...market, currentPrice: extendedMarket.basePrice || 0.5 };
-            })
-        );
-
-        return marketsWithPrices;
+        // NOTE: basePrice is already stored during ingestion.
+        // We removed N Redis calls for order book enrichment here
+        // to prevent 50+ round-trips on every page load.
+        // Use basePrice as currentPrice if not already set.
+        return markets.map(market => ({
+            ...market,
+            currentPrice: market.currentPrice ?? (market as any).basePrice ?? 0.5
+        }));
     } catch (e) {
         console.error("Failed to fetch active markets", e);
         return [];
@@ -102,46 +88,37 @@ export interface EventMetadata {
     description?: string;
     image?: string;
     volume: number;
+    endDate?: string;
+    // New fields for Kalshi modal parity
+    rules?: string;
+    openTime?: string;
+    closeTime?: string;
+    settlementTime?: string;
     categories?: string[];
     markets: SubMarket[];
     isMultiOutcome: boolean;
 }
 
-export async function getActiveEvents(): Promise<EventMetadata[]> {
+export type Platform = "polymarket" | "kalshi";
+
+export async function getActiveEvents(platform: Platform = "polymarket"): Promise<EventMetadata[]> {
     noStore();
     try {
-        const data = await redis.get("event:active_list");
+        // Fetch from platform-specific Redis key
+        const redisKey = platform === "kalshi" ? "kalshi:active_list" : "event:active_list";
+        const data = await redis.get(redisKey);
         if (!data) return [];
 
         const events = JSON.parse(data) as EventMetadata[];
 
-        // Enrich sub-markets with current prices from order book
-        const enrichedEvents = await Promise.all(
-            events.map(async (event) => {
-                const enrichedMarkets = await Promise.all(
-                    event.markets.map(async (market) => {
-                        try {
-                            const bookData = await redis.get(`market:book:${market.id}`);
-                            if (bookData) {
-                                const book = JSON.parse(bookData);
-                                const price = extractPriceFromBook(book);
-                                if (price !== null) {
-                                    return { ...market, price };
-                                }
-                            }
-                        } catch { }
-                        return market;
-                    })
-                );
-                // Re-sort by price after enrichment
-                enrichedMarkets.sort((a, b) => b.price - a.price);
-                return { ...event, markets: enrichedMarkets };
-            })
-        );
+        // NOTE: Prices are already stored in the event data from ingestion.
+        // We removed the N*M Redis calls for order book enrichment here
+        // to prevent >100 round-trips on every page load.
+        // Live prices are fetched on-demand in the trading widget.
 
-        return enrichedEvents;
+        return events;
     } catch (e) {
-        console.error("Failed to fetch active events", e);
+        console.error(`Failed to fetch active events for ${platform}`, e);
         return [];
     }
 }

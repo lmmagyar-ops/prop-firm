@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { affiliates } from "@/db/schema";
+import { affiliates, users } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { requireAdmin } from "@/lib/admin-auth";
 
@@ -16,6 +16,11 @@ export async function PATCH(
     if (!isAuthorized) return response;
 
     try {
+        // Get user ID from email
+        const dbUser = await db.query.users.findFirst({
+            where: eq(users.email, user!.email!)
+        });
+
         const { id } = await params;
         const { commissionRate } = await req.json();
 
@@ -53,7 +58,7 @@ export async function PATCH(
             .set({
                 status: "active",
                 commissionRate: rate.toFixed(2),
-                approvedBy: user!.id as string,
+                approvedBy: dbUser?.id || null,
                 approvedAt: new Date(),
                 updatedAt: new Date()
             })

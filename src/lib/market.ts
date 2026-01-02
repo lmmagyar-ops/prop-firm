@@ -83,6 +83,10 @@ export class MarketService {
             const key = `market:price:${assetId}`;
             const data = await getRedis().get(key);
             if (!data) {
+                // Try to look up from event lists instead
+                const eventPrice = await this.lookupPriceFromEvents(assetId);
+                if (eventPrice) return eventPrice;
+
                 console.log(`[MarketService] No Redis data for ${assetId}, using demo fallback`);
                 return this.getDemoPrice(assetId);
             }
@@ -94,14 +98,136 @@ export class MarketService {
     }
 
     /**
+     * Batch fetch prices for multiple assets in a single operation.
+     * Uses event lists for live prices, reducing N+1 query overhead.
+     */
+    static async getBatchPrices(marketIds: string[]): Promise<Map<string, MarketPrice>> {
+        const results = new Map<string, MarketPrice>();
+
+        if (marketIds.length === 0) return results;
+
+        try {
+            const redis = getRedis();
+
+            // Load event lists once (instead of per-market)
+            const [kalshiData, polyData] = await Promise.all([
+                redis.get('kalshi:active_list'),
+                redis.get('event:active_list')
+            ]);
+
+            // Build market lookup maps
+            const kalshiMarkets = new Map<string, any>();
+            const polyMarkets = new Map<string, any>();
+
+            if (kalshiData) {
+                const events = JSON.parse(kalshiData);
+                for (const event of events) {
+                    for (const market of event.markets || []) {
+                        kalshiMarkets.set(market.id, market);
+                    }
+                }
+            }
+
+            if (polyData) {
+                const events = JSON.parse(polyData);
+                for (const event of events) {
+                    for (const market of event.markets || []) {
+                        polyMarkets.set(market.id, market);
+                    }
+                }
+            }
+
+            // Fetch prices for each market from the preloaded maps
+            for (const marketId of marketIds) {
+                let market = kalshiMarkets.get(marketId) || polyMarkets.get(marketId);
+
+                if (market) {
+                    results.set(marketId, {
+                        price: market.price.toString(),
+                        asset_id: marketId,
+                        timestamp: Date.now()
+                    });
+                } else {
+                    // Fallback to demo price if not found
+                    results.set(marketId, this.getDemoPrice(marketId));
+                }
+            }
+
+            console.log(`[MarketService] Batch fetched ${results.size}/${marketIds.length} prices`);
+        } catch (error: any) {
+            console.error(`[MarketService] Batch price error:`, error.message);
+            // Fallback to demo prices for all
+            for (const marketId of marketIds) {
+                results.set(marketId, this.getDemoPrice(marketId));
+            }
+        }
+
+        return results;
+    }
+
+    /**
+     * Look up price from event lists (kalshi:active_list or event:active_list)
+     * This allows us to get live prices for position P&L calculations
+     */
+    static async lookupPriceFromEvents(marketId: string): Promise<MarketPrice | null> {
+        try {
+            const redis = getRedis();
+
+            // Try Kalshi first (marketId might be a ticker like KXPREZ2028-28-JVAN)
+            const kalshiData = await redis.get('kalshi:active_list');
+            if (kalshiData) {
+                const events = JSON.parse(kalshiData);
+                for (const event of events) {
+                    const market = event.markets?.find((m: any) => m.id === marketId);
+                    if (market) {
+                        return {
+                            price: market.price.toString(),
+                            asset_id: marketId,
+                            timestamp: Date.now()
+                        };
+                    }
+                }
+            }
+
+            // Try Polymarket
+            const polyData = await redis.get('event:active_list');
+            if (polyData) {
+                const events = JSON.parse(polyData);
+                for (const event of events) {
+                    const market = event.markets?.find((m: any) => m.id === marketId);
+                    if (market) {
+                        return {
+                            price: market.price.toString(),
+                            asset_id: marketId,
+                            timestamp: Date.now()
+                        };
+                    }
+                }
+            }
+
+            return null;
+        } catch (error) {
+            console.error('[MarketService] Error looking up price from events:', error);
+            return null;
+        }
+    }
+
+    /**
      * Fetches the full Order Book from Redis (Snapshot).
-     * Falls back to demo data if Redis is unavailable.
+     * Falls back to synthetic book from event list price, then demo data.
      */
     static async getOrderBook(assetId: string): Promise<OrderBook | null> {
         try {
             const key = `market:book:${assetId}`;
             const data = await getRedis().get(key);
             if (!data) {
+                // Try to build synthetic order book from event list price
+                const livePrice = await this.lookupPriceFromEvents(assetId);
+                if (livePrice) {
+                    const price = parseFloat(livePrice.price);
+                    console.log(`[MarketService] Building synthetic orderbook for ${assetId.slice(0, 12)}... at price ${price}`);
+                    return this.buildSyntheticOrderBook(price);
+                }
                 console.log(`[MarketService] No Redis orderbook for ${assetId}, using demo fallback`);
                 return this.getDemoOrderBook();
             }
@@ -110,6 +236,27 @@ export class MarketService {
             console.error(`[MarketService] Redis orderbook error, using demo fallback:`, error.message);
             return this.getDemoOrderBook();
         }
+    }
+
+    /**
+     * Build a synthetic order book from a known price.
+     * Simulates deep liquidity around the current price.
+     */
+    private static buildSyntheticOrderBook(price: number): OrderBook {
+        // Create bids slightly below and asks slightly above the current price
+        const spread = 0.01; // 1 cent spread
+        return {
+            bids: [
+                { price: Math.max(0.01, price - spread).toFixed(2), size: "50000" },
+                { price: Math.max(0.01, price - spread * 2).toFixed(2), size: "50000" },
+                { price: Math.max(0.01, price - spread * 3).toFixed(2), size: "50000" }
+            ],
+            asks: [
+                { price: Math.min(0.99, price + spread).toFixed(2), size: "50000" },
+                { price: Math.min(0.99, price + spread * 2).toFixed(2), size: "50000" },
+                { price: Math.min(0.99, price + spread * 3).toFixed(2), size: "50000" }
+            ]
+        };
     }
 
     /**

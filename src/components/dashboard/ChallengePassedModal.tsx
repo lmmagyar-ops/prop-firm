@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Trophy } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 interface ChallengePassedModalProps {
     isOpen: boolean;
@@ -19,6 +20,14 @@ interface ChallengePassedModalProps {
 }
 
 export function ChallengePassedModal({ isOpen, onClose }: ChallengePassedModalProps) {
+    const router = useRouter();
+
+    const handleProceed = () => {
+        onClose();
+        // Navigate to verification page where users can complete KYC
+        router.push("/dashboard/verification");
+    };
+
     return (
         <AlertDialog open={isOpen} onOpenChange={onClose}>
             <AlertDialogContent className="bg-[#1A232E] border-yellow-500/50 text-white max-w-md">
@@ -39,7 +48,7 @@ export function ChallengePassedModal({ isOpen, onClose }: ChallengePassedModalPr
                     <AlertDialogCancel onClick={onClose} className="hidden">Close</AlertDialogCancel>
                     <AlertDialogAction asChild>
                         <Button
-                            onClick={onClose}
+                            onClick={handleProceed}
                             className="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold h-12"
                         >
                             Proceed to Next Phase

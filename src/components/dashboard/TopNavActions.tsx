@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ChallengeSelector } from "./ChallengeSelector";
-import { PortfolioDropdown } from "./PortfolioDropdown";
+import { PortfolioPanel } from "./PortfolioPanel";
 import { UserNav } from "./user-nav";
 import { useSelectedChallenge } from "@/hooks/useSelectedChallenge";
 import { SelectedChallengeProvider } from "@/contexts/SelectedChallengeContext";
@@ -43,6 +43,14 @@ export function TopNavActions({ userId }: TopNavActionsProps) {
         }
 
         fetchChallenges();
+
+        // Listen for balance updates after trades
+        const handleBalanceUpdate = () => {
+            fetchChallenges();
+        };
+
+        window.addEventListener('balance-updated', handleBalanceUpdate);
+        return () => window.removeEventListener('balance-updated', handleBalanceUpdate);
     }, [userId]);
 
     const contextValue = {
@@ -72,7 +80,7 @@ export function TopNavActions({ userId }: TopNavActionsProps) {
                         onSelect={selectChallenge}
                     />
                 )}
-                <PortfolioDropdown />
+                <PortfolioPanel />
                 <UserNav />
             </div>
         </SelectedChallengeProvider>

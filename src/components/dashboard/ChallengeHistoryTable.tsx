@@ -22,8 +22,15 @@ interface ChallengeHistoryTableProps {
         finalPnL: number;
         startedAt: Date;
         completedAt?: Date | null;
+        platform?: "polymarket" | "kalshi";
     }>;
 }
+
+// Platform icon helper
+const getPlatformIcon = (platform?: string) => {
+    if (platform === "kalshi") return "🇺🇸";
+    return "🌐";
+};
 
 export function ChallengeHistoryTable({ challenges }: ChallengeHistoryTableProps) {
     const [filter, setFilter] = useState<'all' | 'active' | 'passed' | 'failed'>('all');
@@ -47,10 +54,10 @@ export function ChallengeHistoryTable({ challenges }: ChallengeHistoryTableProps
                             key={f}
                             onClick={() => setFilter(f as any)}
                             className={`px-3 py-1 text-xs rounded uppercase font-medium transition-colors ${filter === f
-                                    ? f === 'passed' ? 'bg-green-500 text-white'
-                                        : f === 'failed' ? 'bg-red-500 text-white'
-                                            : 'bg-blue-500 text-white'
-                                    : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+                                ? f === 'passed' ? 'bg-green-500 text-white'
+                                    : f === 'failed' ? 'bg-red-500 text-white'
+                                        : 'bg-blue-500 text-white'
+                                : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
                                 }`}
                         >
                             {f}
@@ -65,6 +72,7 @@ export function ChallengeHistoryTable({ challenges }: ChallengeHistoryTableProps
                         <TableRow className="border-white/5 hover:bg-transparent">
                             <TableHead className="text-xs text-zinc-500 uppercase">Date</TableHead>
                             <TableHead className="text-xs text-zinc-500 uppercase">Account #</TableHead>
+                            <TableHead className="text-xs text-zinc-500 uppercase">Platform</TableHead>
                             <TableHead className="text-xs text-zinc-500 uppercase">Type</TableHead>
                             <TableHead className="text-xs text-zinc-500 uppercase">Phase</TableHead>
                             <TableHead className="text-xs text-zinc-500 uppercase">Status</TableHead>
@@ -81,6 +89,12 @@ export function ChallengeHistoryTable({ challenges }: ChallengeHistoryTableProps
                                 <TableCell className="text-sm font-mono text-white">
                                     {challenge.accountNumber}
                                 </TableCell>
+                                <TableCell className="text-sm">
+                                    <span className="flex items-center gap-1.5">
+                                        <span>{getPlatformIcon(challenge.platform)}</span>
+                                        <span className="text-zinc-400 capitalize">{challenge.platform || "polymarket"}</span>
+                                    </span>
+                                </TableCell>
                                 <TableCell className="text-sm text-zinc-300">
                                     {challenge.challengeType}
                                 </TableCell>
@@ -92,8 +106,8 @@ export function ChallengeHistoryTable({ challenges }: ChallengeHistoryTableProps
                                 <TableCell>
                                     <Badge
                                         className={`text-xs capitalize ${challenge.status === 'passed' ? 'bg-green-500/10 text-green-500 border-green-500/20 hover:bg-green-500/20' :
-                                                challenge.status === 'failed' ? 'bg-red-500/10 text-red-500 border-red-500/20 hover:bg-red-500/20' :
-                                                    'bg-blue-500/10 text-blue-500 border-blue-500/20 hover:bg-blue-500/20'
+                                            challenge.status === 'failed' ? 'bg-red-500/10 text-red-500 border-red-500/20 hover:bg-red-500/20' :
+                                                'bg-blue-500/10 text-blue-500 border-blue-500/20 hover:bg-blue-500/20'
                                             }`}
                                     >
                                         {challenge.status}

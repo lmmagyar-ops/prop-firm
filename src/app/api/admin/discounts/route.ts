@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { discountCodes, discountRedemptions } from "@/db/schema";
+import { discountCodes, discountRedemptions, users } from "@/db/schema";
 import { eq, desc, sql } from "drizzle-orm";
 import { requireAdmin } from "@/lib/admin-auth";
 
@@ -72,6 +72,10 @@ export async function POST(req: NextRequest) {
     if (!isAuthorized) return response;
 
     try {
+        // Get user ID from email
+        const dbUser = await db.query.users.findFirst({
+            where: eq(users.email, user!.email!)
+        });
 
         const body = await req.json();
         const {
@@ -153,7 +157,7 @@ export async function POST(req: NextRequest) {
             stackable: stackable || false,
             campaignName: campaignName || null,
             source: source || null,
-            createdBy: user!.id as string
+            createdBy: dbUser?.id || null
         }).returning();
 
         return NextResponse.json({

@@ -9,7 +9,7 @@ const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6380";
 // Simple instantiation for now.
 const publisher = new Redis(REDIS_URL);
 
-export async function publishAdminEvent(type: "NEW_TRADE" | "RISK_ALERT" | "CHALLENGE_FAILED" | "CHALLENGE_PASSED", data: any) {
+export async function publishAdminEvent(type: "NEW_TRADE" | "RISK_ALERT" | "CHALLENGE_FAILED" | "CHALLENGE_PASSED" | "CHALLENGE_FUNDED", data: any) {
     try {
         const payload = JSON.stringify({ type, data });
         await publisher.publish("admin:events", payload);

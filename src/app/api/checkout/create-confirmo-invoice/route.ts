@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { challenges } from "@/db/schema";
+import { challenges, users } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 
 export async function POST(req: NextRequest) {
@@ -11,7 +11,11 @@ export async function POST(req: NextRequest) {
 
     try {
         const body = await req.json();
-        const { tier, price } = body;
+        const { tier, price, platform } = body;
+        const selectedPlatform = platform || "polymarket"; // Default to polymarket
+
+        console.log("[Checkout] Received platform from request:", platform);
+        console.log("[Checkout] Selected platform for storage:", selectedPlatform);
 
         // Create Confirmo invoice
         // MOCK FOR DEVELOPMENT: Return a fake invoice URL if no API key
@@ -19,8 +23,31 @@ export async function POST(req: NextRequest) {
             console.log("[Confirmo] API Key missing, provisioning MOCK challenge + returning redirect");
 
             try {
-                // 1. Clean up old active/pending challenges for clean demo
-                await db.delete(challenges).where(eq(challenges.userId, userId));
+                // 0. Ensure Demo User Exists (to satisfy Foreign Key)
+                if (userId.startsWith("demo-user")) {
+                    await db.insert(users).values({
+                        id: userId,
+                        email: "demo@example.com",
+                        name: "Demo User",
+                        username: userId,
+                        emailVerified: new Date(),
+                    }).onConflictDoNothing();
+                }
+
+                // 1. Check active challenge count (max 5)
+                const activeCount = await db.select({ id: challenges.id })
+                    .from(challenges)
+                    .where(and(
+                        eq(challenges.userId, userId),
+                        eq(challenges.status, "active")
+                    ));
+
+                if (activeCount.length >= 5) {
+                    return NextResponse.json(
+                        { error: "Maximum 5 active evaluations allowed. Complete or fail an existing one first." },
+                        { status: 400 }
+                    );
+                }
 
                 // 2. Determine starting balance from tier
                 const tierBalances: Record<string, number> = {
@@ -61,6 +88,7 @@ export async function POST(req: NextRequest) {
                         maxVolumeImpactPercent: 0.10, // 10% of 24h volume
                         minMarketVolume: 100_000, // $100k
                     },
+                    platform: selectedPlatform,
                     startedAt: new Date(),
                     endsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
                 });
@@ -74,7 +102,7 @@ export async function POST(req: NextRequest) {
                     invoiceUrl: `${baseUrl}/onboarding/setup?status=success&demomode=true`,
                     invoiceId: "inv-mock-123-456"
                 });
-            } catch (dbError) {
+            } catch (dbError: any) {
                 console.error("[Confirmo Mock] Database error:", dbError);
                 // If DB fails, still return success but without creating challenge
                 // This allows UI testing even if DB is down
@@ -83,7 +111,7 @@ export async function POST(req: NextRequest) {
                 const baseUrl = `${protocol}://${host}`;
 
                 return NextResponse.json({
-                    invoiceUrl: `${baseUrl}/onboarding/setup?status=success&demomode=true&db_error=true`,
+                    invoiceUrl: `${baseUrl}/onboarding/setup?status=success&demomode=true&db_error=true&error_details=${encodeURIComponent(dbError.message || JSON.stringify(dbError))}`,
                     invoiceId: "inv-mock-error"
                 });
             }

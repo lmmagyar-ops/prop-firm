@@ -30,6 +30,9 @@ function CheckoutContent() {
     const [paymentMethod, setPaymentMethod] = useState<"card" | "crypto">("card");
     const [invoiceUrl, setInvoiceUrl] = useState<string | null>(null);
 
+    // Platform Selection State
+    const [platform, setPlatform] = useState<"polymarket" | "kalshi" | null>(null);
+
     // Mock addon price
     const splitAddonPrice = basePrice * 0.2; // 20% addon
     const total = basePrice + (profitSplit ? splitAddonPrice : 0);
@@ -43,7 +46,7 @@ function CheckoutContent() {
     }, [searchParams, router, tierId, basePrice]);
 
     const handlePurchase = async () => {
-        if (!agreedRules || !agreedRefund) return;
+        if (!agreedRules || !agreedRefund || !platform) return;
         setLoading(true);
 
         try {
@@ -53,6 +56,7 @@ function CheckoutContent() {
                 body: JSON.stringify({
                     tier: tierId,
                     price: total,
+                    platform: platform,
                 }),
                 headers: { "Content-Type": "application/json" }
             });
@@ -125,7 +129,63 @@ function CheckoutContent() {
                             </div>
                         </div>
 
-                        {/* 2. Payment Selector */}
+                        {/* 2. Trading Platform Selector */}
+                        <div className="bg-[#0f1926] border border-blue-900/30 rounded-xl p-6">
+                            <div className="flex items-center gap-2 mb-4 border-l-4 border-purple-500 pl-3">
+                                <h2 className="text-lg font-bold">Trading Platform</h2>
+                            </div>
+                            <p className="text-sm text-zinc-400 mb-4">
+                                Choose which prediction market you want to trade on. You'll stay on this platform if funded.
+                            </p>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <button
+                                    onClick={() => setPlatform("polymarket")}
+                                    className={`p-4 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${platform === "polymarket"
+                                        ? "bg-purple-600/10 border-purple-500 text-purple-400 shadow-[0_0_20px_-5px_rgba(147,51,234,0.3)]"
+                                        : "bg-[#162231] border-white/5 text-zinc-500 hover:bg-[#1e2d40] hover:text-white"
+                                        }`}
+                                >
+                                    <div className="text-2xl">🌐</div>
+                                    <span className="text-sm font-bold">Polymarket</span>
+                                    <span className="text-xs text-zinc-500">Global • Crypto</span>
+                                </button>
+
+                                <button
+                                    onClick={() => setPlatform("kalshi")}
+                                    className={`p-4 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${platform === "kalshi"
+                                        ? "bg-purple-600/10 border-purple-500 text-purple-400 shadow-[0_0_20px_-5px_rgba(147,51,234,0.3)]"
+                                        : "bg-[#162231] border-white/5 text-zinc-500 hover:bg-[#1e2d40] hover:text-white"
+                                        }`}
+                                >
+                                    <div className="text-2xl">🇺🇸</div>
+                                    <span className="text-sm font-bold">Kalshi</span>
+                                    <span className="text-xs text-zinc-500">US Regulated • USD</span>
+                                </button>
+                            </div>
+
+                            {platform && (
+                                <motion.div
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: "auto" }}
+                                    className="mt-4 bg-purple-500/5 border border-purple-500/20 rounded-lg p-4"
+                                >
+                                    <div className="flex items-center gap-2 text-sm">
+                                        <Check className="w-4 h-4 text-purple-400" />
+                                        <span className="text-purple-400 font-medium">
+                                            {platform === "polymarket" ? "Polymarket" : "Kalshi"} selected
+                                        </span>
+                                    </div>
+                                    <p className="text-xs text-zinc-500 mt-1">
+                                        {platform === "polymarket"
+                                            ? "Access global prediction markets using USDC on Polygon."
+                                            : "Trade on CFTC-regulated markets using USD."}
+                                    </p>
+                                </motion.div>
+                            )}
+                        </div>
+
+                        {/* 3. Payment Selector */}
                         <div className="bg-[#0f1926] border border-blue-900/30 rounded-xl p-6">
                             <div className="flex items-center gap-2 mb-4 border-l-4 border-green-500 pl-3">
                                 <h2 className="text-lg font-bold">Payment Method</h2>
@@ -135,8 +195,8 @@ function CheckoutContent() {
                                 <button
                                     onClick={() => setPaymentMethod("card")}
                                     className={`p-4 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${paymentMethod === "card"
-                                            ? "bg-blue-600/10 border-blue-500 text-blue-400 shadow-[0_0_20px_-5px_rgba(37,99,235,0.3)]"
-                                            : "bg-[#162231] border-white/5 text-zinc-500 hover:bg-[#1e2d40] hover:text-white"
+                                        ? "bg-blue-600/10 border-blue-500 text-blue-400 shadow-[0_0_20px_-5px_rgba(37,99,235,0.3)]"
+                                        : "bg-[#162231] border-white/5 text-zinc-500 hover:bg-[#1e2d40] hover:text-white"
                                         }`}
                                 >
                                     <CreditCard className="w-6 h-6" />
@@ -146,8 +206,8 @@ function CheckoutContent() {
                                 <button
                                     onClick={() => setPaymentMethod("crypto")}
                                     className={`p-4 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${paymentMethod === "crypto"
-                                            ? "bg-orange-500/10 border-orange-500 text-orange-400 shadow-[0_0_20px_-5px_rgba(249,115,22,0.3)]"
-                                            : "bg-[#162231] border-white/5 text-zinc-500 hover:bg-[#1e2d40] hover:text-white"
+                                        ? "bg-orange-500/10 border-orange-500 text-orange-400 shadow-[0_0_20px_-5px_rgba(249,115,22,0.3)]"
+                                        : "bg-[#162231] border-white/5 text-zinc-500 hover:bg-[#1e2d40] hover:text-white"
                                         }`}
                                 >
                                     <Bitcoin className="w-6 h-6" />
@@ -274,7 +334,7 @@ function CheckoutContent() {
 
                             <Button
                                 onClick={handlePurchase}
-                                disabled={loading || !agreedRules || !agreedRefund}
+                                disabled={loading || !agreedRules || !agreedRefund || !platform}
                                 className="w-full h-14 text-lg font-bold bg-blue-600 hover:bg-blue-500 text-white rounded-xl shadow-[0_0_30px_rgba(37,99,235,0.4)] disabled:opacity-50 disabled:shadow-none transition-all hover:scale-[1.02] active:scale-95"
                             >
                                 {loading ? (

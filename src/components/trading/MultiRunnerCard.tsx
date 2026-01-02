@@ -24,33 +24,59 @@ export function MultiRunnerCard({ event, onTrade }: MultiRunnerCardProps) {
         return `$${volume.toFixed(0)}`;
     };
 
-    // Extract short outcome label from question
-    const getOutcomeLabel = (market: SubMarket) => {
+    // Extract short outcome label from question - find the KEY DIFFERENTIATOR
+    const getOutcomeLabel = (market: SubMarket, eventTitle: string) => {
         const question = market.question;
 
-        // If question contains "Will" and "be the", extract the subject
-        if (question.includes("Will ") && (question.includes(" be the ") || question.includes(" be "))) {
-            const match = question.match(/Will ([^?]+?) be/i);
-            if (match) return match[1].trim();
+        // 1. Extract monetary thresholds like ">$2B", ">$1B"
+        const moneyMatch = question.match(/[>\<]=?\s*\$[\d.]+[BMKbmk]?/);
+        if (moneyMatch) return moneyMatch[0];
+
+        // 2. Extract dates like "January 31, 2026" or "March 31"
+        const dateMatch = question.match(/(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2}(?:,?\s*\d{4})?/i);
+        if (dateMatch) return dateMatch[0];
+
+        // 3. Extract percentages like "50+ bps", "25 bps"
+        const bpsMatch = question.match(/\d+\+?\s*bps/i);
+        if (bpsMatch) return bpsMatch[0];
+
+        // 4. For "Will X win Super Bowl" style - extract the team/person name
+        const winMatch = question.match(/Will (?:the )?(.+?) win/i);
+        if (winMatch) return winMatch[1].trim();
+
+        // 5. For "Will Trump nominate X" style - extract the name
+        const nominateMatch = question.match(/nominate (.+?) (?:as|to|for)/i);
+        if (nominateMatch) return nominateMatch[1].trim();
+
+        // 6. Remove the event title from the question to find the differentiator
+        let cleaned = question;
+
+        // Remove common parts that match the event title
+        const titleWords = eventTitle.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+        for (const word of titleWords) {
+            cleaned = cleaned.replace(new RegExp(word, 'gi'), '');
         }
 
-        // If question contains ":", use text before it for subject
-        if (question.includes(":")) {
-            return question.split(":")[0].replace(/^Will /i, '').trim();
-        }
-
-        // Remove common prefixes
-        let cleaned = question
+        // Clean up common prefixes/suffixes
+        cleaned = cleaned
             .replace(/^Will /i, '')
             .replace(/\?.*$/, '')
+            .replace(/one day after launch/i, '')
+            .replace(/by\s*$/i, '')
+            .replace(/in\s*$/i, '')
             .trim();
 
-        // Take first few meaningful words
-        return cleaned.split(' ').slice(0, 4).join(' ');
+        // If we have something meaningful left, use it
+        if (cleaned.length > 2 && cleaned.length < 50) {
+            return cleaned.split(' ').slice(0, 4).join(' ');
+        }
+
+        // Fallback: first few words
+        return question.split(' ').slice(0, 3).join(' ') + '...';
     };
 
     return (
-        <div className="bg-zinc-900/50 border border-white/5 rounded-xl overflow-hidden hover:border-white/10 transition-colors">
+        <div className="bg-zinc-900/50 border border-white/5 rounded-xl overflow-hidden hover:border-white/10 transition-colors min-h-[180px] h-full flex flex-col">
             {/* Event Header */}
             <div className="p-4 border-b border-white/5">
                 <div className="flex items-start gap-3">
@@ -80,26 +106,21 @@ export function MultiRunnerCard({ event, onTrade }: MultiRunnerCardProps) {
             </div>
 
             {/* Outcomes List - Top 2 only */}
-            <div className="divide-y divide-white/5">
+            <div className="divide-y divide-white/5 flex-1">
                 {topOutcomes.map((market) => (
                     <OutcomeRow
                         key={market.id}
                         market={market}
-                        label={getOutcomeLabel(market)}
+                        label={getOutcomeLabel(market, event.title)}
                         onTrade={onTrade}
                     />
                 ))}
             </div>
 
-            {/* See All Options Link */}
-            {remainingCount > 0 && (
-                <button
-                    onClick={() => onTrade(topOutcomes[0]?.id || '', 'yes')}
-                    className="w-full px-4 py-2.5 text-xs text-blue-400 hover:text-blue-300 hover:bg-white/5 flex items-center justify-center gap-1 transition-colors border-t border-white/5"
-                >
-                    See all {event.markets.length} options →
-                </button>
-            )}
+            {/* Footer - Volume only (like Polymarket) */}
+            <div className="px-4 py-3 text-xs text-zinc-500 border-t border-white/5 mt-auto">
+                {formatVolume(event.volume)} Vol.
+            </div>
         </div>
     );
 }
@@ -119,35 +140,35 @@ function OutcomeRow({ market, label, onTrade }: OutcomeRowProps) {
     const getColor = (price: number) => {
         if (price >= 0.7) return "text-emerald-400";
         if (price >= 0.4) return "text-blue-400";
-        if (price >= 0.15) return "text-amber-400";
-        return "text-zinc-400";
+        if (price >= 0.15) return "text-white"; // Changed from amber to white for cleaner look
+        return "text-zinc-500";
     };
 
     return (
-        <div className="px-4 py-3 flex items-center justify-between hover:bg-white/5 transition-colors group">
-            {/* Outcome Label + Price */}
-            <div className="flex items-center gap-3 flex-1 min-w-0">
-                <span className="text-sm text-zinc-300 group-hover:text-white truncate">
+        <div className="px-4 py-2.5 flex items-center justify-between hover:bg-white/5 transition-colors group border-b border-white/5 last:border-0">
+            {/* Outcome Label + Probability */}
+            <div className="flex items-center gap-3 flex-1 min-w-0 mr-4">
+                <span className="text-[13px] font-medium text-zinc-300 group-hover:text-blue-400 truncate transition-colors">
                     {label}
                 </span>
-                <span className={cn("text-sm font-bold tabular-nums shrink-0", getColor(market.price))}>
+                <span className={cn("text-[13px] font-bold tabular-nums shrink-0 opacity-80", getColor(market.price))}>
                     {percentage}%
                 </span>
             </div>
 
-            {/* Trading Buttons */}
+            {/* Trading Buttons (Compact - Polymarket hollow style) */}
             <div className="flex gap-1.5 shrink-0">
                 <button
-                    onClick={() => onTrade(market.id, 'yes')}
-                    className="px-3 py-1.5 text-xs font-semibold rounded bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 transition-colors"
+                    onClick={(e) => { e.stopPropagation(); onTrade(market.id, 'yes'); }}
+                    className="px-3 py-1 text-xs font-bold rounded bg-transparent hover:bg-[#00C896]/10 text-[#00C896] border border-[#00C896]/40 hover:border-[#00C896] transition-all"
                 >
-                    Yes {yesPrice}¢
+                    Yes
                 </button>
                 <button
-                    onClick={() => onTrade(market.id, 'no')}
-                    className="px-3 py-1.5 text-xs font-semibold rounded bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 transition-colors"
+                    onClick={(e) => { e.stopPropagation(); onTrade(market.id, 'no'); }}
+                    className="px-3 py-1 text-xs font-bold rounded bg-transparent hover:bg-[#E63E5D]/10 text-[#E63E5D] border border-[#E63E5D]/40 hover:border-[#E63E5D] transition-all"
                 >
-                    No {noPrice}¢
+                    No
                 </button>
             </div>
         </div>

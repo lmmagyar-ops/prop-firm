@@ -5,6 +5,8 @@ import { MessageSquare, RefreshCw, Bookmark } from "lucide-react";
 import type { MockMarket } from "@/lib/mock-markets";
 import { ProbabilityMeter } from "./ProbabilityMeter";
 
+import { getCleanOutcomeName } from "@/lib/market-utils";
+
 interface MarketCardProps {
     market: MockMarket;
     onClick: () => void;
@@ -42,7 +44,7 @@ export function MarketCard({ market, onClick }: MarketCardProps) {
 
                         {/* Title */}
                         <h3 className="text-base font-bold text-white leading-snug line-clamp-3">
-                            {market.question}
+                            {getCleanOutcomeName(market.question)}
                         </h3>
                     </div>
 

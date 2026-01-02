@@ -22,6 +22,8 @@ export function useSelectedChallenge(challenges: Challenge[]) {
         // If we have a stored ID and it's still valid (exists in challenges list)
         if (stored && challenges.some(c => c.id === stored && c.status === "active")) {
             setSelectedId(stored);
+            // Sync to cookie for server-side reading
+            document.cookie = `selectedChallengeId=${stored}; path=/; max-age=${60 * 60 * 24 * 30}`;
         }
         // Auto-select: Pick the most recent active challenge
         else if (challenges.length > 0) {
@@ -36,16 +38,20 @@ export function useSelectedChallenge(challenges: Challenge[]) {
             if (mostRecent) {
                 setSelectedId(mostRecent.id);
                 localStorage.setItem("selectedChallengeId", mostRecent.id);
+                // Sync to cookie for server-side reading
+                document.cookie = `selectedChallengeId=${mostRecent.id}; path=/; max-age=${60 * 60 * 24 * 30}`;
             }
         }
 
         setIsLoading(false);
     }, [challenges.length]); // Fixed: Use challenges.length instead of challenges to prevent infinite re-renders
 
-    // Save to localStorage when selection changes
+    // Save to localStorage AND cookie when selection changes
     const selectChallenge = (id: string) => {
         setSelectedId(id);
         localStorage.setItem("selectedChallengeId", id);
+        // Also set cookie for server-side reading
+        document.cookie = `selectedChallengeId=${id}; path=/; max-age=${60 * 60 * 24 * 30}`; // 30 days
     };
 
     return {
