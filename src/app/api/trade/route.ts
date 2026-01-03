@@ -7,14 +7,25 @@ import { db } from "@/db";
 export async function POST(req: Request) {
     try {
         const session = await auth();
-        // TODO: Enforce Auth when login is working.
 
         const body = await req.json();
-        const { userId, challengeId, marketId, side, amount } = body;
+        const { challengeId, marketId, side, amount } = body;
+
+        // SECURITY: Use session userId, with demo fallback for development
+        let userId = session?.user?.id;
+
+        // Only allow demo-user-1 fallback in development
+        if (!userId && body.userId === "demo-user-1" && process.env.NODE_ENV !== "production") {
+            userId = "demo-user-1";
+        }
+
+        if (!userId) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
 
         // Validation
-        if (!userId || !challengeId || !marketId || !side || !amount) {
-            return NextResponse.json({ error: "Missing required fields (userId, challengeId, marketId, side, amount)" }, { status: 400 });
+        if (!challengeId || !marketId || !side || !amount) {
+            return NextResponse.json({ error: "Missing required fields (challengeId, marketId, side, amount)" }, { status: 400 });
         }
 
         let trade;

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { requireAuth, requireAdmin, validateChallengeOwnership, requireActiveChallenge, isAuthError, isChallengeError } from '@/lib/auth-guard';
+import { requireAuth, validateChallengeOwnership, requireActiveChallenge, isAuthError, isChallengeError } from '@/lib/auth-guard';
 
 // Mock NextAuth
 vi.mock('@/auth', () => ({
@@ -139,52 +139,6 @@ describe('Authentication Guards', () => {
             expect(isChallengeError(result)).toBe(false);
             if (!isChallengeError(result)) {
                 expect(result).toEqual(mockChallenge);
-            }
-        });
-    });
-
-    describe('requireAdmin()', () => {
-        it('should block non-admin users (invalid email domain)', async () => {
-            const mockSession = {
-                user: { id: 'user-123', email: 'user@gmail.com' }, // Not admin
-                expires: '2025-12-31',
-            };
-            vi.mocked(auth).mockResolvedValue(mockSession as any);
-
-            const result = await requireAdmin();
-
-            expect(isAuthError(result)).toBe(true);
-            if (isAuthError(result)) {
-                expect(result.error).toBe('Forbidden - Admin access required');
-                expect(result.status).toBe(403);
-            }
-        });
-
-        it('should allow admin users (valid email domain)', async () => {
-            const mockSession = {
-                user: { id: 'admin-123', email: 'admin@yourcompany.com' }, // Admin
-                expires: '2025-12-31',
-            };
-            vi.mocked(auth).mockResolvedValue(mockSession as any);
-
-            const result = await requireAdmin();
-
-            expect(isAuthError(result)).toBe(false);
-            if (!isAuthError(result)) {
-                expect(result.userId).toBe('admin-123');
-                expect(result.session).toEqual(mockSession);
-            }
-        });
-
-        it('should block unauthenticated users trying to access admin routes', async () => {
-            vi.mocked(auth).mockResolvedValue(null);
-
-            const result = await requireAdmin();
-
-            expect(isAuthError(result)).toBe(true);
-            if (isAuthError(result)) {
-                expect(result.error).toBe('Unauthorized');
-                expect(result.status).toBe(401);
             }
         });
     });

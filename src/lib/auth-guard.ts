@@ -67,29 +67,9 @@ export async function validateChallengeOwnership(
 }
 
 /**
- * Checks if the user has admin role.
- * Uses the isAdmin field from session.
+ * Note: For admin checks, use requireAdmin from '@/lib/admin-auth' instead.
+ * That implementation uses the database role field for proper access control.
  */
-export async function requireAdmin(): Promise<AuthResult | AuthError> {
-    const result = await requireAuth();
-
-    if (isAuthError(result)) {
-        return result;
-    }
-
-    // Check if user is admin (you may need to add this to session)
-    // For now, we'll check the email domain or a specific flag
-    const isAdmin = result.session?.user?.email?.endsWith('@yourcompany.com') ?? false;
-
-    if (!isAdmin) {
-        return {
-            error: 'Forbidden - Admin access required',
-            status: 403,
-        };
-    }
-
-    return result;
-}
 
 /**
  * Validates that a challenge exists and is in an active/funded state.
