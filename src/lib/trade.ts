@@ -81,7 +81,7 @@ export class TradeExecutor {
                 throw new InsufficientFundsError(userId, amount, parseFloat(challenge.currentBalance));
             }
 
-            const riskCheck = await RiskEngine.validateTrade(challenge.id, marketId, amount);
+            const riskCheck = await RiskEngine.validateTrade(challenge.id, marketId, amount, 0, direction);
             if (!riskCheck.allowed) {
                 throw new RiskLimitExceededError(riskCheck.reason || "Risk Check Failed");
             }
@@ -139,7 +139,7 @@ export class TradeExecutor {
                 if (parseFloat(lockedChallenge.currentBalance) < amount) {
                     throw new InsufficientFundsError(userId, amount, parseFloat(lockedChallenge.currentBalance));
                 }
-                const riskCheck = await RiskEngine.validateTrade(lockedChallenge.id, marketId, amount);
+                const riskCheck = await RiskEngine.validateTrade(lockedChallenge.id, marketId, amount, 0, direction);
                 if (!riskCheck.allowed) {
                     throw new RiskLimitExceededError(riskCheck.reason || "Risk Check Failed");
                 }

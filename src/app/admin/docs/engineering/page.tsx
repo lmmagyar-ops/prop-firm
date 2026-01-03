@@ -252,6 +252,12 @@ export default function EngineeringDocPage() {
                             title="Profit Target"
                             desc="Evaluation only: Triggers phase transition to funded"
                         />
+                        <RuleItem
+                            level="HARD BLOCK"
+                            color="red"
+                            title="Arbitrage Detection"
+                            desc="Blocks trades that would create risk-free arb positions (binary or multi-runner)"
+                        />
                     </div>
                 </div>
 
@@ -322,6 +328,15 @@ export default function EngineeringDocPage() {
                         color="bg-blue-500/10 text-blue-400"
                     >
                         Failed/passed accounts have restricted routes. <code className="text-blue-400">cursor-not-allowed</code> and div wrappers instead of Link anchors.
+                    </FeatureCard>
+
+                    <FeatureCard
+                        title="Arbitrage Detector"
+                        desc="Risk-Free Profit Prevention"
+                        icon={AlertCircle}
+                        color="bg-pink-500/10 text-pink-400"
+                    >
+                        Blocks trades creating arb positions: YES/NO on same market, or all outcomes in multi-runner events. <code className="text-pink-400">ArbitrageDetector.ts</code>
                     </FeatureCard>
                 </div>
             </section>
@@ -475,8 +490,8 @@ export default function EngineeringDocPage() {
             <div className="border-t border-white/10 pt-8 mt-12">
                 <div className="flex items-center justify-between text-sm text-zinc-500">
                     <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-xs">v38.1</Badge>
-                        <span>Last updated: Dec 31, 2024</span>
+                        <Badge variant="outline" className="text-xs">v38.2</Badge>
+                        <span>Last updated: Jan 2, 2025</span>
                     </div>
                     <div className="flex items-center gap-4">
                         <span>Prop Firm Engineering</span>

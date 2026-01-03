@@ -3,6 +3,7 @@ import { challenges, positions } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { ChallengeRules } from "@/types/trading";
 import { getActiveMarkets, MarketMetadata } from "@/app/actions/market";
+import { ArbitrageDetector } from "./arbitrage-detector";
 
 export class RiskEngine {
 
@@ -14,7 +15,8 @@ export class RiskEngine {
         challengeId: string,
         marketId: string,
         tradeAmount: number,
-        estimatedLoss: number = 0
+        estimatedLoss: number = 0,
+        direction: "YES" | "NO" = "YES"
     ) {
         console.log("\n=== RISK VALIDATION START ===");
         console.log("Challenge ID:", challengeId);
@@ -147,6 +149,16 @@ export class RiskEngine {
             };
         }
         console.log(`  [RULE 8] Open Positions: ${openPositionCount}/${maxPositions} ✅`);
+
+        // --- RULE 9: ARBITRAGE BLOCK ---
+        // Block trades that would create risk-free arb positions
+        console.log(`\n[RULE 9] Arbitrage Detection:`);
+        const arbCheck = await ArbitrageDetector.wouldCreateArbitrage(challengeId, marketId, direction, challenge.platform as "polymarket" | "kalshi");
+        if (arbCheck.isArb) {
+            console.log(`  ❌ BLOCKED: Arbitrage Detected`);
+            return { allowed: false, reason: arbCheck.reason };
+        }
+        console.log(`  ✅ PASS`);
 
         console.log("\n✅ ALL RULES PASSED - Trade Allowed");
         console.log("=== RISK VALIDATION END ===\n");
