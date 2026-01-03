@@ -20,8 +20,7 @@ export async function GET() {
             connection: connectionTest.rows,
             tables: tableExists.rows,
             env: {
-                hasDatabaseUrl: !!process.env.DATABASE_URL,
-                databaseUrlPrefix: process.env.DATABASE_URL?.substring(0, 20) + "..."
+                hasDatabaseUrl: !!process.env.DATABASE_URL
             }
         });
     } catch (error: any) {

@@ -5,14 +5,14 @@ import { eq, and } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { MarketService } from "@/lib/market";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger("PositionsAPI");
 
 export async function GET() {
     const session = await auth();
 
-    console.log("[Positions API] Session:", {
-        hasSession: !!session,
-        userId: session?.user?.id || "NONE"
-    });
+    log.debug("Session check", { hasSession: !!session, userId: session?.user?.id || "NONE" });
 
     if (!session?.user?.id) return NextResponse.json({ positions: [] });
 
@@ -43,7 +43,7 @@ export async function GET() {
         });
     }
 
-    console.log("[Positions API] Using challenge:", {
+    log.debug("Using challenge", {
         selectedFromCookie: selectedChallengeId?.slice(0, 8) || "NONE",
         found: !!activeChallenge,
         id: activeChallenge?.id?.slice(0, 8) || "NONE",
@@ -59,7 +59,7 @@ export async function GET() {
         )
     });
 
-    console.log("[Positions API] Found positions:", openPositions.length);
+    log.debug("Found positions", { count: openPositions.length });
 
     // Batch fetch all prices at once (eliminates N+1 queries)
     const marketIds = openPositions.map(pos => pos.marketId);
@@ -167,9 +167,9 @@ async function getBatchMarketTitles(marketIds: string[]): Promise<Map<string, st
             }
         }
 
-        console.log(`[Positions API] Batch fetched ${results.size} market titles`);
+        log.debug("Batch fetched market titles", { count: results.size });
     } catch (e) {
-        console.error("[Positions] Error batch fetching market titles:", e);
+        log.error("Error batch fetching market titles", e);
         // Fallback to simple truncation
         for (const marketId of marketIds) {
             results.set(marketId, marketId.slice(0, 20) + "...");

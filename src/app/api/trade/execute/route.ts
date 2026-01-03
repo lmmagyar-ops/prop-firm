@@ -4,7 +4,9 @@ import { TradeExecutor } from "@/lib/trade";
 import { db } from "@/db";
 import { challenges, positions } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
-import { ChallengeEvaluator } from "@/lib/evaluator";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger("TradeAPI");
 
 export async function POST(req: NextRequest) {
     const session = await auth();
@@ -13,7 +15,7 @@ export async function POST(req: NextRequest) {
     const userId = session?.user?.id;
 
     if (!userId) {
-        console.log("[Trade API] 401 - No authenticated session");
+        log.warn("Unauthorized trade attempt - no session");
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -56,10 +58,10 @@ export async function POST(req: NextRequest) {
             const isMarketDataMissing = error.message?.includes("is currently closed or halted")
                 || error.message?.includes("Book Not Found");
 
-            console.log("[Trade Error]", error.message, "isMarketDataMissing:", isMarketDataMissing);
+            log.debug("Trade error", { error: error.message, isMarketDataMissing });
 
             if (isMarketDataMissing) {
-                console.log("[Auto-Provision] Seeding Redis Market Data...");
+                log.debug("Auto-provisioning Redis market data");
                 try {
                     const Redis = (await import("ioredis")).default;
                     const redis = new Redis(process.env.REDIS_URL || "redis://localhost:6380", {
@@ -82,11 +84,11 @@ export async function POST(req: NextRequest) {
                         asks: [{ price: "0.57", size: "10000" }, { price: "0.58", size: "10000" }]
                     }));
 
-                    console.log("[Auto-Provision] Redis data seeded successfully");
+                    log.debug("Redis data seeded successfully");
                     redis.disconnect();
 
                     // Retry execution
-                    console.log("[Auto-Provision] Retrying execution...");
+                    log.debug("Retrying trade execution");;
                     trade = await TradeExecutor.executeTrade(
                         userId,
                         activeChallenge.id,
@@ -95,9 +97,9 @@ export async function POST(req: NextRequest) {
                         parseFloat(amount),
                         outcome as "YES" | "NO"
                     );
-                    console.log("[Auto-Provision] Retry succeeded");
+                    log.debug("Trade retry succeeded");
                 } catch (redisError: any) {
-                    console.error("[Auto-Provision] Redis seeding failed:", redisError.message);
+                    log.error("Redis seeding failed", redisError);
                     throw new Error(`Trade failed: Market data unavailable and could not provision`);
                 }
             } else {
@@ -108,7 +110,7 @@ export async function POST(req: NextRequest) {
         // Use the activeChallenge that was already found (not a new query that might return wrong one)
         const challenge = activeChallenge;
 
-        console.log("[Trade] Looking for position on challenge:", challenge.id, "market:", marketId);
+        log.debug("Looking for position", { challengeId: challenge.id, marketId });
 
         // Get the position that was just created/updated
         // CRITICAL: Filter by direction to get the correct YES or NO position
@@ -124,7 +126,7 @@ export async function POST(req: NextRequest) {
 
         if (!position) {
             // Fallback: try to find position without status filter
-            console.warn("[Trade] Position not found with OPEN status, trying without status filter");
+            log.warn("Position not found with OPEN status, trying fallback");
             const anyPosition = await db.query.positions.findFirst({
                 where: and(
                     eq(positions.challengeId, challenge.id),
@@ -137,10 +139,10 @@ export async function POST(req: NextRequest) {
             if (anyPosition) {
                 // Use this position even if status isn't OPEN
                 position = anyPosition;
-                console.log("[Trade] Found position with ID:", position.id, "status:", position.status);
+                log.debug("Found position via fallback", { positionId: position.id, status: position.status });
             } else {
                 // Last resort: return trade data only
-                console.error("[Trade] No position found at all for this market");
+                log.error("No position found for market after trade", null, { challengeId: challenge.id, marketId });
                 return NextResponse.json({
                     success: true,
                     trade: {
@@ -190,7 +192,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json(responsePayload);
 
     } catch (error: any) {
-        console.error("Trade execution failed:", error);
+        log.error("Trade execution failed", error);
         return NextResponse.json({
             error: error.message || "Trade failed"
         }, { status: 500 });
