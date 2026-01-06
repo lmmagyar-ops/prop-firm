@@ -9,7 +9,7 @@ interface Orb {
     delay: number;
     duration: number;
     size: number;
-    color: string;
+    color: number;
 }
 
 const COLORS = [
