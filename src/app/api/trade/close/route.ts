@@ -8,17 +8,15 @@ import { eq, and } from "drizzle-orm";
 export async function POST(req: NextRequest) {
     const session = await auth();
 
-    const body = await req.json();
-    let { userId, positionId } = body;
-
-    // Fallback to session ID if not in body
-    if (!userId && session?.user?.id) {
-        userId = session.user.id;
-    }
-
+    // SECURITY: ALWAYS use session userId, never trust body
+    const userId = session?.user?.id;
     if (!userId) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const body = await req.json();
+    const { positionId } = body;
+    // NOTE: userId intentionally NOT destructured from body - security fix
 
     if (!positionId) {
         return NextResponse.json({ error: "Position ID required" }, { status: 400 });
