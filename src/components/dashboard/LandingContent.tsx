@@ -2,134 +2,459 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { ChevronRight } from "lucide-react";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { ChartsVsReality } from "./ChartsVsReality";
-import { MiniAcademy } from "./MiniAcademy";
-import { EventTradingPlaybook } from "./EventTradingPlaybook";
-import { PricingSection } from "./PricingSection";
-import { HighFrequencySection } from "./HighFrequencySection";
-
-// SVG Logos for better visual fidelity
-function YahooLogo() {
-    return (
-        <svg viewBox="0 0 100 24" className="h-8 w-auto fill-current">
-            <path d="M52.3 22l-1.3-4.2h-7L42.7 22H39l8.6-21.8h3.8L60 22h-3.8V22z M48.8 8.4L45.4 15h6.6L48.8 8.4z M13.7 0L8.1 12.8 2.6 0H0l7.1 15.6v6.2h3.9v-6.2L18.1 0H13.7z M29.1 22v-8.8h-7.8V22H19V0.2h2.3v10.3h7.8V0.2h2.3V22H29.1z M73.7 22V0.2h2.3V22H73.7z M100 22V0.2h2.3V22H100z M84.8 22V13h-7.8V22H75V0.2h2.3v10.3h7.8V0.2h2.3V22H84.8z" />
-        </svg>
-    );
-}
-
-function NasdaqLogo() {
-    return (
-        <svg viewBox="0 0 100 24" className="h-7 w-auto fill-current">
-            <path d="M5.9 5.8v12.4H2.4V2h5.7l9.6 13.9V2h3.5v19.8h-5.9L5.9 5.8z M35.4 15.5H27v6.3h-3.6V2h3.9l8.2 13.5z M47.8 16.5c1.4 1.1 2.3 2.1 2.3 3.6 0 2.2-2.1 3.5-5.2 3.5-2.6 0-4.6-1.1-5.7-2.1l1.6-2.6c1.1 0.8 2.4 1.8 4 1.8 1.4 0 2-0.5 2-1s-0.5-0.9-1.5-1.5l-2-1.3c-2.7-1.7-4-3.3-4-5.4 0-2.3 1.9-3.5 4.8-3.5 2.1 0 3.8 0.8 4.9 1.6l-1.5 2.5c-0.8-0.6-2-1.2-3.3-1.2-1.1 0-1.7 0.4-1.7 0.9 0 0.5 0.6 0.9 1.7 1.6l1.8 1.1c2.2 1.4 3.6 2.6 3.6 5.1-0.1 1.2-0.6 2.3-1.8 3.2z M65.5 10.9V2h5.7c5.8 0 8.4 4.1 8.4 9.1v0.7c0 5-2.6 9.3-8.4 9.3h-9.3V2h3.6v8.9h0z M71.7 18.2c2.9 0 4.2-2.3 4.2-6.3v-0.6c0-3.9-1.3-6.2-4.2-6.2h-2.1v13.1h2.1z M89 15.5H80.6v6.3H77V2h3.9l8.2 13.5z M96.1 14.5l-2.6-2.6 3-3V21h-3.3v-2.8l-1.1 1.1c-1.3 1.3-2.9 1.9-4.8 1.9-4.1 0-7.2-3.3-7.2-8.3v-1.9c0-5 3.1-8.3 7.2-8.3 1.9 0 3.5 0.5 4.8 1.9l1.1 1.1V2h3.4v12.5h-0.5z M87.1 11v0.9c0 3.2 1.8 5.4 4.1 5.4 2.3 0 4.1-2.2 4.1-5.4v-0.9c0-3.2-1.8-5.4-4.1-5.4-2.3 0-4.1 2.2-4.1 5.4z" />
-        </svg>
-    );
-}
-
-function MarketWatchLogo() {
-    return (
-        <svg viewBox="0 0 140 24" className="h-6 w-auto fill-current">
-            <path d="M12.4 2h4.5l5.2 15.8L27.3 2h4.4v20h-3.8V7.5L22.2 22h-4.3L12 7.5V22H8.2V2H12.4z M45 22l-1.2-4.1H37L35.8 22H32l8.3-20h4.4l8.3 20H45z M41 9.4L38.2 18h5.6L41 9.4z M61.6 12.8H57v9.2h-3.9V2h7.8c3.5 0 5.8 2.1 5.8 5.4 0 2.6-1.5 4.5-3.8 5.1l4.2 9.4h-4.2L61.6 12.8z M57 5.3v5.6h3.6c1.3 0 2-0.8 2-2.1 0-1.2-0.7-2.1-2-2.1H57z M72.8 12.9L77 18h-4.8l-2.6-3.2v7.2h-3.9V2h3.9v9L73.9 7h4.8L72.8 12.9z M90.4 5.3v5.6H94l-2.4 3.7h4.8l-2.5-3.7h3.3v-5.6H90.4z M90.4 14.8v7.2H86.5V2h10.7v3.3H90.4v1.8z M107.8 5.3v13.5h3.9V5.3h3.5V2h-10.9v3.3H107.8z M131.5 22h-4.1l-2.3-9.5-2.2 9.5h-4.2l-3.6-20h4l1.8 11.2 2.3-11.2h4.1l2.3 11.2 1.8-11.2h4L131.5 22z" />
-        </svg>
-    );
-}
+import { CheckCircle2, ChevronRight, BarChart3, ShieldCheck, Zap, Trophy, Wallet } from "lucide-react";
+import { MarketTicker } from "../MarketTicker";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export function LandingContent() {
-    return (
-        <div className="min-h-screen bg-transparent text-white selection:bg-[#2E81FF]/30 overflow-x-hidden font-sans">
+    const [selectedSize, setSelectedSize] = useState("5K");
 
-            {/* As Seen On - Social Proof */}
-            <div className="relative z-10 max-w-7xl mx-auto px-6 pb-20 pt-10 text-center border-t border-[#2E3A52]/30">
-                <p className="text-xs font-bold text-zinc-600 uppercase tracking-[0.2em] mb-10">As Seen In</p>
-                <div className="flex flex-wrap justify-center items-center gap-16 md:gap-32 opacity-40 hover:opacity-100 transition-opacity duration-500">
-                    <motion.div whileHover={{ scale: 1.05, filter: "brightness(1.5)" }} className="text-zinc-400">
-                        <YahooLogo />
-                    </motion.div>
-                    <motion.div whileHover={{ scale: 1.05, filter: "brightness(1.5)" }} className="text-zinc-400">
-                        <NasdaqLogo />
-                    </motion.div>
-                    <motion.div whileHover={{ scale: 1.05, filter: "brightness(1.5)" }} className="text-zinc-400">
-                        <MarketWatchLogo />
-                    </motion.div>
-                </div>
+    return (
+        <div className="min-h-screen bg-[#050505] text-white selection:bg-[#2E81FF]/30 overflow-x-hidden font-sans">
+            {/* Background Gradients for Content Sections */}
+            <div className="fixed inset-0 pointer-events-none z-0">
+                <div className="absolute top-[20%] left-0 w-[600px] h-[600px] bg-[#2E81FF]/5 rounded-full blur-[120px]" />
+                <div className="absolute bottom-0 right-0 w-[800px] h-[600px] bg-violet-500/5 rounded-full blur-[120px]" />
             </div>
 
-            {/* Pricing Section (Evaluations) */}
-            <PricingSection />
 
-            {/* Value Proposition (Charts vs Reality) */}
-            <ChartsVsReality />
+            {/* As Seen On - Social Proof (Hidden to match Vercel V1) */}
+            {/* <div className="relative z-10 max-w-7xl mx-auto px-6 pb-20 pt-10 text-center border-t border-[#2E3A52]/30">
+                ...
+            </div> */}
 
-            {/* Educational Content */}
-            <EventTradingPlaybook />
+            {/* How It Works - Premium Redesign */}
+            <section className="relative z-10 max-w-7xl mx-auto px-6 py-32 border-t border-[#2E3A52]/50">
+                <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-[#2E81FF]/10 blur-[120px] rounded-full pointer-events-none" />
 
-            {/* Academy/Trust */}
-            <MiniAcademy />
+                <div className="relative text-center space-y-4 mb-20">
+                    <h2 className="text-4xl md:text-6xl font-black tracking-tighter text-white">
+                        Your Path to <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#2E81FF] to-cyan-400">Capital.</span>
+                    </h2>
+                    <p className="text-zinc-400 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed">
+                        A simple, transparent evaluation process designed to get you funded.
+                    </p>
+                </div>
 
-            {/* Technical/HF Section */}
-            <HighFrequencySection />
+                <div className="grid md:grid-cols-3 gap-8 relative">
+                    {[
+                        {
+                            step: "01",
+                            icon: Zap,
+                            title: "The Challenge",
+                            desc: "Show us your skills. Hit the profit target without violating daily drawdown.",
+                            color: "text-blue-400",
+                            bg: "bg-blue-500/10",
+                            border: "group-hover:border-blue-500/50"
+                        },
+                        {
+                            step: "02",
+                            icon: ShieldCheck,
+                            title: "The Verification",
+                            desc: "Prove consistency. Repeat your performance to validate your strategy.",
+                            color: "text-purple-400",
+                            bg: "bg-purple-500/10",
+                            border: "group-hover:border-purple-500/50"
+                        },
+                        {
+                            step: "03",
+                            icon: Wallet,
+                            title: "Professional Trader",
+                            desc: "Trade our capital. Keep up to 90% of the profits. Bi-weekly payouts via USDC.",
+                            color: "text-emerald-400",
+                            bg: "bg-emerald-500/10",
+                            border: "group-hover:border-emerald-500/50"
+                        }
+                    ].map((item, i) => (
+                        <div key={i} className="group relative bg-[#131722]/80 backdrop-blur-xl border border-[#2E3A52] rounded-[32px] p-8 md:p-10 hover:-translate-y-2 transition-all duration-500 hover:shadow-[0_0_50px_-10px_rgba(46,129,255,0.15)] overflow-hidden">
+                            {/* Hover Gradient */}
+                            <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 bg-gradient-to-b from-white/5 to-transparent pointer-events-none`} />
 
-            {/* Final CTA Section */}
-            <section className="relative z-10 max-w-7xl mx-auto px-6 py-32">
-                <div className="relative bg-gradient-to-b from-[#131722] to-[#0B0E14] border border-[#2E3A52] rounded-[40px] p-12 md:p-20 overflow-hidden">
-                    {/* Background Effects */}
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-[#2E81FF]/10 via-transparent to-transparent" />
-                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-[#2E81FF]/10 blur-[120px] rounded-full pointer-events-none" />
+                            {/* Step Number */}
+                            <div className="absolute top-6 right-8 text-6xl font-black text-white/5 group-hover:text-white/10 transition-colors select-none font-mono">
+                                {item.step}
+                            </div>
 
-                    <div className="relative z-10 text-center space-y-8">
-                        {/* Eyebrow */}
-                        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#2E81FF]/10 border border-[#2E81FF]/20 text-[#2E81FF] text-xs font-bold uppercase tracking-[0.2em]">
-                            Ready to Trade?
+                            {/* Icon */}
+                            <div className={`w-14 h-14 rounded-2xl ${item.bg} flex items-center justify-center mb-8 group-hover:scale-110 transition-transform duration-500 ring-1 ring-white/5`}>
+                                <item.icon className={`w-7 h-7 ${item.color} stroke-[2px]`} />
+                            </div>
+
+                            <h3 className="text-2xl font-bold text-white mb-4 tracking-tight">{item.title}</h3>
+                            <p className="text-zinc-400 leading-relaxed font-medium">
+                                {item.desc}
+                            </p>
+                        </div>
+                    ))}
+                </div>
+            </section>
+
+
+            {/* Pricing Section - Vercel Match High Fidelity */}
+            <section className="relative z-10 max-w-7xl mx-auto px-6 py-24 mb-20">
+                <div className="text-center mb-16 space-y-4">
+                    <h2 className="text-4xl md:text-5xl font-black text-white tracking-tighter">
+                        Simple, Transparent <span className="text-blue-500">Pricing.</span>
+                    </h2>
+                    <p className="text-zinc-400 text-lg max-w-xl mx-auto">
+                        No hidden fees. One-time payment. Refundable with your first payout.
+                    </p>
+                </div>
+
+                <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto items-stretch">
+                    {/* SCOUT */}
+                    <div className="group relative bg-[#0F1218] border border-[#2E3A52] rounded-[2.5rem] p-8 hover:border-blue-500/50 transition-all duration-500 overflow-hidden flex flex-col">
+                        <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+
+                        <div className="relative z-10 flex flex-col items-center text-center mb-8 space-y-2">
+                            <h3 className="text-sm font-bold text-zinc-500 tracking-[0.2em] uppercase">Scout</h3>
+                            <div className="text-6xl font-black text-white tracking-tighter">5K</div>
+                            <p className="text-zinc-400 text-sm max-w-[200px] leading-relaxed">
+                                Perfect for learning market mechanics with minimal risk.
+                            </p>
                         </div>
 
-                        {/* Headline */}
-                        <h2 className="text-4xl md:text-6xl font-black text-white tracking-tighter leading-tight max-w-4xl mx-auto">
-                            Your Edge Is Waiting.
-                            <br />
-                            Your Capital Is Ready.
-                        </h2>
+                        <div className="flex-1 space-y-6 mb-8 relative z-10">
+                            <div className="flex justify-between items-center text-sm border-b border-zinc-800 pb-4">
+                                <span className="text-zinc-400">Profit Target</span>
+                                <span className="text-white font-bold">$500 <span className="text-blue-500">(10%)</span></span>
+                            </div>
+                            <div className="flex justify-between items-center text-sm">
+                                <span className="text-zinc-400">Drawdown</span>
+                                <span className="text-white font-bold">6%</span>
+                            </div>
+                            <div className="flex justify-between items-center text-sm">
+                                <span className="text-zinc-400">Daily Loss</span>
+                                <span className="text-white font-bold">None</span>
+                            </div>
+                            <div className="flex justify-between items-center text-sm border-b border-zinc-800 pb-4">
+                                <span className="text-zinc-400">Min Days</span>
+                                <span className="text-white font-bold">5 Days</span>
+                            </div>
 
-                        {/* Subtext */}
-                        <p className="text-xl md:text-2xl text-zinc-400 max-w-2xl mx-auto">
-                            Stop trading with your own money. Start trading with ours.
+                            <div className="space-y-2">
+                                <div className="flex justify-between items-center text-sm">
+                                    <span className="text-zinc-400 font-bold">Profit Split</span>
+                                    <span className="text-green-500 font-bold">90%</span>
+                                </div>
+                                <div className="h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden">
+                                    <div className="h-full bg-green-500 w-[90%] rounded-full" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="relative z-10 mt-auto pt-6 border-t border-zinc-800 text-center space-y-4">
+                            <div className="flex items-center justify-center gap-2 text-[#2E81FF] text-xs font-bold uppercase tracking-wider cursor-pointer hover:text-white transition-colors">
+                                <div className="w-4 h-4 rounded-full border border-current flex items-center justify-center text-[8px]">?</div>
+                                Learn How
+                            </div>
+
+                            <div className="flex items-baseline justify-center gap-1">
+                                <span className="text-4xl font-black text-white">$79</span>
+                                <span className="text-zinc-500 text-sm">/ one-time</span>
+                            </div>
+
+                            <button className="w-full py-4 rounded-2xl bg-[#1A202C] hover:bg-white hover:text-black text-white font-bold transition-all duration-300 flex items-center justify-center gap-2 group/btn">
+                                Start Challenge <ChevronRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* GRINDER (Popular) */}
+                    <div className="group relative bg-[#0F1218] border border-[#2E81FF]/50 rounded-[2.5rem] p-8 shadow-[0_0_80px_-20px_rgba(46,129,255,0.2)] md:scale-110 md:-translate-y-4 z-20 flex flex-col">
+                        <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#2E81FF] text-white text-[10px] font-black uppercase tracking-[0.2em] px-6 py-2 rounded-full shadow-lg shadow-blue-900/50">
+                            Most Popular
+                        </div>
+                        <div className="absolute inset-0 bg-gradient-to-br from-[#2E81FF]/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+
+                        <div className="relative z-10 flex flex-col items-center text-center mb-8 space-y-2 pt-4">
+                            <h3 className="text-sm font-bold text-zinc-500 tracking-[0.2em] uppercase">Grinder</h3>
+                            <div className="text-6xl font-black text-white tracking-tighter">10K</div>
+                            <p className="text-zinc-400 text-sm max-w-[200px] leading-relaxed">
+                                The standard for serious traders looking to scale up.
+                            </p>
+                        </div>
+
+                        <div className="flex-1 space-y-6 mb-8 relative z-10">
+                            <div className="flex justify-between items-center text-sm border-b border-zinc-800 pb-4">
+                                <span className="text-zinc-400">Profit Target</span>
+                                <span className="text-white font-bold">$1,000 <span className="text-blue-500">(10%)</span></span>
+                            </div>
+                            <div className="flex justify-between items-center text-sm">
+                                <span className="text-zinc-400">Drawdown</span>
+                                <span className="text-white font-bold">6%</span>
+                            </div>
+                            <div className="flex justify-between items-center text-sm">
+                                <span className="text-zinc-400">Daily Loss</span>
+                                <span className="text-white font-bold">None</span>
+                            </div>
+                            <div className="flex justify-between items-center text-sm border-b border-zinc-800 pb-4">
+                                <span className="text-zinc-400">Min Days</span>
+                                <span className="text-white font-bold">5 Days</span>
+                            </div>
+
+                            <div className="space-y-2">
+                                <div className="flex justify-between items-center text-sm">
+                                    <span className="text-zinc-400 font-bold">Profit Split</span>
+                                    <span className="text-green-500 font-bold">90%</span>
+                                </div>
+                                <div className="h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden">
+                                    <div className="h-full bg-green-500 w-[90%] rounded-full shadow-[0_0_10px_rgba(34,197,94,0.5)]" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="relative z-10 mt-auto pt-6 border-t border-zinc-800 text-center space-y-4">
+                            <div className="flex items-center justify-center gap-2 text-[#2E81FF] text-xs font-bold uppercase tracking-wider cursor-pointer hover:text-white transition-colors">
+                                <div className="w-4 h-4 rounded-full border border-current flex items-center justify-center text-[8px]">?</div>
+                                Learn How
+                            </div>
+
+                            <div className="flex items-baseline justify-center gap-1">
+                                <span className="text-5xl font-black text-white">$149</span>
+                                <span className="text-zinc-500 text-sm">/ one-time</span>
+                            </div>
+
+                            <button className="w-full py-4 rounded-2xl bg-[#2E81FF] hover:bg-[#2563EB] hover:scale-[1.02] text-white font-bold transition-all duration-300 shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2 group/btn">
+                                Start Challenge <ChevronRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* EXECUTIVE */}
+                    <div className="group relative bg-[#0F1218] border border-[#2E3A52] rounded-[2.5rem] p-8 hover:border-emerald-500/50 transition-all duration-500 overflow-hidden flex flex-col">
+                        <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+
+                        <div className="relative z-10 flex flex-col items-center text-center mb-8 space-y-2">
+                            <h3 className="text-sm font-bold text-zinc-500 tracking-[0.2em] uppercase">Executive</h3>
+                            <div className="text-6xl font-black text-white tracking-tighter">25K</div>
+                            <p className="text-zinc-400 text-sm max-w-[200px] leading-relaxed">
+                                Maximum capital for experienced market operators.
+                            </p>
+                        </div>
+
+                        <div className="flex-1 space-y-6 mb-8 relative z-10">
+                            <div className="flex justify-between items-center text-sm border-b border-zinc-800 pb-4">
+                                <span className="text-zinc-400">Profit Target</span>
+                                <span className="text-white font-bold">$3,000 <span className="text-blue-500">(10%)</span></span>
+                            </div>
+                            <div className="flex justify-between items-center text-sm">
+                                <span className="text-zinc-400">Drawdown</span>
+                                <span className="text-white font-bold">6%</span>
+                            </div>
+                            <div className="flex justify-between items-center text-sm">
+                                <span className="text-zinc-400">Daily Loss</span>
+                                <span className="text-white font-bold">None</span>
+                            </div>
+                            <div className="flex justify-between items-center text-sm border-b border-zinc-800 pb-4">
+                                <span className="text-zinc-400">Min Days</span>
+                                <span className="text-white font-bold">5 Days</span>
+                            </div>
+
+                            <div className="space-y-2">
+                                <div className="flex justify-between items-center text-sm">
+                                    <span className="text-zinc-400 font-bold">Profit Split</span>
+                                    <span className="text-green-500 font-bold">90%</span>
+                                </div>
+                                <div className="h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden">
+                                    <div className="h-full bg-green-500 w-[90%] rounded-full" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="relative z-10 mt-auto pt-6 border-t border-zinc-800 text-center space-y-4">
+                            <div className="flex items-center justify-center gap-2 text-[#2E81FF] text-xs font-bold uppercase tracking-wider cursor-pointer hover:text-white transition-colors">
+                                <div className="w-4 h-4 rounded-full border border-current flex items-center justify-center text-[8px]">?</div>
+                                Learn How
+                            </div>
+
+                            <div className="flex items-baseline justify-center gap-1">
+                                <span className="text-4xl font-black text-white">$299</span>
+                                <span className="text-zinc-500 text-sm">/ one-time</span>
+                            </div>
+
+                            <button className="w-full py-4 rounded-2xl bg-[#1A202C] hover:bg-white hover:text-black text-white font-bold transition-all duration-300 flex items-center justify-center gap-2 group/btn">
+                                Start Challenge <ChevronRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+
+            {/* Why Trade with Project X */}
+            <section className="relative z-10 max-w-7xl mx-auto px-6 mb-32">
+                <div className="grid md:grid-cols-2 gap-12 items-center">
+                    <div className="space-y-8">
+                        <h2 className="text-3xl md:text-5xl font-black text-white tracking-tighter leading-tight">
+                            Built Different. <br />
+                            <span className="text-zinc-500">Engineered for Longevity.</span>
+                        </h2>
+                        <p className="text-lg text-zinc-400 max-w-md">
+                            We don't rely on you failing. Our model is built on real market mechanics and sustainable growth.
                         </p>
 
-                        {/* CTA Button */}
-                        <Link
-                            href="/signup"
-                            className="inline-block group relative"
-                        >
-                            <div className="absolute -inset-1 bg-gradient-to-r from-[#2E81FF] to-cyan-500 rounded-full blur opacity-40 group-hover:opacity-100 transition duration-500 animate-pulse" />
-                            <Button
-                                size="lg"
-                                className="relative px-12 py-6 text-lg font-black rounded-full transition-all duration-300 bg-[#2E81FF] text-white hover:bg-[#2E81FF] hover:brightness-110 hover:shadow-[0_0_40px_-5px_rgba(46,129,255,0.6)] hover:scale-105 active:scale-95 border-none"
-                            >
-                                GET FUNDED <ChevronRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform stroke-[3px]" />
-                            </Button>
-                        </Link>
-
-                        {/* Email Subscription */}
-                        <div className="pt-8 space-y-4">
-                            <p className="text-zinc-400 text-lg">
-                                Get exclusive trading insights and promotions
-                            </p>
-                            <form className="max-w-md mx-auto">
-                                <div className="relative">
-                                    <input
-                                        type="email"
-                                        placeholder="Email"
-                                        className="w-full px-6 py-4 bg-[#0A0E14] border border-[#2E3A52] rounded-full text-white placeholder:text-zinc-600 focus:outline-none focus:border-[#2E81FF] transition-colors"
-                                    />
-                                    <button
-                                        type="submit"
-                                        className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-[#2E81FF] hover:bg-[#2E81FF]/90 flex items-center justify-center transition-all hover:scale-105 active:scale-95"
-                                    >
-                                        <ChevronRight className="w-5 h-5 text-white stroke-[3px]" />
-                                    </button>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
+                            {[
+                                { icon: BarChart3, title: "True Execution", desc: "Real order book data. No simulated slippage manipulation." },
+                                { icon: Wallet, title: "Instant Payouts", desc: "USDC withdrawals processed every 14 days. No delays." },
+                                { icon: CheckCircle2, title: "No Time Limits", desc: "Trade at your own pace. Zero pressure to rush entries." },
+                                { icon: Trophy, title: "Up to 90% Profit Split", desc: "Industry leading rewards. You keep what you earn." }
+                            ].map((item, i) => (
+                                <div key={i} className="bg-[#1A232E]/30 border border-[#2E3A52] p-5 rounded-2xl hover:bg-[#1A232E]/50 transition-colors">
+                                    <item.icon className="w-8 h-8 text-blue-500 mb-3" />
+                                    <h4 className="font-bold text-white mb-1">{item.title}</h4>
+                                    <p className="text-xs text-zinc-400 leading-relaxed">{item.desc}</p>
                                 </div>
-                            </form>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Visual / Abstract Representation */}
+                    <div className="relative h-[500px] w-full bg-[#0A0E14] border border-[#2E3A52] rounded-3xl overflow-hidden flex items-center justify-center group">
+                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-blue-900/20 via-[#0A0E14] to-[#0A0E14]" />
+                        <div className="relative z-10 text-center space-y-2">
+                            <div className="text-8xl font-black text-white/5 select-none group-hover:text-white/10 transition-colors duration-500">
+                                PRO
+                            </div>
+                            <div className="text-sm font-mono text-blue-500 tracking-[0.3em] uppercase">
+                                Infrastructure
+                            </div>
+                        </div>
+
+                        {/* Orbiting Elements (Decorative) */}
+                        <div className="absolute w-[300px] h-[300px] border border-blue-500/10 rounded-full animate-spin-slow" />
+                        <div className="absolute w-[450px] h-[450px] border border-dashed border-white/5 rounded-full animate-reverse-spin" />
+                    </div>
+                </div>
+            </section>
+
+
+            {/* Academy Section */}
+            <section className="relative z-10 max-w-7xl mx-auto px-6 py-24">
+                <div className="grid md:grid-cols-2 gap-12 items-center">
+                    {/* Left: Visual Element */}
+                    <div className="relative h-[400px] w-full bg-[#0A0E14] border border-[#2E3A52] rounded-3xl overflow-hidden flex items-center justify-center group order-2 md:order-1">
+                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-emerald-900/20 via-[#0A0E14] to-[#0A0E14]" />
+                        <div className="absolute inset-0 bg-[linear-gradient(rgba(16,185,129,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(16,185,129,0.03)_1px,transparent_1px)] bg-[size:30px_30px]" />
+
+                        {/* Books/Learning Visual */}
+                        <div className="relative z-10 text-center space-y-4">
+                            <div className="text-7xl">📚</div>
+                            <div className="text-sm font-mono text-emerald-400 tracking-[0.3em] uppercase">
+                                Coming Soon
+                            </div>
+                        </div>
+
+                        {/* Decorative Elements */}
+                        <div className="absolute w-[200px] h-[200px] border border-emerald-500/10 rounded-full animate-spin-slow" />
+                        <div className="absolute w-[300px] h-[300px] border border-dashed border-white/5 rounded-full animate-reverse-spin" />
+                    </div>
+
+                    {/* Right: Content */}
+                    <div className="space-y-6 order-1 md:order-2">
+                        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold uppercase tracking-[0.2em]">
+                            Academy
+                        </div>
+
+                        <h2 className="text-3xl md:text-5xl font-black text-white tracking-tighter leading-tight">
+                            Learn From The Best. <br />
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">Become The Best.</span>
+                        </h2>
+
+                        <p className="text-zinc-400 text-lg leading-relaxed max-w-lg">
+                            All the resources you need to unlock your true potential: guides, strategies, market analysis, and weekly sessions with our top traders.
+                        </p>
+
+                        <button
+                            onClick={() => window.location.href = '/academy'}
+                            className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-bold hover:bg-emerald-500 hover:text-white transition-all duration-300 group"
+                        >
+                            Go To Academy
+                            <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+
+            {/* Platform Features */}
+            <section className="relative z-10 max-w-7xl mx-auto px-6 pb-32">
+                <div className="relative bg-gradient-to-b from-[#131722] to-[#0B0E14] border border-[#2E3A52] rounded-[40px] p-8 md:p-16 overflow-hidden">
+                    {/* Background Grid/Glow */}
+                    <div className="absolute inset-0 bg-[linear-gradient(rgba(46,129,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(46,129,255,0.03)_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_at_center,black,transparent_80%)]" />
+                    <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-blue-500/5 blur-[120px] rounded-full pointer-events-none" />
+
+                    <div className="relative z-10 flex flex-col md:flex-row items-center gap-16">
+                        <div className="flex-1 space-y-8">
+                            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#2E81FF]/10 border border-[#2E81FF]/20 text-[#2E81FF] text-xs font-bold uppercase tracking-[0.2em] shadow-lg shadow-blue-900/20">
+                                <Trophy className="w-3 h-3" /> World Class Tech
+                            </div>
+
+                            <h2 className="text-4xl md:text-5xl font-black text-white tracking-tighter leading-tight">
+                                Built for <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#2E81FF] to-cyan-400">High Frequency</span> <br />
+                                Prediction Markets.
+                            </h2>
+
+                            <p className="text-zinc-400 text-lg leading-relaxed max-w-lg">
+                                Experience the speed and precision of a real trading desk. Our infrastructure is designed to handle the velocity of modern prediction markets.
+                            </p>
+
+                            <ul className="space-y-6 pt-4">
+                                {[
+                                    { text: "Real-time Polymarket Data Feeds (<100ms)", sub: "Direct connection to the CLOB." },
+                                    { text: "One-Click Execution", sub: "Enter and exit positions instantly." },
+                                    { text: "Visual Risk Management", sub: "Live odometer and position gauges." },
+                                    { text: "Velocity Fee Engine", sub: "Smart carry costs to encourage volume." }
+                                ].map((feat, i) => (
+                                    <li key={i} className="flex gap-4">
+                                        <div className="w-10 h-10 rounded-xl bg-[#2E3A52]/30 flex items-center justify-center flex-shrink-0 border border-white/5">
+                                            <CheckCircle2 className="w-5 h-5 text-[#2E81FF]" />
+                                        </div>
+                                        <div>
+                                            <div className="text-white font-bold text-lg">{feat.text}</div>
+                                            <div className="text-zinc-500 text-sm">{feat.sub}</div>
+                                        </div>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+
+                        {/* Feature Visual */}
+                        <div className="flex-1 w-full relative">
+                            <div className="absolute -inset-1 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl opacity-20 blur-xl" />
+                            <div className="relative bg-[#050505] border border-[#2E3A52] rounded-2xl p-6 md:p-8 shadow-2xl">
+                                <div className="flex justify-between items-center border-b border-white/5 pb-6 mb-6">
+                                    <div className="flex gap-2">
+                                        <div className="w-3 h-3 rounded-full bg-red-500/20 border border-red-500/50" />
+                                        <div className="w-3 h-3 rounded-full bg-yellow-500/20 border border-yellow-500/50" />
+                                        <div className="w-3 h-3 rounded-full bg-green-500/20 border border-green-500/50" />
+                                    </div>
+                                    <div className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest">Live Feed • <span className="text-green-500 animate-pulse">Connected</span></div>
+                                </div>
+
+                                <div className="space-y-4 font-mono text-sm">
+                                    {[
+                                        { user: "User_992", profit: "+$2,490.00", time: "just now" },
+                                        { user: "CryptoWiz", profit: "+$8,100.00", time: "2s ago" },
+                                        { user: "PredictionKing", profit: "+$1,250.00", time: "5s ago" },
+                                        { user: "AlphaSeeker", profit: "+$5,000.00", time: "12s ago" },
+                                        { user: "MarketMaker_X", profit: "+$12,400.00", time: "30s ago" }
+                                    ].map((row, i) => (
+                                        <div key={i} className="flex justify-between items-center p-3 rounded-lg hover:bg-white/5 transition-colors cursor-default group">
+                                            <div className="flex items-center gap-3">
+                                                <div className={`w-1.5 h-1.5 rounded-full ${i === 0 ? 'bg-green-500 animate-ping' : 'bg-zinc-700'}`} />
+                                                <span className="text-zinc-400 group-hover:text-white transition-colors">{row.user}</span>
+                                            </div>
+                                            <div className="flex items-center gap-4">
+                                                <span className="text-green-400 font-bold">{row.profit}</span>
+                                                <span className="text-zinc-600 text-xs hidden sm:block">{row.time}</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
