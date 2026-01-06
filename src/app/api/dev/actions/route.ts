@@ -1,22 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { challenges, positions, trades } from "@/db/schema";
-import { auth } from "@/auth";
 import { eq, and } from "drizzle-orm";
+import { requireAdmin } from "@/lib/admin-auth";
 
 export async function POST(req: NextRequest) {
+    // SECURITY: Block in production
     if (process.env.NODE_ENV === "production") {
         return NextResponse.json({ error: "Dev mode only" }, { status: 403 });
+    }
+
+    // SECURITY: Require admin even in dev/staging
+    const adminCheck = await requireAdmin();
+    if (!adminCheck.isAuthorized) {
+        return adminCheck.response;
     }
 
     const body = await req.json();
     const action = body.action;
 
-    // TRUST THE CLIENT-PASSED ID IN DEV MODE (Fixes Auth Mismatches)
-    const session = await auth();
-    const userId = body.userId || session?.user?.id || "demo-user-1";
+    // Use admin's userId from session, not from body (security fix)
+    const userId = body.userId || adminCheck.user?.id || "demo-user-1";
 
-    console.log(`[DevTools API] Executing action '${action}' for User ID: ${userId}`);
+    console.log(`[DevTools API] Admin executing action '${action}' for User ID: ${userId}`);
 
     try {
         if (action === "seed_pending") {

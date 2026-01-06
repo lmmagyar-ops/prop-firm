@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { challenges } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { FUNDED_RULES } from "@/lib/funded-rules";
+import { requireAdmin } from "@/lib/admin-auth";
 
 /**
  * DEV ONLY: Set a challenge to funded phase for testing
@@ -15,6 +16,16 @@ import { FUNDED_RULES } from "@/lib/funded-rules";
  * to funded phase with appropriate funded stage configuration.
  */
 export async function POST(req: NextRequest) {
+    // SECURITY: Block in production and require admin
+    if (process.env.NODE_ENV === "production") {
+        return NextResponse.json({ error: "Dev endpoints disabled in production" }, { status: 403 });
+    }
+
+    const adminCheck = await requireAdmin();
+    if (!adminCheck.isAuthorized) {
+        return adminCheck.response;
+    }
+
     try {
         const body = await req.json().catch(() => ({}));
         const targetUserId = body.userId || "demo-user-1";
@@ -108,6 +119,16 @@ export async function POST(req: NextRequest) {
  * Reset a funded challenge back to challenge phase for testing
  */
 export async function DELETE(req: NextRequest) {
+    // SECURITY: Block in production and require admin
+    if (process.env.NODE_ENV === "production") {
+        return NextResponse.json({ error: "Dev endpoints disabled in production" }, { status: 403 });
+    }
+
+    const adminCheck = await requireAdmin();
+    if (!adminCheck.isAuthorized) {
+        return adminCheck.response;
+    }
+
     try {
         const { searchParams } = new URL(req.url);
         const userId = searchParams.get("userId") || "demo-user-1";

@@ -4,11 +4,12 @@ import { users } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
-// Fallback admin emails for initial setup (before admins are created in DB)
-const BOOTSTRAP_ADMIN_EMAILS = [
-    "l.m.magyar@gmail.com",
-    // Add cofounder emails here once provided
-];
+// Bootstrap admin emails from environment variable (comma-separated)
+// Set ADMIN_BOOTSTRAP_EMAILS in .env for initial setup before DB admins exist
+const BOOTSTRAP_ADMIN_EMAILS = (process.env.ADMIN_BOOTSTRAP_EMAILS || "")
+    .split(",")
+    .map(email => email.trim().toLowerCase())
+    .filter(email => email.length > 0);
 
 export async function requireAdmin() {
     const session = await auth();
