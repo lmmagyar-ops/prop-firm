@@ -96,12 +96,47 @@ export async function POST(request: Request) {
             );
         }
 
-        // TODO: Validate captcha token with reCAPTCHA API
-        // For now, we'll skip this in development
-        if (process.env.NODE_ENV === "production" && !captchaToken) {
+        // Verify reCAPTCHA token
+        const recaptchaSecretKey = process.env.RECAPTCHA_SECRET_KEY;
+        if (recaptchaSecretKey) {
+            if (!captchaToken) {
+                return NextResponse.json(
+                    { error: "Please complete the captcha" },
+                    { status: 400 }
+                );
+            }
+
+            // Verify with Google reCAPTCHA API
+            const recaptchaResponse = await fetch("https://www.google.com/recaptcha/api/siteverify", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: `secret=${recaptchaSecretKey}&response=${captchaToken}`,
+            });
+
+            const recaptchaData = await recaptchaResponse.json();
+
+            if (!recaptchaData.success) {
+                console.warn("[Signup] reCAPTCHA verification failed:", recaptchaData["error-codes"]);
+                return NextResponse.json(
+                    { error: "CAPTCHA verification failed. Please try again." },
+                    { status: 400 }
+                );
+            }
+
+            // For v3 reCAPTCHA, check score (0.0 - 1.0, higher is more likely human)
+            if (recaptchaData.score !== undefined && recaptchaData.score < 0.5) {
+                console.warn("[Signup] Low reCAPTCHA score:", recaptchaData.score);
+                return NextResponse.json(
+                    { error: "Suspicious activity detected. Please try again." },
+                    { status: 400 }
+                );
+            }
+        } else if (process.env.NODE_ENV === "production") {
+            // In production, require CAPTCHA key to be configured
+            console.error("[Signup] RECAPTCHA_SECRET_KEY not configured in production!");
             return NextResponse.json(
-                { error: "Please complete the captcha" },
-                { status: 400 }
+                { error: "Server configuration error. Please contact support." },
+                { status: 500 }
             );
         }
 
