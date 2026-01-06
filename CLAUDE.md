@@ -1,0 +1,149 @@
+# CLAUDE.md - Project X Prop Firm
+
+## Overview
+This is the **world's first Prediction Market Prop Firm** - a simulated trading platform where users trade on Polymarket/Kalshi data with our capital. Built with Next.js 16, React 19, PostgreSQL, Redis, and real-time WebSockets.
+
+## Quick Commands
+```bash
+npm run dev      # Start dev server (localhost:3000)
+npm run build    # Production build
+npm run lint     # ESLint
+npm run test     # Vitest unit tests
+npm run db:push  # Push Drizzle schema to PostgreSQL
+docker-compose up -d  # Start Postgres + Redis
+npx tsx src/workers/ingestion.ts  # Start price ingestion worker
+```
+
+## Tech Stack
+- **Framework**: Next.js 16 (App Router), React 19
+- **Database**: PostgreSQL (Drizzle ORM), Redis (cache + pub/sub)
+- **Auth**: NextAuth v5 (email/password + OAuth)
+- **UI**: Tailwind v4, Shadcn/ui, Framer Motion, Radix
+- **Real-time**: Redis pub/sub, WebSocket price streams
+- **Charts**: TradingView Lightweight Charts
+- **Voice AI**: Vapi (@vapi-ai/web)
+- **Analytics**: Vercel Analytics, Sentry
+- **Markets**: Polymarket CLOB client, Kalshi API
+
+## Project Structure
+```
+src/
+├── app/              # Next.js routes (19 routes)
+│   ├── admin/        # Admin dashboard (rules, users, payouts)
+│   ├── api/          # 66 API routes
+│   ├── checkout/     # Payment flow
+│   ├── dashboard/    # Trader dashboard
+│   └── trade/        # Trading interface
+├── components/       # 179 components
+│   ├── dashboard/    # DashboardView, LandingHero, LandingContent
+│   ├── trading/      # OrderBook, MarketGrid, TradeModal
+│   ├── admin/        # AdminDashboard, RulesEditor
+│   └── ui/           # Shadcn components
+├── config/           # plans.ts (pricing tiers), trading.ts
+├── db/               # Drizzle schema (20+ tables)
+├── hooks/            # usePageContext, useMarketData, etc.
+├── lib/              # 46 utility modules
+│   ├── trade.ts      # Trade execution engine
+│   ├── risk.ts       # Drawdown/loss calculations
+│   ├── evaluator.ts  # Challenge pass/fail logic
+│   ├── payout-service.ts  # Payout processing
+│   └── vapi-config.ts     # Voice AI config
+└── workers/          # Background jobs (ingestion, etc.)
+```
+
+## Business Logic
+
+### Pricing Tiers (src/config/plans.ts)
+| Tier | Size | Price | Profit Target | Drawdown |
+|------|------|-------|---------------|----------|
+| Scout | $5K | $79 | 10% ($500) | 8% |
+| Grinder | $10K | $149 | 10% ($1,000) | 10% |
+| Executive | $25K | $299 | 12% ($3,000) | 10% |
+
+### Challenge Flow
+1. **Challenge Phase**: Hit profit target without violating drawdown
+2. **Verification Phase**: Repeat performance (same rules)
+3. **Funded Phase**: Trade live, 80-90% profit split, bi-weekly payouts
+
+### Key Rules Engine (src/lib/risk.ts, evaluator.ts)
+- Max Drawdown: Static % of initial balance
+- Daily Drawdown: % of start-of-day balance
+- Velocity Fees: 0.1% daily carry cost for positions held >24h
+- Min Trading Days: 5 days before payout eligible
+
+## Database Schema (src/db/schema.ts)
+**Core Tables:** users, challenges, positions, trades, payouts
+**Auth:** accounts, sessions, verificationTokens, user2FA
+**Business:** businessRules, discountCodes, affiliates, certificates
+
+## Design System (Current: Vapi-Inspired)
+- **Background**: Pure black (#000000)
+- **Accent**: Mint (#4FD1C5)
+- **Text**: White headings, Cool Gray body (#94A3B8)
+- **Borders**: Thin 1px (#1E293B)
+- **Patterns**: Dot-grid background, atmospheric corner glows
+- **Typography**: Monospace for labels/stats (mono-label class)
+- **Components**: thin-border-card, pill-btn, pill-btn-mint
+
+## Key Components
+
+### Landing Page
+- `LandingHero.tsx`: Hero with ProbabilityOrbs animation
+- `LandingContent.tsx`: How It Works, Pricing, Academy sections
+- `Navbar.tsx`: Navigation with mint dashboard CTA
+- `ProbabilityOrbs.tsx`: Floating % circles animation
+
+### Trading
+- `DashboardView.tsx`: Main trading interface
+- `MarketGrid.tsx`: Market selection
+- `TradeModal.tsx`: Order entry
+- `RiskMeter.tsx`: Live drawdown gauge
+
+### Voice AI (Vapi)
+- `VoiceAssistant.tsx`: Mic button, auto-prompt after 90s
+- `src/lib/vapi-config.ts`: API keys from env
+- `src/lib/analytics.ts`: Voice AI attribution tracking
+
+## Environment Variables
+Required in `.env`:
+```
+DATABASE_URL=postgresql://...
+REDIS_URL=redis://...
+NEXTAUTH_SECRET=...
+VAPI_PUBLIC_KEY=...
+VAPI_ASSISTANT_ID=...
+SENTRY_DSN=...
+```
+
+## Testing
+```bash
+npm run test              # Unit tests (Vitest)
+npm run test:coverage     # With coverage
+npm run test:engine       # Trading engine verification
+npx playwright test       # E2E tests (e2e/)
+```
+
+## Deployment
+- **Hosting**: Vercel
+- **DB**: External PostgreSQL
+- **Cache**: External Redis
+
+## Git Backup (Revert Points)
+- `68e608c`: Before Vapi-style redesign
+
+## Common Patterns
+
+### Adding a New Route
+1. Create `src/app/[route]/page.tsx`
+2. Add to Navbar if needed
+3. Add API route in `src/app/api/` if needed
+
+### Adding a New Component
+1. Create in `src/components/[category]/`
+2. Use Vapi design tokens from globals.css
+3. Apply thin-border-card, mono-label classes
+
+### Modifying Business Rules
+1. Edit `src/config/plans.ts` for pricing
+2. Edit `src/lib/risk.ts` for drawdown rules
+3. Edit `src/lib/evaluator.ts` for pass/fail logic

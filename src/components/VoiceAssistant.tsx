@@ -15,6 +15,7 @@ export function VoiceAssistant() {
     const { currentPage, timeOnPage, scrollDepth } = usePageContext();
     const [isOpen, setIsOpen] = useState(false);
     const [showPrompt, setShowPrompt] = useState(false);
+    const [isDismissed, setIsDismissed] = useState(false); // Track if user dismissed
 
     // Initialize Vapi
     useEffect(() => {
@@ -49,13 +50,13 @@ export function VoiceAssistant() {
         };
     }, []);
 
-    // Auto-prompt on landing page after 90 seconds
+    // Auto-prompt on landing page after 90 seconds (only if not dismissed)
     useEffect(() => {
-        if (currentPage === '/' && timeOnPage > 90 && !isSessionActive && !showPrompt) {
+        if (currentPage === '/' && timeOnPage > 90 && !isSessionActive && !showPrompt && !isDismissed) {
             setShowPrompt(true);
             trackEvent(VoiceEvents.AUTO_PROMPTED, { page: currentPage, timeOnPage });
         }
-    }, [timeOnPage, currentPage, isSessionActive, showPrompt]);
+    }, [timeOnPage, currentPage, isSessionActive, showPrompt, isDismissed]);
 
     // Track voice AI usage and page navigation after interaction
     useEffect(() => {
@@ -134,11 +135,12 @@ export function VoiceAssistant() {
                         <button
                             onClick={() => {
                                 setShowPrompt(false);
+                                setIsDismissed(true); // Prevent re-appearing
                                 trackEvent(VoiceEvents.PROMPT_DISMISSED, { page: currentPage });
                             }}
-                            className="absolute -top-2 -right-2 w-6 h-6 bg-white text-black rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors"
+                            className="absolute -top-3 -right-3 w-8 h-8 bg-zinc-800 text-white rounded-full flex items-center justify-center hover:bg-zinc-700 transition-colors border border-zinc-600 z-[60]"
                         >
-                            <X className="w-3 h-3" />
+                            <X className="w-4 h-4" />
                         </button>
                         <p className="text-sm font-medium">
                             Still have questions? Try asking our AI assistant!

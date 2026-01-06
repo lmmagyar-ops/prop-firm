@@ -1,129 +1,122 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
 import Link from "next/link";
-import { CheckCircle2, ChevronRight, Zap, ShieldCheck, Trophy, Check } from "lucide-react";
-import { motion } from "framer-motion";
+import { ChevronRight, ArrowRight } from "lucide-react";
 import { PLANS } from "@/config/plans";
-
-import { MarketTicker } from "@/components/MarketTicker";
 import { Navbar } from "@/components/Navbar";
+import { ProbabilityOrbs } from "@/components/ProbabilityOrbs";
 
 export function LandingHero() {
-    // Default to grinder (10k)
     const [selectedPlanKey, setSelectedPlanKey] = useState<keyof typeof PLANS>("grinder");
     const activePlan = PLANS[selectedPlanKey];
 
-    // Helper to get plan by size for the selector buttons
     const planKeys = Object.keys(PLANS) as (keyof typeof PLANS)[];
-    // Sort by price to ensure 5k -> 10k -> 25k order
     planKeys.sort((a, b) => PLANS[a].price - PLANS[b].price);
 
     return (
-        <div className="relative z-50 flex flex-col items-center justify-between min-h-[85vh] overflow-hidden pt-36 bg-[#050505]">
+        <div className="relative z-50 flex flex-col items-center justify-between min-h-screen overflow-hidden bg-[#000000]">
 
             <Navbar />
 
-            {/* 0. Aurora Background Effects (Ambient) - Deep Blue/Violet */}
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-[#2E81FF]/20 blur-[120px] rounded-full opacity-40 pointer-events-none animate-pulse" />
-            <div className="absolute top-20 left-1/4 w-[800px] h-[500px] bg-violet-600/10 blur-[100px] rounded-full opacity-30 pointer-events-none" />
+            {/* Atmospheric Corner Glows - Vapi Style */}
+            <div className="glow-indigo-corner animate-pulse-glow" />
+            <div className="glow-purple-corner animate-pulse-glow" />
 
-            <div className="flex flex-col items-center space-y-8 px-4 w-full max-w-7xl mx-auto mt-8"> {/* Compacted spacing */}
+            {/* Dot Grid Background */}
+            <div className="absolute inset-0 bg-dot-grid-subtle opacity-60 pointer-events-none" />
 
-                {/* 1. Main Headline - Massive & Bold */}
-                <motion.div
-                    initial={{ opacity: 0, y: 30 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2 }}
-                    className="space-y-4 max-w-5xl relative text-center"
-                >
-                    <h1 className="text-6xl md:text-8xl lg:text-[100px] leading-[0.9] font-black tracking-tighter text-white drop-shadow-2xl">
-                        Trade with <br />
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#2E81FF] via-cyan-400 to-[#2E81FF] animate-text-shimmer bg-[length:200%_auto]">
-                            Our Liquidity.
-                        </span>
+            {/* Floating Probability Orbs */}
+            <ProbabilityOrbs />
+
+            {/* Main Content */}
+            <div className="relative z-10 flex flex-col items-center justify-center flex-1 px-4 w-full max-w-5xl mx-auto pt-32 pb-20">
+
+                {/* Main Headline - Clean & Bold */}
+                <div className="animate-slide-up text-center space-y-6 mb-12">
+                    <h1 className="text-5xl md:text-7xl lg:text-[90px] leading-[0.95] font-black tracking-tight text-white">
+                        Trade with<br />
+                        <span className="text-gradient-mint">Our Capital.</span>
                     </h1>
 
-                    <div className="flex flex-col items-center gap-4">
-                        <p className="text-xl md:text-2xl text-zinc-400 font-medium leading-relaxed max-w-3xl mx-auto">
-                            We provide the capital. You provide the edge. <span className="text-white font-bold">Zero Personal Liability.</span> Keep up to 90% of profits.
-                        </p>
+                    <p className="text-lg md:text-xl text-[var(--vapi-gray-text)] max-w-2xl mx-auto leading-relaxed">
+                        We provide the liquidity. You provide the edge.
+                        <span className="text-white font-medium"> Zero personal liability.</span>
+                        {" "}Keep up to 90% of profits.
+                    </p>
+                </div>
+
+                {/* Account Size Selector - Thin Border Pills */}
+                <div className="animate-slide-up-delay-2 w-full max-w-md mb-8">
+                    <div className="thin-border-card rounded-full p-1.5 flex gap-1">
+                        {planKeys.map((key) => {
+                            const plan = PLANS[key];
+                            const sizeLabel = "$" + (plan.size / 1000) + "K";
+                            const isActive = selectedPlanKey === key;
+                            return (
+                                <button
+                                    key={key}
+                                    onClick={() => setSelectedPlanKey(key)}
+                                    className={`flex-1 py-3 rounded-full mono-label text-xs transition-all duration-300 ${isActive
+                                        ? "bg-[var(--vapi-mint)] text-black"
+                                        : "text-[var(--vapi-gray-text)] hover:text-white hover:bg-white/5"
+                                        }`}
+                                >
+                                    {sizeLabel}
+                                </button>
+                            );
+                        })}
                     </div>
-                </motion.div>
+                </div>
 
-                {/* 2. Account Selector - Glassmorphism */}
-                <motion.div
-                    initial={{ opacity: 0, y: 40 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.4 }}
-                    className="w-full max-w-lg bg-[#1A232E]/80 backdrop-blur-2xl border border-[#2E3A52] p-2 rounded-3xl flex gap-1 shadow-[0_0_60px_-15px_rgba(0,0,0,0.5)] ring-1 ring-[#2E3A52]"
-                >
-                    {planKeys.map((key) => {
-                        const plan = PLANS[key];
-                        const sizeLabel = (plan.size / 1000) + "k"; // 5000 -> "5k"
-                        return (
-                            <button
-                                key={key}
-                                onClick={() => setSelectedPlanKey(key)}
-                                className={`relative flex-1 py-4 rounded-2xl text-base font-bold transition-all duration-300 overflow-hidden ${selectedPlanKey === key
-                                    ? "bg-[#2E81FF] text-white shadow-xl ring-1 ring-white/20"
-                                    : "text-zinc-500 hover:bg-[#2E81FF]/10 hover:text-white"
-                                    }`}
-                            >
-                                {selectedPlanKey === key && (
-                                    <div className="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent pointer-events-none" />
-                                )}
-                                <span className="relative z-10">${sizeLabel.toUpperCase()}</span>
+                {/* Price Display */}
+                <div className="animate-slide-up-delay-2 flex items-baseline gap-2 mb-8">
+                    <span className="text-5xl md:text-6xl font-black text-white tracking-tight">
+                        ${activePlan.price}
+                    </span>
+                    <span className="text-[var(--vapi-gray-text)] text-lg">/one-time</span>
+                </div>
+
+                {/* CTA Button - Mint Pill Style */}
+                <div className="animate-slide-up-delay-3 flex flex-col items-center gap-4">
+                    <div className="flex flex-col sm:flex-row items-center gap-4">
+                        <Link
+                            href={`/signup?intent=buy_evaluation&tier=${activePlan.id}&price=${activePlan.price}`}
+                            className="group"
+                        >
+                            <button className="pill-btn pill-btn-mint flex items-center gap-2 text-lg px-10 py-5 font-bold">
+                                Get Funded
+                                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                             </button>
-                        );
-                    })}
-                </motion.div>
-
-                {/* 3. Pricing & CTA - High Conversions */}
-                <motion.div
-                    initial={{ opacity: 0, y: 50 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.5 }}
-                    className="flex flex-col items-center space-y-6"
-                >
-                    <div className="flex flex-col items-center">
-                        <div className="flex items-baseline gap-2">
-                            <span className="text-6xl font-black text-white tracking-tighter drop-shadow-lg">${activePlan.price}</span>
-                            <span className="text-zinc-500 font-medium text-lg">/ one-time</span>
-                        </div>
-
+                        </Link>
+                        <a
+                            href="https://discord.gg/projectx"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="group"
+                        >
+                            <button className="flex items-center gap-2 text-lg px-8 py-5 font-bold text-white bg-transparent border border-white/20 rounded-full hover:bg-white/10 transition-all">
+                                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z" />
+                                </svg>
+                                Join Discord
+                            </button>
+                        </a>
                     </div>
 
                     <Link
-                        href={`/signup?intent=buy_evaluation&tier=${activePlan.id}&price=${activePlan.price}`}
-                        className="w-full max-w-sm group relative"
+                        href="/rules"
+                        className="mono-label text-[var(--vapi-gray-text)] hover:text-[var(--vapi-mint)] transition-colors flex items-center gap-1"
                     >
-                        <div className="absolute -inset-1 bg-gradient-to-r from-[#2E81FF] to-cyan-500 rounded-full blur opacity-40 group-hover:opacity-100 transition duration-500 animate-pulse"></div>
-                        <Button
-                            size="lg"
-                            className="relative w-full h-16 text-xl font-black rounded-full transition-all duration-300 bg-[#2E81FF] text-white hover:bg-[#2E81FF] hover:brightness-110 hover:shadow-[0_0_40px_-5px_rgba(46,129,255,0.6)] hover:scale-[1.02] active:scale-95 border-none"
-                        >
-                            START CHALLENGE <ChevronRight className="ml-2 w-6 h-6 group-hover:translate-x-1 transition-transform stroke-[3px]" />
-                        </Button>
+                        View Rules <ChevronRight className="w-3 h-3" />
                     </Link>
-
-                    <Link href="/rules" className="text-sm font-bold text-zinc-500 hover:text-white transition-colors border-b border-transparent hover:border-white/20 pb-0.5">
-                        View Trading Rules
-                    </Link>
-
-
-                </motion.div>
+                </div>
 
             </div>
 
-            {/* 4. Live Market Ticker Integration */}
-            {/* 4. Live Market Ticker Integration - DISABLED to match Vercel V1 */}
-            {/* <div className="w-full mt-8 pb-4">
-                <MarketTicker />
-            </div> */}
-
+            {/* Bottom Border Line */}
+            <div className="w-full h-px bg-[var(--vapi-border)]" />
         </div>
     );
 }

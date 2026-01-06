@@ -340,3 +340,179 @@
   background-size: 200% 100%;
   animation: shimmer 2s infinite linear;
 }
+
+/* ========================================
+   VAPI-INSPIRED DESIGN SYSTEM
+   ======================================== */
+
+/* Vapi Color Palette */
+:root {
+  --vapi-black: #000000;
+  --vapi-mint: #4FD1C5;
+  --vapi-mint-light: #B4F4E0;
+  --vapi-gray-text: #94A3B8;
+  --vapi-border: #1E293B;
+  --vapi-glow-indigo: rgba(99, 102, 241, 0.15);
+  --vapi-glow-purple: rgba(139, 92, 246, 0.1);
+}
+
+/* Dot Grid Background Pattern */
+.bg-dot-grid {
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.bg-dot-grid-subtle {
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+/* Atmospheric Glow Effects */
+.glow-indigo-corner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, var(--vapi-glow-indigo) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.glow-purple-corner {
+  position: fixed;
+  bottom: 0;
+  right: 0;
+  width: 800px;
+  height: 600px;
+  background: radial-gradient(circle, var(--vapi-glow-purple) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Mint Glow Hover Effect */
+.mint-glow-hover {
+  transition: box-shadow 0.3s ease, transform 0.3s ease;
+}
+
+.mint-glow-hover:hover {
+  box-shadow: 0 0 40px -10px var(--vapi-mint);
+  transform: translateY(-2px);
+}
+
+/* Monospace Label Style */
+.mono-label {
+  font-family: var(--font-mono), ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+/* Pill Button Base */
+.pill-btn {
+  border-radius: 9999px;
+  padding: 0.75rem 1.5rem;
+  font-weight: 700;
+  transition: all 0.3s ease;
+}
+
+.pill-btn-mint {
+  background: var(--vapi-mint);
+  color: #000000;
+}
+
+.pill-btn-mint:hover {
+  box-shadow: 0 0 30px -5px var(--vapi-mint);
+  transform: scale(1.02);
+}
+
+/* Thin Border Card */
+.thin-border-card {
+  border: 1px solid var(--vapi-border);
+  background: transparent;
+  backdrop-filter: blur(8px);
+}
+
+/* Text Gradient Mint */
+.text-gradient-mint {
+  background: linear-gradient(135deg, var(--vapi-mint) 0%, var(--vapi-mint-light) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Pulse Glow Animation */
+@keyframes pulse-glow {
+
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+
+  50% {
+    opacity: 0.8;
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 3s ease-in-out infinite;
+}
+
+/* Slide Up Fade Animation */
+@keyframes slide-up-fade {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up-fade 0.6s ease-out forwards;
+}
+
+.animate-slide-up-delay-1 {
+  animation: slide-up-fade 0.6s ease-out 0.1s forwards;
+  opacity: 0;
+}
+
+.animate-slide-up-delay-2 {
+  animation: slide-up-fade 0.6s ease-out 0.2s forwards;
+  opacity: 0;
+}
+
+.animate-slide-up-delay-3 {
+  animation: slide-up-fade 0.6s ease-out 0.3s forwards;
+  opacity: 0;
+}
+
+/* Float Up Animation for Probability Orbs */
+@keyframes float-up {
+  0% {
+    transform: translateY(0) scale(0.8);
+    opacity: 0;
+  }
+
+  10% {
+    opacity: 0.8;
+    transform: translateY(-50px) scale(1);
+  }
+
+  90% {
+    opacity: 0.6;
+  }
+
+  100% {
+    transform: translateY(-100vh) scale(0.9);
+    opacity: 0;
+  }
+}
+
+.animate-float-up {
+  animation: float-up linear infinite;
+}

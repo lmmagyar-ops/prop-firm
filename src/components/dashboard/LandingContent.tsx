@@ -1,475 +1,718 @@
 "use client";
 
-import { useState } from "react";
-import { motion } from "framer-motion";
-import { CheckCircle2, ChevronRight, BarChart3, ShieldCheck, Zap, Trophy, Wallet } from "lucide-react";
-import { MarketTicker } from "../MarketTicker";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect, useRef } from "react";
+import { CheckCircle2, ChevronRight, Zap, ShieldCheck, Wallet, Trophy, BarChart3, ArrowRight, TrendingUp, TrendingDown, Users, Globe, Activity } from "lucide-react";
+import Link from "next/link";
 
-export function LandingContent() {
-    const [selectedSize, setSelectedSize] = useState("5K");
+// Quiz questions data with explanations
+const QUIZ_QUESTIONS = [
+    {
+        id: 1,
+        badge: "BREAKING NEWS",
+        headline: "Fed Chair Signals Interest Rate Cut",
+        subtext: "Jerome Powell hints at lowering rates to stimulate economy",
+        question: "What happens to the 'Rate Cut in 2024' market?",
+        correctAnswer: "up" as const,
+        explanationCorrect: "Exactly! When the Fed signals a rate cut, the probability of it happening increases. You just identified alpha in 5 seconds.",
+        explanationWrong: "The correct answer was UP. When the Fed signals a rate cut, the probability of it happening increases. You just identified alpha in 5 seconds.",
+    },
+    {
+        id: 2,
+        badge: "BREAKING NEWS",
+        headline: "Tech Giant Misses Earnings Expectations",
+        subtext: "Apple reports 12% decline in iPhone sales quarter-over-quarter",
+        question: "What happens to the 'Apple Stock Above $200' market?",
+        correctAnswer: "down" as const,
+        explanationCorrect: "Correct! Poor earnings = lower stock price expectations. The probability of Apple staying above $200 decreases.",
+        explanationWrong: "The correct answer was DOWN. Poor earnings = lower stock price expectations. The probability of Apple staying above $200 decreases.",
+    },
+    {
+        id: 3,
+        badge: "BREAKING NEWS",
+        headline: "Unemployment Claims Hit Record Low",
+        subtext: "Weekly jobless claims fall to 187,000, lowest since 1969",
+        question: "What happens to the 'Recession in 2024' market?",
+        correctAnswer: "down" as const,
+        explanationCorrect: "Exactly! Strong employment data means the economy is healthy. Recession probability drops.",
+        explanationWrong: "The correct answer was DOWN. Strong employment data means the economy is healthy. Recession probability drops.",
+    },
+];
+
+// Interactive Quiz Card Component
+function QuizCard() {
+    const [currentQuestion, setCurrentQuestion] = useState(0);
+    const [score, setScore] = useState(0);
+    const [answered, setAnswered] = useState(false);
+    const [selectedAnswer, setSelectedAnswer] = useState<"up" | "down" | null>(null);
+    const [isComplete, setIsComplete] = useState(false);
+
+    const question = QUIZ_QUESTIONS[currentQuestion];
+    const isCorrect = selectedAnswer === question.correctAnswer;
+
+    const handleAnswer = (answer: "up" | "down") => {
+        if (answered) return;
+
+        setSelectedAnswer(answer);
+        setAnswered(true);
+
+        if (answer === question.correctAnswer) {
+            setScore(score + 1);
+        }
+    };
+
+    const handleNextQuestion = () => {
+        if (currentQuestion < QUIZ_QUESTIONS.length - 1) {
+            setCurrentQuestion(currentQuestion + 1);
+            setAnswered(false);
+            setSelectedAnswer(null);
+        } else {
+            setIsComplete(true);
+        }
+    };
+
+    const resetQuiz = () => {
+        setCurrentQuestion(0);
+        setScore(0);
+        setAnswered(false);
+        setSelectedAnswer(null);
+        setIsComplete(false);
+    };
+
+    if (isComplete) {
+        return (
+            <div className="thin-border-card rounded-3xl p-8 md:p-12 bg-black/40 backdrop-blur-sm max-w-2xl mx-auto">
+                <div className="text-center space-y-6">
+                    <div className="text-6xl mb-4">{score === 3 ? "🎯" : score >= 2 ? "👏" : "📚"}</div>
+                    <h3 className="text-3xl font-black text-white">
+                        {score === 3 ? "Perfect!" : score >= 2 ? "Great Job!" : "Keep Learning!"}
+                    </h3>
+                    <p className="text-[var(--vapi-gray-text)] text-lg">
+                        You got <span className="text-[var(--vapi-mint)] font-bold">{score}/3</span> correct.
+                        {score === 3 && " You're ready to trade."}
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
+                        <button
+                            onClick={resetQuiz}
+                            className="pill-btn thin-border-card text-white hover:bg-white hover:text-black"
+                        >
+                            Try Again
+                        </button>
+                        <Link href="/signup?intent=buy_evaluation">
+                            <button className="pill-btn pill-btn-mint flex items-center gap-2">
+                                Start Trading <ArrowRight className="w-4 h-4" />
+                            </button>
+                        </Link>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
-        <div className="min-h-screen bg-[#050505] text-white selection:bg-[#2E81FF]/30 overflow-x-hidden font-sans">
-            {/* Background Gradients for Content Sections */}
-            <div className="fixed inset-0 pointer-events-none z-0">
-                <div className="absolute top-[20%] left-0 w-[600px] h-[600px] bg-[#2E81FF]/5 rounded-full blur-[120px]" />
-                <div className="absolute bottom-0 right-0 w-[800px] h-[600px] bg-violet-500/5 rounded-full blur-[120px]" />
+        <div className="thin-border-card rounded-3xl p-8 md:p-12 bg-black/40 backdrop-blur-sm max-w-2xl mx-auto">
+            {/* Header */}
+            <div className="flex justify-between items-center mb-8">
+                <span className="text-[var(--vapi-gray-text)] text-sm">
+                    Question {currentQuestion + 1} of {QUIZ_QUESTIONS.length}
+                </span>
+                <span className="text-[var(--vapi-gray-text)] text-sm">
+                    Score: <span className="text-[var(--vapi-mint)] font-bold">{score}/{QUIZ_QUESTIONS.length}</span>
+                </span>
             </div>
 
+            {/* News Badge */}
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--vapi-mint)]/10 border border-[var(--vapi-mint)]/30 mb-6">
+                <span className="text-[var(--vapi-mint)] text-xs font-bold">📺 {question.badge}</span>
+            </div>
 
-            {/* As Seen On - Social Proof (Hidden to match Vercel V1) */}
-            {/* <div className="relative z-10 max-w-7xl mx-auto px-6 pb-20 pt-10 text-center border-t border-[#2E3A52]/30">
-                ...
-            </div> */}
+            {/* Headline */}
+            <h3 className="text-2xl md:text-3xl font-black text-white mb-3">
+                {question.headline}
+            </h3>
+            <p className="text-[var(--vapi-gray-text)] mb-8">
+                {question.subtext}
+            </p>
 
-            {/* How It Works - Premium Redesign */}
-            <section className="relative z-10 max-w-7xl mx-auto px-6 py-32 border-t border-[#2E3A52]/50">
-                <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-[#2E81FF]/10 blur-[120px] rounded-full pointer-events-none" />
+            {/* Question */}
+            <div className="thin-border-card rounded-xl p-4 mb-8 bg-white/5">
+                <p className="text-white font-medium">{question.question}</p>
+            </div>
 
-                <div className="relative text-center space-y-4 mb-20">
-                    <h2 className="text-4xl md:text-6xl font-black tracking-tighter text-white">
-                        Your Path to <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#2E81FF] to-cyan-400">Capital.</span>
-                    </h2>
-                    <p className="text-zinc-400 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed">
-                        A simple, transparent evaluation process designed to get you funded.
-                    </p>
+            {/* Answer Buttons - Only show if not answered */}
+            {!answered && (
+                <div className="grid grid-cols-2 gap-4">
+                    <button
+                        onClick={() => handleAnswer("up")}
+                        className="relative p-6 rounded-2xl border-2 transition-all duration-300 flex flex-col items-center gap-3 border-[var(--vapi-mint)]/30 bg-[var(--vapi-mint)]/5 hover:bg-[var(--vapi-mint)]/10 hover:border-[var(--vapi-mint)]/50 cursor-pointer"
+                    >
+                        <TrendingUp className="w-8 h-8 text-[var(--vapi-mint)]" />
+                        <span className="text-[var(--vapi-mint)] font-bold text-lg">Price Goes UP</span>
+                    </button>
+
+                    <button
+                        onClick={() => handleAnswer("down")}
+                        className="relative p-6 rounded-2xl border-2 transition-all duration-300 flex flex-col items-center gap-3 border-red-500/30 bg-red-500/5 hover:bg-red-500/10 hover:border-red-500/50 cursor-pointer"
+                    >
+                        <TrendingDown className="w-8 h-8 text-red-400" />
+                        <span className="text-red-400 font-bold text-lg">Price Goes DOWN</span>
+                    </button>
                 </div>
+            )}
 
-                <div className="grid md:grid-cols-3 gap-8 relative">
+            {/* Feedback with Explanation */}
+            {answered && (
+                <div className={`rounded-2xl p-6 border-2 ${isCorrect
+                    ? "border-[var(--vapi-mint)]/50 bg-[var(--vapi-mint)]/10"
+                    : "border-red-500/50 bg-red-500/10"
+                    }`}>
+                    {/* Header */}
+                    <div className="flex items-center gap-3 mb-3">
+                        {isCorrect ? (
+                            <CheckCircle2 className="w-6 h-6 text-[var(--vapi-mint)]" />
+                        ) : (
+                            <div className="w-6 h-6 rounded-full border-2 border-red-400 flex items-center justify-center">
+                                <span className="text-red-400 text-sm font-bold">✕</span>
+                            </div>
+                        )}
+                        <span className={`font-bold text-lg ${isCorrect ? "text-[var(--vapi-mint)]" : "text-red-400"}`}>
+                            {isCorrect ? "Correct!" : "Not Quite"}
+                        </span>
+                    </div>
+
+                    {/* Explanation */}
+                    <p className="text-[var(--vapi-gray-text)] mb-6">
+                        {isCorrect ? question.explanationCorrect : question.explanationWrong}
+                    </p>
+
+                    {/* Next Question Button */}
+                    <button
+                        onClick={handleNextQuestion}
+                        className="w-full py-4 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-bold transition-colors"
+                    >
+                        {currentQuestion < QUIZ_QUESTIONS.length - 1 ? "Next Question" : "See Results"}
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+}
+
+export function LandingContent() {
+    // For animated timeline
+    const [activeStep, setActiveStep] = useState(0);
+    const timelineRef = useRef<HTMLDivElement>(null);
+
+    // Animate through steps on scroll
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            (entries) => {
+                entries.forEach((entry) => {
+                    if (entry.isIntersecting) {
+                        const index = parseInt(entry.target.getAttribute('data-step') || '0');
+                        setActiveStep(Math.max(activeStep, index));
+                    }
+                });
+            },
+            { threshold: 0.5 }
+        );
+
+        const stepElements = document.querySelectorAll('[data-step]');
+        stepElements.forEach((el) => observer.observe(el));
+
+        return () => observer.disconnect();
+    }, [activeStep]);
+
+    return (
+        <div className="min-h-screen bg-[#000000] text-white selection:bg-[var(--vapi-mint)]/30 overflow-x-hidden font-sans">
+
+            {/* Persistent Dot Grid */}
+            <div className="fixed inset-0 bg-dot-grid-subtle opacity-40 pointer-events-none z-0" />
+
+            {/* Atmospheric Glows */}
+            <div className="fixed top-1/4 left-0 w-[500px] h-[500px] bg-[var(--vapi-glow-indigo)] blur-[150px] rounded-full pointer-events-none opacity-50" />
+            <div className="fixed bottom-0 right-1/4 w-[600px] h-[400px] bg-[var(--vapi-glow-purple)] blur-[150px] rounded-full pointer-events-none opacity-40" />
+
+
+            {/* As Featured In - Press Logos */}
+            <section className="relative z-10 max-w-6xl mx-auto px-6 pt-24 pb-12">
+                <div className="text-center mb-8">
+                    <div className="mono-label text-[var(--vapi-gray-text)] text-[10px]">AS FEATURED IN</div>
+                </div>
+                <div className="flex flex-wrap justify-center items-center gap-10 md:gap-16 opacity-50 hover:opacity-70 transition-opacity">
                     {[
-                        {
-                            step: "01",
-                            icon: Zap,
-                            title: "The Challenge",
-                            desc: "Show us your skills. Hit the profit target without violating daily drawdown.",
-                            color: "text-blue-400",
-                            bg: "bg-blue-500/10",
-                            border: "group-hover:border-blue-500/50"
-                        },
-                        {
-                            step: "02",
-                            icon: ShieldCheck,
-                            title: "The Verification",
-                            desc: "Prove consistency. Repeat your performance to validate your strategy.",
-                            color: "text-purple-400",
-                            bg: "bg-purple-500/10",
-                            border: "group-hover:border-purple-500/50"
-                        },
-                        {
-                            step: "03",
-                            icon: Wallet,
-                            title: "Professional Trader",
-                            desc: "Trade our capital. Keep up to 90% of the profits. Bi-weekly payouts via USDC.",
-                            color: "text-emerald-400",
-                            bg: "bg-emerald-500/10",
-                            border: "group-hover:border-emerald-500/50"
-                        }
-                    ].map((item, i) => (
-                        <div key={i} className="group relative bg-[#131722]/80 backdrop-blur-xl border border-[#2E3A52] rounded-[32px] p-8 md:p-10 hover:-translate-y-2 transition-all duration-500 hover:shadow-[0_0_50px_-10px_rgba(46,129,255,0.15)] overflow-hidden">
-                            {/* Hover Gradient */}
-                            <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 bg-gradient-to-b from-white/5 to-transparent pointer-events-none`} />
-
-                            {/* Step Number */}
-                            <div className="absolute top-6 right-8 text-6xl font-black text-white/5 group-hover:text-white/10 transition-colors select-none font-mono">
-                                {item.step}
-                            </div>
-
-                            {/* Icon */}
-                            <div className={`w-14 h-14 rounded-2xl ${item.bg} flex items-center justify-center mb-8 group-hover:scale-110 transition-transform duration-500 ring-1 ring-white/5`}>
-                                <item.icon className={`w-7 h-7 ${item.color} stroke-[2px]`} />
-                            </div>
-
-                            <h3 className="text-2xl font-bold text-white mb-4 tracking-tight">{item.title}</h3>
-                            <p className="text-zinc-400 leading-relaxed font-medium">
-                                {item.desc}
-                            </p>
-                        </div>
+                        { name: "MarketWatch", href: "#" },
+                        { name: "Yahoo Finance", href: "#" },
+                        { name: "NASDAQ", href: "#" },
+                        { name: "Bloomberg", href: "#" },
+                    ].map((outlet, i) => (
+                        <a
+                            key={i}
+                            href={outlet.href}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xl md:text-2xl font-bold text-white/60 hover:text-white transition-colors"
+                        >
+                            {outlet.name}
+                        </a>
                     ))}
                 </div>
             </section>
 
 
-            {/* Pricing Section - Vercel Match High Fidelity */}
-            <section className="relative z-10 max-w-7xl mx-auto px-6 py-24 mb-20">
-                <div className="text-center mb-16 space-y-4">
-                    <h2 className="text-4xl md:text-5xl font-black text-white tracking-tighter">
-                        Simple, Transparent <span className="text-blue-500">Pricing.</span>
+            {/* How It Works Section - ANIMATED TIMELINE */}
+            <section className="relative z-10 max-w-6xl mx-auto px-6 py-32" ref={timelineRef}>
+                <div className="text-center mb-20">
+                    <div className="mono-label text-[var(--vapi-mint)] mb-4">How It Works</div>
+                    <h2 className="text-4xl md:text-6xl font-black tracking-tight text-white">
+                        Your Path to <span className="text-gradient-mint">Capital.</span>
                     </h2>
-                    <p className="text-zinc-400 text-lg max-w-xl mx-auto">
-                        No hidden fees. One-time payment. Refundable with your first payout.
+                    <p className="text-[var(--vapi-gray-text)] text-lg mt-4 max-w-xl mx-auto">
+                        A simple, transparent evaluation process designed to get you funded.
                     </p>
                 </div>
 
-                <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto items-stretch">
-                    {/* SCOUT */}
-                    <div className="group relative bg-[#0F1218] border border-[#2E3A52] rounded-[2.5rem] p-8 hover:border-blue-500/50 transition-all duration-500 overflow-hidden flex flex-col">
-                        <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                {/* Timeline Container */}
+                <div className="relative">
+                    {/* Connecting Line (Desktop) */}
+                    <div className="hidden md:block absolute top-24 left-0 right-0 h-0.5 bg-[var(--vapi-border)]">
+                        <div
+                            className="h-full bg-gradient-to-r from-[var(--vapi-mint)] via-[var(--vapi-mint)] to-transparent transition-all duration-1000 ease-out"
+                            style={{ width: `${(activeStep / 2) * 100}%` }}
+                        />
+                    </div>
 
-                        <div className="relative z-10 flex flex-col items-center text-center mb-8 space-y-2">
-                            <h3 className="text-sm font-bold text-zinc-500 tracking-[0.2em] uppercase">Scout</h3>
-                            <div className="text-6xl font-black text-white tracking-tighter">5K</div>
-                            <p className="text-zinc-400 text-sm max-w-[200px] leading-relaxed">
-                                Perfect for learning market mechanics with minimal risk.
-                            </p>
+                    <div className="grid md:grid-cols-3 gap-6">
+                        {[
+                            {
+                                step: "01",
+                                icon: Zap,
+                                title: "The Challenge",
+                                desc: "Show us your skills. Hit the profit target without violating drawdown.",
+                            },
+                            {
+                                step: "02",
+                                icon: ShieldCheck,
+                                title: "The Verification",
+                                desc: "Prove consistency. Repeat your performance to validate your strategy.",
+                            },
+                            {
+                                step: "03",
+                                icon: Wallet,
+                                title: "Professional Trader",
+                                desc: "Trade our capital. Keep up to 90% of profits. Bi-weekly USDC payouts.",
+                            }
+                        ].map((item, i) => (
+                            <div
+                                key={i}
+                                data-step={i}
+                                className={`group relative thin-border-card rounded-3xl p-8 transition-all duration-500 ${i <= activeStep
+                                    ? 'border-[var(--vapi-mint)]/40 shadow-[0_0_40px_-15px_var(--vapi-mint)]'
+                                    : 'hover:border-[var(--vapi-mint)]/20'
+                                    }`}
+                            >
+                                {/* Step Number Circle */}
+                                <div className={`absolute -top-4 left-8 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-500 ${i <= activeStep
+                                    ? 'bg-[var(--vapi-mint)] text-black'
+                                    : 'bg-[var(--vapi-border)] text-[var(--vapi-gray-text)]'
+                                    }`}>
+                                    {item.step}
+                                </div>
+
+                                <div className="flex justify-between items-start mb-8 pt-4">
+                                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border transition-all duration-500 ${i <= activeStep
+                                        ? 'bg-[var(--vapi-mint)]/10 border-[var(--vapi-mint)]/30'
+                                        : 'bg-white/5 border-white/10'
+                                        }`}>
+                                        <item.icon className={`w-6 h-6 transition-colors duration-500 ${i <= activeStep ? 'text-[var(--vapi-mint)]' : 'text-[var(--vapi-gray-text)]'
+                                            }`} />
+                                    </div>
+                                </div>
+                                <h3 className="text-xl font-bold text-white mb-3">{item.title}</h3>
+                                <p className="text-[var(--vapi-gray-text)] leading-relaxed">{item.desc}</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+
+            {/* Pricing Section - ENHANCED HOVERS */}
+            <section className="relative z-10 max-w-6xl mx-auto px-6 py-24">
+                <div className="h-px w-full bg-[var(--vapi-border)] mb-24" />
+
+                <div className="text-center mb-16">
+                    <div className="mono-label text-[var(--vapi-mint)] mb-4">Pricing</div>
+                    <h2 className="text-4xl md:text-5xl font-black text-white tracking-tight">
+                        Simple, Transparent.
+                    </h2>
+                    <p className="text-[var(--vapi-gray-text)] text-lg mt-4">
+                        One-time payment. Refundable with your first payout.
+                    </p>
+                </div>
+
+                <div className="grid md:grid-cols-3 gap-6 items-stretch">
+                    {/* Scout - $5K */}
+                    <div className="group thin-border-card rounded-3xl p-8 flex flex-col hover:border-[var(--vapi-mint)]/40 hover:shadow-[0_0_50px_-20px_var(--vapi-mint)] hover:-translate-y-1 transition-all duration-300">
+                        <div className="mono-label text-[var(--vapi-gray-text)] mb-2">Scout</div>
+                        <div className="text-5xl font-black text-white mb-2 group-hover:text-gradient-mint transition-all">$5K</div>
+                        <p className="text-[var(--vapi-gray-text)] text-sm mb-6">Perfect for learning market mechanics.</p>
+
+                        <div className="flex-1 space-y-0 text-sm">
+                            <div className="flex justify-between py-2.5 border-b border-[var(--vapi-border)]">
+                                <span className="text-[var(--vapi-gray-text)]">Profit Target</span>
+                                <span className="text-white font-mono">$500 <span className="text-[var(--vapi-mint)]">(10%)</span></span>
+                            </div>
+                            <div className="flex justify-between py-2.5 border-b border-[var(--vapi-border)]">
+                                <span className="text-[var(--vapi-gray-text)]">Max Drawdown</span>
+                                <span className="text-white font-mono">8%</span>
+                            </div>
+                            <div className="flex justify-between py-2.5 border-b border-[var(--vapi-border)]">
+                                <span className="text-[var(--vapi-gray-text)]">Daily Loss Limit</span>
+                                <span className="text-white font-mono">4%</span>
+                            </div>
+                            <div className="flex justify-between py-2.5 border-b border-[var(--vapi-border)]">
+                                <span className="text-[var(--vapi-gray-text)]">Time Limit</span>
+                                <span className="text-white font-mono">Unlimited ✓</span>
+                            </div>
+                            <div className="flex justify-between py-2.5 border-b border-[var(--vapi-border)]">
+                                <span className="text-[var(--vapi-gray-text)]">Min Trading Days</span>
+                                <span className="text-white font-mono">5 days</span>
+                            </div>
+                            <div className="flex justify-between py-2.5 border-b border-[var(--vapi-border)]">
+                                <span className="text-[var(--vapi-gray-text)]">Profit Split</span>
+                                <span className="text-[var(--vapi-mint)] font-mono font-bold">Up to 90%</span>
+                            </div>
+                            <div className="flex justify-between py-2.5 border-b border-[var(--vapi-border)]">
+                                <span className="text-[var(--vapi-gray-text)]">Payouts</span>
+                                <span className="text-white font-mono">Bi-weekly (USDC)</span>
+                            </div>
+                            <div className="flex justify-between py-2.5">
+                                <span className="text-[var(--vapi-gray-text)]">Fee Refund</span>
+                                <span className="text-[var(--vapi-mint)] font-mono">1st Payout ✓</span>
+                            </div>
                         </div>
 
-                        <div className="flex-1 space-y-6 mb-8 relative z-10">
-                            <div className="flex justify-between items-center text-sm border-b border-zinc-800 pb-4">
-                                <span className="text-zinc-400">Profit Target</span>
-                                <span className="text-white font-bold">$500 <span className="text-blue-500">(10%)</span></span>
-                            </div>
-                            <div className="flex justify-between items-center text-sm">
-                                <span className="text-zinc-400">Drawdown</span>
-                                <span className="text-white font-bold">6%</span>
-                            </div>
-                            <div className="flex justify-between items-center text-sm">
-                                <span className="text-zinc-400">Daily Loss</span>
-                                <span className="text-white font-bold">None</span>
-                            </div>
-                            <div className="flex justify-between items-center text-sm border-b border-zinc-800 pb-4">
-                                <span className="text-zinc-400">Min Days</span>
-                                <span className="text-white font-bold">5 Days</span>
-                            </div>
-
-                            <div className="space-y-2">
-                                <div className="flex justify-between items-center text-sm">
-                                    <span className="text-zinc-400 font-bold">Profit Split</span>
-                                    <span className="text-green-500 font-bold">90%</span>
-                                </div>
-                                <div className="h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden">
-                                    <div className="h-full bg-green-500 w-[90%] rounded-full" />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="relative z-10 mt-auto pt-6 border-t border-zinc-800 text-center space-y-4">
-                            <div className="flex items-center justify-center gap-2 text-[#2E81FF] text-xs font-bold uppercase tracking-wider cursor-pointer hover:text-white transition-colors">
-                                <div className="w-4 h-4 rounded-full border border-current flex items-center justify-center text-[8px]">?</div>
-                                Learn How
-                            </div>
-
-                            <div className="flex items-baseline justify-center gap-1">
-                                <span className="text-4xl font-black text-white">$79</span>
-                                <span className="text-zinc-500 text-sm">/ one-time</span>
-                            </div>
-
-                            <button className="w-full py-4 rounded-2xl bg-[#1A202C] hover:bg-white hover:text-black text-white font-bold transition-all duration-300 flex items-center justify-center gap-2 group/btn">
-                                Start Challenge <ChevronRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
-                            </button>
+                        <div className="mt-6 pt-6 border-t border-[var(--vapi-border)]">
+                            <div className="text-3xl font-black text-white mb-4">$79</div>
+                            <Link href="/signup?intent=buy_evaluation&tier=scout&price=79" className="block">
+                                <button className="w-full py-4 rounded-full thin-border-card text-white font-bold group-hover:bg-white group-hover:text-black transition-all">
+                                    Start Challenge
+                                </button>
+                            </Link>
                         </div>
                     </div>
 
-                    {/* GRINDER (Popular) */}
-                    <div className="group relative bg-[#0F1218] border border-[#2E81FF]/50 rounded-[2.5rem] p-8 shadow-[0_0_80px_-20px_rgba(46,129,255,0.2)] md:scale-110 md:-translate-y-4 z-20 flex flex-col">
-                        <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#2E81FF] text-white text-[10px] font-black uppercase tracking-[0.2em] px-6 py-2 rounded-full shadow-lg shadow-blue-900/50">
+                    {/* Grinder - $10K (Popular) */}
+                    <div className="relative thin-border-card border-[var(--vapi-mint)]/40 rounded-3xl p-8 flex flex-col shadow-[0_0_60px_-20px_var(--vapi-mint)] hover:-translate-y-2 transition-all duration-300">
+                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-[var(--vapi-mint)] text-black mono-label text-[10px] animate-pulse">
                             Most Popular
                         </div>
-                        <div className="absolute inset-0 bg-gradient-to-br from-[#2E81FF]/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
 
-                        <div className="relative z-10 flex flex-col items-center text-center mb-8 space-y-2 pt-4">
-                            <h3 className="text-sm font-bold text-zinc-500 tracking-[0.2em] uppercase">Grinder</h3>
-                            <div className="text-6xl font-black text-white tracking-tighter">10K</div>
-                            <p className="text-zinc-400 text-sm max-w-[200px] leading-relaxed">
-                                The standard for serious traders looking to scale up.
-                            </p>
+                        <div className="mono-label text-[var(--vapi-mint)] mb-2">Grinder</div>
+                        <div className="text-5xl font-black text-white mb-2">$10K</div>
+                        <p className="text-[var(--vapi-gray-text)] text-sm mb-6">The standard for serious traders.</p>
+
+                        <div className="flex-1 space-y-0 text-sm">
+                            <div className="flex justify-between py-2.5 border-b border-[var(--vapi-border)]">
+                                <span className="text-[var(--vapi-gray-text)]">Profit Target</span>
+                                <span className="text-white font-mono">$1,000 <span className="text-[var(--vapi-mint)]">(10%)</span></span>
+                            </div>
+                            <div className="flex justify-between py-2.5 border-b border-[var(--vapi-border)]">
+                                <span className="text-[var(--vapi-gray-text)]">Max Drawdown</span>
+                                <span className="text-white font-mono">10%</span>
+                            </div>
+                            <div className="flex justify-between py-2.5 border-b border-[var(--vapi-border)]">
+                                <span className="text-[var(--vapi-gray-text)]">Daily Loss Limit</span>
+                                <span className="text-white font-mono">5%</span>
+                            </div>
+                            <div className="flex justify-between py-2.5 border-b border-[var(--vapi-border)]">
+                                <span className="text-[var(--vapi-gray-text)]">Time Limit</span>
+                                <span className="text-white font-mono">Unlimited ✓</span>
+                            </div>
+                            <div className="flex justify-between py-2.5 border-b border-[var(--vapi-border)]">
+                                <span className="text-[var(--vapi-gray-text)]">Min Trading Days</span>
+                                <span className="text-white font-mono">5 days</span>
+                            </div>
+                            <div className="flex justify-between py-2.5 border-b border-[var(--vapi-border)]">
+                                <span className="text-[var(--vapi-gray-text)]">Profit Split</span>
+                                <span className="text-[var(--vapi-mint)] font-mono font-bold">Up to 90%</span>
+                            </div>
+                            <div className="flex justify-between py-2.5 border-b border-[var(--vapi-border)]">
+                                <span className="text-[var(--vapi-gray-text)]">Payouts</span>
+                                <span className="text-white font-mono">Bi-weekly (USDC)</span>
+                            </div>
+                            <div className="flex justify-between py-2.5">
+                                <span className="text-[var(--vapi-gray-text)]">Fee Refund</span>
+                                <span className="text-[var(--vapi-mint)] font-mono">1st Payout ✓</span>
+                            </div>
                         </div>
 
-                        <div className="flex-1 space-y-6 mb-8 relative z-10">
-                            <div className="flex justify-between items-center text-sm border-b border-zinc-800 pb-4">
-                                <span className="text-zinc-400">Profit Target</span>
-                                <span className="text-white font-bold">$1,000 <span className="text-blue-500">(10%)</span></span>
-                            </div>
-                            <div className="flex justify-between items-center text-sm">
-                                <span className="text-zinc-400">Drawdown</span>
-                                <span className="text-white font-bold">6%</span>
-                            </div>
-                            <div className="flex justify-between items-center text-sm">
-                                <span className="text-zinc-400">Daily Loss</span>
-                                <span className="text-white font-bold">None</span>
-                            </div>
-                            <div className="flex justify-between items-center text-sm border-b border-zinc-800 pb-4">
-                                <span className="text-zinc-400">Min Days</span>
-                                <span className="text-white font-bold">5 Days</span>
-                            </div>
-
-                            <div className="space-y-2">
-                                <div className="flex justify-between items-center text-sm">
-                                    <span className="text-zinc-400 font-bold">Profit Split</span>
-                                    <span className="text-green-500 font-bold">90%</span>
-                                </div>
-                                <div className="h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden">
-                                    <div className="h-full bg-green-500 w-[90%] rounded-full shadow-[0_0_10px_rgba(34,197,94,0.5)]" />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="relative z-10 mt-auto pt-6 border-t border-zinc-800 text-center space-y-4">
-                            <div className="flex items-center justify-center gap-2 text-[#2E81FF] text-xs font-bold uppercase tracking-wider cursor-pointer hover:text-white transition-colors">
-                                <div className="w-4 h-4 rounded-full border border-current flex items-center justify-center text-[8px]">?</div>
-                                Learn How
-                            </div>
-
-                            <div className="flex items-baseline justify-center gap-1">
-                                <span className="text-5xl font-black text-white">$149</span>
-                                <span className="text-zinc-500 text-sm">/ one-time</span>
-                            </div>
-
-                            <button className="w-full py-4 rounded-2xl bg-[#2E81FF] hover:bg-[#2563EB] hover:scale-[1.02] text-white font-bold transition-all duration-300 shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2 group/btn">
-                                Start Challenge <ChevronRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
-                            </button>
+                        <div className="mt-6 pt-6 border-t border-[var(--vapi-border)]">
+                            <div className="text-3xl font-black text-white mb-4">$149</div>
+                            <Link href="/signup?intent=buy_evaluation&tier=grinder&price=149" className="block">
+                                <button className="pill-btn pill-btn-mint w-full py-4 flex items-center justify-center gap-2">
+                                    Start Challenge <ArrowRight className="w-4 h-4" />
+                                </button>
+                            </Link>
                         </div>
                     </div>
 
-                    {/* EXECUTIVE */}
-                    <div className="group relative bg-[#0F1218] border border-[#2E3A52] rounded-[2.5rem] p-8 hover:border-emerald-500/50 transition-all duration-500 overflow-hidden flex flex-col">
-                        <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                    {/* Executive - $25K */}
+                    <div className="group thin-border-card rounded-3xl p-8 flex flex-col hover:border-[var(--vapi-mint)]/40 hover:shadow-[0_0_50px_-20px_var(--vapi-mint)] hover:-translate-y-1 transition-all duration-300">
+                        <div className="mono-label text-[var(--vapi-gray-text)] mb-2">Executive</div>
+                        <div className="text-5xl font-black text-white mb-2 group-hover:text-gradient-mint transition-all">$25K</div>
+                        <p className="text-[var(--vapi-gray-text)] text-sm mb-6">Maximum capital for experienced traders.</p>
 
-                        <div className="relative z-10 flex flex-col items-center text-center mb-8 space-y-2">
-                            <h3 className="text-sm font-bold text-zinc-500 tracking-[0.2em] uppercase">Executive</h3>
-                            <div className="text-6xl font-black text-white tracking-tighter">25K</div>
-                            <p className="text-zinc-400 text-sm max-w-[200px] leading-relaxed">
-                                Maximum capital for experienced market operators.
-                            </p>
+                        <div className="flex-1 space-y-0 text-sm">
+                            <div className="flex justify-between py-2.5 border-b border-[var(--vapi-border)]">
+                                <span className="text-[var(--vapi-gray-text)]">Profit Target</span>
+                                <span className="text-white font-mono">$2,500 <span className="text-[var(--vapi-mint)]">(10%)</span></span>
+                            </div>
+                            <div className="flex justify-between py-2.5 border-b border-[var(--vapi-border)]">
+                                <span className="text-[var(--vapi-gray-text)]">Max Drawdown</span>
+                                <span className="text-white font-mono">10%</span>
+                            </div>
+                            <div className="flex justify-between py-2.5 border-b border-[var(--vapi-border)]">
+                                <span className="text-[var(--vapi-gray-text)]">Daily Loss Limit</span>
+                                <span className="text-white font-mono">5%</span>
+                            </div>
+                            <div className="flex justify-between py-2.5 border-b border-[var(--vapi-border)]">
+                                <span className="text-[var(--vapi-gray-text)]">Time Limit</span>
+                                <span className="text-white font-mono">Unlimited ✓</span>
+                            </div>
+                            <div className="flex justify-between py-2.5 border-b border-[var(--vapi-border)]">
+                                <span className="text-[var(--vapi-gray-text)]">Min Trading Days</span>
+                                <span className="text-white font-mono">5 days</span>
+                            </div>
+                            <div className="flex justify-between py-2.5 border-b border-[var(--vapi-border)]">
+                                <span className="text-[var(--vapi-gray-text)]">Profit Split</span>
+                                <span className="text-[var(--vapi-mint)] font-mono font-bold">Up to 90%</span>
+                            </div>
+                            <div className="flex justify-between py-2.5 border-b border-[var(--vapi-border)]">
+                                <span className="text-[var(--vapi-gray-text)]">Payouts</span>
+                                <span className="text-white font-mono">Bi-weekly (USDC)</span>
+                            </div>
+                            <div className="flex justify-between py-2.5">
+                                <span className="text-[var(--vapi-gray-text)]">Fee Refund</span>
+                                <span className="text-[var(--vapi-mint)] font-mono">1st Payout ✓</span>
+                            </div>
                         </div>
 
-                        <div className="flex-1 space-y-6 mb-8 relative z-10">
-                            <div className="flex justify-between items-center text-sm border-b border-zinc-800 pb-4">
-                                <span className="text-zinc-400">Profit Target</span>
-                                <span className="text-white font-bold">$3,000 <span className="text-blue-500">(10%)</span></span>
-                            </div>
-                            <div className="flex justify-between items-center text-sm">
-                                <span className="text-zinc-400">Drawdown</span>
-                                <span className="text-white font-bold">6%</span>
-                            </div>
-                            <div className="flex justify-between items-center text-sm">
-                                <span className="text-zinc-400">Daily Loss</span>
-                                <span className="text-white font-bold">None</span>
-                            </div>
-                            <div className="flex justify-between items-center text-sm border-b border-zinc-800 pb-4">
-                                <span className="text-zinc-400">Min Days</span>
-                                <span className="text-white font-bold">5 Days</span>
-                            </div>
-
-                            <div className="space-y-2">
-                                <div className="flex justify-between items-center text-sm">
-                                    <span className="text-zinc-400 font-bold">Profit Split</span>
-                                    <span className="text-green-500 font-bold">90%</span>
-                                </div>
-                                <div className="h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden">
-                                    <div className="h-full bg-green-500 w-[90%] rounded-full" />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="relative z-10 mt-auto pt-6 border-t border-zinc-800 text-center space-y-4">
-                            <div className="flex items-center justify-center gap-2 text-[#2E81FF] text-xs font-bold uppercase tracking-wider cursor-pointer hover:text-white transition-colors">
-                                <div className="w-4 h-4 rounded-full border border-current flex items-center justify-center text-[8px]">?</div>
-                                Learn How
-                            </div>
-
-                            <div className="flex items-baseline justify-center gap-1">
-                                <span className="text-4xl font-black text-white">$299</span>
-                                <span className="text-zinc-500 text-sm">/ one-time</span>
-                            </div>
-
-                            <button className="w-full py-4 rounded-2xl bg-[#1A202C] hover:bg-white hover:text-black text-white font-bold transition-all duration-300 flex items-center justify-center gap-2 group/btn">
-                                Start Challenge <ChevronRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
-                            </button>
+                        <div className="mt-6 pt-6 border-t border-[var(--vapi-border)]">
+                            <div className="text-3xl font-black text-white mb-4">$299</div>
+                            <Link href="/signup?intent=buy_evaluation&tier=executive&price=299" className="block">
+                                <button className="w-full py-4 rounded-full thin-border-card text-white font-bold group-hover:bg-white group-hover:text-black transition-all">
+                                    Start Challenge
+                                </button>
+                            </Link>
                         </div>
                     </div>
                 </div>
             </section>
 
 
-            {/* Why Trade with Project X */}
-            <section className="relative z-10 max-w-7xl mx-auto px-6 mb-32">
-                <div className="grid md:grid-cols-2 gap-12 items-center">
-                    <div className="space-y-8">
-                        <h2 className="text-3xl md:text-5xl font-black text-white tracking-tighter leading-tight">
-                            Built Different. <br />
-                            <span className="text-zinc-500">Engineered for Longevity.</span>
-                        </h2>
-                        <p className="text-lg text-zinc-400 max-w-md">
-                            We don't rely on you failing. Our model is built on real market mechanics and sustainable growth.
-                        </p>
+            {/* Interactive Quiz Section - "You're Already an Analyst" */}
+            <section className="relative z-10 max-w-5xl mx-auto px-6 py-24">
+                <div className="h-px w-full bg-[var(--vapi-border)] mb-24" />
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
-                            {[
-                                { icon: BarChart3, title: "True Execution", desc: "Real order book data. No simulated slippage manipulation." },
-                                { icon: Wallet, title: "Instant Payouts", desc: "USDC withdrawals processed every 14 days. No delays." },
-                                { icon: CheckCircle2, title: "No Time Limits", desc: "Trade at your own pace. Zero pressure to rush entries." },
-                                { icon: Trophy, title: "Up to 90% Profit Split", desc: "Industry leading rewards. You keep what you earn." }
-                            ].map((item, i) => (
-                                <div key={i} className="bg-[#1A232E]/30 border border-[#2E3A52] p-5 rounded-2xl hover:bg-[#1A232E]/50 transition-colors">
-                                    <item.icon className="w-8 h-8 text-blue-500 mb-3" />
-                                    <h4 className="font-bold text-white mb-1">{item.title}</h4>
-                                    <p className="text-xs text-zinc-400 leading-relaxed">{item.desc}</p>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Visual / Abstract Representation */}
-                    <div className="relative h-[500px] w-full bg-[#0A0E14] border border-[#2E3A52] rounded-3xl overflow-hidden flex items-center justify-center group">
-                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-blue-900/20 via-[#0A0E14] to-[#0A0E14]" />
-                        <div className="relative z-10 text-center space-y-2">
-                            <div className="text-8xl font-black text-white/5 select-none group-hover:text-white/10 transition-colors duration-500">
-                                PRO
-                            </div>
-                            <div className="text-sm font-mono text-blue-500 tracking-[0.3em] uppercase">
-                                Infrastructure
-                            </div>
-                        </div>
-
-                        {/* Orbiting Elements (Decorative) */}
-                        <div className="absolute w-[300px] h-[300px] border border-blue-500/10 rounded-full animate-spin-slow" />
-                        <div className="absolute w-[450px] h-[450px] border border-dashed border-white/5 rounded-full animate-reverse-spin" />
-                    </div>
+                {/* Headline */}
+                <div className="text-center mb-16">
+                    <h2 className="text-4xl md:text-5xl lg:text-6xl font-black text-white tracking-tight leading-tight mb-4">
+                        You're Already an Analyst.<br />
+                        <span className="text-gradient-mint">You Just Didn't Know It.</span>
+                    </h2>
+                    <p className="text-[var(--vapi-gray-text)] text-lg max-w-2xl mx-auto">
+                        In Forex, mastering technical analysis takes years. In prediction markets, it takes seconds.
+                    </p>
                 </div>
+
+                {/* Quiz Card */}
+                <QuizCard />
             </section>
 
 
-            {/* Academy Section */}
-            <section className="relative z-10 max-w-7xl mx-auto px-6 py-24">
-                <div className="grid md:grid-cols-2 gap-12 items-center">
-                    {/* Left: Visual Element */}
-                    <div className="relative h-[400px] w-full bg-[#0A0E14] border border-[#2E3A52] rounded-3xl overflow-hidden flex items-center justify-center group order-2 md:order-1">
-                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-emerald-900/20 via-[#0A0E14] to-[#0A0E14]" />
-                        <div className="absolute inset-0 bg-[linear-gradient(rgba(16,185,129,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(16,185,129,0.03)_1px,transparent_1px)] bg-[size:30px_30px]" />
+            {/* Comparison Table Section - "See The Difference" */}
+            <section className="relative z-10 max-w-6xl mx-auto px-6 py-24">
+                <div className="h-px w-full bg-[var(--vapi-border)] mb-24" />
 
-                        {/* Books/Learning Visual */}
-                        <div className="relative z-10 text-center space-y-4">
-                            <div className="text-7xl">📚</div>
-                            <div className="text-sm font-mono text-emerald-400 tracking-[0.3em] uppercase">
-                                Coming Soon
-                            </div>
-                        </div>
-
-                        {/* Decorative Elements */}
-                        <div className="absolute w-[200px] h-[200px] border border-emerald-500/10 rounded-full animate-spin-slow" />
-                        <div className="absolute w-[300px] h-[300px] border border-dashed border-white/5 rounded-full animate-reverse-spin" />
-                    </div>
-
-                    {/* Right: Content */}
-                    <div className="space-y-6 order-1 md:order-2">
-                        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold uppercase tracking-[0.2em]">
-                            Academy
-                        </div>
-
-                        <h2 className="text-3xl md:text-5xl font-black text-white tracking-tighter leading-tight">
-                            Learn From The Best. <br />
-                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">Become The Best.</span>
-                        </h2>
-
-                        <p className="text-zinc-400 text-lg leading-relaxed max-w-lg">
-                            All the resources you need to unlock your true potential: guides, strategies, market analysis, and weekly sessions with our top traders.
-                        </p>
-
-                        <button
-                            onClick={() => window.location.href = '/academy'}
-                            className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-bold hover:bg-emerald-500 hover:text-white transition-all duration-300 group"
-                        >
-                            Go To Academy
-                            <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                        </button>
-                    </div>
+                <div className="text-center mb-16">
+                    <div className="mono-label text-[var(--vapi-mint)] mb-4">Why Project X</div>
+                    <h2 className="text-4xl md:text-5xl font-black text-white tracking-tight mb-4">
+                        See The Difference.
+                    </h2>
+                    <p className="text-[var(--vapi-gray-text)] text-lg max-w-2xl mx-auto">
+                        We're not just another prop firm. We're the first for prediction markets.
+                    </p>
                 </div>
-            </section>
 
-
-            {/* Platform Features */}
-            <section className="relative z-10 max-w-7xl mx-auto px-6 pb-32">
-                <div className="relative bg-gradient-to-b from-[#131722] to-[#0B0E14] border border-[#2E3A52] rounded-[40px] p-8 md:p-16 overflow-hidden">
-                    {/* Background Grid/Glow */}
-                    <div className="absolute inset-0 bg-[linear-gradient(rgba(46,129,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(46,129,255,0.03)_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_at_center,black,transparent_80%)]" />
-                    <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-blue-500/5 blur-[120px] rounded-full pointer-events-none" />
-
-                    <div className="relative z-10 flex flex-col md:flex-row items-center gap-16">
-                        <div className="flex-1 space-y-8">
-                            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#2E81FF]/10 border border-[#2E81FF]/20 text-[#2E81FF] text-xs font-bold uppercase tracking-[0.2em] shadow-lg shadow-blue-900/20">
-                                <Trophy className="w-3 h-3" /> World Class Tech
-                            </div>
-
-                            <h2 className="text-4xl md:text-5xl font-black text-white tracking-tighter leading-tight">
-                                Built for <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#2E81FF] to-cyan-400">High Frequency</span> <br />
-                                Prediction Markets.
-                            </h2>
-
-                            <p className="text-zinc-400 text-lg leading-relaxed max-w-lg">
-                                Experience the speed and precision of a real trading desk. Our infrastructure is designed to handle the velocity of modern prediction markets.
-                            </p>
-
-                            <ul className="space-y-6 pt-4">
+                {/* Comparison Table */}
+                <div className="thin-border-card rounded-3xl overflow-hidden">
+                    <div className="overflow-x-auto">
+                        <table className="w-full">
+                            <thead>
+                                <tr className="border-b border-[var(--vapi-border)]">
+                                    <th className="text-left p-6 text-[var(--vapi-gray-text)] font-normal"></th>
+                                    <th className="p-6 text-center">
+                                        <div className="inline-flex flex-col items-center gap-2">
+                                            <div className="w-10 h-10 rounded-xl bg-[var(--vapi-mint)]/10 border border-[var(--vapi-mint)]/30 flex items-center justify-center">
+                                                <BarChart3 className="w-5 h-5 text-[var(--vapi-mint)]" />
+                                            </div>
+                                            <span className="font-bold text-white">Project X</span>
+                                        </div>
+                                    </th>
+                                    <th className="p-6 text-center">
+                                        <span className="text-[var(--vapi-gray-text)]">Industry Average</span>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
                                 {[
-                                    { text: "Real-time Polymarket Data Feeds (<100ms)", sub: "Direct connection to the CLOB." },
-                                    { text: "One-Click Execution", sub: "Enter and exit positions instantly." },
-                                    { text: "Visual Risk Management", sub: "Live odometer and position gauges." },
-                                    { text: "Velocity Fee Engine", sub: "Smart carry costs to encourage volume." }
-                                ].map((feat, i) => (
-                                    <li key={i} className="flex gap-4">
-                                        <div className="w-10 h-10 rounded-xl bg-[#2E3A52]/30 flex items-center justify-center flex-shrink-0 border border-white/5">
-                                            <CheckCircle2 className="w-5 h-5 text-[#2E81FF]" />
-                                        </div>
-                                        <div>
-                                            <div className="text-white font-bold text-lg">{feat.text}</div>
-                                            <div className="text-zinc-500 text-sm">{feat.sub}</div>
-                                        </div>
-                                    </li>
+                                    { feature: "Asset Class", ours: "Prediction Markets", industry: "Forex/Crypto", highlight: true },
+                                    { feature: "Time Limit", ours: "Unlimited", industry: "30-60 days" },
+                                    { feature: "Profit Split", ours: "Up to 90%", industry: "70-80%" },
+                                    { feature: "Payout Frequency", ours: "Bi-weekly", industry: "Monthly" },
+                                    { feature: "Payout Method", ours: "USDC", industry: "Bank Wire" },
+                                    { feature: "News Trading", ours: true, industry: false },
+                                    { feature: "Weekend Holding", ours: true, industry: false },
+                                    { feature: "Fee Refund", ours: "1st Payout", industry: "Varies" },
+                                ].map((row, i) => (
+                                    <tr key={i} className="border-b border-[var(--vapi-border)] last:border-0">
+                                        <td className="p-6 text-[var(--vapi-gray-text)]">{row.feature}</td>
+                                        <td className="p-6 text-center">
+                                            {row.highlight ? (
+                                                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--vapi-mint)]/10 text-[var(--vapi-mint)] font-bold text-sm">
+                                                    ★ {row.ours}
+                                                </span>
+                                            ) : typeof row.ours === 'boolean' ? (
+                                                row.ours ? (
+                                                    <CheckCircle2 className="w-5 h-5 text-[var(--vapi-mint)] mx-auto" />
+                                                ) : (
+                                                    <span className="text-red-400">✗</span>
+                                                )
+                                            ) : (
+                                                <span className="text-white font-bold">{row.ours}</span>
+                                            )}
+                                        </td>
+                                        <td className="p-6 text-center">
+                                            {typeof row.industry === 'boolean' ? (
+                                                row.industry ? (
+                                                    <CheckCircle2 className="w-5 h-5 text-[var(--vapi-mint)] mx-auto" />
+                                                ) : (
+                                                    <span className="text-red-400">✗</span>
+                                                )
+                                            ) : (
+                                                <span className="text-[var(--vapi-gray-text)]">{row.industry}</span>
+                                            )}
+                                        </td>
+                                    </tr>
                                 ))}
-                            </ul>
-                        </div>
-
-                        {/* Feature Visual */}
-                        <div className="flex-1 w-full relative">
-                            <div className="absolute -inset-1 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl opacity-20 blur-xl" />
-                            <div className="relative bg-[#050505] border border-[#2E3A52] rounded-2xl p-6 md:p-8 shadow-2xl">
-                                <div className="flex justify-between items-center border-b border-white/5 pb-6 mb-6">
-                                    <div className="flex gap-2">
-                                        <div className="w-3 h-3 rounded-full bg-red-500/20 border border-red-500/50" />
-                                        <div className="w-3 h-3 rounded-full bg-yellow-500/20 border border-yellow-500/50" />
-                                        <div className="w-3 h-3 rounded-full bg-green-500/20 border border-green-500/50" />
-                                    </div>
-                                    <div className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest">Live Feed • <span className="text-green-500 animate-pulse">Connected</span></div>
-                                </div>
-
-                                <div className="space-y-4 font-mono text-sm">
-                                    {[
-                                        { user: "User_992", profit: "+$2,490.00", time: "just now" },
-                                        { user: "CryptoWiz", profit: "+$8,100.00", time: "2s ago" },
-                                        { user: "PredictionKing", profit: "+$1,250.00", time: "5s ago" },
-                                        { user: "AlphaSeeker", profit: "+$5,000.00", time: "12s ago" },
-                                        { user: "MarketMaker_X", profit: "+$12,400.00", time: "30s ago" }
-                                    ].map((row, i) => (
-                                        <div key={i} className="flex justify-between items-center p-3 rounded-lg hover:bg-white/5 transition-colors cursor-default group">
-                                            <div className="flex items-center gap-3">
-                                                <div className={`w-1.5 h-1.5 rounded-full ${i === 0 ? 'bg-green-500 animate-ping' : 'bg-zinc-700'}`} />
-                                                <span className="text-zinc-400 group-hover:text-white transition-colors">{row.user}</span>
-                                            </div>
-                                            <div className="flex items-center gap-4">
-                                                <span className="text-green-400 font-bold">{row.profit}</span>
-                                                <span className="text-zinc-600 text-xs hidden sm:block">{row.time}</span>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
+                            </tbody>
+                        </table>
                     </div>
+                </div>
+
+                <p className="text-center text-[var(--vapi-gray-text)] text-sm mt-6">
+                    ★ The only prop firm built for prediction markets.
+                </p>
+            </section>
+
+
+            {/* FAQ Section */}
+            <section className="relative z-10 max-w-4xl mx-auto px-6 py-24">
+                <div className="h-px w-full bg-[var(--vapi-border)] mb-24" />
+
+                <div className="text-center mb-16">
+                    <div className="mono-label text-[var(--vapi-mint)] mb-4">FAQ</div>
+                    <h2 className="text-4xl md:text-5xl font-black text-white tracking-tight mb-4">
+                        Got Questions?<br />
+                        <span className="text-gradient-mint">We've Got Answers.</span>
+                    </h2>
+                </div>
+
+                {/* FAQ Items */}
+                <div className="space-y-4">
+                    {[
+                        {
+                            icon: "💰",
+                            q: "How fast do I get paid?",
+                            a: "Bi-weekly. USDC. Direct to your wallet. No waiting. No invoices. No BS."
+                        },
+                        {
+                            icon: "📈",
+                            q: "What are prediction markets?",
+                            a: "Markets where you trade on the outcome of real-world events. \"Will the Fed cut rates?\" \"Will Trump win?\" You don't need charts—just read the news."
+                        },
+                        {
+                            icon: "⏰",
+                            q: "Is there a time limit to pass?",
+                            a: "Nope. Take your time. We don't believe in artificial deadlines. Trade when you see opportunity."
+                        },
+                        {
+                            icon: "🎯",
+                            q: "What's the profit target?",
+                            a: "10% of your account size. Hit it, verify, get funded. Simple."
+                        },
+                        {
+                            icon: "💸",
+                            q: "Do I get my fee back?",
+                            a: "Yes. Your evaluation fee is refunded with your first payout as a funded trader."
+                        },
+                        {
+                            icon: "🌙",
+                            q: "Can I hold positions overnight or over weekends?",
+                            a: "Yes to both. Unlike forex prop firms, we don't restrict when you can hold. Markets are 24/7."
+                        },
+                        {
+                            icon: "📰",
+                            q: "Can I trade during news events?",
+                            a: "Absolutely. That's literally the point. Prediction markets ARE news trading."
+                        },
+                        {
+                            icon: "🔒",
+                            q: "What happens if I blow the account?",
+                            a: "You fail the evaluation and need to purchase a new one. But with our risk tools and no time pressure, most traders who follow the rules pass."
+                        },
+                    ].map((faq, i) => (
+                        <details key={i} className="group thin-border-card rounded-2xl overflow-hidden">
+                            <summary className="flex items-center gap-4 p-6 cursor-pointer list-none hover:bg-white/5 transition-colors">
+                                <span className="text-2xl">{faq.icon}</span>
+                                <span className="text-white font-bold flex-1">{faq.q}</span>
+                                <ChevronRight className="w-5 h-5 text-[var(--vapi-gray-text)] group-open:rotate-90 transition-transform" />
+                            </summary>
+                            <div className="px-6 pb-6 pl-16 text-[var(--vapi-gray-text)]">
+                                {faq.a}
+                            </div>
+                        </details>
+                    ))}
+                </div>
+
+                {/* Ask Luna CTA */}
+                <div className="mt-12 thin-border-card rounded-2xl p-8 bg-[var(--vapi-mint)]/5 border-[var(--vapi-mint)]/20 text-center">
+                    <div className="text-4xl mb-4">🎙️</div>
+                    <h3 className="text-xl font-bold text-white mb-2">Still have questions?</h3>
+                    <p className="text-[var(--vapi-gray-text)] mb-6">
+                        Talk to Luna, our AI assistant. She knows everything about Project X.
+                    </p>
+                    <button className="pill-btn pill-btn-mint flex items-center gap-2 mx-auto">
+                        Ask Luna <ArrowRight className="w-4 h-4" />
+                    </button>
                 </div>
             </section>
 
-            <footer className="relative z-10 border-t border-[#2E3A52] py-12 text-center text-zinc-600 text-sm">
-                <div className="flex justify-center items-center gap-8 text-zinc-500 mb-6">
-                    <span className="hover:text-white cursor-pointer transition-colors">Terms of Service</span>
-                    <span className="hover:text-white cursor-pointer transition-colors">Privacy Policy</span>
-                    <span className="hover:text-white cursor-pointer transition-colors">Risk Disclosure</span>
+
+            {/* Footer */}
+            <footer className="relative z-10 border-t border-[var(--vapi-border)] py-16 mt-24">
+                <div className="max-w-6xl mx-auto px-6 text-center">
+                    <div className="flex justify-center items-center gap-8 mono-label text-[var(--vapi-gray-text)] mb-6">
+                        <span className="hover:text-white cursor-pointer transition-colors">Terms</span>
+                        <span className="hover:text-white cursor-pointer transition-colors">Privacy</span>
+                        <span className="hover:text-white cursor-pointer transition-colors">Risk Disclosure</span>
+                    </div>
+                    <p className="text-[var(--vapi-gray-text)] text-sm">
+                        © 2025 Project X via Polymarket Data. All rights reserved.<br />
+                        <span className="text-white/30">This is a simulated trading environment. No real funds are at risk during evaluation.</span>
+                    </p>
                 </div>
-                <p>
-                    &copy; 2025 Project X via Polymarket Data. All rights reserved. <br />
-                    This is a simulated trading environment. No real funds are at risk during evaluation.
-                </p>
             </footer>
         </div>
     );

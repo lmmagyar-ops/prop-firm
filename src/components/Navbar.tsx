@@ -1,50 +1,67 @@
 "use client";
 
 import Link from "next/link";
-import { BarChart3, ChevronDown, Rocket } from "lucide-react";
+import { BarChart3 } from "lucide-react";
+import { useSession } from "next-auth/react";
 
 export function Navbar() {
-    return (
-        <nav className="absolute top-0 left-0 right-0 z-50 w-full border-b border-[#2E3A52] bg-[#0E1217]/80 backdrop-blur-md">
-            <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+    const { status } = useSession();
+    const isAuthenticated = status === "authenticated";
 
-                {/* 1. Logo: Cleaner, less "Startuppy" */}
-                <div className="flex items-center gap-3 group cursor-pointer">
-                    <div className="relative">
-                        <div className="absolute inset-0 bg-green-500 blur-lg opacity-20 group-hover:opacity-40 transition-opacity" />
-                        <BarChart3 className="relative w-6 h-6 text-green-500" />
+    return (
+        <nav className="fixed top-0 left-0 right-0 z-50 w-full border-b border-[var(--vapi-border)] bg-black/80 backdrop-blur-md">
+            <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+
+                {/* Logo */}
+                <Link href="/" className="flex items-center gap-2 group cursor-pointer">
+                    <div className="w-8 h-8 rounded-lg bg-[var(--vapi-mint)]/10 flex items-center justify-center border border-[var(--vapi-mint)]/20">
+                        <BarChart3 className="w-4 h-4 text-[var(--vapi-mint)]" />
                     </div>
-                    <span className="font-serif font-bold text-xl tracking-tight text-white group-hover:text-green-400 transition-colors">
+                    <span className="font-bold text-lg text-white group-hover:text-[var(--vapi-mint)] transition-colors">
                         Project X
                     </span>
-                </div>
+                </Link>
 
-                {/* 2. Menu: Full width, uppercase, no "capsule" */}
-                <div className="hidden md:flex items-center gap-8">
-                    {["How To Start", "Trading Rules", "FAQ", "About"].map((item) => (
+                {/* Nav Links - Monospace Style */}
+                <div className="hidden md:flex items-center gap-6">
+                    {["FAQ", "Learn", "About Us", "Affiliates", "Blog", "Contact"].map((item) => (
                         <Link
                             key={item}
                             href="#"
-                            className="text-[11px] font-bold uppercase tracking-[0.2em] text-zinc-500 hover:text-white transition-colors"
+                            className="mono-label text-[var(--vapi-gray-text)] hover:text-white transition-colors"
                         >
                             {item}
                         </Link>
                     ))}
-                    <button className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-[0.2em] text-zinc-500 hover:text-white transition-colors">
-                        More <ChevronDown className="w-3 h-3" />
-                    </button>
                 </div>
 
-                {/* 3. Actions: Minimalist Login + High Contrast Dashboard */}
-                <div className="flex items-center gap-6">
-                    <Link href="/login" className="hidden md:block text-xs font-bold uppercase tracking-widest text-zinc-400 hover:text-white transition-colors">
-                        Log In
-                    </Link>
-                    <Link href="/dashboard" className="group relative px-6 py-2.5 bg-white text-black text-xs font-black uppercase tracking-wider rounded-lg overflow-hidden hover:scale-105 active:scale-95 transition-all">
-                        <span className="relative z-10 flex items-center gap-2">
-                            GO TO DASHBOARD
-                        </span>
-                    </Link>
+                {/* Actions - Auth Aware */}
+                <div className="flex items-center gap-4">
+                    {isAuthenticated ? (
+                        // Logged in - show Dashboard
+                        <Link
+                            href="/dashboard"
+                            className="pill-btn pill-btn-mint text-sm px-5 py-2.5"
+                        >
+                            Dashboard
+                        </Link>
+                    ) : (
+                        // Not logged in - show Log In + Sign Up
+                        <>
+                            <Link
+                                href="/login"
+                                className="hidden md:block mono-label text-[var(--vapi-gray-text)] hover:text-white transition-colors"
+                            >
+                                Log In
+                            </Link>
+                            <Link
+                                href="/signup"
+                                className="pill-btn pill-btn-mint text-sm px-5 py-2.5"
+                            >
+                                Sign Up
+                            </Link>
+                        </>
+                    )}
                 </div>
             </div>
         </nav>
