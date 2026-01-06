@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { formatPrice, formatPayout } from "@/lib/formatPrice";
+import { formatPrice, formatPayout } from "@/lib/formatters";
 import type { EventMetadata } from "@/app/actions/market";
 
 interface KalshiMatchupCardProps {

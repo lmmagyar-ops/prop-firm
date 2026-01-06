@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { ChevronDown, TrendingUp, Users } from "lucide-react";
+import { formatPrice, formatVolume } from "@/lib/formatters";
 import type { EventMetadata, SubMarket } from "@/app/actions/market";
 
 interface EventCardProps {
@@ -22,16 +23,6 @@ export function EventCard({ event, onSelectOutcome }: EventCardProps) {
     const topOutcomes = event.markets.slice(0, 4);
     const remainingOutcomes = event.markets.slice(4);
     const hasMore = remainingOutcomes.length > 0;
-
-    const formatPrice = (price: number) => {
-        return `${Math.round(price * 100)}%`;
-    };
-
-    const formatVolume = (volume: number) => {
-        if (volume >= 1_000_000) return `$${(volume / 1_000_000).toFixed(1)}m`;
-        if (volume >= 1_000) return `$${(volume / 1_000).toFixed(0)}k`;
-        return `$${volume.toFixed(0)}`;
-    };
 
     // Extract short outcome label from question
     const getOutcomeLabel = (market: SubMarket) => {

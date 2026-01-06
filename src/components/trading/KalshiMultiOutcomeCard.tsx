@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { formatPrice } from "@/lib/formatPrice";
+import { formatPrice } from "@/lib/formatters";
 import { getCleanOutcomeName } from "@/lib/market-utils";
 import type { EventMetadata } from "@/app/actions/market";
 

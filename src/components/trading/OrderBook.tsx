@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
+import { formatOrderBookPrice, formatOrderBookSize } from "@/lib/formatters";
 
 interface OrderBookProps {
     tokenId?: string;
@@ -46,18 +47,6 @@ export function OrderBook({ tokenId, marketPrice, outcome }: OrderBookProps) {
         const interval = setInterval(fetchBook, 10000);
         return () => clearInterval(interval);
     }, [tokenId, isOpen]);
-
-    const formatPrice = (price: string) => {
-        const p = parseFloat(price);
-        return `${(p * 100).toFixed(1)}¢`;
-    };
-
-    const formatSize = (size: string) => {
-        const s = parseFloat(size);
-        if (s >= 1_000_000) return `${(s / 1_000_000).toFixed(1)}M`;
-        if (s >= 1_000) return `${(s / 1_000).toFixed(1)}K`;
-        return s.toFixed(0);
-    };
 
     // Calculate max size for bar widths
     const maxSize = Math.max(
@@ -110,8 +99,8 @@ export function OrderBook({ tokenId, marketPrice, outcome }: OrderBookProps) {
                                         className="absolute inset-y-0 left-0 bg-emerald-500/15 rounded"
                                         style={{ width: `${(parseFloat(bid.size) / maxSize) * 100}%` }}
                                     />
-                                    <span className="relative text-emerald-400 font-mono">{formatPrice(bid.price)}</span>
-                                    <span className="relative text-zinc-400 font-mono">{formatSize(bid.size)}</span>
+                                    <span className="relative text-emerald-400 font-mono">{formatOrderBookPrice(bid.price)}</span>
+                                    <span className="relative text-zinc-400 font-mono">{formatOrderBookSize(bid.size)}</span>
                                 </div>
                             ))}
                         </div>
@@ -128,8 +117,8 @@ export function OrderBook({ tokenId, marketPrice, outcome }: OrderBookProps) {
                                         className="absolute inset-y-0 right-0 bg-rose-500/15 rounded"
                                         style={{ width: `${(parseFloat(ask.size) / maxSize) * 100}%` }}
                                     />
-                                    <span className="relative text-rose-400 font-mono">{formatPrice(ask.price)}</span>
-                                    <span className="relative text-zinc-400 font-mono">{formatSize(ask.size)}</span>
+                                    <span className="relative text-rose-400 font-mono">{formatOrderBookPrice(ask.price)}</span>
+                                    <span className="relative text-zinc-400 font-mono">{formatOrderBookSize(ask.size)}</span>
                                 </div>
                             ))}
                         </div>

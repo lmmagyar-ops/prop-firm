@@ -2,7 +2,7 @@
 
 import { DashboardView } from "@/components/dashboard/DashboardView";
 import { LandingHero } from "@/components/dashboard/LandingHero";
-import { LandingContent } from "@/components/dashboard/LandingContent";
+import { LandingPage } from "@/components/landing";
 import { VoiceAssistant } from "@/components/VoiceAssistant";
 import { useEffect, useState } from "react";
 import { trackEvent, VoiceEvents, wasVoiceAIUsed } from "@/lib/analytics";
@@ -45,7 +45,7 @@ export default function Page() {
       {/* Foreground Content (Scrollable) */}
       <div className="relative z-20 overflow-y-auto h-screen">
         <LandingHero />
-        <LandingContent />
+        <LandingPage />
       </div>
 
       {/* Voice AI Assistant */}

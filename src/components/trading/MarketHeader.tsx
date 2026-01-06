@@ -1,7 +1,6 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
-import { formatPrice } from "@/lib/format";
 import { Clock, Users, BarChart3 } from "lucide-react";
 
 interface MarketHeaderProps {
