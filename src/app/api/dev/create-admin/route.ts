@@ -4,7 +4,7 @@ import { sql } from "drizzle-orm";
 import bcrypt from "bcrypt";
 
 /**
- * TEMPORARY: Create admin user
+ * TEMPORARY: Create admin user with minimal fields
  * DELETE THIS FILE AFTER USE
  * 
  * GET /api/dev/create-admin?secret=propshot-admin-2026
@@ -18,37 +18,42 @@ export async function GET(request: Request) {
     }
 
     try {
+        // First, let's see what columns the table has
+        const tableInfo = await db.execute(sql`
+            SELECT column_name, data_type 
+            FROM information_schema.columns 
+            WHERE table_name = 'users'
+            ORDER BY ordinal_position
+        `);
+
         // Admin account details
         const id = crypto.randomUUID();
         const email = "l.m.magyar@gmail.com";
         const password = "Propshot2026!";
         const passwordHash = await bcrypt.hash(password, 10);
-        const name = "Les Magyar";
 
-        // Insert admin user with raw SQL
-        await db.execute(sql`
-            INSERT INTO users (id, email, name, role, password_hash, "emailVerified", is_active, created_at)
-            VALUES (${id}, ${email}, ${name}, 'admin', ${passwordHash}, NOW(), true, NOW())
-            ON CONFLICT (id) DO NOTHING
-        `);
+        // Try minimal insert
+        try {
+            await db.execute(sql`
+                INSERT INTO users (id, email, password_hash, role)
+                VALUES (${id}, ${email}, ${passwordHash}, 'admin')
+            `);
 
-        return NextResponse.json({
-            success: true,
-            message: "Admin account created!",
-            credentials: {
-                email: email,
-                password: password,
-            }
-        });
-    } catch (error: any) {
-        // Check if user already exists
-        if (error.message?.includes("duplicate") || error.code === "23505") {
             return NextResponse.json({
-                error: "User already exists",
-                message: "Try logging in with email: l.m.magyar@gmail.com and password: Propshot2026!",
-            }, { status: 409 });
+                success: true,
+                message: "Admin account created!",
+                credentials: { email, password },
+                tableColumns: tableInfo.rows
+            });
+        } catch (insertError: any) {
+            return NextResponse.json({
+                error: "Insert failed",
+                insertError: insertError.message,
+                tableColumns: tableInfo.rows
+            }, { status: 500 });
         }
 
+    } catch (error: any) {
         console.error("[create-admin] Error:", error);
         return NextResponse.json({
             error: "Database error",
