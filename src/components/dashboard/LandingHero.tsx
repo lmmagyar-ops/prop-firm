@@ -36,14 +36,13 @@ export function LandingHero() {
                 {/* Main Headline - Clean & Bold */}
                 <div className="animate-slide-up text-center space-y-6 mb-12">
                     <h1 className="text-5xl md:text-7xl lg:text-[90px] leading-[0.95] font-black tracking-tight text-white">
-                        Trade with<br />
-                        <span className="text-gradient-mint">Our Capital.</span>
+                        Prove Your Edge.<br />
+                        <span className="text-gradient-mint">Get Funded.</span>
                     </h1>
 
                     <p className="text-lg md:text-xl text-[var(--vapi-gray-text)] max-w-2xl mx-auto leading-relaxed">
-                        We provide the liquidity. You provide the edge.
-                        <span className="text-white font-medium"> Zero personal liability.</span>
-                        {" "}Keep up to 90% of profits.
+                        Pass our challenge. Trade prediction markets.
+                        <span className="text-white font-medium"> Keep up to 90% of what you earn.</span>
                     </p>
                 </div>
 
