@@ -105,14 +105,31 @@ src/
 - `src/lib/analytics.ts`: Voice AI attribution tracking
 
 ## Environment Variables
-Required in `.env`:
+Required in `.env.local` (local dev) and in Vercel/Railway dashboards (production):
+
+### Authentication
 ```
-DATABASE_URL=postgresql://...
-REDIS_URL=redis://...
-NEXTAUTH_SECRET=...
-VAPI_PUBLIC_KEY=...
+AUTH_SECRET=...                  # NextAuth session encryption
+NEXTAUTH_URL=...                 # Auth callback URL
+```
+
+### Database
+```
+DATABASE_URL=postgresql://...    # Vercel Postgres (auto-managed)
+```
+
+### Redis (Upstash)
+```
+REDIS_HOST=your-host.upstash.io  # Upstash endpoint
+REDIS_PASSWORD=...               # Upstash password
+REDIS_PORT=6379
+```
+
+### Optional Services
+```
+VAPI_PUBLIC_KEY=...              # Voice AI
 VAPI_ASSISTANT_ID=...
-SENTRY_DSN=...
+SENTRY_DSN=...                   # Error tracking
 ```
 
 ## Testing
@@ -123,10 +140,28 @@ npm run test:engine       # Trading engine verification
 npx playwright test       # E2E tests (e2e/)
 ```
 
-## Deployment
-- **Hosting**: Vercel
-- **DB**: External PostgreSQL
-- **Cache**: External Redis
+## Deployment Architecture
+
+### Vercel (Main App)
+- **URL**: https://prop-firmx.vercel.app
+- **Branch**: main (auto-deploy on push)
+- **Env vars**: Set in Vercel dashboard (Settings → Environment Variables)
+- **Database**: Vercel Postgres (auto-connected)
+
+### Railway (Ingestion Worker)
+- **Service**: ingestion-worker
+- **Config**: `railway.json` (skip Next.js build, just npm install)
+- **Start Command**: `npx tsx src/workers/ingestion.ts`
+- **Purpose**: 24/7 market data ingestion from Polymarket
+- **Env vars**: REDIS_HOST, REDIS_PASSWORD, REDIS_PORT
+
+### Upstash Redis
+- **Purpose**: Real-time price cache + pub/sub
+- **Connection**: TLS required (use `tls: {}` in ioredis config)
+- **Key patterns**:
+  - `event:active_list` - Active Polymarket events
+  - `pm:book:{tokenId}` - Order book snapshots
+  - `market:price:{marketId}` - Latest prices
 
 ## Git Backup (Revert Points)
 - `68e608c`: Before Vapi-style redesign
