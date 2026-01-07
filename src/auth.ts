@@ -54,11 +54,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                         return null;
                     }
 
-                    // Check if email is verified
-                    if (!foundUser.emailVerified) {
-                        console.log("[Auth] Email not verified:", email);
-                        return null;
-                    }
+                    // TEMPORARILY DISABLED: Email verification check
+                    // TODO: Re-enable after Google OAuth is fixed
+                    // if (!foundUser.emailVerified) {
+                    //     console.log("[Auth] Email not verified:", email);
+                    //     return null;
+                    // }
 
                     // Verify password
                     const isValidPassword = await bcrypt.compare(password, foundUser.passwordHash);
