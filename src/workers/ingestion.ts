@@ -430,39 +430,107 @@ class IngestionWorker {
         this.ws?.send(JSON.stringify(payload));
     }
 
+    // Price update batching to reduce Redis commands
+    private priceBuffer: Map<string, any> = new Map();
+    private lastFlush: number = 0;
+    private readonly FLUSH_INTERVAL_MS = 1000; // Flush every 1 second max
+
     private async processMessage(message: any) {
         const msgs = Array.isArray(message) ? message : [message];
-        for (const msg of msgs) {
-            // Publish to UI
-            const payload = JSON.stringify(msg);
-            await this.redis.publish("market:prices", payload);
 
-            // Update Last Price Cache
+        // Buffer all price updates
+        for (const msg of msgs) {
             if (msg.asset_id && msg.price) {
-                await this.redis.set(`market:price:${msg.asset_id}`, payload);
+                this.priceBuffer.set(msg.asset_id, msg);
             }
+        }
+
+        // Throttle flushes to once per second
+        const now = Date.now();
+        if (now - this.lastFlush >= this.FLUSH_INTERVAL_MS && this.priceBuffer.size > 0) {
+            await this.flushPriceBuffer();
+            this.lastFlush = now;
+        }
+    }
+
+    private async flushPriceBuffer() {
+        if (this.priceBuffer.size === 0) return;
+
+        try {
+            // Batch all price updates into a single MSET command
+            const pipeline = this.redis.pipeline();
+            const allPrices: Record<string, any> = {};
+
+            // Convert Map entries to array for compatibility
+            const entries = Array.from(this.priceBuffer.entries());
+            for (const entry of entries) {
+                const [assetId, msg] = entry;
+                allPrices[assetId] = msg;
+                pipeline.set(`market:price:${assetId}`, JSON.stringify(msg));
+            }
+
+            // Single publish with all updates (UI can parse batch)
+            pipeline.publish("market:prices", JSON.stringify(allPrices));
+
+            await pipeline.exec();
+
+            // Clear buffer after successful flush
+            this.priceBuffer.clear();
+        } catch (err) {
+            console.error("[Ingestion] Flush error:", err);
         }
     }
 
     // --- 2. REST Polling (Order Books for Slippage Engine) ---
     private startBookPolling() {
-        console.log("[Ingestion] Starting Order Book Poller (2s interval)...");
-        setInterval(async () => {
-            if (this.activeTokenIds.length === 0) return;
+        // Poll every 30 seconds - still fast enough for good UX, saves 93% on Redis commands
+        const BOOK_POLL_INTERVAL = 30000;
+        console.log(`[Ingestion] Starting Order Book Poller (${BOOK_POLL_INTERVAL / 1000}s interval)...`);
 
-            for (const tokenId of this.activeTokenIds) {
-                try {
+        // Initial fetch
+        this.fetchAllOrderBooks();
+
+        setInterval(() => this.fetchAllOrderBooks(), BOOK_POLL_INTERVAL);
+    }
+
+    private async fetchAllOrderBooks() {
+        if (this.activeTokenIds.length === 0) return;
+
+        const books: Record<string, any> = {};
+        const BATCH_SIZE = 10; // Parallel fetch limit to avoid rate limiting
+
+        // Fetch in batches to avoid overwhelming Polymarket API
+        for (let i = 0; i < this.activeTokenIds.length; i += BATCH_SIZE) {
+            const batch = this.activeTokenIds.slice(i, i + BATCH_SIZE);
+
+            const results = await Promise.allSettled(
+                batch.map(async (tokenId) => {
                     const res = await fetch(`https://clob.polymarket.com/book?token_id=${tokenId}`);
-                    if (!res.ok) continue;
-                    const book = await res.json();
+                    if (!res.ok) return null;
+                    return { tokenId, book: await res.json() };
+                })
+            );
 
-                    // Store Snapshot: market:book:{tokenId}
-                    await this.redis.set(`market:book:${tokenId}`, JSON.stringify(book));
-                } catch (err) {
-                    // Silent fail
+            for (const result of results) {
+                if (result.status === 'fulfilled' && result.value) {
+                    books[result.value.tokenId] = result.value.book;
                 }
             }
-        }, 2000);
+        }
+
+        // Batch write all books to Redis in single pipeline
+        if (Object.keys(books).length > 0) {
+            try {
+                const pipeline = this.redis.pipeline();
+                for (const [tokenId, book] of Object.entries(books)) {
+                    pipeline.set(`market:book:${tokenId}`, JSON.stringify(book));
+                }
+                await pipeline.exec();
+                console.log(`[Ingestion] Updated ${Object.keys(books).length} order books.`);
+            } catch (err) {
+                console.error("[Ingestion] Book batch write error:", err);
+            }
+        }
     }
 }
 
