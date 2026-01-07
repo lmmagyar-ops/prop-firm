@@ -1,7 +1,7 @@
 import { auth } from "@/auth";
 import { getDashboardData } from "@/lib/dashboard-service";
 import { getActiveMarkets, getActiveEvents } from "@/app/actions/market";
-import { MarketGridWithTabs } from "@/components/trading/MarketGridWithTabs";
+import { MarketGridWithPolling } from "@/components/trading/MarketGridWithPolling";
 import { ThemedTradeLayout } from "@/components/trading/ThemedTradeLayout";
 import type { MockMarket } from "@/lib/mock-markets";
 import { cookies } from "next/headers";
@@ -144,9 +144,9 @@ export default async function TradePage() {
                     </div>
                 ) : (
                     // Normal State: Show Markets with Category Tabs
-                    <MarketGridWithTabs
+                    <MarketGridWithPolling
                         markets={markets}
-                        events={events}
+                        initialEvents={events}
                         balance={balance}
                         userId={userId}
                         platform={platform}

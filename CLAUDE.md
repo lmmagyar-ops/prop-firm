@@ -95,9 +95,13 @@ src/
 
 ### Trading
 - `DashboardView.tsx`: Main trading interface
-- `MarketGrid.tsx`: Market selection
+- `MarketGridWithPolling.tsx`: Market display with 10-second auto-refresh
+- `MarketGridWithTabs.tsx`: Static market display (no polling)
 - `TradeModal.tsx`: Order entry
 - `RiskMeter.tsx`: Live drawdown gauge
+
+### Hooks
+- `useMarketPolling.ts`: 10-second polling for live market data
 
 ### Voice AI (Vapi)
 - `VoiceAssistant.tsx`: Mic button, auto-prompt after 90s
