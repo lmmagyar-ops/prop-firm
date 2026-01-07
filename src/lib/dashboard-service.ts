@@ -131,24 +131,42 @@ export async function getDashboardData(userId: string) {
 
     const profitProgress = Math.min(100, (totalPnL / rules.profitTarget) * 100);
 
-    // 6. Calculate unrealized P&L for positions
+    // 6. Calculate unrealized P&L for positions using LIVE prices
+    // Batch fetch live prices from Redis to avoid stale position.currentPrice
+    const { MarketService } = await import("./market");
+    const marketIds = openPositions.map(p => p.marketId);
+    const livePrices = marketIds.length > 0 ? await MarketService.getBatchPrices(marketIds) : new Map();
+
+    // Fetch market titles from Redis event lists
+    const marketTitles = await MarketService.getBatchTitles(marketIds);
+
     const positionsWithPnL = openPositions.map(pos => {
         const entry = parseFloat(pos.entryPrice);
-        const current = parseFloat(pos.currentPrice || pos.entryPrice);
         const shares = parseFloat(pos.shares);
-        const unrealizedPnL = (current - entry) * shares;
+
+        // Use live price from Redis, fallback to stored price
+        const livePrice = livePrices.get(pos.marketId);
+        const rawPrice = livePrice ? parseFloat(livePrice.price) : parseFloat(pos.currentPrice || pos.entryPrice);
+
+        // Handle NO direction: P&L is inverted (profit when price drops)
+        // For NO positions: effective value = 1 - yesPrice
+        const isNo = pos.direction === 'NO';
+        const effectiveCurrentValue = isNo ? (1 - rawPrice) : rawPrice;
+        const effectiveEntryValue = isNo ? (1 - entry) : entry;
+        const unrealizedPnL = (effectiveCurrentValue - effectiveEntryValue) * shares;
 
         return {
             id: pos.id,
             marketId: pos.marketId,
-            marketTitle: "Market Title", // TODO: Fetch from market data
+            marketTitle: marketTitles.get(pos.marketId) || `Market ${pos.marketId.slice(0, 8)}...`,
             direction: pos.direction as 'YES' | 'NO',
             sizeAmount: parseFloat(pos.sizeAmount),
             shares,
             entryPrice: entry,
-            currentPrice: current,
+            currentPrice: rawPrice,
             unrealizedPnL,
             openedAt: pos.openedAt || new Date(),
+            priceSource: livePrice?.source || 'stored', // Track if using live or stale price
         };
     });
 

@@ -133,7 +133,8 @@ export async function POST(req: NextRequest) {
                     amount: price,
                     currency_to: "USDC" // Force USDC for simplicity? Or allow user choice on Confirmo
                 },
-                reference: userId, // Track which user this is for
+                // Reference format: userId:tier:platform (parsed by webhook)
+                reference: `${userId}:${tier}:${selectedPlatform}`,
                 // Webhooks
                 notify_url: `${process.env.NEXTAUTH_URL}/api/webhooks/confirmo`,
                 return_url: `${process.env.NEXTAUTH_URL}/onboarding/setup?status=success`

@@ -43,6 +43,7 @@ export interface MarketPrice {
     price: string;
     asset_id: string;
     timestamp?: number;
+    source?: 'live' | 'event_list' | 'demo';  // Track data origin for integrity checks
 }
 
 export interface OrderLevel {
@@ -54,6 +55,7 @@ export interface OrderBook {
     bids: OrderLevel[];
     asks: OrderLevel[];
     hash?: string;
+    source?: 'live' | 'synthetic' | 'demo';  // Track data origin for integrity checks
 }
 
 export interface ExecutionSimulation {
@@ -103,15 +105,16 @@ export class MarketService {
             if (!data) {
                 // Try to look up from event lists instead
                 const eventPrice = await this.lookupPriceFromEvents(assetId);
-                if (eventPrice) return eventPrice;
+                if (eventPrice) return { ...eventPrice, source: 'event_list' as const };
 
                 console.log(`[MarketService] No Redis data for ${assetId}, using demo fallback`);
-                return this.getDemoPrice(assetId);
+                return { ...this.getDemoPrice(assetId), source: 'demo' as const };
             }
-            return JSON.parse(data) as MarketPrice;
+            const parsed = JSON.parse(data) as MarketPrice;
+            return { ...parsed, source: 'live' as const };
         } catch (error: any) {
             console.error(`[MarketService] Redis error, using demo fallback:`, error.message);
-            return this.getDemoPrice(assetId);
+            return { ...this.getDemoPrice(assetId), source: 'demo' as const };
         }
     }
 
@@ -184,6 +187,52 @@ export class MarketService {
     }
 
     /**
+     * Batch fetch market titles from Redis event lists
+     */
+    static async getBatchTitles(marketIds: string[]): Promise<Map<string, string>> {
+        const results = new Map<string, string>();
+
+        if (marketIds.length === 0) return results;
+
+        try {
+            const redis = getRedis();
+
+            // Load event lists once
+            const [kalshiData, polyData] = await Promise.all([
+                redis.get('kalshi:active_list'),
+                redis.get('event:active_list')
+            ]);
+
+            // Build title lookup maps
+            if (kalshiData) {
+                const events = JSON.parse(kalshiData);
+                for (const event of events) {
+                    for (const market of event.markets || []) {
+                        if (marketIds.includes(market.id)) {
+                            results.set(market.id, market.title || event.title);
+                        }
+                    }
+                }
+            }
+
+            if (polyData) {
+                const events = JSON.parse(polyData);
+                for (const event of events) {
+                    for (const market of event.markets || []) {
+                        if (marketIds.includes(market.id)) {
+                            results.set(market.id, market.title || event.title);
+                        }
+                    }
+                }
+            }
+        } catch (error: any) {
+            console.error(`[MarketService] Batch titles error:`, error.message);
+        }
+
+        return results;
+    }
+
+    /**
      * Look up price from event lists (kalshi:active_list or event:active_list)
      * This allows us to get live prices for position P&L calculations
      */
@@ -244,15 +293,16 @@ export class MarketService {
                 if (livePrice) {
                     const price = parseFloat(livePrice.price);
                     console.log(`[MarketService] Building synthetic orderbook for ${assetId.slice(0, 12)}... at price ${price}`);
-                    return this.buildSyntheticOrderBook(price);
+                    return { ...this.buildSyntheticOrderBook(price), source: 'synthetic' as const };
                 }
                 console.log(`[MarketService] No Redis orderbook for ${assetId}, using demo fallback`);
-                return this.getDemoOrderBook();
+                return { ...this.getDemoOrderBook(), source: 'demo' as const };
             }
-            return JSON.parse(data) as OrderBook;
+            const parsed = JSON.parse(data) as OrderBook;
+            return { ...parsed, source: 'live' as const };
         } catch (error: any) {
             console.error(`[MarketService] Redis orderbook error, using demo fallback:`, error.message);
-            return this.getDemoOrderBook();
+            return { ...this.getDemoOrderBook(), source: 'demo' as const };
         }
     }
 

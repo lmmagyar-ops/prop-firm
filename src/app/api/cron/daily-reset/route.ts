@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { challenges } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and, isNotNull } from "drizzle-orm";
 
 /**
  * Daily Reset Cron Endpoint
  * 
- * Runs at 00:00 UTC to snapshot each account's balance as their "start of day" balance.
- * This sets the baseline for the daily loss limit calculation.
+ * Runs at 00:00 UTC to:
+ * 1. FINALIZE pending failures (users who hit daily loss and didn't recover)
+ * 2. Snapshot each account's balance as their "start of day" balance
+ * 3. Clear pendingFailureAt flags for survivors (new day = fresh start)
  * 
  * Call this from:
  * - Vercel Cron: Add to vercel.json
@@ -27,12 +29,42 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    console.log("[DailyReset] 🌅 Starting Daily Balance Snapshot...");
+    console.log("[DailyReset] 🌅 Starting Daily Reset...");
 
     const todayUTC = new Date().toISOString().split('T')[0];
 
     try {
-        // Fetch all ACTIVE challenges (both challenge/verification and funded)
+        // ============================================
+        // STEP 1: Finalize Pending Failures
+        // Users who hit daily loss limit and never recovered
+        // ============================================
+        const pendingChallenges = await db.select()
+            .from(challenges)
+            .where(and(
+                eq(challenges.status, "active"),
+                isNotNull(challenges.pendingFailureAt)
+            ));
+
+        let failedCount = 0;
+        for (const challenge of pendingChallenges) {
+            await db.update(challenges)
+                .set({
+                    status: 'failed',
+                    endsAt: new Date()
+                })
+                .where(eq(challenges.id, challenge.id));
+
+            console.log(`[DailyReset] 🔴 BREACH FINALIZED: Challenge ${challenge.id.slice(0, 8)} → FAILED (daily loss not recovered)`);
+            failedCount++;
+        }
+
+        if (failedCount > 0) {
+            console.log(`[DailyReset] ❌ ${failedCount} challenge(s) marked as FAILED`);
+        }
+
+        // ============================================
+        // STEP 2: Snapshot Balance for Surviving Accounts
+        // ============================================
         const activeChallenges = await db.select()
             .from(challenges)
             .where(eq(challenges.status, "active"));
@@ -51,10 +83,12 @@ export async function GET(request: NextRequest) {
             }
 
             // Snapshot current balance as start-of-day balance
+            // Also clear pendingFailureAt for fresh start (shouldn't be any, but defensive)
             await db.update(challenges)
                 .set({
                     startOfDayBalance: challenge.currentBalance,
-                    lastDailyResetAt: new Date()
+                    lastDailyResetAt: new Date(),
+                    pendingFailureAt: null  // New day = fresh start
                 })
                 .where(eq(challenges.id, challenge.id));
 
@@ -65,13 +99,14 @@ export async function GET(request: NextRequest) {
             success: true,
             timestamp: new Date().toISOString(),
             stats: {
+                failed: failedCount,
                 total: activeChallenges.length,
                 reset: resetCount,
                 skipped: skippedCount
             }
         };
 
-        console.log(`[DailyReset] ✅ Complete: ${resetCount} reset, ${skippedCount} skipped`);
+        console.log(`[DailyReset] ✅ Complete: ${failedCount} failed, ${resetCount} reset, ${skippedCount} skipped`);
 
         return NextResponse.json(result);
 
@@ -88,3 +123,4 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
     return GET(request);
 }
+

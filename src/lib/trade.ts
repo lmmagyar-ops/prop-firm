@@ -29,8 +29,9 @@ export class TradeExecutor {
      * @param challengeId Challenge ID (explicit selection for multi-account support)
      * @param marketId Polymarket Token ID (Asset ID)
      * @param side "BUY" or "SELL"
-     * @param amount Dollar amount to trade
+     * @param amount Dollar amount to trade (ignored for SELL if options.shares provided)
      * @param direction "YES" or "NO" - the outcome direction to trade
+     * @param options Optional parameters for execution control
      */
     static async executeTrade(
         userId: string,
@@ -38,9 +39,13 @@ export class TradeExecutor {
         marketId: string,
         side: "BUY" | "SELL",
         amount: number,
-        direction: "YES" | "NO" = "YES"
+        direction: "YES" | "NO" = "YES",
+        options?: {
+            maxSlippage?: number;  // Max acceptable slippage (e.g., 0.02 = 2%)
+            shares?: number;       // For SELL: specify shares to close instead of dollar amount
+        }
     ) {
-        logger.info(`Requested ${side} $${amount} on ${marketId}`, { userId, challengeId });
+        logger.info(`Requested ${side} $${amount} on ${marketId}`, { userId, challengeId, options });
 
         // 1. Get Challenge by ID (validate ownership)
         const [challenge] = await db
@@ -62,6 +67,11 @@ export class TradeExecutor {
         // 2. Get Real-Time Price
         const marketData = await MarketService.getLatestPrice(marketId);
         if (!marketData) throw new MarketClosedError(marketId);
+
+        // Reject trades on demo data (no real price available)
+        if (marketData.source === 'demo') {
+            throw new TradingError('Market data unavailable - price feed down. Try again shortly.', 'NO_MARKET_DATA', 503);
+        }
 
         // Configurable Staleness Check
         if (TRADING_CONFIG.risk.enableStalenessCheck) {
@@ -87,7 +97,7 @@ export class TradeExecutor {
             }
         }
 
-        // 4. INTEGIRTY CHECK: Calculate Impact Cost (Detailed Slippage)
+        // 4. INTEGRITY CHECK: Calculate Impact Cost (Detailed Slippage)
         const book = await MarketService.getOrderBook(marketId);
 
         // Fallback: Strict Integrity Mode
@@ -96,10 +106,24 @@ export class TradeExecutor {
             throw new TradingError("Market Liquidity Unavailable (Book Not Found)", 'NO_LIQUIDITY', 503);
         }
 
+        // Reject trades on demo order book (synthetic is allowed - uses real prices)
+        if (book.source === 'demo') {
+            throw new TradingError('Order book unavailable - liquidity feed down. Try again shortly.', 'NO_ORDER_BOOK', 503);
+        }
+
         const simulation = MarketService.calculateImpact(book, side, amount);
 
         if (!simulation.filled) {
             throw new TradingError(`Trade Rejected: ${simulation.reason}`, 'SLIPPAGE_TOO_HIGH', 400);
+        }
+
+        // Optional: Reject if slippage exceeds user's max tolerance
+        if (options?.maxSlippage !== undefined && simulation.slippagePercent > options.maxSlippage) {
+            throw new TradingError(
+                `Slippage ${(simulation.slippagePercent * 100).toFixed(2)}% exceeds max ${(options.maxSlippage * 100).toFixed(2)}%`,
+                'SLIPPAGE_EXCEEDED',
+                400
+            );
         }
 
         // For NO positions, convert YES-side order book price to NO price
@@ -108,17 +132,27 @@ export class TradeExecutor {
             ? (1 - simulation.executedPrice)
             : simulation.executedPrice;
 
-        // For NO positions, recalculate shares at NO price since order book used YES pricing
-        // shares = amount / price
-        const shares = direction === "NO"
-            ? amount / executionPrice  // Recalculate with correct NO price
-            : simulation.totalShares;
+        // Calculate shares - can be overridden by options.shares for SELL
+        let shares: number;
+        let finalAmount = amount;
+
+        if (side === "SELL" && options?.shares !== undefined) {
+            // SELL by share count - user specifies shares, we derive amount
+            shares = options.shares;
+            finalAmount = shares * executionPrice;
+            logger.info(`SELL by shares: ${shares} shares @ ${executionPrice.toFixed(4)} = $${finalAmount.toFixed(2)}`);
+        } else {
+            // Standard flow - derive shares from amount
+            shares = direction === "NO"
+                ? amount / executionPrice  // Recalculate with correct NO price
+                : simulation.totalShares;
+        }
 
         const slippage = (simulation.slippagePercent * 100).toFixed(2);
 
         logger.info(`Execution Plan`, {
             marketId,
-            amount,
+            amount: finalAmount,
             side,
             executionPrice: executionPrice.toFixed(4),
             spotPrice: currentPrice,
@@ -150,7 +184,7 @@ export class TradeExecutor {
                 challengeId: challenge.id,
                 marketId: marketId,
                 type: side,
-                amount: amount.toString(), // Notional value
+                amount: finalAmount.toString(), // Notional value
                 price: executionPrice.toString(),
                 shares: shares.toString(),
                 executedAt: new Date(),
@@ -181,7 +215,8 @@ export class TradeExecutor {
                     const { proceeds } = await PositionManager.reducePosition(
                         tx,
                         existingPos.id,
-                        shares
+                        shares,
+                        executionPrice  // Use live price from order book walk
                     );
                     await BalanceManager.creditProceeds(tx, challenge.id, proceeds);
                 }
@@ -221,6 +256,14 @@ export class TradeExecutor {
         }
 
         logger.info(`Trade Complete: ${tradeResult.id}`, { tradeId: tradeResult.id });
-        return tradeResult;
+
+        // Calculate price age for transparency
+        const priceAge = marketData.timestamp ? Date.now() - marketData.timestamp : null;
+
+        return {
+            ...tradeResult,
+            priceAge,           // How old the price data was (ms)
+            priceSource: marketData.source, // 'live', 'event_list', etc.
+        };
     }
 }

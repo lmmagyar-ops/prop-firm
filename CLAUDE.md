@@ -71,6 +71,288 @@ src/
 - Velocity Fees: 0.1% daily carry cost for positions held >24h
 - Min Trading Days: 5 days before payout eligible
 
+## Technical Architecture
+
+### Price Ingestion Pipeline
+```
+Polymarket API (WebSocket + REST)     Kalshi API (WebSocket + REST)
+              ↓                                   ↓
+        ingestion.ts                      kalshi-ingestion.ts
+              ↓                                   ↓
+     Redis (Upstash) ← Leader Election (prevents duplicates)
+              ↓
+     /api/markets/stream (SSE endpoint)
+              ↓
+     Frontend (LivePositions, useMarketStream hook)
+```
+
+**Key Files:**
+- `src/workers/ingestion.ts` - Polymarket WebSocket, leader election
+- `src/workers/kalshi-ingestion.ts` - Kalshi WebSocket with REST fallback
+- `src/workers/leader-election.ts` - Redis-based leader lock
+- `src/lib/market.ts` - MarketService for reading prices, order books
+- `src/app/api/markets/stream/route.ts` - SSE endpoint for frontend
+
+**Data Flow:**
+1. **Leader Election** ensures only one worker ingests at a time
+2. **WebSocket** connects to `wss://ws-live-data.polymarket.com`
+3. **Price buffer** batches updates (1s flush interval)
+4. **SSE endpoint** streams prices to frontend every 1s
+5. **Redis keys**: `event:active_list`, `kalshi:active_list`, `market:price:{id}`, `market:book:{id}`
+
+### Trade Execution Model (B-Book)
+Trades execute against our internal system using real order book data for slippage simulation.
+
+```
+User Trade Request (with options: {maxSlippage?, shares?})
+      ↓
+RiskEngine.validateTrade() [9 pre-trade rules]
+      ↓
+MarketService.calculateImpact() [walk order book for VWAP]
+      ↓
+maxSlippage check (reject if slippage > user limit)
+      ↓
+SELL by shares? → derive amount from shares × price
+      ↓
+DB Transaction (row lock for race prevention)
+      ↓
+PositionManager.openPosition() or .reducePosition()
+      ↓
+BalanceManager.deductCost() or .creditProceeds()
+      ↓
+ChallengeEvaluator.evaluate() [async]
+      ↓
+Return: trade + {priceAge, priceSource}
+```
+
+**Key Files:**
+- `src/lib/trade.ts` - TradeExecutor.executeTrade()
+- `src/lib/trading/PositionManager.ts` - Position CRUD
+- `src/lib/trading/BalanceManager.ts` - Balance adjustments
+
+---
+
+## Technical Flow Diagrams
+
+### 1. Order Book VWAP Walk (Slippage Calculation)
+How we simulate real market impact by walking the order book:
+
+```mermaid
+flowchart TD
+    A["Trade Request: BUY $1000"] --> B["Get Order Book from Redis"]
+    B --> C{"Book Source?"}
+    C -->|demo| REJECT["❌ REJECT: No liquidity feed"]
+    C -->|live/synthetic| D["Walk the Asks (for BUY)"]
+    
+    D --> E["Level 1: 0.55 × 5000 shares = $2750"]
+    E --> F{"$1000 < $2750?"}
+    F -->|Yes| G["Take partial: $1000 ÷ 0.55 = 1818 shares"]
+    F -->|No| H["Take all 5000 shares, continue to Level 2"]
+    
+    G --> I["Calculate VWAP: $1000 ÷ 1818 = 0.55"]
+    H --> J["Level 2: 0.56 × 3000 shares..."]
+    J --> K["Sum all levels → VWAP"]
+    
+    I --> L["Slippage = (VWAP - TopOfBook) ÷ TopOfBook"]
+    K --> L
+    L --> M{"Slippage > maxSlippage?"}
+    M -->|Yes| N["❌ REJECT: Slippage exceeded"]
+    M -->|No| O["✅ Execute at VWAP"]
+```
+
+### 2. Position Lifecycle
+How positions flow from open to close:
+
+```mermaid
+stateDiagram-v2
+    [*] --> OPEN: BUY trade
+    
+    OPEN --> OPEN: Add to position (BUY more)
+    OPEN --> PARTIAL: Reduce position (SELL some)
+    OPEN --> CLOSED: Full close (SELL all)
+    
+    PARTIAL --> PARTIAL: Reduce more
+    PARTIAL --> CLOSED: Close remainder
+    
+    CLOSED --> [*]
+    
+    note right of OPEN
+        - shares tracked
+        - entryPrice = VWAP
+        - currentPrice updated via SSE
+    end note
+    
+    note right of CLOSED
+        - closedPrice recorded
+        - realizedPnL calculated
+        - proceeds credited to balance
+    end note
+```
+
+### 3. Challenge State Machine
+The full lifecycle of a trading challenge:
+
+```mermaid
+stateDiagram-v2
+    [*] --> pending: Payment confirmed
+    
+    pending --> active: User clicks "Start"
+    
+    active --> passed: Profit target hit
+    active --> failed: HARD breach (max drawdown)
+    active --> pendingFailure: SOFT breach (daily loss)
+    
+    pendingFailure --> active: Recovered before EOD
+    pendingFailure --> failed: EOD finalizes failure
+    
+    passed --> verification: Auto-transition
+    
+    verification --> funded: Verification passed
+    verification --> failed: Verification failed
+    
+    funded --> [*]: Trading continues indefinitely
+    failed --> [*]: Challenge ends
+    
+    note right of pendingFailure
+        24h grace period
+        Can recover by profitable trades
+    end note
+    
+    note right of funded
+        80-90% profit split
+        Bi-weekly payouts
+    end note
+```
+
+### 4. Risk Evaluation Flow (Pre-Trade + Post-Trade)
+The two-layer protection system:
+
+```mermaid
+flowchart TD
+    subgraph PreTrade["PRE-TRADE (RiskEngine)"]
+        A["Trade Request"] --> B{"Balance Check"}
+        B -->|Fail| R1["❌ Insufficient Funds"]
+        B -->|Pass| C{"Max Drawdown Check"}
+        C -->|Would Breach| R2["❌ Would breach max drawdown"]
+        C -->|OK| D{"Daily Loss Check"}
+        D -->|Would Breach| R3["❌ Would breach daily limit"]
+        D -->|OK| E{"Position Exposure"}
+        E -->|>5% single market| R4["❌ Concentration limit"]
+        E -->|OK| F{"Category Exposure"}
+        F -->|>10% single category| R5["❌ Category limit"]
+        F -->|OK| G["✅ Trade Allowed"]
+    end
+    
+    G --> H["Execute Trade"]
+    
+    subgraph PostTrade["POST-TRADE (Evaluator)"]
+        H --> I["Recalculate Balance"]
+        I --> J{"Check Drawdown"}
+        J -->|Breached > Max| K["🔴 HARD FAIL → status = failed"]
+        J -->|Breached > Daily| L["🟡 SOFT FAIL → pendingFailureAt = now"]
+        J -->|OK| M{"Check Profit Target"}
+        M -->|Reached| N["🟢 PASS → status = passed"]
+        M -->|Not yet| O["Continue trading"]
+    end
+```
+
+### 5. Daily Reset Process (00:00 UTC)
+What happens at midnight every day:
+
+```mermaid
+sequenceDiagram
+    participant Cron as Cron Job
+    participant DB as Database
+    participant Log as Audit Log
+    
+    Note over Cron: 00:00 UTC Daily
+    
+    Cron->>DB: SELECT challenges WHERE pendingFailureAt IS NOT NULL
+    DB-->>Cron: [challenges with pending failures]
+    
+    loop Each Pending Challenge
+        Cron->>DB: UPDATE status = 'failed'
+        Cron->>Log: Record breach event
+    end
+    
+    Cron->>DB: SELECT challenges WHERE status = 'active'
+    DB-->>Cron: [active challenges]
+    
+    loop Each Active Challenge
+        Cron->>DB: UPDATE startOfDayBalance = currentBalance
+        Cron->>DB: UPDATE pendingFailureAt = NULL
+        Cron->>DB: UPDATE lastDailyResetAt = NOW()
+    end
+    
+    Note over Cron: Daily loss limit now based on NEW startOfDayBalance
+```
+
+### 6. Payout Eligibility Flow (Funded Accounts)
+Requirements to request a payout:
+
+```mermaid
+flowchart TD
+    A["Trader Requests Payout"] --> B{"Net Profit > $0?"}
+    B -->|No| R1["❌ No profit to withdraw"]
+    B -->|Yes| C{"Min Trading Days Met?"}
+    
+    C -->|"<5 days"| R2["❌ Need 5 active trading days"]
+    C -->|"≥5 days"| D{"Consistency Check"}
+    
+    D -->|">50% from single day"| R3["⚠️ Flagged for review"]
+    D -->|OK| E{"Any Rule Violations?"}
+    
+    E -->|Yes| R4["❌ Violations block payout"]
+    E -->|No| F{"KYC Verified?"}
+    
+    F -->|No| R5["❌ Complete KYC first"]
+    F -->|Yes| G["Calculate Payout"]
+    
+    G --> H["Gross Profit × Split % (80-90%)"]
+    H --> I{"Exceeds Payout Cap?"}
+    I -->|Yes| J["Cap at startingBalance"]
+    I -->|No| K["Full amount"]
+    
+    J --> L["✅ Payout Approved"]
+    K --> L
+    L --> M["Send to Admin Queue"]
+```
+
+---
+
+### Evaluation & Risk System
+
+**Two-Layer Validation:**
+1. **Pre-Trade** (RiskEngine) - Blocks trades that would breach limits
+2. **Post-Trade** (Evaluator) - Checks for breaches after execution
+
+**Pre-Trade Rules (src/lib/risk.ts):**
+| Rule | Limit |
+|------|-------|
+| Max Total Drawdown | 8% |
+| Max Daily Loss | 4% of SOD |
+| Per-Market Exposure | 5% |
+| Per-Category Exposure | 10% |
+| Min Market Volume | $100k |
+| Max Open Positions | 10-20 (tiered) |
+
+**Post-Trade Evaluation (src/lib/evaluator.ts):**
+| Check | Breach Type | Effect |
+|-------|-------------|--------|
+| Max Drawdown | HARD | Immediate failure |
+| Time Expiry | HARD | Immediate failure |
+| Daily Loss | SOFT | `pending_failure` (can recover) |
+| Profit Target | PASS | Transition to funded |
+
+### Checkout & Challenge Creation
+- **Mock Mode**: `/api/checkout/create-confirmo-invoice` creates challenge instantly
+- **Production**: Confirmo webhook at `/api/webhooks/confirmo` creates challenge
+- **Key File**: `src/lib/challenges.ts` - ChallengeManager
+
+### Dashboard Data
+- **Main Function**: `getDashboardData()` in `src/lib/dashboard-service.ts`
+- Aggregates: user stats, challenge metrics, open positions, P&L
+
 ## Database Schema (src/db/schema.ts)
 **Core Tables:** users, challenges, positions, trades, payouts
 **Auth:** accounts, sessions, verificationTokens, user2FA

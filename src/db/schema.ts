@@ -195,6 +195,7 @@ export const positions = pgTable("positions", {
 
     openedAt: timestamp("opened_at").defaultNow(),
     closedAt: timestamp("closed_at"),
+    closedPrice: decimal("closed_price", { precision: 10, scale: 4 }), // Price at which position was closed
 });
 
 export const trades = pgTable("trades", {
@@ -207,6 +208,7 @@ export const trades = pgTable("trades", {
     price: decimal("price", { precision: 10, scale: 4 }).notNull(),
     amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
     shares: decimal("shares", { precision: 12, scale: 2 }).notNull(),
+    realizedPnL: decimal("realized_pnl", { precision: 12, scale: 2 }), // P&L for SELL trades
 
     executedAt: timestamp("executed_at").defaultNow(),
 });

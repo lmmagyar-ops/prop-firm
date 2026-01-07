@@ -63,11 +63,13 @@ export class PositionManager {
 
     /**
      * Reduces or closes a position
+     * @param exitPrice Optional live exit price - if not provided, falls back to position.currentPrice
      */
     static async reducePosition(
         tx: any,
         positionId: string,
-        sharesToSell: number
+        sharesToSell: number,
+        exitPrice?: number
     ): Promise<{ proceeds: number; remainingShares: number }> {
         const position = await tx.query.positions.findFirst({
             where: eq(positions.id, positionId)
@@ -81,12 +83,18 @@ export class PositionManager {
         }
 
         const remainingShares = currentShares - sharesToSell;
-        const exitPrice = parseFloat(position.currentPrice || position.entryPrice);
-        const proceeds = sharesToSell * exitPrice;
+        // Use live exit price if provided, otherwise fall back to stored price
+        const finalExitPrice = exitPrice ?? parseFloat(position.currentPrice || position.entryPrice);
+        const proceeds = sharesToSell * finalExitPrice;
 
         if (remainingShares <= 0.0001) {
             await tx.update(positions)
-                .set({ status: 'CLOSED', shares: '0', closedAt: new Date() })
+                .set({
+                    status: 'CLOSED',
+                    shares: '0',
+                    closedAt: new Date(),
+                    closedPrice: finalExitPrice.toString()  // Record actual close price
+                })
                 .where(eq(positions.id, positionId));
         } else {
             await tx.update(positions)

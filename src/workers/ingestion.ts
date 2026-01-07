@@ -1,6 +1,8 @@
 import WebSocket from "ws";
 import * as dotenv from "dotenv";
 import Redis from "ioredis";
+import { LeaderElection } from "./leader-election";
+import { RiskMonitor } from "./risk-monitor";
 
 dotenv.config();
 
@@ -14,6 +16,9 @@ class IngestionWorker {
     private redis: Redis;
     private reconnectInterval = 5000;
     private activeTokenIds: string[] = [];
+    private leaderElection: LeaderElection;
+    private riskMonitor: RiskMonitor;
+    private isLeader = false;
 
     constructor() {
         if (process.env.REDIS_HOST && process.env.REDIS_PASSWORD) {
@@ -30,7 +35,65 @@ class IngestionWorker {
             this.redis = new Redis(REDIS_URL);
         }
 
-        this.init();
+        // Initialize leader election
+        this.leaderElection = new LeaderElection(this.redis);
+
+        // Initialize risk monitor (checks all challenges for breaches every 5s)
+        this.riskMonitor = new RiskMonitor(this.redis);
+
+        this.startWithLeaderElection();
+    }
+
+    /**
+     * Start worker with leader election - only leader runs ingestion
+     */
+    private async startWithLeaderElection(): Promise<void> {
+        this.isLeader = await this.leaderElection.tryBecomeLeader();
+
+        if (this.isLeader) {
+            console.log('[Ingestion] 🟢 This worker is the LEADER - starting ingestion...');
+            // Start renewal and handle leadership loss
+            this.leaderElection.startRenewal(() => {
+                console.error('[Ingestion] 🔴 Lost leadership! Stopping ingestion...');
+                this.isLeader = false;
+                this.ws?.close();
+                this.ws = null;
+                this.riskMonitor.stop(); // Stop risk monitoring when losing leadership
+                // Re-enter standby mode
+                this.enterStandbyMode();
+            });
+            this.init();
+            this.riskMonitor.start(); // Start risk monitoring when becoming leader
+        } else {
+            this.enterStandbyMode();
+        }
+    }
+
+    /**
+     * Enter standby mode - poll for leader failure
+     */
+    private enterStandbyMode(): void {
+        const currentLeader = this.leaderElection.getCurrentLeader();
+        console.log(`[Ingestion] 🟡 Entering STANDBY mode (waiting for leader to fail)...`);
+
+        const standbyInterval = setInterval(async () => {
+            const becameLeader = await this.leaderElection.tryBecomeLeader();
+            if (becameLeader) {
+                clearInterval(standbyInterval);
+                console.log('[Ingestion] 🟢 Became leader! Starting ingestion...');
+                this.isLeader = true;
+                this.leaderElection.startRenewal(() => {
+                    console.error('[Ingestion] 🔴 Lost leadership! Stopping ingestion...');
+                    this.isLeader = false;
+                    this.ws?.close();
+                    this.ws = null;
+                    this.riskMonitor.stop(); // Stop risk monitoring when losing leadership
+                    this.enterStandbyMode();
+                });
+                this.init();
+                this.riskMonitor.start(); // Start risk monitoring when becoming leader
+            }
+        }, 10000); // Check every 10s
     }
 
     /**

@@ -10,7 +10,7 @@ import { ChallengeHeader } from "@/components/dashboard/ChallengeHeader";
 import { EquityDisplay } from "@/components/dashboard/EquityDisplay";
 import { ProfitProgress } from "@/components/dashboard/ProfitProgress";
 import { RiskMeters } from "@/components/dashboard/RiskMeters";
-import { OpenPositions } from "@/components/dashboard/OpenPositions";
+import { LivePositions } from "@/components/dashboard/LivePositions";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { getDashboardData } from "@/lib/dashboard-service";
@@ -223,13 +223,12 @@ export default async function DashboardPage() {
                         </>
                     )}
 
-                    {/* Open Positions - ALWAYS VISIBLE for both funded and challenge */}
-                    <OpenPositions
-                        positions={positions || []}
-                        onClosePosition={async (id) => {
-                            "use server";
-                            // TODO: Implement server action for closing position
-                            console.log("Close position (server):", id);
+                    {/* Open Positions with LIVE SSE Updates */}
+                    <LivePositions
+                        initialPositions={positions || []}
+                        onClosePosition={(id) => {
+                            // Client-side handler - redirect to trade modal
+                            console.log("Close position:", id);
                         }}
                     />
 
