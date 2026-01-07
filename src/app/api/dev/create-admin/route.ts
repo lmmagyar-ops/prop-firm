@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { users } from "@/db/schema";
+import { sql } from "drizzle-orm";
 import bcrypt from "bcrypt";
 
 /**
@@ -19,30 +19,22 @@ export async function GET(request: Request) {
 
     try {
         // Admin account details
+        const id = crypto.randomUUID();
         const email = "l.m.magyar@gmail.com";
         const password = "Propshot2026!";
         const passwordHash = await bcrypt.hash(password, 10);
+        const name = "Les Magyar";
 
-        // Insert admin user
-        const result = await db.insert(users).values({
-            id: crypto.randomUUID(),
-            email: email,
-            name: "Les Magyar",
-            role: "admin",
-            passwordHash: passwordHash,
-            emailVerified: new Date(),
-            isActive: true,
-            createdAt: new Date(),
-        }).returning({
-            id: users.id,
-            email: users.email,
-            role: users.role,
-        });
+        // Insert admin user with raw SQL
+        await db.execute(sql`
+            INSERT INTO users (id, email, name, role, password_hash, "emailVerified", is_active, created_at)
+            VALUES (${id}, ${email}, ${name}, 'admin', ${passwordHash}, NOW(), true, NOW())
+            ON CONFLICT (id) DO NOTHING
+        `);
 
         return NextResponse.json({
             success: true,
             message: "Admin account created!",
-            user: result[0],
             credentials: {
                 email: email,
                 password: password,
@@ -53,7 +45,7 @@ export async function GET(request: Request) {
         if (error.message?.includes("duplicate") || error.code === "23505") {
             return NextResponse.json({
                 error: "User already exists",
-                message: "Try logging in with email: l.m.magyar@gmail.com",
+                message: "Try logging in with email: l.m.magyar@gmail.com and password: Propshot2026!",
             }, { status: 409 });
         }
 
