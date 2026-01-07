@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { db } from "@/db";
 import { challenges } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
+import { redirect } from "next/navigation";
 
 export default async function DashboardLayout({
     children,
@@ -12,7 +13,13 @@ export default async function DashboardLayout({
     children: React.ReactNode;
 }) {
     const session = await auth();
-    const userId = session?.user?.id || "demo-user-1";
+
+    // Require authentication for dashboard
+    if (!session?.user?.id) {
+        redirect("/login");
+    }
+
+    const userId = session.user.id;
 
     // Check if user has an active challenge for Trade tab visibility
     const activeChallenge = await db.query.challenges.findFirst({
