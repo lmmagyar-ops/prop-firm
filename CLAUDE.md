@@ -167,6 +167,36 @@ npx playwright test       # E2E tests (e2e/)
   - `pm:book:{tokenId}` - Order book snapshots
   - `market:price:{marketId}` - Latest prices
 
+## Production Setup (CRITICAL)
+
+### Database Initialization
+After connecting Vercel Postgres, you MUST run the schema push:
+```bash
+# From local machine with DATABASE_URL set to production:
+npm run db:push
+```
+If tables are missing or incomplete, the app will fail silently on login.
+
+### Google OAuth Configuration
+1. Create OAuth credentials at [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
+2. Add these env vars to Vercel:
+   ```
+   AUTH_GOOGLE_ID=your-google-client-id
+   AUTH_GOOGLE_SECRET=your-google-client-secret
+   ```
+3. Add redirect URI in Google Console:
+   ```
+   https://prop-firmx.vercel.app/api/auth/callback/google
+   ```
+
+### First Admin Account
+Create admin users via database or a seeding script:
+```sql
+INSERT INTO users (id, email, name, password_hash, role, is_active)
+VALUES (gen_random_uuid(), 'admin@example.com', 'Admin', '$bcrypt_hash', 'admin', true);
+```
+Password hash must be generated with `bcrypt.hash(password, 10)`.
+
 ## Git Backup (Revert Points)
 - `68e608c`: Before Vapi-style redesign
 
