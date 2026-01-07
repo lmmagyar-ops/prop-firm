@@ -16,7 +16,7 @@ export default function TermsPage() {
                     </Link>
                     <div className="flex-1" />
                     <Link href="/" className="font-serif font-bold text-xl tracking-tight">
-                        Project X
+                        Propshot
                     </Link>
                 </div>
             </header>
@@ -54,7 +54,7 @@ export default function TermsPage() {
                                 <h2 className="text-2xl font-semibold text-white">1. Acceptance of Terms</h2>
                             </div>
                             <p className="leading-relaxed">
-                                By accessing or using Project X Trading (&quot;the Service&quot;), you agree to be bound by these Terms and Conditions. If you do not agree to these terms, you may not use the Service.
+                                By accessing or using Propshot Trading (&quot;the Service&quot;), you agree to be bound by these Terms and Conditions. If you do not agree to these terms, you may not use the Service.
                             </p>
                         </section>
 
@@ -64,7 +64,7 @@ export default function TermsPage() {
                                 <h2 className="text-2xl font-semibold text-white">2. Description of Service</h2>
                             </div>
                             <p className="leading-relaxed">
-                                Project X provides a simulated trading evaluation platform. Users trade with simulated funds on real prediction market data. Successful traders may qualify for funded accounts with profit-sharing arrangements.
+                                Propshot provides a simulated trading evaluation platform. Users trade with simulated funds on real prediction market data. Successful traders may qualify for funded accounts with profit-sharing arrangements.
                             </p>
                             <ul className="list-disc list-inside space-y-2 text-zinc-400">
                                 <li>All trading is simulated using virtual balances</li>

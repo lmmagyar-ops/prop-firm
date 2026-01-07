@@ -194,7 +194,7 @@ function SignupContent() {
                 {/* Header */}
                 <div className="text-center">
                     <Link href="/" className="font-serif font-bold text-4xl tracking-tight text-white">
-                        Project X
+                        Propshot
                     </Link>
                     <p className="mt-4 text-zinc-400 text-sm">
                         Create your trading account

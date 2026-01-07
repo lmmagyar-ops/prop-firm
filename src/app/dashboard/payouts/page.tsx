@@ -48,7 +48,7 @@ export default async function PayoutsPage() {
                             <AlertDescription className="text-xs text-zinc-400 leading-relaxed">
                                 By clicking "Request Payout" it automatically withdraws all your unlocked trading profits.
                                 Please confirm your wallet address matches the network that you are requesting the funds are sent to.
-                                Project X is not responsible for any lost funds due to incorrect wallets or incorrect selected networks.
+                                Propshot is not responsible for any lost funds due to incorrect wallets or incorrect selected networks.
                                 <p className="mt-2 text-white font-medium">
                                     Please ensure that your wallet address accepts USDC on the selected network.
                                 </p>

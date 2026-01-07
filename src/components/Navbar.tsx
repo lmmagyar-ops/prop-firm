@@ -18,7 +18,7 @@ export function Navbar() {
                         <BarChart3 className="w-4 h-4 text-[var(--vapi-mint)]" />
                     </div>
                     <span className="font-bold text-lg text-white group-hover:text-[var(--vapi-mint)] transition-colors">
-                        Project X
+                        Propshot
                     </span>
                 </Link>
 

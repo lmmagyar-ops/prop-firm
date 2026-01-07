@@ -42,7 +42,7 @@ export default async function CertificatesPage() {
                             </div>
                             <h3 className="text-xl font-bold text-white mb-2">No Active Certificate</h3>
                             <p className="text-zinc-500 max-w-sm">
-                                Complete a challenge or request your first payout to unlock your official Project X certificate.
+                                Complete a challenge or request your first payout to unlock your official Propshot certificate.
                             </p>
                         </div>
                     )}

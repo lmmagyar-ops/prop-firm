@@ -312,7 +312,7 @@ function Footer() {
                     <span className="hover:text-white cursor-pointer transition-colors">Risk Disclosure</span>
                 </div>
                 <p className="text-[var(--vapi-gray-text)] text-sm">
-                    © 2025 Project X via Polymarket Data. All rights reserved.<br />
+                    © 2025 Propshot via Polymarket Data. All rights reserved.<br />
                     <span className="text-white/30">This is a simulated trading environment. No real funds are at risk during evaluation.</span>
                 </p>
             </div>

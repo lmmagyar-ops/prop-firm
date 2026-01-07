@@ -79,7 +79,7 @@ export function FAQSection() {
                 <div className="text-4xl mb-4">🎙️</div>
                 <h3 className="text-xl font-bold text-white mb-2">Still have questions?</h3>
                 <p className="text-[var(--vapi-gray-text)] mb-6">
-                    Talk to Luna, our AI assistant. She knows everything about Project X.
+                    Talk to Luna, our AI assistant. She knows everything about Propshot.
                 </p>
                 <button className="pill-btn pill-btn-mint flex items-center gap-2 mx-auto">
                     Ask Luna <ArrowRight className="w-4 h-4" />

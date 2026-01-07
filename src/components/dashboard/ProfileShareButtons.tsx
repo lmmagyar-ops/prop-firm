@@ -26,7 +26,7 @@ export function ProfileShareButtons({ userId }: ProfileShareButtonsProps) {
     };
 
     const shareToTwitter = () => {
-        const text = "Check out my trading profile on Project X!";
+        const text = "Check out my trading profile on Propshot!";
         const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(profileUrl)}`;
         window.open(url, '_blank', 'width=550,height=420');
     };

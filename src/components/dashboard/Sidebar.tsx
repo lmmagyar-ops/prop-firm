@@ -48,7 +48,7 @@ export function Sidebar({ active = "Dashboard", verificationStatus = "locked", h
     return (
         <aside className="hidden md:flex w-64 border-r border-[#2E3A52] bg-[#161B22] flex-col fixed inset-y-0 left-0 z-50">
             <div className="p-6">
-                <Link href="/dashboard" className="font-serif font-bold text-2xl tracking-tight text-white/90">Project X</Link>
+                <Link href="/dashboard" className="font-serif font-bold text-2xl tracking-tight text-white/90">Propshot</Link>
             </div>
 
             <nav className="flex-1 px-4 space-y-1">

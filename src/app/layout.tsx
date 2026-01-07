@@ -19,7 +19,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Project X Trading",
+  title: "Propshot Trading",
   description: "World-class prediction market prop trading",
   manifest: '/manifest.json',
   icons: {
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'Project X',
+    title: 'Propshot',
   },
   other: {
     'mobile-web-app-capable': 'yes',

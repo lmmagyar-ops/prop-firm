@@ -100,7 +100,7 @@ function VerifyEmailContent() {
                     </div>
                 </div>
 
-                <h1 className="text-2xl font-bold text-white mb-2">Welcome to Project X</h1>
+                <h1 className="text-2xl font-bold text-white mb-2">Welcome to Propshot</h1>
                 <p className="text-zinc-400 mb-6">Your account has been created.</p>
 
                 <div className="bg-zinc-800/50 rounded-xl p-6 mb-8 border border-white/5">

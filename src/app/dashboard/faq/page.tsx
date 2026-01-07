@@ -16,7 +16,7 @@ export default function FAQPage() {
 
                     <h2 className="text-2xl font-bold mb-4 text-white">Help Center Coming Soon</h2>
                     <p className="text-zinc-400 mb-8">
-                        We're building a comprehensive FAQ section for Project X. In the meantime, contact us for support.
+                        We're building a comprehensive FAQ section for Propshot. In the meantime, contact us for support.
                     </p>
 
                     <div className="flex gap-4 justify-center">

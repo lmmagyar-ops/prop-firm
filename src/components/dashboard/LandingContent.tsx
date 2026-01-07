@@ -536,7 +536,7 @@ export function LandingContent() {
                 <div className="h-px w-full bg-[var(--vapi-border)] mb-24" />
 
                 <div className="text-center mb-16">
-                    <div className="mono-label text-[var(--vapi-mint)] mb-4">Why Project X</div>
+                    <div className="mono-label text-[var(--vapi-mint)] mb-4">Why Propshot</div>
                     <h2 className="text-4xl md:text-5xl font-black text-white tracking-tight mb-4">
                         See The Difference.
                     </h2>
@@ -557,7 +557,7 @@ export function LandingContent() {
                                             <div className="w-10 h-10 rounded-xl bg-[var(--vapi-mint)]/10 border border-[var(--vapi-mint)]/30 flex items-center justify-center">
                                                 <BarChart3 className="w-5 h-5 text-[var(--vapi-mint)]" />
                                             </div>
-                                            <span className="font-bold text-white">Project X</span>
+                                            <span className="font-bold text-white">Propshot</span>
                                         </div>
                                     </th>
                                     <th className="p-6 text-center">
@@ -691,7 +691,7 @@ export function LandingContent() {
                     <div className="text-4xl mb-4">🎙️</div>
                     <h3 className="text-xl font-bold text-white mb-2">Still have questions?</h3>
                     <p className="text-[var(--vapi-gray-text)] mb-6">
-                        Talk to Luna, our AI assistant. She knows everything about Project X.
+                        Talk to Luna, our AI assistant. She knows everything about Propshot.
                     </p>
                     <button className="pill-btn pill-btn-mint flex items-center gap-2 mx-auto">
                         Ask Luna <ArrowRight className="w-4 h-4" />
@@ -709,7 +709,7 @@ export function LandingContent() {
                         <span className="hover:text-white cursor-pointer transition-colors">Risk Disclosure</span>
                     </div>
                     <p className="text-[var(--vapi-gray-text)] text-sm">
-                        © 2025 Project X via Polymarket Data. All rights reserved.<br />
+                        © 2025 Propshot via Polymarket Data. All rights reserved.<br />
                         <span className="text-white/30">This is a simulated trading environment. No real funds are at risk during evaluation.</span>
                     </p>
                 </div>

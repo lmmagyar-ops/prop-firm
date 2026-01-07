@@ -63,7 +63,7 @@ function ResetPasswordContent() {
                 <div className="w-full max-w-md space-y-8">
                     <div className="text-center">
                         <Link href="/" className="font-serif font-bold text-4xl tracking-tight text-white">
-                            Project X
+                            Propshot
                         </Link>
                     </div>
                     <div className="bg-zinc-900/50 border border-white/10 rounded-2xl p-8 text-center space-y-4">
@@ -91,7 +91,7 @@ function ResetPasswordContent() {
                 {/* Header */}
                 <div className="text-center">
                     <Link href="/" className="font-serif font-bold text-4xl tracking-tight text-white">
-                        Project X
+                        Propshot
                     </Link>
                     <p className="mt-4 text-zinc-400 text-sm">
                         {success ? "Password reset successful" : "Create a new password"}

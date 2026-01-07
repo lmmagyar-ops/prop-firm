@@ -69,7 +69,7 @@ export function PayoutRequestForm({ availableBalance }: { availableBalance: numb
 
     return (
         <div className="space-y-6">
-            {/* Tabs (Trading Withdrawal vs Project X Payout) */}
+            {/* Tabs (Trading Withdrawal vs Propshot Payout) */}
             <div className="flex gap-4 mb-6">
                 <div className="flex-1 p-4 bg-[#1A232E] border border-[#2E3A52] rounded-xl text-center cursor-not-allowed opacity-50">
                     <p className="text-sm text-zinc-500">Trading Withdrawal</p>
@@ -77,7 +77,7 @@ export function PayoutRequestForm({ availableBalance }: { availableBalance: numb
                 </div>
                 <div className="flex-1 p-4 bg-[#2E81FF]/10 border border-[#2E81FF]/30 rounded-xl text-center cursor-pointer relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-4 h-4 bg-[#2E81FF] rounded-bl-lg" />
-                    <p className="text-sm text-[#2E81FF] font-bold">Project X Payout</p>
+                    <p className="text-sm text-[#2E81FF] font-bold">Propshot Payout</p>
                     <p className="text-2xl font-bold font-mono text-white">$300.00</p>
                 </div>
             </div>
