@@ -1,18 +1,36 @@
 import Redis from "ioredis";
 
-const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6380";
+// Support both Upstash (REDIS_HOST/PASSWORD) and local (REDIS_URL) configs
+function createRedisClient(): Redis {
+    // Production: Use Upstash with TLS
+    if (process.env.REDIS_HOST && process.env.REDIS_PASSWORD) {
+        return new Redis({
+            host: process.env.REDIS_HOST,
+            port: parseInt(process.env.REDIS_PORT || "6379"),
+            password: process.env.REDIS_PASSWORD,
+            tls: {}, // Required for Upstash
+            connectTimeout: 5000,
+            commandTimeout: 5000,
+            maxRetriesPerRequest: 1,
+            lazyConnect: true,
+        });
+    }
+
+    // Local: Use REDIS_URL
+    return new Redis(process.env.REDIS_URL || "redis://localhost:6380", {
+        connectTimeout: 5000,
+        commandTimeout: 5000,
+        maxRetriesPerRequest: 1,
+        lazyConnect: true,
+    });
+}
 
 // Lazy Redis singleton with connection timeout to prevent hanging on serverless
 let redisInstance: Redis | null = null;
 
 function getRedis(): Redis {
     if (!redisInstance) {
-        redisInstance = new Redis(REDIS_URL, {
-            connectTimeout: 5000,
-            commandTimeout: 5000,
-            maxRetriesPerRequest: 1,
-            lazyConnect: true, // Don't connect until first command
-        });
+        redisInstance = createRedisClient();
 
         redisInstance.on('error', (err) => {
             console.error('[MarketService] Redis error:', err.message);
