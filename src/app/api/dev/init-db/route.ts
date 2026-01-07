@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { sql } from "@vercel/postgres";
+import { db } from "@/db";
+import { sql } from "drizzle-orm";
 
 /**
  * TEMPORARY: Initialize database schema
@@ -18,9 +19,11 @@ export async function GET(request: Request) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const results: string[] = [];
+
     try {
         // Create users table
-        await sql`
+        await db.execute(sql`
             CREATE TABLE IF NOT EXISTS users (
                 id TEXT PRIMARY KEY,
                 name TEXT,
@@ -74,10 +77,11 @@ export async function GET(request: Request) {
                 show_country BOOLEAN DEFAULT false,
                 show_stats_publicly BOOLEAN DEFAULT true
             )
-        `;
+        `);
+        results.push("users table created");
 
         // Create account table for OAuth
-        await sql`
+        await db.execute(sql`
             CREATE TABLE IF NOT EXISTS account (
                 "userId" TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                 type TEXT NOT NULL,
@@ -92,29 +96,32 @@ export async function GET(request: Request) {
                 session_state TEXT,
                 PRIMARY KEY (provider, "providerAccountId")
             )
-        `;
+        `);
+        results.push("account table created");
 
         // Create session table
-        await sql`
+        await db.execute(sql`
             CREATE TABLE IF NOT EXISTS session (
                 "sessionToken" TEXT PRIMARY KEY,
                 "userId" TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                 expires TIMESTAMP NOT NULL
             )
-        `;
+        `);
+        results.push("session table created");
 
         // Create verification token table
-        await sql`
+        await db.execute(sql`
             CREATE TABLE IF NOT EXISTS "verificationToken" (
                 identifier TEXT NOT NULL,
                 token TEXT NOT NULL,
                 expires TIMESTAMP NOT NULL,
                 PRIMARY KEY (identifier, token)
             )
-        `;
+        `);
+        results.push("verificationToken table created");
 
         // Create challenges table
-        await sql`
+        await db.execute(sql`
             CREATE TABLE IF NOT EXISTS challenges (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
@@ -141,18 +148,20 @@ export async function GET(request: Request) {
                 last_activity_at TIMESTAMP,
                 payout_cycle_start TIMESTAMP
             )
-        `;
+        `);
+        results.push("challenges table created");
 
         return NextResponse.json({
             success: true,
             message: "Database tables created successfully!",
-            tables: ["users", "account", "session", "verificationToken", "challenges"]
+            results
         });
     } catch (error: any) {
         console.error("[init-db] Error:", error);
         return NextResponse.json({
             error: "Database error",
             message: error.message,
+            completedSteps: results
         }, { status: 500 });
     }
 }
