@@ -1,0 +1,154 @@
+import { NextResponse } from "next/server";
+import { auth } from "@/auth";
+import { db } from "@/db";
+import { challenges, users, payouts, positions } from "@/db/schema";
+import { eq, and, gte, sql, count } from "drizzle-orm";
+import { cookies } from "next/headers";
+
+export async function GET() {
+    try {
+        const session = await auth();
+        const email = session?.user?.email;
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+
+        // Look up user ID by email (session might not include id)
+        let userId: string | null = null;
+        if (email) {
+            const [user] = await db
+                .select({ id: users.id })
+                .from(users)
+                .where(eq(users.email, email))
+                .limit(1);
+            userId = user?.id || null;
+        }
+
+        // Read selectedChallengeId from cookie (set by client-side ChallengeSelector)
+        const cookieStore = await cookies();
+        const selectedChallengeId = cookieStore.get("selectedChallengeId")?.value;
+
+        // Run all queries concurrently for speed
+        const [
+            pendingPayoutsResult,
+            failedTodayResult,
+            activeChallengesResult,
+            signupsTodayResult,
+            riskAlertsResult,
+            myChallengeResult
+        ] = await Promise.all([
+            // Pending payouts
+            db
+                .select({
+                    count: count(),
+                    total: sql<number>`COALESCE(SUM(CAST(${payouts.amount} AS NUMERIC)), 0)`,
+                })
+                .from(payouts)
+                .where(eq(payouts.status, "pending"))
+                .catch(() => [{ count: 0, total: 0 }]),
+
+            // Failed today (using startedAt as proxy - ideally would track status change time)
+            db
+                .select({ count: count() })
+                .from(challenges)
+                .where(
+                    and(
+                        eq(challenges.status, "failed"),
+                        gte(challenges.startedAt, today)
+                    )
+                )
+                .catch(() => [{ count: 0 }]),
+
+            // Active challenges
+            db
+                .select({ count: count() })
+                .from(challenges)
+                .where(eq(challenges.status, "active"))
+                .catch(() => [{ count: 0 }]),
+
+            // Signups in last 24h
+            db
+                .select({ count: count() })
+                .from(users)
+                .where(gte(users.createdAt, yesterday))
+                .catch(() => [{ count: 0 }]),
+
+            // Risk alerts - placeholder (unrealized PnL requires live price calculation)
+            // For now, return 0 - live risk alerts would require Redis price lookups
+            Promise.resolve([{ count: 0 }]),
+
+            // My active challenge - prefer selectedChallengeId from cookie if valid
+            userId
+                ? (async () => {
+                    // First, try to use the selected challenge from cookie
+                    if (selectedChallengeId) {
+                        const [selected] = await db
+                            .select({
+                                id: challenges.id,
+                                balance: challenges.currentBalance,
+                                status: challenges.status,
+                            })
+                            .from(challenges)
+                            .where(
+                                and(
+                                    eq(challenges.id, selectedChallengeId),
+                                    eq(challenges.userId, userId),
+                                    eq(challenges.status, "active")
+                                )
+                            )
+                            .limit(1);
+                        if (selected) return [selected];
+                    }
+                    // Fallback: get most recent active challenge
+                    return db
+                        .select({
+                            id: challenges.id,
+                            balance: challenges.currentBalance,
+                            status: challenges.status,
+                        })
+                        .from(challenges)
+                        .where(
+                            and(
+                                eq(challenges.userId, userId),
+                                eq(challenges.status, "active")
+                            )
+                        )
+                        .orderBy(sql`${challenges.startedAt} DESC`)
+                        .limit(1);
+                })().catch(() => [])
+                : Promise.resolve([])
+        ]);
+
+        const pendingPayouts = pendingPayoutsResult[0]?.count || 0;
+        const pendingPayoutAmount = Number(pendingPayoutsResult[0]?.total) || 0;
+        const failedToday = failedTodayResult[0]?.count || 0;
+        const activeChallenges = activeChallengesResult[0]?.count || 0;
+        const signupsToday = signupsTodayResult[0]?.count || 0;
+        const riskAlerts = riskAlertsResult[0]?.count || 0;
+
+        let myActiveChallenge = null;
+        if (myChallengeResult.length > 0) {
+            myActiveChallenge = {
+                id: myChallengeResult[0].id,
+                balance: String(myChallengeResult[0].balance),
+                status: myChallengeResult[0].status,
+            };
+        }
+
+        return NextResponse.json({
+            pendingPayouts,
+            pendingPayoutAmount,
+            failedToday,
+            activeChallenges,
+            signupsToday,
+            riskAlerts,
+            myActiveChallenge,
+        });
+    } catch (error) {
+        console.error("Quick stats error:", error);
+        return NextResponse.json(
+            { error: "Failed to fetch quick stats" },
+            { status: 500 }
+        );
+    }
+}

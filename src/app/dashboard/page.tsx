@@ -224,13 +224,7 @@ export default async function DashboardPage() {
                     )}
 
                     {/* Open Positions with LIVE SSE Updates */}
-                    <LivePositions
-                        initialPositions={positions || []}
-                        onClosePosition={(id) => {
-                            // Client-side handler - redirect to trade modal
-                            console.log("Close position:", id);
-                        }}
-                    />
+                    <LivePositions initialPositions={positions || []} />
 
                 </>
             )}

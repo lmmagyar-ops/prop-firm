@@ -68,7 +68,7 @@ src/
 ### Key Rules Engine (src/lib/risk.ts, evaluator.ts)
 - Max Drawdown: Static % of initial balance
 - Daily Drawdown: % of start-of-day balance
-- Velocity Fees: 0.1% daily carry cost for positions held >24h
+- Velocity Fees: 0.05% daily carry cost for positions held >24h
 - Min Trading Days: 5 days before payout eligible
 
 ## Technical Architecture

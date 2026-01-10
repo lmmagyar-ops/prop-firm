@@ -187,6 +187,73 @@ export class MarketService {
     }
 
     /**
+     * Batch fetch prices from ORDER BOOKS (same source as trade execution).
+     * This ensures PnL display matches the prices used for trade execution.
+     * Uses bid price for mark-to-market (what you could actually sell at).
+     */
+    static async getBatchOrderBookPrices(marketIds: string[]): Promise<Map<string, MarketPrice>> {
+        const results = new Map<string, MarketPrice>();
+
+        if (marketIds.length === 0) return results;
+
+        try {
+            const redis = getRedis();
+
+            // Fetch all order books in parallel
+            const bookKeys = marketIds.map(id => `market:book:${id}`);
+            const bookData = await redis.mget(...bookKeys);
+
+            for (let i = 0; i < marketIds.length; i++) {
+                const marketId = marketIds[i];
+                const data = bookData[i];
+
+                if (data) {
+                    try {
+                        const book = JSON.parse(data) as OrderBook;
+                        // Use best bid (what you could sell at) for mark-to-market
+                        // This is the most conservative/realistic valuation
+                        const bestBid = book.bids?.[0]?.price;
+                        if (bestBid) {
+                            results.set(marketId, {
+                                price: bestBid,
+                                asset_id: marketId,
+                                timestamp: Date.now(),
+                                source: 'live'
+                            });
+                            continue;
+                        }
+                    } catch {
+                        // Invalid JSON, fall through to fallback
+                    }
+                }
+
+                // Fallback: try event list price (better than demo)
+                const eventPrice = await this.lookupPriceFromEvents(marketId);
+                if (eventPrice) {
+                    results.set(marketId, { ...eventPrice, source: 'event_list' });
+                } else {
+                    results.set(marketId, { ...this.getDemoPrice(marketId), source: 'demo' });
+                }
+            }
+
+            console.log(`[MarketService] Batch fetched ${results.size}/${marketIds.length} order book prices`);
+        } catch (error: any) {
+            console.error(`[MarketService] Batch order book error:`, error.message);
+            // Fallback to event list prices
+            for (const marketId of marketIds) {
+                const eventPrice = await this.lookupPriceFromEvents(marketId);
+                if (eventPrice) {
+                    results.set(marketId, { ...eventPrice, source: 'event_list' });
+                } else {
+                    results.set(marketId, { ...this.getDemoPrice(marketId), source: 'demo' });
+                }
+            }
+        }
+
+        return results;
+    }
+
+    /**
      * Batch fetch market titles from Redis event lists
      */
     static async getBatchTitles(marketIds: string[]): Promise<Map<string, string>> {

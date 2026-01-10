@@ -27,7 +27,7 @@ describe('Authentication Guards', () => {
 
     describe('requireAuth()', () => {
         it('should block unauthenticated users (no session)', async () => {
-            vi.mocked(auth).mockResolvedValue(null);
+            vi.mocked(auth).mockResolvedValue(null as any);
 
             const result = await requireAuth();
 
@@ -72,7 +72,7 @@ describe('Authentication Guards', () => {
 
     describe('validateChallengeOwnership()', () => {
         it('should prevent cross-user access (challenge owned by different user)', async () => {
-            vi.mocked(db.query.challenges.findFirst).mockResolvedValue(null);
+            vi.mocked(db.query.challenges.findFirst).mockResolvedValue(undefined);
 
             const result = await validateChallengeOwnership('challenge-123', 'user-456');
 
@@ -96,7 +96,7 @@ describe('Authentication Guards', () => {
 
     describe('requireActiveChallenge()', () => {
         it('should reject if challenge not found', async () => {
-            vi.mocked(db.query.challenges.findFirst).mockResolvedValue(null);
+            vi.mocked(db.query.challenges.findFirst).mockResolvedValue(undefined);
 
             const result = await requireActiveChallenge('challenge-123', 'user-123');
 

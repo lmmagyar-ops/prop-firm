@@ -123,7 +123,7 @@ describe('Payout Edge Cases', () => {
         it('should reject payout for inactive challenge', () => {
             const challengeStatus = 'failed'; // Not active or funded
 
-            const canPayout = challengeStatus === 'active' || challengeStatus === 'funded';
+            const canPayout = (challengeStatus as string) === 'active' || (challengeStatus as string) === 'funded';
 
             expect(canPayout).toBe(false);
         });
@@ -131,7 +131,7 @@ describe('Payout Edge Cases', () => {
         it('should allow payout for funded challenge', () => {
             const challengeStatus = 'funded';
 
-            const canPayout = challengeStatus === 'active' || challengeStatus === 'funded';
+            const canPayout = (challengeStatus as string) === 'active' || (challengeStatus as string) === 'funded';
 
             expect(canPayout).toBe(true);
         });

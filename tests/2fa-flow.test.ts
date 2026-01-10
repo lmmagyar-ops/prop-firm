@@ -9,7 +9,7 @@ vi.mock('otpauth', () => ({
     TOTP: class MockTOTP {
         secret = { base32: 'MOCK_SECRET_BASE32' };
         toString = () => 'otpauth://totp/ProjectX:user@example.com?secret=MOCK_SECRET_BASE32&issuer=ProjectX';
-        validate = (token: string) => token === '123456' ? 0 : null;
+        validate = (opts: { token: string }) => opts.token === '123456' ? 0 : null;
     },
 }));
 
@@ -46,7 +46,7 @@ describe('2FA Flow', () => {
                 user: { id: 'user-123', email: 'user@example.com' },
             };
             vi.mocked(auth).mockResolvedValue(mockSession as any);
-            vi.mocked(db.query.user2FA.findFirst).mockResolvedValue(null);
+            vi.mocked(db.query.user2FA.findFirst).mockResolvedValue(undefined);
 
             const totp = new TOTP({} as any);
 
@@ -78,7 +78,7 @@ describe('2FA Flow', () => {
                 user: { id: 'user-123', email: 'user@example.com' },
             };
             vi.mocked(auth).mockResolvedValue(mockSession as any);
-            vi.mocked(db.query.user2FA.findFirst).mockResolvedValue(null);
+            vi.mocked(db.query.user2FA.findFirst).mockResolvedValue(undefined);
 
             vi.mocked(db.insert).mockReturnValue({
                 values: vi.fn((data) => {
@@ -99,14 +99,14 @@ describe('2FA Flow', () => {
     describe('2FA Verification', () => {
         it('should accept valid TOTP code', () => {
             const totp = new TOTP({} as any);
-            const result = totp.validate('123456'); // Our mock accepts this
+            const result = totp.validate({ token: '123456' }); // Our mock accepts this
 
             expect(result).toBe(0); // Valid token returns 0 (no time drift)
         });
 
         it('should reject invalid TOTP code', () => {
             const totp = new TOTP({} as any);
-            const result = totp.validate('999999'); // Invalid code
+            const result = totp.validate({ token: '999999' }); // Invalid code
 
             expect(result).toBeNull(); // Invalid token returns null
         });
@@ -162,7 +162,7 @@ describe('2FA Flow', () => {
             const totp = new TOTP({} as any);
             const validCode = '123456';
 
-            const isValid = totp.validate(validCode) !== null;
+            const isValid = totp.validate({ token: validCode }) !== null;
 
             expect(isValid).toBe(true);
         });

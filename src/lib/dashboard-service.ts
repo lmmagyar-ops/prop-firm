@@ -131,11 +131,11 @@ export async function getDashboardData(userId: string) {
 
     const profitProgress = Math.min(100, (totalPnL / rules.profitTarget) * 100);
 
-    // 6. Calculate unrealized P&L for positions using LIVE prices
-    // Batch fetch live prices from Redis to avoid stale position.currentPrice
+    // 6. Calculate unrealized P&L for positions using LIVE prices from ORDER BOOKS
+    // This ensures PnL display matches the prices used for trade execution
     const { MarketService } = await import("./market");
     const marketIds = openPositions.map(p => p.marketId);
-    const livePrices = marketIds.length > 0 ? await MarketService.getBatchPrices(marketIds) : new Map();
+    const livePrices = marketIds.length > 0 ? await MarketService.getBatchOrderBookPrices(marketIds) : new Map();
 
     // Fetch market titles from Redis event lists
     const marketTitles = await MarketService.getBatchTitles(marketIds);

@@ -113,7 +113,7 @@ describe('Admin Authorization', () => {
         });
 
         it('should reject unauthenticated requests', async () => {
-            vi.mocked(auth).mockResolvedValue(null); // No session
+            vi.mocked(auth).mockResolvedValue(null as any); // No session
 
             const result = await requireAdmin();
 

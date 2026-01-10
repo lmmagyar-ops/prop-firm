@@ -80,7 +80,7 @@ describe('Trade API Endpoints', () => {
             const positionOwnerId = 'user-123';
             const requestUserId = 'user-456'; // Different user
 
-            const isOwner = positionOwnerId === requestUserId;
+            const isOwner = (positionOwnerId as string) === (requestUserId as string);
             const expectedStatus = isOwner ? 200 : 403;
 
             expect(expectedStatus).toBe(403);

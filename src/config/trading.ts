@@ -1,6 +1,6 @@
 export const TRADING_CONFIG = {
     fees: {
-        carryFeeRate: parseFloat(process.env.CARRY_FEE_RATE || "0.001"),
+        carryFeeRate: parseFloat(process.env.CARRY_FEE_RATE || "0.0005"),
         stalePeriodMs: process.env.NODE_ENV === "production"
             ? 24 * 60 * 60 * 1000  // 24 hours
             : 60 * 1000,            // 1 minute (demo)

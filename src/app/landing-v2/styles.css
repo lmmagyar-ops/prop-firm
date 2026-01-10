@@ -1,0 +1,652 @@
+/* Landing V2 Styles - Propshot Brand */
+
+/* ============================================================================
+   Design Tokens (Propshot Brand - Sharp Violet)
+   ============================================================================ */
+
+:root {
+  /* Brand Colors */
+  --v2-accent: #7C3AED;
+  --v2-accent-hover: #6D28D9;
+  --v2-accent-light: rgba(124, 58, 237, 0.1);
+
+  /* Semantic Colors */
+  --v2-profit: #10B981;
+  --v2-loss: #F43F5E;
+
+  /* Text Colors */
+  --v2-text-primary: #0F172A;
+  --v2-text-secondary: #64748B;
+
+  /* Backgrounds & Borders */
+  --v2-bg: #FAFAFA;
+  --v2-card-border: #E2E8F0;
+  --v2-button-text: #FFFFFF;
+  --v2-white: #FFFFFF;
+
+  /* Typography */
+  --v2-font-serif: 'Playfair Display', Georgia, serif;
+  --v2-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+
+  /* Spacing */
+  --v2-section-padding: 120px 0;
+  --v2-container-max: 1200px;
+  --v2-container-padding: 0 24px;
+}
+
+/* ============================================================================
+   Base Styles
+   ============================================================================ */
+
+.landing-v2 {
+  background-color: var(--v2-bg);
+  color: var(--v2-text-primary);
+  font-family: var(--v2-font-sans);
+  font-size: 16px;
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+.landing-v2 * {
+  box-sizing: border-box;
+}
+
+.v2-container {
+  max-width: var(--v2-container-max);
+  margin: 0 auto;
+  padding: var(--v2-container-padding);
+}
+
+/* ============================================================================
+   Typography
+   ============================================================================ */
+
+.v2-heading-serif {
+  font-family: var(--v2-font-serif);
+  font-weight: 400;
+  color: var(--v2-text-primary);
+  line-height: 1.2;
+}
+
+.v2-heading-serif .accent {
+  color: var(--v2-accent);
+}
+
+.v2-body-text {
+  font-family: var(--v2-font-sans);
+  color: var(--v2-text-secondary);
+  font-size: 18px;
+  line-height: 1.7;
+}
+
+/* ============================================================================
+   Buttons
+   ============================================================================ */
+
+.v2-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 32px;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  font-family: var(--v2-font-sans);
+}
+
+.v2-btn-primary {
+  background-color: var(--v2-accent);
+  color: var(--v2-button-text);
+  border: none;
+}
+
+.v2-btn-primary:hover {
+  background-color: var(--v2-accent-hover);
+}
+
+.v2-btn-secondary {
+  background-color: transparent;
+  color: var(--v2-text-primary);
+  border: 1px solid var(--v2-card-border);
+}
+
+.v2-btn-secondary:hover {
+  border-color: var(--v2-text-secondary);
+}
+
+/* ============================================================================
+   Cards
+   ============================================================================ */
+
+.v2-card {
+  background: var(--v2-white);
+  border: 1px solid var(--v2-card-border);
+  border-radius: 8px;
+  padding: 32px;
+}
+
+/* ============================================================================
+   Navbar
+   ============================================================================ */
+
+.v2-navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: var(--v2-bg);
+  border-bottom: 1px solid var(--v2-card-border);
+}
+
+.v2-navbar-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 72px;
+}
+
+.v2-navbar-logo {
+  font-family: var(--v2-font-sans);
+  font-weight: 700;
+  font-size: 20px;
+  color: var(--v2-text-primary);
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.v2-navbar-links {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+}
+
+.v2-navbar-links a {
+  font-size: 14px;
+  color: var(--v2-text-secondary);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.v2-navbar-links a:hover {
+  color: var(--v2-text-primary);
+}
+
+.v2-navbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.v2-navbar-login {
+  font-size: 14px;
+  color: var(--v2-accent);
+  text-decoration: none;
+  padding: 10px 20px;
+  border: 1px solid var(--v2-accent);
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.v2-navbar-login:hover {
+  background: var(--v2-accent);
+  color: var(--v2-button-text);
+}
+
+/* ============================================================================
+   Hero Section
+   ============================================================================ */
+
+.v2-hero {
+  position: relative;
+  padding: 160px 0 0;
+  text-align: center;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+/* Subtle background - just a soft gradient, no pattern */
+.v2-hero-pattern {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(180deg, rgba(124, 58, 237, 0.03) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.v2-hero .v2-container {
+  position: relative;
+  z-index: 1;
+}
+
+.v2-hero h1 {
+  font-size: 64px;
+  margin-bottom: 24px;
+}
+
+.v2-hero-subtitle {
+  font-size: 18px;
+  color: var(--v2-text-secondary);
+  max-width: 600px;
+  margin: 0 auto 40px;
+}
+
+.v2-hero-actions {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 48px;
+}
+
+/* Trust badges row */
+.v2-trust-badges {
+  display: flex;
+  justify-content: center;
+  gap: 48px;
+  margin-bottom: 64px;
+  flex-wrap: wrap;
+}
+
+.v2-trust-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.v2-trust-icon {
+  font-size: 24px;
+  margin-bottom: 4px;
+}
+
+.v2-trust-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--v2-text-primary);
+}
+
+.v2-trust-sub {
+  font-size: 12px;
+  color: var(--v2-text-secondary);
+}
+
+/* Laptop peeking from bottom - Maven style */
+.v2-hero-laptop {
+  position: relative;
+  max-width: 1000px;
+  margin: 0 auto;
+  z-index: 1;
+}
+
+/* Probability Orbs Animation */
+.v2-orbs-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.v2-orb {
+  position: absolute;
+  bottom: -100px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+  animation: floatUp linear infinite;
+}
+
+.v2-orb span {
+  font-family: var(--v2-font-sans);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+@keyframes floatUp {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 0;
+  }
+
+  10% {
+    opacity: 0.8;
+  }
+
+  90% {
+    opacity: 0.8;
+  }
+
+  100% {
+    transform: translateY(-120vh) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .v2-hero h1 {
+    font-size: 40px;
+  }
+
+  .v2-trust-badges {
+    gap: 24px;
+  }
+
+  .v2-hero-laptop {
+    max-width: 100%;
+    margin: 0 -24px;
+  }
+}
+
+/* ============================================================================
+   Challenge Selector
+   ============================================================================ */
+
+.v2-challenges {
+  padding: var(--v2-section-padding);
+}
+
+.v2-challenges h2 {
+  text-align: center;
+  font-size: 32px;
+  margin-bottom: 48px;
+}
+
+.v2-challenge-tabs {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 48px;
+  flex-wrap: wrap;
+}
+
+.v2-challenge-tab {
+  padding: 12px 24px;
+  font-size: 14px;
+  border: 1px solid var(--v2-card-border);
+  border-radius: 6px;
+  background: var(--v2-white);
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: var(--v2-font-sans);
+}
+
+.v2-challenge-tab.active {
+  background: var(--v2-accent);
+  color: var(--v2-button-text);
+  border-color: var(--v2-accent);
+}
+
+.v2-challenge-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+
+@media (max-width: 900px) {
+  .v2-challenge-cards {
+    grid-template-columns: 1fr;
+  }
+}
+
+.v2-challenge-card {
+  text-align: center;
+}
+
+.v2-challenge-card h3 {
+  font-size: 18px;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.v2-challenge-card .price {
+  font-size: 48px;
+  font-weight: 600;
+  color: var(--v2-accent);
+  margin-bottom: 8px;
+}
+
+.v2-challenge-card .refund-note {
+  font-size: 13px;
+  color: var(--v2-text-secondary);
+  margin-bottom: 24px;
+}
+
+.v2-challenge-card .terms {
+  text-align: left;
+  font-size: 14px;
+}
+
+.v2-challenge-card .term-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--v2-card-border);
+}
+
+.v2-challenge-card .term-row:last-child {
+  border-bottom: none;
+}
+
+.v2-challenge-card .term-label {
+  color: var(--v2-text-secondary);
+}
+
+.v2-challenge-card .term-value {
+  font-weight: 500;
+  color: var(--v2-text-primary);
+}
+
+/* ============================================================================
+   How It Works
+   ============================================================================ */
+
+.v2-how-it-works {
+  padding: var(--v2-section-padding);
+  background: var(--v2-white);
+}
+
+.v2-how-it-works h2 {
+  text-align: center;
+  font-size: 32px;
+  margin-bottom: 16px;
+}
+
+.v2-how-it-works .subtitle {
+  text-align: center;
+  color: var(--v2-text-secondary);
+  margin-bottom: 64px;
+}
+
+.v2-steps {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 32px;
+}
+
+@media (max-width: 900px) {
+  .v2-steps {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .v2-steps {
+    grid-template-columns: 1fr;
+  }
+}
+
+.v2-step {
+  text-align: center;
+}
+
+.v2-step-icon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 24px;
+  background: var(--v2-bg);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+}
+
+.v2-step h3 {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.v2-step p {
+  font-size: 14px;
+  color: var(--v2-text-secondary);
+}
+
+/* ============================================================================
+   About Section
+   ============================================================================ */
+
+.v2-about {
+  padding: var(--v2-section-padding);
+}
+
+.v2-about-inner {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 64px;
+  align-items: center;
+}
+
+@media (max-width: 768px) {
+  .v2-about-inner {
+    grid-template-columns: 1fr;
+  }
+}
+
+.v2-about h2 {
+  font-size: 32px;
+  margin-bottom: 24px;
+}
+
+.v2-about p {
+  color: var(--v2-text-secondary);
+  margin-bottom: 16px;
+}
+
+/* ============================================================================
+   CTA Banner
+   ============================================================================ */
+
+.v2-cta {
+  padding: 80px 0;
+  background: var(--v2-white);
+  text-align: center;
+}
+
+.v2-cta h2 {
+  font-size: 40px;
+  margin-bottom: 16px;
+}
+
+.v2-cta p {
+  color: var(--v2-text-secondary);
+  margin-bottom: 32px;
+  max-width: 500px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.v2-cta-actions {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+}
+
+/* ============================================================================
+   Footer
+   ============================================================================ */
+
+.v2-footer {
+  padding: 64px 0 32px;
+  border-top: 1px solid var(--v2-card-border);
+}
+
+.v2-footer-grid {
+  display: grid;
+  grid-template-columns: 2fr repeat(3, 1fr);
+  gap: 48px;
+  margin-bottom: 48px;
+}
+
+@media (max-width: 768px) {
+  .v2-footer-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.v2-footer-brand p {
+  color: var(--v2-text-secondary);
+  font-size: 14px;
+  margin-top: 16px;
+}
+
+.v2-footer-col h4 {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.v2-footer-col a {
+  display: block;
+  font-size: 14px;
+  color: var(--v2-text-secondary);
+  text-decoration: none;
+  margin-bottom: 12px;
+  transition: color 0.2s;
+}
+
+.v2-footer-col a:hover {
+  color: var(--v2-text-primary);
+}
+
+.v2-footer-bottom {
+  text-align: center;
+  font-size: 14px;
+  color: var(--v2-text-secondary);
+  padding-top: 32px;
+  border-top: 1px solid var(--v2-card-border);
+}
+
+/* ============================================================================
+   Mobile Responsive
+   ============================================================================ */
+
+@media (max-width: 768px) {
+  .v2-hero h1 {
+    font-size: 40px;
+  }
+
+  .v2-hero-actions {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .v2-navbar-links {
+    display: none;
+  }
+}

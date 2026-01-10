@@ -22,6 +22,7 @@ import { SystemStatusHeader } from "@/components/admin/SystemStatusHeader";
 import { SystemHeartbeat } from "@/components/admin/SystemHeartbeat";
 import { RevenueOdometer } from "@/components/admin/RevenueOdometer";
 import { GeoSpatialMap } from "@/components/admin/GeoSpatialMap";
+import { AdminQuickActions } from "@/components/admin/AdminQuickActions";
 
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -62,6 +63,9 @@ export default function AdminDashboard() {
         <div className="space-y-8">
             <div className="relative z-10 max-w-7xl mx-auto space-y-6">
                 <SystemStatusHeader />
+
+                {/* Quick Actions Panel - Most Used Operations */}
+                <AdminQuickActions />
 
                 {/* System Heartbeat and Revenue Ticker */}
                 <div className="flex flex-col md:flex-row gap-4">

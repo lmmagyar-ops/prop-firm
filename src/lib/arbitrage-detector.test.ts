@@ -31,7 +31,7 @@ describe("ArbitrageDetector.wouldCreateArbitrage", () => {
     // --- Binary Market Tests ---
 
     it("should allow trade when no existing position", async () => {
-        vi.mocked(db.query.positions.findFirst).mockResolvedValue(null);
+        vi.mocked(db.query.positions.findFirst).mockResolvedValue(undefined);
         vi.mocked(db.query.positions.findMany).mockResolvedValue([]);
 
         const result = await ArbitrageDetector.wouldCreateArbitrage(
@@ -93,7 +93,7 @@ describe("ArbitrageDetector.wouldCreateArbitrage", () => {
 
     it("should block when buying final outcome in multi-runner market (multi-runner arb)", async () => {
         // No opposite direction position (binary check passes)
-        vi.mocked(db.query.positions.findFirst).mockResolvedValue(null);
+        vi.mocked(db.query.positions.findFirst).mockResolvedValue(undefined);
 
         // User already holds 2 of 3 outcomes
         const existingPositions = [
@@ -130,7 +130,7 @@ describe("ArbitrageDetector.wouldCreateArbitrage", () => {
 
     it("should allow buying second outcome in multi-runner market (not yet arb)", async () => {
         // No opposite direction position
-        vi.mocked(db.query.positions.findFirst).mockResolvedValue(null);
+        vi.mocked(db.query.positions.findFirst).mockResolvedValue(undefined);
 
         // User only holds 1 of 3 outcomes
         const existingPositions = [

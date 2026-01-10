@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, usePathname } from "next/navigation";
 import {
     LayoutDashboard,
     User,
@@ -22,14 +22,33 @@ import {
 } from "lucide-react";
 
 interface SidebarProps {
-    active?: string;
+    active?: string; // Optional override, otherwise derived from pathname
     verificationStatus?: "locked" | "pending" | "verified";
     hasActiveChallenge?: boolean;
 }
 
-export function Sidebar({ active = "Dashboard", verificationStatus = "locked", hasActiveChallenge = false }: SidebarProps) {
+// Derive active page from pathname
+function getActiveFromPath(pathname: string): string {
+    if (pathname.includes("/dashboard/trade")) return "Trade";
+    if (pathname.includes("/dashboard/private-profile")) return "Private Profile";
+    if (pathname.includes("/dashboard/public-profile")) return "Public Profile";
+    if (pathname.includes("/dashboard/certificates")) return "Certificates";
+    if (pathname.includes("/dashboard/verification")) return "Verification";
+    if (pathname.includes("/dashboard/settings")) return "Settings";
+    if (pathname.includes("/dashboard/payouts")) return "Payouts";
+    if (pathname.includes("/dashboard/faq")) return "FAQ";
+    if (pathname.includes("/dashboard/leaderboard")) return "Leaderboard";
+    if (pathname === "/dashboard") return "Dashboard";
+    return "Dashboard";
+}
+
+export function Sidebar({ active, verificationStatus = "locked", hasActiveChallenge = false }: SidebarProps) {
     const searchParams = useSearchParams();
+    const pathname = usePathname();
     const [showTradeGlow, setShowTradeGlow] = useState(false);
+
+    // Use prop if provided, otherwise derive from pathname
+    const activePage = active || getActiveFromPath(pathname);
 
     useEffect(() => {
         // Check if user just completed welcome tour
@@ -52,16 +71,16 @@ export function Sidebar({ active = "Dashboard", verificationStatus = "locked", h
             </div>
 
             <nav className="flex-1 px-4 space-y-1">
-                <NavItem icon={User} label="Private Profile" href="/dashboard/private-profile" isActive={active === "Private Profile"} />
-                <NavItem icon={Users} label="Public Profile" href="/dashboard/public-profile" isActive={active === "Public Profile"} />
-                <NavItem icon={LayoutDashboard} label="Dashboard" href="/dashboard" isActive={active === "Dashboard"} />
+                <NavItem icon={User} label="Private Profile" href="/dashboard/private-profile" isActive={activePage === "Private Profile"} />
+                <NavItem icon={Users} label="Public Profile" href="/dashboard/public-profile" isActive={activePage === "Public Profile"} />
+                <NavItem icon={LayoutDashboard} label="Dashboard" href="/dashboard" isActive={activePage === "Dashboard"} />
                 {/* Trade - Locked when no active challenge */}
                 {hasActiveChallenge ? (
                     <NavItem
                         icon={TrendingUp}
                         label="Trade"
                         href="/dashboard/trade"
-                        isActive={active === "Trade"}
+                        isActive={activePage === "Trade"}
                         glow={showTradeGlow}
                         onClick={() => setShowTradeGlow(false)}
                     />
@@ -71,15 +90,15 @@ export function Sidebar({ active = "Dashboard", verificationStatus = "locked", h
                         <span className="text-sm font-medium">Trade (Locked)</span>
                     </div>
                 )}
-                <NavItem icon={Award} label="Certificates" href="/dashboard/certificates" isActive={active === "Certificates"} />
-                <NavItem icon={ShoppingCart} label="Buy Evaluation" href="/buy-evaluation" highlight isActive={active === "Buy Evaluation"} />
+                <NavItem icon={Award} label="Certificates" href="/dashboard/certificates" isActive={activePage === "Certificates"} />
+                <NavItem icon={ShoppingCart} label="Buy Evaluation" href="/buy-evaluation" highlight isActive={activePage === "Buy Evaluation"} />
 
                 {/* Verification Item */}
                 <div className="pt-2 pb-2">
                     {verificationStatus === "verified" ? (
-                        <NavItem icon={ShieldCheck} label="Identity Verified" href="/dashboard/verification" isActive={active === "Verification"} className="text-green-500" />
+                        <NavItem icon={ShieldCheck} label="Identity Verified" href="/dashboard/verification" isActive={activePage === "Verification"} className="text-green-500" />
                     ) : verificationStatus === "pending" ? (
-                        <NavItem icon={Shield} label="Verify Identity" href="/dashboard/verification" isActive={active === "Verification"} className="text-yellow-500 animate-pulse" />
+                        <NavItem icon={Shield} label="Verify Identity" href="/dashboard/verification" isActive={activePage === "Verification"} className="text-yellow-500 animate-pulse" />
                     ) : (
                         <div className="px-4 py-3 flex items-center gap-3 text-zinc-600 cursor-not-allowed">
                             <Lock className="w-4 h-4" />
@@ -88,10 +107,10 @@ export function Sidebar({ active = "Dashboard", verificationStatus = "locked", h
                     )}
                 </div>
 
-                <NavItem icon={Settings} label="Settings" href="/dashboard/settings" isActive={active === "Settings"} />
-                <NavItem icon={Wallet} label="Payouts" href="/dashboard/payouts" isActive={active === "Payouts"} />
-                <NavItem icon={HelpCircle} label="FAQ" href="/dashboard/faq" isActive={active === "FAQ"} />
-                <NavItem icon={Trophy} label="Leaderboard" href="/dashboard/leaderboard" isActive={active === "Leaderboard"} />
+                <NavItem icon={Settings} label="Settings" href="/dashboard/settings" isActive={activePage === "Settings"} />
+                <NavItem icon={Wallet} label="Payouts" href="/dashboard/payouts" isActive={activePage === "Payouts"} />
+                <NavItem icon={HelpCircle} label="FAQ" href="/dashboard/faq" isActive={activePage === "FAQ"} />
+                <NavItem icon={Trophy} label="Leaderboard" href="/dashboard/leaderboard" isActive={activePage === "Leaderboard"} />
             </nav>
 
             <div className="p-4">

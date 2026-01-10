@@ -111,8 +111,8 @@ describe("useMarketPolling", () => {
         });
 
         const { result, rerender } = renderHook(
-            ({ platform }) => useMarketPolling(platform),
-            { initialProps: { platform: "polymarket" as const } }
+            ({ platform }: { platform: "polymarket" | "kalshi" }) => useMarketPolling(platform),
+            { initialProps: { platform: "polymarket" as "polymarket" | "kalshi" } }
         );
 
         await waitFor(() => {
@@ -120,7 +120,7 @@ describe("useMarketPolling", () => {
         });
 
         // Change platform
-        rerender({ platform: "kalshi" as const });
+        rerender({ platform: "kalshi" });
 
         await waitFor(() => {
             expect(mockFetch).toHaveBeenCalledWith("/api/markets/events?platform=kalshi");

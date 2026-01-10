@@ -34,7 +34,8 @@ export default async function DashboardLayout({
 
     return (
         <div className="min-h-screen bg-[#0E1217] flex font-sans text-white">
-            <Sidebar active="dashboard" hasActiveChallenge={hasActiveChallenge} />
+            {/* Sidebar now auto-detects active page from URL */}
+            <Sidebar hasActiveChallenge={hasActiveChallenge} />
 
             <main className="flex-1 ml-0 md:ml-64 flex flex-col min-h-screen">
                 <TopNav />

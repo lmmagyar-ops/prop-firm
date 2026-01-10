@@ -17,7 +17,7 @@ interface Position {
 
 interface LivePositionsProps {
     initialPositions: Position[];
-    onClosePosition: (positionId: string) => void;
+    onClosePosition?: (positionId: string) => void;
 }
 
 /**
@@ -26,7 +26,7 @@ interface LivePositionsProps {
  * Initial data comes from server, then SSE updates prices in real-time.
  * Recalculates unrealized P&L on each price update.
  */
-export function LivePositions({ initialPositions, onClosePosition }: LivePositionsProps) {
+export function LivePositions({ initialPositions, onClosePosition = () => { } }: LivePositionsProps) {
     const { prices, connected } = useMarketStream();
     const [positions, setPositions] = useState<Position[]>(initialPositions);
 

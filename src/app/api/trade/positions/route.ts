@@ -61,9 +61,10 @@ export async function GET() {
 
     log.debug("Found positions", { count: openPositions.length });
 
-    // Batch fetch all prices at once (eliminates N+1 queries)
+    // Batch fetch all prices from ORDER BOOKS (same source as trade execution)
+    // This ensures PnL display matches trade execution pricing
     const marketIds = openPositions.map(pos => pos.marketId);
-    const priceMap = await MarketService.getBatchPrices(marketIds);
+    const priceMap = await MarketService.getBatchOrderBookPrices(marketIds);
 
     // Batch fetch all market titles at once
     const titleMap = await getBatchMarketTitles(marketIds);
@@ -74,21 +75,16 @@ export async function GET() {
         const shares = parseFloat(pos.shares);
         const direction = (pos.direction as "YES" | "NO") || "YES";
 
-        // Get price from batch-fetched map (this is always the YES price)
+        // Get price from batch-fetched map (this is the YES/bid price from order book)
         const marketData = priceMap.get(pos.marketId);
-        const yesPrice = marketData ? parseFloat(marketData.price) : entry;
+        const rawPrice = marketData ? parseFloat(marketData.price) : entry;
 
-        // Convert to correct price based on direction
-        // For YES positions: use YES price directly
-        // For NO positions: convert to NO price (1 - YES price)
-        const current = direction === "YES" ? yesPrice : (1 - yesPrice);
-
-        // Calculate P&L based on direction
-        // YES: profit when price goes UP
-        // NO: profit when price goes DOWN (but we're now comparing NO prices)
-        const unrealizedPnL = direction === "YES"
-            ? (current - entry) * shares
-            : (entry - current) * shares;
+        // Handle NO direction: P&L is inverted (profit when price drops)
+        // For NO positions: effective value = 1 - yesPrice
+        const isNo = direction === 'NO';
+        const effectiveCurrentValue = isNo ? (1 - rawPrice) : rawPrice;
+        const effectiveEntryValue = isNo ? (1 - entry) : entry;
+        const unrealizedPnL = (effectiveCurrentValue - effectiveEntryValue) * shares;
 
         // Get title from batch-fetched map
         const marketTitle = titleMap.get(pos.marketId) || pos.marketId.slice(0, 20) + "...";
@@ -100,8 +96,9 @@ export async function GET() {
             direction,
             shares,
             avgPrice: entry,
-            currentPrice: current,
-            unrealizedPnL
+            currentPrice: rawPrice,
+            unrealizedPnL,
+            priceSource: marketData?.source || 'stored'
         };
     });
 

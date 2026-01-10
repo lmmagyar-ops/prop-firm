@@ -44,7 +44,7 @@ describe('Auth API Endpoints', () => {
             const verificationCode = '999999'; // Wrong code
             const storedCode = '123456';
 
-            const isValid = verificationCode === storedCode;
+            const isValid = (verificationCode as string) === (storedCode as string);
 
             expect(isValid).toBe(false);
         });
@@ -127,7 +127,7 @@ describe('Auth API Endpoints', () => {
             const currentPassword = 'WrongPass!';
             const storedPassword = 'OldPass123!';
 
-            const currentMatches = currentPassword === storedPassword;
+            const currentMatches = (currentPassword as string) === (storedPassword as string);
 
             expect(currentMatches).toBe(false);
         });
