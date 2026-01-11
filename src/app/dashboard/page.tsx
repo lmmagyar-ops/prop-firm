@@ -214,6 +214,9 @@ export default async function DashboardPage() {
                                 drawdownUsage={stats.drawdownUsage}
                                 dailyDrawdownUsage={stats.dailyDrawdownUsage}
                                 startOfDayBalance={activeChallenge.startOfDayBalance}
+                                startingBalance={activeChallenge.startingBalance}
+                                maxDrawdownPercent={activeChallenge.rulesConfig?.maxDrawdownPercent || 10}
+                                dailyDrawdownPercent={activeChallenge.rulesConfig?.dailyDrawdownPercent || 5}
                             />
                         </>
                     )}
@@ -250,7 +253,7 @@ export default async function DashboardPage() {
                                 <ProfitProgress totalPnL={4250.00} profitTarget={10000} profitProgress={42.5} />
                             </div>
                         </div>
-                        <RiskMeters drawdownUsage={1.2} dailyDrawdownUsage={0.8} startOfDayBalance={103000} />
+                        <RiskMeters drawdownUsage={1.2} dailyDrawdownUsage={0.8} startOfDayBalance={103000} startingBalance={100000} />
 
                     </div>
 

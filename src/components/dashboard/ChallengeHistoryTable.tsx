@@ -19,7 +19,7 @@ interface ChallengeHistoryTableProps {
         challengeType: string;
         phase: string;
         status: 'active' | 'passed' | 'failed';
-        finalPnL: number;
+        finalPnL: number | null;
         startedAt: Date;
         completedAt?: Date | null;
         platform?: "polymarket" | "kalshi";
@@ -113,9 +113,12 @@ export function ChallengeHistoryTable({ challenges }: ChallengeHistoryTableProps
                                         {challenge.status}
                                     </Badge>
                                 </TableCell>
-                                <TableCell className={`text-right font-mono text-sm ${challenge.finalPnL >= 0 ? 'text-green-500' : 'text-red-500'
+                                <TableCell className={`text-right font-mono text-sm ${challenge.finalPnL !== null && challenge.finalPnL >= 0 ? 'text-green-500' : challenge.finalPnL !== null ? 'text-red-500' : 'text-zinc-500'
                                     }`}>
-                                    {challenge.finalPnL >= 0 ? '+' : ''}${challenge.finalPnL.toFixed(2)}
+                                    {challenge.finalPnL !== null
+                                        ? `${challenge.finalPnL >= 0 ? '+' : ''}$${challenge.finalPnL.toFixed(2)}`
+                                        : '—'
+                                    }
                                 </TableCell>
                                 <TableCell className="text-right">
                                     <Button

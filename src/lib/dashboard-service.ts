@@ -56,7 +56,7 @@ export async function getDashboardData(userId: string) {
             challengeType: `$${parseFloat(c.startingBalance).toLocaleString()} Challenge`,
             phase: c.phase,
             status: c.status,
-            finalPnL: parseFloat(c.currentBalance) - parseFloat(c.startingBalance),
+            finalPnL: c.status !== 'active' ? parseFloat(c.currentBalance) - parseFloat(c.startingBalance) : null,
             startedAt: c.startedAt,
             completedAt: c.status !== 'active' ? c.endsAt : null,
             platform: c.platform || "polymarket",

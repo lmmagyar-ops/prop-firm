@@ -25,7 +25,7 @@ export function ProfitProgress({ totalPnL, profitTarget, profitProgress }: Profi
             </div>
 
             <div className="flex justify-between items-center">
-                <div className="text-xs text-zinc-500 font-mono">{(profitProgress).toFixed(1)}% Complete</div>
+                <div className="text-xs text-zinc-500 font-mono">{Math.max(0, profitProgress).toFixed(1)}% Complete</div>
                 {profitProgress >= 100 && (
                     <span className="text-xs font-bold text-green-500 px-2 py-0.5 bg-green-500/10 rounded-full border border-green-500/20">TARGET REACHED</span>
                 )}
