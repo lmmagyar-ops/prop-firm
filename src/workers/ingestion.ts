@@ -22,10 +22,28 @@ class IngestionWorker {
 
     constructor() {
         if (process.env.REDIS_HOST && process.env.REDIS_PASSWORD) {
-            console.log(`[Ingestion] Connecting to Redis via HOST/PORT/PASS config...`);
+            // Debug: Log actual env var values (port only, not password)
+            const rawPort = process.env.REDIS_PORT;
+            console.log(`[Ingestion] REDIS_HOST: ${process.env.REDIS_HOST}`);
+            console.log(`[Ingestion] REDIS_PORT raw value: "${rawPort}" (type: ${typeof rawPort})`);
+
+            // Defensive port parsing - handle NaN, empty, undefined
+            let port = 6379; // Default fallback
+            if (rawPort && rawPort.trim()) {
+                const parsed = parseInt(rawPort.trim(), 10);
+                if (!isNaN(parsed) && parsed > 0 && parsed < 65536) {
+                    port = parsed;
+                } else {
+                    console.warn(`[Ingestion] Invalid REDIS_PORT "${rawPort}", using default 6379`);
+                }
+            } else {
+                console.log(`[Ingestion] REDIS_PORT not set, using default 6379`);
+            }
+
+            console.log(`[Ingestion] Connecting to Redis via HOST/PORT/PASS config (port: ${port})...`);
             this.redis = new Redis({
                 host: process.env.REDIS_HOST,
-                port: parseInt(process.env.REDIS_PORT || "6379"),
+                port: port,
                 password: process.env.REDIS_PASSWORD,
                 tls: {} // Required for Upstash
             });
