@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from 'react';
 import {
     Table,
     TableBody,
@@ -9,11 +10,13 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { X } from "lucide-react";
+import { X, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 interface OpenPositionsProps {
     positions: Array<{
         id: string;
+        marketId?: string;
         marketTitle: string;
         direction: 'YES' | 'NO';
         entryPrice: number;
@@ -21,10 +24,41 @@ interface OpenPositionsProps {
         shares: number;
         unrealizedPnL: number;
     }>;
-    onClosePosition: (positionId: string) => void;
 }
 
-export function OpenPositions({ positions, onClosePosition }: OpenPositionsProps) {
+export function OpenPositions({ positions: initialPositions }: OpenPositionsProps) {
+    const [positions, setPositions] = useState(initialPositions);
+    const [closingId, setClosingId] = useState<string | null>(null);
+
+    // Sync with parent when initialPositions change
+    useState(() => {
+        setPositions(initialPositions);
+    });
+
+    const handleClosePosition = async (positionId: string) => {
+        setClosingId(positionId);
+        try {
+            const response = await fetch(`/api/trade/positions/${positionId}/close`, {
+                method: 'POST',
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to close position');
+            }
+
+            const result = await response.json();
+            toast.success(`Position closed for $${result.proceeds?.toFixed(2) || '0.00'}`);
+
+            // Remove from local state
+            setPositions(prev => prev.filter(p => p.id !== positionId));
+        } catch (error: any) {
+            toast.error(error.message || 'Failed to close position');
+        } finally {
+            setClosingId(null);
+        }
+    };
+
     if (!positions || positions.length === 0) {
         return (
             <div className="bg-zinc-900/50 border border-white/10 rounded-2xl p-12 text-center">
@@ -90,10 +124,15 @@ export function OpenPositions({ positions, onClosePosition }: OpenPositionsProps
                                     <Button
                                         variant="ghost"
                                         size="sm"
-                                        onClick={() => onClosePosition(pos.id)}
+                                        onClick={() => handleClosePosition(pos.id)}
+                                        disabled={closingId === pos.id}
                                         className="h-7 w-7 p-0 text-zinc-500 hover:text-red-500 hover:bg-red-500/10"
                                     >
-                                        <X className="w-4 h-4" />
+                                        {closingId === pos.id ? (
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                        ) : (
+                                            <X className="w-4 h-4" />
+                                        )}
                                     </Button>
                                 </TableCell>
                             </TableRow>

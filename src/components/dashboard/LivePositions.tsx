@@ -17,7 +17,6 @@ interface Position {
 
 interface LivePositionsProps {
     initialPositions: Position[];
-    onClosePosition?: (positionId: string) => void;
 }
 
 /**
@@ -25,8 +24,11 @@ interface LivePositionsProps {
  * 
  * Initial data comes from server, then SSE updates prices in real-time.
  * Recalculates unrealized P&L on each price update.
+ * 
+ * Note: onClosePosition removed to fix Next.js 15 RSC serialization.
+ * Close functionality is handled inside OpenPositions via API call.
  */
-export function LivePositions({ initialPositions, onClosePosition = () => { } }: LivePositionsProps) {
+export function LivePositions({ initialPositions }: LivePositionsProps) {
     const { prices, connected } = useMarketStream();
     const [positions, setPositions] = useState<Position[]>(initialPositions);
 
@@ -72,7 +74,6 @@ export function LivePositions({ initialPositions, onClosePosition = () => { } }:
 
             <OpenPositions
                 positions={positions}
-                onClosePosition={onClosePosition}
             />
         </div>
     );

@@ -287,7 +287,6 @@ export function DashboardView({ initialBalance = null, demoMode = false, userId 
                 {/* 4. Open Positions */}
                 <OpenPositions
                     positions={[]} // TODO: Wire up real positions from API/Context
-                    onClosePosition={() => { }}
                 />
 
             </div>

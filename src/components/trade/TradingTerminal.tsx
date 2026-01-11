@@ -215,7 +215,6 @@ export function TradingTerminal({ challenge }: TradingTerminalProps) {
                     <div className="flex-1 min-h-[400px]">
                         <OpenPositions
                             positions={positions}
-                            onClosePosition={(id) => { console.log("Closing", id) }} // Close logic needs API endpoint logic or calling execute with opposite side
                         />
                     </div>
 
