@@ -43,7 +43,7 @@ export function PortfolioDropdown() {
 
         fetchPositions();
         // Poll every 5s for P&L updates
-        const interval = setInterval(fetchPositions, 5000);
+        const interval = setInterval(fetchPositions, 30000);
         return () => clearInterval(interval);
     }, []);
 

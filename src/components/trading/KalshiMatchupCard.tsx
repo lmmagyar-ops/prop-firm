@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { cn } from "@/lib/utils";
 import { formatPrice, formatPayout } from "@/lib/formatters";
 import type { EventMetadata } from "@/app/actions/market";
@@ -12,8 +13,9 @@ interface KalshiMatchupCardProps {
 /**
  * KalshiMatchupCard - Kalshi-style sports matchup card
  * Light theme with white background like native Kalshi
+ * Memoized to prevent INP issues from cascade re-renders
  */
-export function KalshiMatchupCard({ event, onTrade }: KalshiMatchupCardProps) {
+export const KalshiMatchupCard = memo(function KalshiMatchupCard({ event, onTrade }: KalshiMatchupCardProps) {
     const market = event.markets[0];
     if (!market) return null;
 
@@ -116,5 +118,5 @@ export function KalshiMatchupCard({ event, onTrade }: KalshiMatchupCardProps) {
             </div>
         </div>
     );
-}
+});
 

@@ -21,10 +21,10 @@ function mapToMarketShape(liveMarket: any): MockMarket & { categories?: string[]
         icon: '📊',
         imageUrl: liveMarket.image,
         currentPrice: liveMarket.currentPrice || 0.50, // Use live price from order book
-        priceChange24h: (Math.random() * 10) - 5, // Mock for visual variety
+        priceChange24h: 0, // Static - no Math.random() to avoid hydration mismatch
         volume: liveMarket.volume || 0,
-        activeTraders: Math.floor(Math.random() * 1000) + 100,
-        endDate: new Date(liveMarket.end_date || Date.now()),
+        activeTraders: 500, // Static - no Math.random() to avoid hydration mismatch
+        endDate: liveMarket.end_date ? new Date(liveMarket.end_date) : new Date('2099-01-01'), // Static fallback date
         trending: (liveMarket.volume || 0) > 1000000,
     };
 }

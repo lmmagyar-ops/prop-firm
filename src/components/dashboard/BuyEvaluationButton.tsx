@@ -8,7 +8,7 @@ interface BuyEvaluationButtonProps {
     label?: string;
 }
 
-export function BuyEvaluationButton({ label = "Start Challenge - $99" }: BuyEvaluationButtonProps) {
+export function BuyEvaluationButton({ label = "Start Challenge - From $79" }: BuyEvaluationButtonProps) {
     const [loading, setLoading] = useState(false);
 
     const handleBuy = async () => {

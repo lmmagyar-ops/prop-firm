@@ -61,7 +61,8 @@ vi.mock("./market", () => ({
         isPriceFresh: vi.fn(() => true),
         getOrderBook: vi.fn(() => ({
             bids: [{ price: "0.50", size: "10000" }],
-            asks: [{ price: "0.51", size: "10000" }]
+            asks: [{ price: "0.51", size: "10000" }],
+            source: "live"
         })),
         calculateImpact: vi.fn(() => ({
             filled: true,
@@ -69,7 +70,9 @@ vi.mock("./market", () => ({
             totalShares: 1990,
             slippagePercent: 0.005,
             reason: null
-        }))
+        })),
+        lookupPriceFromEvents: vi.fn(() => null), // Returns null = skip integrity check
+        buildSyntheticOrderBookPublic: vi.fn()
     }
 }));
 
@@ -118,7 +121,7 @@ describe("TradeExecutor", () => {
 
         // Verify
         expect(MarketService.getLatestPrice).toHaveBeenCalledWith("asset-123");
-        expect(RiskEngine.validateTrade).toHaveBeenCalledWith("challenge-123", "asset-123", 1000);
+        expect(RiskEngine.validateTrade).toHaveBeenCalledWith("challenge-123", "asset-123", 1000, 0, "YES");
 
         // Result should match the mocked DB return
         expect(result.id).toBe("trade-123");
@@ -196,7 +199,8 @@ describe("TradeExecutor - NO Position Direction", () => {
         // Mock order book for NO position (inverted)
         vi.mocked(MarketService.getOrderBook).mockResolvedValue({
             bids: [{ price: "0.40", size: "10000" }],
-            asks: [{ price: "0.41", size: "10000" }]
+            asks: [{ price: "0.41", size: "10000" }],
+            source: "live"
         } as any);
 
         vi.mocked(MarketService.calculateImpact).mockReturnValue({

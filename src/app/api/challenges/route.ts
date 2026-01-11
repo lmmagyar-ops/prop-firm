@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { challenges, positions } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { MarketService } from "@/lib/market";
+import { getDirectionAdjustedPrice } from "@/lib/position-utils";
 
 export async function GET(req: NextRequest) {
     try {
@@ -35,13 +36,24 @@ export async function GET(req: NextRequest) {
                     )
                 });
 
+                // PERF: Batch fetch prices instead of N+1 queries
+                const marketIds = openPositions.map(p => p.marketId);
+                const livePrices = marketIds.length > 0
+                    ? await MarketService.getBatchOrderBookPrices(marketIds)
+                    : new Map();
+
                 // Calculate position value with live prices
                 let positionValue = 0;
                 for (const pos of openPositions) {
                     const shares = parseFloat(pos.shares);
-                    const marketData = await MarketService.getLatestPrice(pos.marketId);
-                    const currentPrice = marketData ? parseFloat(marketData.price) : parseFloat(pos.entryPrice);
-                    positionValue += shares * currentPrice;
+                    const livePrice = livePrices.get(pos.marketId);
+                    const rawPrice = livePrice
+                        ? parseFloat(livePrice.price)
+                        : parseFloat(pos.entryPrice);
+
+                    // Use shared utility for direction adjustment
+                    const adjustedPrice = getDirectionAdjustedPrice(rawPrice, pos.direction as 'YES' | 'NO');
+                    positionValue += shares * adjustedPrice;
                 }
 
                 const equity = cashBalance + positionValue;
@@ -52,8 +64,8 @@ export async function GET(req: NextRequest) {
                     accountNumber: c.id.slice(0, 8).toUpperCase(),
                     currentBalance: c.currentBalance,
                     startingBalance: c.startingBalance,
-                    equity: equity.toFixed(2), // NEW: Total equity (cash + positions)
-                    positionValue: positionValue.toFixed(2), // NEW: Value of open positions
+                    equity: equity.toFixed(2),
+                    positionValue: positionValue.toFixed(2),
                     status: c.status,
                     startedAt: c.startedAt,
                     platform: c.platform || "polymarket"

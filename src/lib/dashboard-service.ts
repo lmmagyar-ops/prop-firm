@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { challenges, positions, users } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { FUNDED_RULES, type FundedTier } from "@/lib/funded-rules";
+import { calculatePositionMetrics, DEFAULT_MAX_DRAWDOWN, DEFAULT_DAILY_DRAWDOWN } from "@/lib/position-utils";
 
 export async function getDashboardData(userId: string) {
     // MOCK DATA BYPASS - REMOVED (Now using real DB for everyone)
@@ -56,7 +57,7 @@ export async function getDashboardData(userId: string) {
             challengeType: `$${parseFloat(c.startingBalance).toLocaleString()} Challenge`,
             phase: c.phase,
             status: c.status,
-            finalPnL: parseFloat(c.currentBalance) - parseFloat(c.startingBalance),
+            finalPnL: c.status !== 'active' ? parseFloat(c.currentBalance) - parseFloat(c.startingBalance) : null,
             startedAt: c.startedAt,
             completedAt: c.status !== 'active' ? c.endsAt : null,
             platform: c.platform || "polymarket",
@@ -109,51 +110,28 @@ export async function getDashboardData(userId: string) {
         where: eq(positions.challengeId, activeChallenge.id),
     });
 
-    // 5. Calculate stats for active challenge
-    const rules = activeChallenge.rulesConfig as any;
-    const currentBalance = parseFloat(activeChallenge.currentBalance);
-    const startingBalance = parseFloat(activeChallenge.startingBalance);
-    const highWaterMark = parseFloat(activeChallenge.highWaterMark || "0");
-    const startOfDayBalance = parseFloat(activeChallenge.startOfDayBalance || startingBalance.toString());
-
-    const totalPnL = currentBalance - startingBalance;
-    const dailyPnL = currentBalance - startOfDayBalance;
-
-    const maxDrawdownLimit = rules.maxDrawdown || 1000;
-    const dailyDrawdownLimit = rules.maxDailyDrawdown || 500;
-
-    // Drawdown amounts should be positive values representing distance from peak/SOD
-    const drawdownAmount = Math.max(0, highWaterMark - currentBalance);
-    const dailyDrawdownAmount = Math.max(0, startOfDayBalance - currentBalance);
-
-    const drawdownUsage = (drawdownAmount / maxDrawdownLimit) * 100;
-    const dailyDrawdownUsage = (dailyDrawdownAmount / dailyDrawdownLimit) * 100;
-
-    const profitProgress = Math.min(100, (totalPnL / rules.profitTarget) * 100);
-
-    // 6. Calculate unrealized P&L for positions using LIVE prices from ORDER BOOKS
-    // This ensures PnL display matches the prices used for trade execution
+    // 5. Calculate position values FIRST (needed for equity-based stats)
+    // Import MarketService early for position valuation
     const { MarketService } = await import("./market");
     const marketIds = openPositions.map(p => p.marketId);
     const livePrices = marketIds.length > 0 ? await MarketService.getBatchOrderBookPrices(marketIds) : new Map();
-
-    // Fetch market titles from Redis event lists
     const marketTitles = await MarketService.getBatchTitles(marketIds);
 
+    // Calculate position values with live prices and direction handling
     const positionsWithPnL = openPositions.map(pos => {
         const entry = parseFloat(pos.entryPrice);
         const shares = parseFloat(pos.shares);
 
-        // Use live price from Redis, fallback to stored price
         const livePrice = livePrices.get(pos.marketId);
         const rawPrice = livePrice ? parseFloat(livePrice.price) : parseFloat(pos.currentPrice || pos.entryPrice);
 
-        // Handle NO direction: P&L is inverted (profit when price drops)
-        // For NO positions: effective value = 1 - yesPrice
-        const isNo = pos.direction === 'NO';
-        const effectiveCurrentValue = isNo ? (1 - rawPrice) : rawPrice;
-        const effectiveEntryValue = isNo ? (1 - entry) : entry;
-        const unrealizedPnL = (effectiveCurrentValue - effectiveEntryValue) * shares;
+        // Use shared utility for direction-adjusted calculations
+        const { positionValue, unrealizedPnL, effectiveCurrentPrice } = calculatePositionMetrics(
+            shares,
+            entry,
+            rawPrice,
+            pos.direction as 'YES' | 'NO'
+        );
 
         return {
             id: pos.id,
@@ -163,12 +141,43 @@ export async function getDashboardData(userId: string) {
             sizeAmount: parseFloat(pos.sizeAmount),
             shares,
             entryPrice: entry,
-            currentPrice: rawPrice,
+            currentPrice: effectiveCurrentPrice,
             unrealizedPnL,
-            openedAt: pos.openedAt || new Date(),
-            priceSource: livePrice?.source || 'stored', // Track if using live or stale price
+            positionValue,
+            openedAt: pos.openedAt ? new Date(pos.openedAt).toISOString() : new Date().toISOString(),
+            priceSource: livePrice?.source || 'stored',
         };
     });
+
+    // 6. Calculate TRUE EQUITY (cash + position value)
+    const rules = activeChallenge.rulesConfig as any;
+    const cashBalance = parseFloat(activeChallenge.currentBalance);
+    const startingBalance = parseFloat(activeChallenge.startingBalance);
+
+    // Safe fallbacks: ensure HWM and SOD are valid (not 0 or missing)
+    const hwmParsed = parseFloat(activeChallenge.highWaterMark || "0");
+    const highWaterMark = hwmParsed > 0 ? hwmParsed : startingBalance;
+    const sodParsed = parseFloat(activeChallenge.startOfDayBalance || "0");
+    const startOfDayBalance = sodParsed > 0 ? sodParsed : startingBalance;
+
+    const totalPositionValue = positionsWithPnL.reduce((sum, p) => sum + p.positionValue, 0);
+    const equity = cashBalance + totalPositionValue;
+
+    // 7. Calculate stats using EQUITY (not just cash)
+    const totalPnL = equity - startingBalance;
+    const dailyPnL = equity - startOfDayBalance;
+
+    const maxDrawdownLimit = rules.maxDrawdown || DEFAULT_MAX_DRAWDOWN;
+    const dailyDrawdownLimit = rules.maxDailyDrawdown || DEFAULT_DAILY_DRAWDOWN;
+
+    // Drawdown = distance from peak (high water mark) to current equity
+    const drawdownAmount = Math.max(0, highWaterMark - equity);
+    const dailyDrawdownAmount = Math.max(0, startOfDayBalance - equity);
+
+    const drawdownUsage = (drawdownAmount / maxDrawdownLimit) * 100;
+    const dailyDrawdownUsage = (dailyDrawdownAmount / dailyDrawdownLimit) * 100;
+
+    const profitProgress = Math.min(100, (totalPnL / rules.profitTarget) * 100);
 
     // 7. Funded-specific data
     const isFunded = activeChallenge.phase === 'funded';
@@ -235,7 +244,8 @@ export async function getDashboardData(userId: string) {
             phase: activeChallenge.phase,
             status: activeChallenge.status,
             startingBalance,
-            currentBalance,
+            currentBalance: cashBalance, // Cash balance (for backwards compatibility)
+            equity, // TRUE equity = cash + position value
             highWaterMark,
             startOfDayBalance,
             rulesConfig: rules,

@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import type { EventMetadata } from "@/app/actions/market";
 import { BinaryEventCard } from "./BinaryEventCard";
 import { HeadToHeadCard, isSportsMatchup } from "./HeadToHeadCard";
@@ -12,13 +13,14 @@ interface SmartEventCardProps {
 
 /**
  * SmartEventCard - Auto-detects the best card format based on event structure
+ * Memoized to prevent INP issues from cascade re-renders in the market grid
  * 
  * Detection Logic:
  * 1. Single market (1 outcome) → BinaryEventCard
  * 2. Sports matchup (2-3 markets with sports keywords) → HeadToHeadCard
  * 3. Multiple outcomes (3+) → MultiRunnerCard
  */
-export function SmartEventCard({ event, onTrade }: SmartEventCardProps) {
+export const SmartEventCard = memo(function SmartEventCard({ event, onTrade }: SmartEventCardProps) {
     // Determine card type based on event structure
     const cardType = getCardType(event);
 
@@ -31,7 +33,7 @@ export function SmartEventCard({ event, onTrade }: SmartEventCardProps) {
         default:
             return <MultiRunnerCard event={event} onTrade={onTrade} />;
     }
-}
+});
 
 type CardType = 'binary' | 'headtohead' | 'multirunner';
 

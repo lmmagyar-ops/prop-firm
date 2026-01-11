@@ -54,12 +54,18 @@ export class ChallengeEvaluator {
             where: and(eq(positions.challengeId, challengeId), eq(positions.status, 'OPEN'))
         });
 
+        // PERF: Batch fetch all prices at once instead of N sequential Redis calls
+        const marketIds = openPositions.map(pos => pos.marketId);
+        const livePrices = marketIds.length > 0
+            ? await MarketService.getBatchOrderBookPrices(marketIds)
+            : new Map();
+
         let positionValue = 0;
         for (const pos of openPositions) {
-            const marketData = await MarketService.getLatestPrice(pos.marketId);
+            const livePrice = livePrices.get(pos.marketId);
             // Market data returns YES price, so for NO positions we need (1 - yesPrice)
-            const yesPrice = marketData
-                ? parseFloat(marketData.price)
+            const yesPrice = livePrice
+                ? parseFloat(livePrice.price)
                 : (pos.currentPrice ? parseFloat(pos.currentPrice) : parseFloat(pos.entryPrice));
 
             // For NO positions, value = shares * (1 - yesPrice)

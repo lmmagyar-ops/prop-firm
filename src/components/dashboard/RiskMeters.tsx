@@ -4,9 +4,22 @@ interface RiskMetersProps {
     drawdownUsage: number;
     dailyDrawdownUsage: number;
     startOfDayBalance: number;
+    startingBalance: number;
+    maxDrawdownPercent?: number;
+    dailyDrawdownPercent?: number;
 }
 
-export function RiskMeters({ drawdownUsage, dailyDrawdownUsage, startOfDayBalance }: RiskMetersProps) {
+export function RiskMeters({
+    drawdownUsage,
+    dailyDrawdownUsage,
+    startOfDayBalance,
+    startingBalance,
+    maxDrawdownPercent = 10,
+    dailyDrawdownPercent = 5
+}: RiskMetersProps) {
+    // Calculate equity floors dynamically
+    const maxDrawdownFloor = startingBalance * (1 - maxDrawdownPercent / 100);
+    const dailyLossFloor = startOfDayBalance * (1 - dailyDrawdownPercent / 100);
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Max Drawdown */}
@@ -24,7 +37,7 @@ export function RiskMeters({ drawdownUsage, dailyDrawdownUsage, startOfDayBalanc
                     />
                 </div>
                 <div className="text-xs text-zinc-500 mt-1 font-mono">
-                    Equity Floor: $9,000.00
+                    Equity Floor: ${maxDrawdownFloor.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
             </div>
 
@@ -43,7 +56,7 @@ export function RiskMeters({ drawdownUsage, dailyDrawdownUsage, startOfDayBalanc
                     />
                 </div>
                 <div className="text-xs text-zinc-500 mt-1 font-mono">
-                    Today's Floor: ${(startOfDayBalance * 0.95).toFixed(2)}
+                    Today's Floor: ${dailyLossFloor.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
             </div>
         </div>

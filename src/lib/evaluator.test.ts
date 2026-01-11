@@ -27,7 +27,13 @@ vi.mock("./events", () => ({
 
 vi.mock("./market", () => ({
     MarketService: {
-        getLatestPrice: vi.fn(() => ({ price: "0.50" }))
+        getLatestPrice: vi.fn(() => ({ price: "0.50" })),
+        getBatchOrderBookPrices: vi.fn((marketIds: string[]) => {
+            // Return a Map with price "0.50" for all requested markets
+            const map = new Map();
+            marketIds.forEach(id => map.set(id, { price: "0.50", source: "mock" }));
+            return map;
+        })
     }
 }));
 

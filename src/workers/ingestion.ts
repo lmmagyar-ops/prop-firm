@@ -1,8 +1,38 @@
+/**
+ * Ingestion Worker - Production Hardened
+ * 
+ * Institutional-grade reliability patterns:
+ * - Global error handlers (prevent crash on unhandled rejections)
+ * - Graceful shutdown (SIGTERM/SIGINT handling)
+ * - Redis retry with exponential backoff
+ * - WebSocket error containment
+ * - Health heartbeat for zombie detection
+ * - Memory bounds for collections
+ */
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GLOBAL ERROR HANDLERS - Must be first! Prevents process crash.
+// ═══════════════════════════════════════════════════════════════════════════
+process.on('uncaughtException', (err: Error) => {
+    console.error('[FATAL] Uncaught Exception:', err.message);
+    console.error(err.stack);
+    // Don't exit - keep running in degraded mode
+});
+
+process.on('unhandledRejection', (reason: unknown) => {
+    const message = reason instanceof Error ? reason.message : String(reason);
+    console.error('[FATAL] Unhandled Rejection:', message);
+    if (reason instanceof Error && reason.stack) {
+        console.error(reason.stack);
+    }
+});
+
 import WebSocket from "ws";
 import * as dotenv from "dotenv";
 import Redis from "ioredis";
 import { LeaderElection } from "./leader-election";
 import { RiskMonitor } from "./risk-monitor";
+import { startHealthServer } from "./health-server";
 
 dotenv.config();
 
@@ -19,6 +49,12 @@ class IngestionWorker {
     private leaderElection: LeaderElection;
     private riskMonitor: RiskMonitor;
     private isLeader = false;
+    private heartbeatInterval: NodeJS.Timeout | null = null;
+    private isShuttingDown = false;
+
+    // Memory bounds - prevent unbounded array/map growth
+    private readonly MAX_ACTIVE_TOKENS = 2000;
+    private readonly MAX_PRICE_BUFFER = 500;
 
     constructor() {
         if (process.env.REDIS_HOST && process.env.REDIS_PASSWORD) {
@@ -45,13 +81,45 @@ class IngestionWorker {
                 host: process.env.REDIS_HOST,
                 port: port,
                 password: process.env.REDIS_PASSWORD,
-                tls: {} // Required for Upstash
+                tls: {}, // Required for Upstash
+                // Institutional retry config
+                retryStrategy: (times: number) => {
+                    if (times > 20) {
+                        console.error('[Redis] Max retries (20) exceeded');
+                        return null; // Stop retrying
+                    }
+                    const delay = Math.min(times * 500, 30000); // Max 30s backoff
+                    console.log(`[Redis] Retry attempt ${times}, waiting ${delay}ms`);
+                    return delay;
+                },
+                maxRetriesPerRequest: 3,
+                enableOfflineQueue: true,
+                connectTimeout: 10000,
             });
         } else {
             const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6380";
             console.log(`[Ingestion] Connecting to Redis via URL...`);
-            this.redis = new Redis(REDIS_URL);
+            this.redis = new Redis(REDIS_URL, {
+                retryStrategy: (times: number) => {
+                    if (times > 20) return null;
+                    return Math.min(times * 500, 30000);
+                },
+                maxRetriesPerRequest: 3,
+                enableOfflineQueue: true,
+                connectTimeout: 10000,
+            });
         }
+
+        // Redis connection monitoring
+        this.redis.on('error', (err) => {
+            console.error('[Redis] Connection error:', err.message);
+        });
+        this.redis.on('reconnecting', () => {
+            console.log('[Redis] Attempting reconnection...');
+        });
+        this.redis.on('connect', () => {
+            console.log('[Redis] Connected successfully');
+        });
 
         // Initialize leader election
         this.leaderElection = new LeaderElection(this.redis);
@@ -59,7 +127,95 @@ class IngestionWorker {
         // Initialize risk monitor (checks all challenges for breaches every 5s)
         this.riskMonitor = new RiskMonitor(this.redis);
 
+        // Start health server for Railway health checks
+        startHealthServer(this.redis, {
+            port: parseInt(process.env.HEALTH_PORT || '3001', 10),
+            workerId: process.env.RAILWAY_REPLICA_ID || 'local',
+            isLeaderFn: () => this.isLeader,
+        });
+
+        // Register graceful shutdown handlers
+        this.registerShutdownHandlers();
+
+        // Start heartbeat for zombie detection
+        this.startHeartbeat();
+
         this.startWithLeaderElection();
+    }
+
+    /**
+     * Register signal handlers for graceful shutdown
+     */
+    private registerShutdownHandlers(): void {
+        const shutdown = async (signal: string) => {
+            if (this.isShuttingDown) return;
+            this.isShuttingDown = true;
+
+            console.log(`[Ingestion] ${signal} received, shutting down gracefully...`);
+
+            try {
+                // 1. Stop accepting new work
+                this.isLeader = false;
+
+                // 2. Stop heartbeat
+                if (this.heartbeatInterval) {
+                    clearInterval(this.heartbeatInterval);
+                    this.heartbeatInterval = null;
+                }
+
+                // 3. Close WebSocket cleanly
+                if (this.ws) {
+                    this.ws.close(1000, 'Shutdown');
+                    this.ws = null;
+                }
+
+                // 4. Stop risk monitor
+                this.riskMonitor.stop();
+
+                // 5. Flush any buffered prices
+                await this.flushPriceBuffer();
+
+                // 6. Release leader lock
+                await this.leaderElection.releaseLock();
+
+                // 7. Close Redis connection
+                await this.redis.quit();
+
+                console.log('[Ingestion] Shutdown complete.');
+                process.exit(0);
+            } catch (err: unknown) {
+                const message = err instanceof Error ? err.message : String(err);
+                console.error('[Ingestion] Shutdown error:', message);
+                process.exit(1);
+            }
+        };
+
+        process.on('SIGTERM', () => shutdown('SIGTERM'));
+        process.on('SIGINT', () => shutdown('SIGINT'));
+    }
+
+    /**
+     * Start health heartbeat for zombie detection
+     */
+    private startHeartbeat(): void {
+        this.heartbeatInterval = setInterval(async () => {
+            try {
+                await this.redis.set(
+                    'ingestion:heartbeat',
+                    JSON.stringify({
+                        timestamp: Date.now(),
+                        workerId: process.env.RAILWAY_REPLICA_ID || 'local',
+                        isLeader: this.isLeader,
+                        activeTokens: this.activeTokenIds.length,
+                        priceBufferSize: this.priceBuffer.size,
+                    }),
+                    'EX', 120 // Expires in 120s
+                );
+            } catch (err: unknown) {
+                const message = err instanceof Error ? err.message : String(err);
+                console.error('[Heartbeat] Failed to write:', message);
+            }
+        }, 60000); // Every 60 seconds (was 30s)
     }
 
     /**
@@ -291,10 +447,16 @@ class IngestionWorker {
 
             const processedEvents: any[] = [];
             const allEventTokenIds: string[] = [];
+            const seenEventTitles = new Set<string>(); // Event-level deduplication
 
             for (const event of events) {
                 try {
                     if (!event.markets || event.markets.length === 0) continue;
+
+                    // Event-level deduplication by title (prevents duplicate "LeBron James" etc.)
+                    const normalizedTitle = event.title.trim().toLowerCase();
+                    if (seenEventTitles.has(normalizedTitle)) continue;
+                    seenEventTitles.add(normalizedTitle);
 
                     // Process each market within the event
                     const subMarkets: any[] = [];
@@ -377,8 +539,9 @@ class IngestionWorker {
             await this.redis.set("event:active_list", JSON.stringify(processedEvents));
             console.log(`[Ingestion] Stored ${processedEvents.length} featured events (${allEventTokenIds.length} total markets).`);
 
-            // Add event token IDs to active polling
-            this.activeTokenIds = [...this.activeTokenIds, ...allEventTokenIds];
+            // Add event token IDs to active polling (with memory bounds)
+            const combined = [...this.activeTokenIds, ...allEventTokenIds];
+            this.activeTokenIds = combined.slice(0, this.MAX_ACTIVE_TOKENS);
 
         } catch (err) {
             console.error("[Ingestion] Failed to fetch featured events:", err);
@@ -481,10 +644,10 @@ class IngestionWorker {
                 }
             }
 
-            // Store in Redis
-            this.activeTokenIds = allMarkets.map(m => m.id);
+            // Store in Redis (with memory bounds)
+            this.activeTokenIds = allMarkets.slice(0, this.MAX_ACTIVE_TOKENS).map(m => m.id);
             await this.redis.set("market:active_list", JSON.stringify(allMarkets));
-            console.log(`[Ingestion] Stored ${allMarkets.length} diverse markets in Redis.`);
+            console.log(`[Ingestion] Stored ${allMarkets.length} diverse markets in Redis (tracking ${this.activeTokenIds.length} tokens).`);
             console.log(`[Ingestion] Category breakdown:`, categoryCounts);
 
         } catch (err) {
@@ -507,19 +670,31 @@ class IngestionWorker {
             this.subscribeWS();
         });
 
-        this.ws.on("message", (data) => {
-            try { this.processMessage(JSON.parse(data.toString())); }
-            catch (err) { console.error("Parse Error", err); }
+        this.ws.on("message", async (data) => {
+            // Error containment - never let message processing crash the worker
+            try {
+                const parsed = JSON.parse(data.toString());
+                await this.processMessage(parsed);
+            } catch (err: unknown) {
+                const message = err instanceof Error ? err.message : String(err);
+                console.error("[WS] Message processing error:", message);
+                // Don't re-throw - keep connection alive
+            }
         });
 
         this.ws.on("close", () => {
-            console.log("[Ingestion] WS Closed. Reconnecting...");
-            setTimeout(() => this.connectWS(), this.reconnectInterval);
+            console.log("[Ingestion] WS Closed.");
+            // Only reconnect if not shutting down
+            if (!this.isShuttingDown) {
+                console.log("[Ingestion] Reconnecting in 5s...");
+                setTimeout(() => this.connectWS(), this.reconnectInterval);
+            }
         });
 
         this.ws.on("error", (err) => {
-            console.error("[Ingestion] WS Error:", err);
-            this.ws?.close();
+            // Error handler MUST exist to prevent Node crash on WS errors
+            console.error("[WS] Connection error:", err.message);
+            // Close will be triggered automatically, which will trigger reconnect
         });
     }
 
@@ -534,7 +709,7 @@ class IngestionWorker {
     // Price update batching to reduce Redis commands
     private priceBuffer: Map<string, any> = new Map();
     private lastFlush: number = 0;
-    private readonly FLUSH_INTERVAL_MS = 1000; // Flush every 1 second max
+    private readonly FLUSH_INTERVAL_MS = 5000; // Flush every 5 seconds (was 1s - saves 80% Redis calls)
 
     private async processMessage(message: any) {
         const msgs = Array.isArray(message) ? message : [message];
@@ -544,6 +719,13 @@ class IngestionWorker {
             if (msg.asset_id && msg.price) {
                 this.priceBuffer.set(msg.asset_id, msg);
             }
+        }
+
+        // Memory bounds check - force flush if buffer too large
+        if (this.priceBuffer.size >= this.MAX_PRICE_BUFFER) {
+            await this.flushPriceBuffer();
+            this.lastFlush = Date.now();
+            return;
         }
 
         // Throttle flushes to once per second
@@ -584,8 +766,9 @@ class IngestionWorker {
 
     // --- 2. REST Polling (Order Books for Slippage Engine) ---
     private startBookPolling() {
-        // Poll every 30 seconds - still fast enough for good UX, saves 93% on Redis commands
-        const BOOK_POLL_INTERVAL = 30000;
+        // Poll every 5 MINUTES - order books are for slippage estimation, not real-time
+        // This reduces Redis calls from 1,272/min to ~7/5min = 84/hour = 2,016/day
+        const BOOK_POLL_INTERVAL = 300000; // 5 minutes
         console.log(`[Ingestion] Starting Order Book Poller (${BOOK_POLL_INTERVAL / 1000}s interval)...`);
 
         // Initial fetch
@@ -619,17 +802,13 @@ class IngestionWorker {
             }
         }
 
-        // Batch write all books to Redis in single pipeline
+        // Store ALL order books in SINGLE Redis key (1 call instead of 318)
         if (Object.keys(books).length > 0) {
             try {
-                const pipeline = this.redis.pipeline();
-                for (const [tokenId, book] of Object.entries(books)) {
-                    pipeline.set(`market:book:${tokenId}`, JSON.stringify(book));
-                }
-                await pipeline.exec();
-                console.log(`[Ingestion] Updated ${Object.keys(books).length} order books.`);
+                await this.redis.set('market:orderbooks', JSON.stringify(books));
+                console.log(`[Ingestion] Updated ${Object.keys(books).length} order books (single key).`);
             } catch (err) {
-                console.error("[Ingestion] Book batch write error:", err);
+                console.error("[Ingestion] Book write error:", err);
             }
         }
     }

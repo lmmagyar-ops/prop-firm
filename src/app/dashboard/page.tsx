@@ -23,7 +23,6 @@ import { DashboardOutcomeHandler } from "@/components/dashboard/DashboardOutcome
 import { DevTools } from "@/components/dashboard/DevTools";
 import { WelcomeTour } from "@/components/dashboard/WelcomeTour";
 import { TraderSpotlight } from "@/components/dashboard/TraderSpotlight";
-import { MilestoneCelebration } from "@/components/dashboard/MilestoneCelebration";
 import { QuickActions } from "@/components/dashboard/QuickActions";
 
 // Funded Account Components
@@ -67,9 +66,22 @@ export default async function DashboardPage() {
     // Helper for Locked State Logic
     const latestChallenge = challengeHistory && challengeHistory.length > 0 ? challengeHistory[0] : null;
 
+    // Pre-compute date values to avoid hydration mismatch (Date.now() differs between server and client)
+    const now = Date.now();
+    const computedDaysActive = activeChallenge?.startedAt
+        ? Math.ceil((now - new Date(activeChallenge.startedAt).getTime()) / (1000 * 60 * 60 * 24))
+        : 1;
+    const computedDaysRemaining = activeChallenge?.endsAt
+        ? Math.ceil((new Date(activeChallenge.endsAt).getTime() - now) / (1000 * 60 * 60 * 24))
+        : 0;
+
     // Logic for Verification Status (Winner-Only Flow)
     const isKycVerified = (user as any).kycVerified === true;
     const hasPassedChallenge = challengeHistory.some(c => c.status === "passed");
+
+    // Calculate true equity = Cash + Position Value
+    const positionValue = positions?.reduce((sum, pos) => sum + (pos.shares * pos.currentPrice), 0) ?? 0;
+    const trueEquity = (activeChallenge?.currentBalance ?? 0) + positionValue;
 
     return (
         <div className="space-y-6">
@@ -81,16 +93,6 @@ export default async function DashboardPage() {
                 <DashboardOutcomeHandler challengeHistory={challengeHistory} />
             )}
 
-            {/* Milestone Celebrations - Client Component */}
-            {hasActiveChallenge && activeChallenge && stats && (
-                <MilestoneCelebration
-                    totalTrades={lifetimeStats.totalChallengesStarted}
-                    profitProgress={stats.profitProgress}
-                    currentStreak={lifetimeStats.currentWinStreak || 0}
-                    dailyProfitRecord={stats.dailyPnL}
-                    totalProfit={stats.totalPnL}
-                />
-            )}
 
             {/* Lifetime Stats Grid - ALWAYS VISIBLE */}
             <LifetimeStatsGrid stats={lifetimeStats} />
@@ -101,7 +103,7 @@ export default async function DashboardPage() {
                     totalTrades={lifetimeStats.totalChallengesStarted}
                     winRate={lifetimeStats.successRate}
                     currentStreak={lifetimeStats.currentWinStreak || 0}
-                    daysActive={Math.ceil((Date.now() - new Date(activeChallenge.startedAt || Date.now()).getTime()) / (1000 * 60 * 60 * 24))}
+                    daysActive={computedDaysActive}
                     profitProgress={stats.profitProgress}
                     totalProfit={stats.totalPnL}
                 />
@@ -134,7 +136,7 @@ export default async function DashboardPage() {
                             {/* Equity Display (same as challenge) */}
                             <div className="mt-6">
                                 <EquityDisplay
-                                    currentBalance={activeChallenge.currentBalance}
+                                    currentBalance={trueEquity}
                                     dailyPnL={stats.dailyPnL}
                                 />
                             </div>
@@ -191,17 +193,14 @@ export default async function DashboardPage() {
                                 phase={activeChallenge.phase as any}
                                 status={activeChallenge.status as any}
                                 startingBalance={typeof activeChallenge.startingBalance === 'string' ? parseFloat(activeChallenge.startingBalance) : activeChallenge.startingBalance}
-                                daysRemaining={activeChallenge.endsAt
-                                    ? Math.ceil((new Date(activeChallenge.endsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
-                                    : 0
-                                }
+                                daysRemaining={computedDaysRemaining}
                             />
 
                             {/* Equity + Profit Progress */}
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                                 <div className="lg:col-span-2">
                                     <EquityDisplay
-                                        currentBalance={activeChallenge.currentBalance}
+                                        currentBalance={trueEquity}
                                         dailyPnL={stats.dailyPnL}
                                     />
                                 </div>
@@ -219,6 +218,9 @@ export default async function DashboardPage() {
                                 drawdownUsage={stats.drawdownUsage}
                                 dailyDrawdownUsage={stats.dailyDrawdownUsage}
                                 startOfDayBalance={activeChallenge.startOfDayBalance}
+                                startingBalance={activeChallenge.startingBalance}
+                                maxDrawdownPercent={activeChallenge.rulesConfig?.maxDrawdownPercent || 10}
+                                dailyDrawdownPercent={activeChallenge.rulesConfig?.dailyDrawdownPercent || 5}
                             />
                         </>
                     )}
@@ -255,7 +257,7 @@ export default async function DashboardPage() {
                                 <ProfitProgress totalPnL={4250.00} profitTarget={10000} profitProgress={42.5} />
                             </div>
                         </div>
-                        <RiskMeters drawdownUsage={1.2} dailyDrawdownUsage={0.8} startOfDayBalance={103000} />
+                        <RiskMeters drawdownUsage={1.2} dailyDrawdownUsage={0.8} startOfDayBalance={103000} startingBalance={100000} />
 
                     </div>
 
@@ -294,7 +296,7 @@ export default async function DashboardPage() {
                                         You breached the risk limits on your previous attempt. Professional trading is about resilience.
                                     </p>
                                     <div className="space-y-4">
-                                        <BuyEvaluationButton label="Try Again - $99" />
+                                        <BuyEvaluationButton label="Try Again - From $79" />
                                         <p className="text-xs text-zinc-600 uppercase tracking-widest font-semibold">
                                             Reset &amp; Retry Immediately
                                         </p>

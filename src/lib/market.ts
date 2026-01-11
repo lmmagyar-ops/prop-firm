@@ -199,31 +199,32 @@ export class MarketService {
         try {
             const redis = getRedis();
 
-            // Fetch all order books in parallel
-            const bookKeys = marketIds.map(id => `market:book:${id}`);
-            const bookData = await redis.mget(...bookKeys);
+            // Fetch ALL order books from single key (1 Redis call instead of N)
+            const allBooksData = await redis.get('market:orderbooks');
+            let allBooks: Record<string, OrderBook> = {};
 
-            for (let i = 0; i < marketIds.length; i++) {
-                const marketId = marketIds[i];
-                const data = bookData[i];
+            if (allBooksData) {
+                try {
+                    allBooks = JSON.parse(allBooksData);
+                } catch {
+                    console.warn('[MarketService] Failed to parse orderbooks cache');
+                }
+            }
 
-                if (data) {
-                    try {
-                        const book = JSON.parse(data) as OrderBook;
-                        // Use best bid (what you could sell at) for mark-to-market
-                        // This is the most conservative/realistic valuation
-                        const bestBid = book.bids?.[0]?.price;
-                        if (bestBid) {
-                            results.set(marketId, {
-                                price: bestBid,
-                                asset_id: marketId,
-                                timestamp: Date.now(),
-                                source: 'live'
-                            });
-                            continue;
-                        }
-                    } catch {
-                        // Invalid JSON, fall through to fallback
+            for (const marketId of marketIds) {
+                const book = allBooks[marketId];
+
+                if (book) {
+                    // Use best bid (what you could sell at) for mark-to-market
+                    const bestBid = book.bids?.[0]?.price;
+                    if (bestBid) {
+                        results.set(marketId, {
+                            price: bestBid,
+                            asset_id: marketId,
+                            timestamp: Date.now(),
+                            source: 'live'
+                        });
+                        continue;
                     }
                 }
 
@@ -352,21 +353,35 @@ export class MarketService {
      */
     static async getOrderBook(assetId: string): Promise<OrderBook | null> {
         try {
-            const key = `market:book:${assetId}`;
-            const data = await getRedis().get(key);
-            if (!data) {
-                // Try to build synthetic order book from event list price
-                const livePrice = await this.lookupPriceFromEvents(assetId);
-                if (livePrice) {
-                    const price = parseFloat(livePrice.price);
-                    console.log(`[MarketService] Building synthetic orderbook for ${assetId.slice(0, 12)}... at price ${price}`);
-                    return { ...this.buildSyntheticOrderBook(price), source: 'synthetic' as const };
+            // Try single-key cache first (new format)
+            const allBooksData = await getRedis().get('market:orderbooks');
+            if (allBooksData) {
+                try {
+                    const allBooks = JSON.parse(allBooksData);
+                    if (allBooks[assetId]) {
+                        return { ...allBooks[assetId], source: 'live' as const };
+                    }
+                } catch {
+                    // Invalid JSON, continue to fallback
                 }
-                console.log(`[MarketService] No Redis orderbook for ${assetId}, using demo fallback`);
-                return { ...this.getDemoOrderBook(), source: 'demo' as const };
             }
-            const parsed = JSON.parse(data) as OrderBook;
-            return { ...parsed, source: 'live' as const };
+
+            // Fallback to legacy individual key (for backwards compat)
+            const legacyData = await getRedis().get(`market:book:${assetId}`);
+            if (legacyData) {
+                const parsed = JSON.parse(legacyData) as OrderBook;
+                return { ...parsed, source: 'live' as const };
+            }
+
+            // Try to build synthetic order book from event list price
+            const livePrice = await this.lookupPriceFromEvents(assetId);
+            if (livePrice) {
+                const price = parseFloat(livePrice.price);
+                console.log(`[MarketService] Building synthetic orderbook for ${assetId.slice(0, 12)}... at price ${price}`);
+                return { ...this.buildSyntheticOrderBookPublic(price), source: 'synthetic' as const };
+            }
+            console.log(`[MarketService] No Redis orderbook for ${assetId}, using demo fallback`);
+            return { ...this.getDemoOrderBook(), source: 'demo' as const };
         } catch (error: any) {
             console.error(`[MarketService] Redis orderbook error, using demo fallback:`, error.message);
             return { ...this.getDemoOrderBook(), source: 'demo' as const };
@@ -376,8 +391,9 @@ export class MarketService {
     /**
      * Build a synthetic order book from a known price.
      * Simulates deep liquidity around the current price.
+     * Public for use by TradeExecutor price integrity checks.
      */
-    private static buildSyntheticOrderBook(price: number): OrderBook {
+    static buildSyntheticOrderBookPublic(price: number): OrderBook {
         // Create bids slightly below and asks slightly above the current price
         const spread = 0.01; // 1 cent spread
         return {

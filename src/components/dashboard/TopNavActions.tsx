@@ -13,8 +13,11 @@ interface Challenge {
     accountNumber: string;
     currentBalance: string;
     startingBalance: string;
+    equity?: string;
+    positionValue?: string;
     status: string;
     startedAt: Date | string;
+    platform?: "polymarket" | "kalshi";
 }
 
 interface TopNavActionsProps {

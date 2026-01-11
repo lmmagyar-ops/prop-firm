@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Check, ChevronDown, Briefcase } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -33,11 +33,25 @@ export function ChallengeSelector({ challenges, selectedChallengeId, onSelect }:
     const [isOpen, setIsOpen] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
 
+    // PERF: Debounced resize listener to avoid excessive re-renders
+    const resizeTimeout = useRef<NodeJS.Timeout | null>(null);
+
     useEffect(() => {
-        const checkMobile = () => setIsMobile(window.innerWidth < 768);
-        checkMobile();
+        const checkMobile = () => {
+            if (resizeTimeout.current) clearTimeout(resizeTimeout.current);
+            resizeTimeout.current = setTimeout(() => {
+                setIsMobile(window.innerWidth < 768);
+            }, 150);
+        };
+
+        // Initial check (immediate)
+        setIsMobile(window.innerWidth < 768);
+
         window.addEventListener("resize", checkMobile);
-        return () => window.removeEventListener("resize", checkMobile);
+        return () => {
+            window.removeEventListener("resize", checkMobile);
+            if (resizeTimeout.current) clearTimeout(resizeTimeout.current);
+        };
     }, []);
 
     // Keyboard shortcuts
@@ -182,7 +196,7 @@ export function ChallengeSelector({ challenges, selectedChallengeId, onSelect }:
 
                                                         <div className="flex items-center justify-between text-xs">
                                                             <span className="text-zinc-400">
-                                                                Balance: ${parseFloat(challenge.currentBalance).toLocaleString()}
+                                                                Balance: ${parseFloat(challenge.equity || challenge.currentBalance).toLocaleString()}
                                                             </span>
                                                             <span className={cn(
                                                                 "font-mono font-medium",
@@ -299,9 +313,9 @@ export function ChallengeSelector({ challenges, selectedChallengeId, onSelect }:
 
                                                     <div className="flex items-center justify-between mt-3 pt-3 border-t border-zinc-700/50">
                                                         <div>
-                                                            <p className="text-xs text-zinc-500">Current Balance</p>
+                                                            <p className="text-xs text-zinc-500">Current Equity</p>
                                                             <p className="text-sm font-medium text-white">
-                                                                ${parseFloat(challenge.currentBalance).toLocaleString()}
+                                                                ${parseFloat(challenge.equity || challenge.currentBalance).toLocaleString()}
                                                             </p>
                                                         </div>
                                                         <div className="text-right">

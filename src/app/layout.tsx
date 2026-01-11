@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono, Playfair_Display, Outfit } from "next/font/google";
 import "./globals.css";
-import { Toaster } from "@/components/ui/sonner";
+// Toaster temporarily removed - will re-add with clean implementation
 import { AuthProvider } from "@/components/providers/AuthProvider";
 import { Analytics } from '@vercel/analytics/react';
 
@@ -51,7 +51,7 @@ export default function RootLayout({
       <body className={`${inter.variable} ${mono.variable} ${serif.variable} ${outfit.variable} font-sans bg-background text-foreground antialiased selection:bg-primary/30`} suppressHydrationWarning>
         <AuthProvider>
           {children}
-          <Toaster />
+          {/* Toaster removed - will re-add with clean implementation */}
         </AuthProvider>
         <Analytics />
       </body>

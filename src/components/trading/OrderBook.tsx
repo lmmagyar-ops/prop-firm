@@ -44,7 +44,7 @@ export function OrderBook({ tokenId, marketPrice, outcome }: OrderBookProps) {
 
         fetchBook();
         // Refresh every 10 seconds while open
-        const interval = setInterval(fetchBook, 10000);
+        const interval = setInterval(fetchBook, 20000);
         return () => clearInterval(interval);
     }, [tokenId, isOpen]);
 

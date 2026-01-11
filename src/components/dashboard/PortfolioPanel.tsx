@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { Briefcase, X, TrendingUp, TrendingDown, ExternalLink } from "lucide-react";
+import { Briefcase, X, TrendingUp, TrendingDown, ExternalLink, RefreshCw } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 
@@ -25,53 +25,69 @@ interface AccountSummary {
 
 export function PortfolioPanel() {
     const [isOpen, setIsOpen] = useState(false);
+    const [isRefreshing, setIsRefreshing] = useState(false);
     const [positions, setPositions] = useState<Position[]>([]);
     const [summary, setSummary] = useState<AccountSummary>({ equity: 0, cash: 0, positionValue: 0 });
 
-    useEffect(() => {
-        const fetchPositions = async () => {
-            try {
-                const res = await fetch("/api/trade/positions");
-                if (res.ok) {
-                    const data = await res.json();
-                    setPositions(data.positions || []);
+    // Extract fetch logic for manual refresh
+    const fetchPositions = useCallback(async () => {
+        try {
+            const [positionsRes, balanceRes] = await Promise.all([
+                fetch("/api/trade/positions"),
+                fetch("/api/user/balance")
+            ]);
 
-                    // Calculate summary
-                    const positionValue = (data.positions || []).reduce(
-                        (acc: number, p: Position) => acc + (p.shares * p.currentPrice), 0
-                    );
+            if (positionsRes.ok) {
+                const data = await positionsRes.json();
+                setPositions(data.positions || []);
 
-                    // Get challenge data for cash
-                    const challengeRes = await fetch("/api/user/balance");
-                    if (challengeRes.ok) {
-                        const balanceData = await challengeRes.json();
-                        const cash = parseFloat(balanceData.balance || "0");
-                        setSummary({
-                            cash,
-                            positionValue,
-                            equity: cash + positionValue
-                        });
-                    }
+                const positionValue = (data.positions || []).reduce(
+                    (acc: number, p: Position) => acc + (p.shares * p.currentPrice), 0
+                );
+
+                if (balanceRes.ok) {
+                    const balanceData = await balanceRes.json();
+                    const cash = parseFloat(balanceData.balance || "0");
+                    setSummary({
+                        cash,
+                        positionValue,
+                        equity: cash + positionValue
+                    });
                 }
-            } catch (e) {
-                console.error("Failed to fetch positions", e);
             }
-        };
+        } catch (e) {
+            console.error("Failed to fetch positions", e);
+        }
+    }, []);
 
+    // Manual refresh handler with loading state
+    const handleRefresh = useCallback(async () => {
+        setIsRefreshing(true);
+        await fetchPositions();
+        setIsRefreshing(false);
+    }, [fetchPositions]);
+
+    useEffect(() => {
         fetchPositions();
 
-        // Also refresh when balance-updated event fires
+        // Refresh on balance-updated event (after trades)
         const handleBalanceUpdate = () => fetchPositions();
         window.addEventListener('balance-updated', handleBalanceUpdate);
 
-        const interval = setInterval(fetchPositions, 10000);
+        // Background polling at reduced frequency (30s)
+        const interval = setInterval(fetchPositions, 30000);
+
         return () => {
             clearInterval(interval);
             window.removeEventListener('balance-updated', handleBalanceUpdate);
         };
-    }, []);
+    }, [fetchPositions]);
 
-    const totalPnL = positions.reduce((acc, p) => acc + p.unrealizedPnL, 0);
+    // PERF: Memoize to avoid recalculating on every render
+    const totalPnL = useMemo(() =>
+        positions.reduce((acc, p) => acc + p.unrealizedPnL, 0),
+        [positions]
+    );
     const positionCount = positions.length;
 
     return (
@@ -132,12 +148,25 @@ export function PortfolioPanel() {
                                     <Briefcase className="w-5 h-5 text-blue-500" />
                                     <h2 className="text-lg font-bold text-white">Portfolio</h2>
                                 </div>
-                                <button
-                                    onClick={() => setIsOpen(false)}
-                                    className="p-2 hover:bg-zinc-800 rounded-lg transition-colors"
-                                >
-                                    <X className="w-5 h-5 text-zinc-400" />
-                                </button>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={handleRefresh}
+                                        disabled={isRefreshing}
+                                        className="p-2 hover:bg-zinc-800 rounded-lg transition-colors disabled:opacity-50"
+                                        title="Refresh positions"
+                                    >
+                                        <RefreshCw className={cn(
+                                            "w-4 h-4 text-zinc-400",
+                                            isRefreshing && "animate-spin"
+                                        )} />
+                                    </button>
+                                    <button
+                                        onClick={() => setIsOpen(false)}
+                                        className="p-2 hover:bg-zinc-800 rounded-lg transition-colors"
+                                    >
+                                        <X className="w-5 h-5 text-zinc-400" />
+                                    </button>
+                                </div>
                             </div>
 
                             {/* Account Summary */}

@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { cn } from "@/lib/utils";
 import { TrendingUp, Clock } from "lucide-react";
 import type { EventMetadata } from "@/app/actions/market";
@@ -11,9 +12,9 @@ interface HeadToHeadCardProps {
 
 /**
  * HeadToHeadCard - Sports matchup style (Team A vs Team B)
- * Used for 2-way events like sports matches
+ * Memoized to prevent INP issues from cascade re-renders
  */
-export function HeadToHeadCard({ event, onTrade }: HeadToHeadCardProps) {
+export const HeadToHeadCard = memo(function HeadToHeadCard({ event, onTrade }: HeadToHeadCardProps) {
     if (event.markets.length < 2) return null;
 
     // Get the two main markets (teams)
@@ -132,7 +133,7 @@ export function HeadToHeadCard({ event, onTrade }: HeadToHeadCardProps) {
             </div>
         </div>
     );
-}
+});
 
 /**
  * Check if an event is a sports matchup (should use HeadToHeadCard)

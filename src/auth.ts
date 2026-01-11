@@ -74,6 +74,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                         name: foundUser.name || `${foundUser.firstName} ${foundUser.lastName}`,
                         email: foundUser.email,
                         image: foundUser.image,
+                        role: foundUser.role || 'user', // Include role for admin access
                     };
                 } catch (error) {
                     console.error("[Auth] Database error:", error);
@@ -89,12 +90,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         async jwt({ token, user }) {
             if (user) {
                 token.id = user.id;
+                token.role = (user as any).role || 'user';
             }
             return token;
         },
         async session({ session, token }) {
             if (token && session.user) {
                 session.user.id = token.id as string;
+                (session.user as any).role = token.role as string;
             }
             return session;
         },

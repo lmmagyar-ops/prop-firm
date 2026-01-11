@@ -106,12 +106,56 @@ export class TradeExecutor {
             throw new TradingError("Market Liquidity Unavailable (Book Not Found)", 'NO_LIQUIDITY', 503);
         }
 
+        // DEBUG: Log order book details to diagnose price discrepancy
+        logger.info(`ORDER BOOK DEBUG`, {
+            marketId: marketId.slice(0, 12),
+            source: book.source,
+            topAsk: book.asks?.[0]?.price,
+            topBid: book.bids?.[0]?.price,
+            askCount: book.asks?.length || 0,
+            bidCount: book.bids?.length || 0,
+        });
+
         // Reject trades on demo order book (synthetic is allowed - uses real prices)
         if (book.source === 'demo') {
             throw new TradingError('Order book unavailable - liquidity feed down. Try again shortly.', 'NO_ORDER_BOOK', 503);
         }
 
         const simulation = MarketService.calculateImpact(book, side, amount);
+
+        // DEBUG: Log simulation results
+        logger.info(`SIMULATION DEBUG`, {
+            executedPrice: simulation.executedPrice.toFixed(4),
+            totalShares: simulation.totalShares.toFixed(2),
+            slippage: (simulation.slippagePercent * 100).toFixed(2) + '%',
+            filled: simulation.filled,
+            reason: simulation.reason,
+        });
+
+        // PRICE INTEGRITY CHECK: Compare execution price to event list display price
+        // If they differ by more than 50%, fall back to synthetic order book
+        const eventListPrice = await MarketService.lookupPriceFromEvents(marketId);
+        if (eventListPrice && simulation.filled) {
+            const displayPrice = parseFloat(eventListPrice.price);
+            const priceDeviation = Math.abs(simulation.executedPrice - displayPrice) / displayPrice;
+
+            if (priceDeviation > 0.5) { // More than 50% deviation
+                logger.warn(`PRICE INTEGRITY VIOLATION: execution=${simulation.executedPrice.toFixed(4)} vs display=${displayPrice.toFixed(4)} (${(priceDeviation * 100).toFixed(0)}% deviation)`, {
+                    marketId: marketId.slice(0, 12),
+                    bookSource: book.source,
+                });
+
+                // Recalculate with synthetic book built from event list price
+                const syntheticBook = MarketService.buildSyntheticOrderBookPublic(displayPrice);
+                const correctedSimulation = MarketService.calculateImpact(syntheticBook, side, amount);
+
+                if (correctedSimulation.filled) {
+                    logger.info(`Using synthetic book instead. correctedPrice=${correctedSimulation.executedPrice.toFixed(4)}`);
+                    // Replace simulation values with corrected ones
+                    Object.assign(simulation, correctedSimulation);
+                }
+            }
+        }
 
         if (!simulation.filled) {
             throw new TradingError(`Trade Rejected: ${simulation.reason}`, 'SLIPPAGE_TOO_HIGH', 400);
@@ -131,6 +175,13 @@ export class TradeExecutor {
         const executionPrice = direction === "NO"
             ? (1 - simulation.executedPrice)
             : simulation.executedPrice;
+
+        // DEBUG: Log final execution price after all corrections
+        logger.info(`FINAL EXECUTION PRICE`, {
+            executionPrice: executionPrice.toFixed(4),
+            direction,
+            simulationPrice: simulation.executedPrice.toFixed(4),
+        });
 
         // Calculate shares - can be overridden by options.shares for SELL
         let shares: number;

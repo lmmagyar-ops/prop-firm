@@ -1,6 +1,28 @@
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
+import { auth } from "@/auth";
+import { redirect } from "next/navigation";
+import { db } from "@/db";
+import { users } from "@/db/schema";
+import { eq } from "drizzle-orm";
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+    // Server-side admin check
+    const session = await auth();
+
+    if (!session?.user?.id) {
+        redirect("/login");
+    }
+
+    // Fetch user role from database (session might not have it on first load)
+    const user = await db.query.users.findFirst({
+        where: eq(users.id, session.user.id),
+        columns: { role: true }
+    });
+
+    if (user?.role !== "admin") {
+        redirect("/dashboard");
+    }
+
     return (
         <div className="flex h-screen w-full bg-black text-white overflow-hidden font-sans selection:bg-indigo-500/30">
             {/* Sidebar */}
