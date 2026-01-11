@@ -151,8 +151,12 @@ export async function getDashboardData(userId: string) {
     const rules = activeChallenge.rulesConfig as any;
     const cashBalance = parseFloat(activeChallenge.currentBalance);
     const startingBalance = parseFloat(activeChallenge.startingBalance);
-    const highWaterMark = parseFloat(activeChallenge.highWaterMark || startingBalance.toString());
-    const startOfDayBalance = parseFloat(activeChallenge.startOfDayBalance || startingBalance.toString());
+
+    // Safe fallbacks: ensure HWM and SOD are valid (not 0 or missing)
+    const hwmParsed = parseFloat(activeChallenge.highWaterMark || "0");
+    const highWaterMark = hwmParsed > 0 ? hwmParsed : startingBalance;
+    const sodParsed = parseFloat(activeChallenge.startOfDayBalance || "0");
+    const startOfDayBalance = sodParsed > 0 ? sodParsed : startingBalance;
 
     const totalPositionValue = positionsWithPnL.reduce((sum, p) => sum + p.positionValue, 0);
     const equity = cashBalance + totalPositionValue;
