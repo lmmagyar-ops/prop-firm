@@ -1,3 +1,24 @@
+/**
+ * Kalshi Ingestion Worker - Production Hardened
+ * 
+ * Institutional-grade reliability patterns:
+ * - Global error handlers (prevent crash on unhandled rejections)
+ * - Graceful shutdown (SIGTERM/SIGINT handling)
+ * - Redis retry with exponential backoff
+ * - WebSocket error containment
+ */
+
+// Global error handlers - MUST be first!
+process.on('uncaughtException', (err: Error) => {
+    console.error('[FATAL] Kalshi Uncaught Exception:', err.message);
+    console.error(err.stack);
+});
+
+process.on('unhandledRejection', (reason: unknown) => {
+    const message = reason instanceof Error ? reason.message : String(reason);
+    console.error('[FATAL] Kalshi Unhandled Rejection:', message);
+});
+
 import WebSocket from "ws";
 import * as dotenv from "dotenv";
 import Redis from "ioredis";
@@ -22,6 +43,7 @@ class KalshiIngestionWorker {
     private reconnectInterval = 5000;
     private activeMarkets: string[] = [];
     private pollingInterval: NodeJS.Timeout | null = null;
+    private isShuttingDown = false;
 
     constructor() {
         if (process.env.REDIS_HOST && process.env.REDIS_PASSWORD) {
@@ -30,15 +52,71 @@ class KalshiIngestionWorker {
                 host: process.env.REDIS_HOST,
                 port: parseInt(process.env.REDIS_PORT || "6379"),
                 password: process.env.REDIS_PASSWORD,
-                tls: {}
+                tls: {},
+                retryStrategy: (times: number) => {
+                    if (times > 20) return null;
+                    return Math.min(times * 500, 30000);
+                },
+                maxRetriesPerRequest: 3,
+                enableOfflineQueue: true,
+                connectTimeout: 10000,
             });
         } else {
             const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6380";
             console.log(`[Kalshi] Connecting to Redis via URL...`);
-            this.redis = new Redis(REDIS_URL);
+            this.redis = new Redis(REDIS_URL, {
+                retryStrategy: (times: number) => {
+                    if (times > 20) return null;
+                    return Math.min(times * 500, 30000);
+                },
+                maxRetriesPerRequest: 3,
+                enableOfflineQueue: true,
+                connectTimeout: 10000,
+            });
         }
 
+        // Redis connection monitoring
+        this.redis.on('error', (err) => {
+            console.error('[Kalshi Redis] Connection error:', err.message);
+        });
+        this.redis.on('reconnecting', () => {
+            console.log('[Kalshi Redis] Attempting reconnection...');
+        });
+
+        // Graceful shutdown handlers
+        this.registerShutdownHandlers();
+
         this.init();
+    }
+
+    private registerShutdownHandlers(): void {
+        const shutdown = async (signal: string) => {
+            if (this.isShuttingDown) return;
+            this.isShuttingDown = true;
+
+            console.log(`[Kalshi] ${signal} received, shutting down gracefully...`);
+
+            try {
+                if (this.pollingInterval) {
+                    clearInterval(this.pollingInterval);
+                    this.pollingInterval = null;
+                }
+                if (this.ws) {
+                    this.ws.close(1000, 'Shutdown');
+                    this.ws = null;
+                }
+                await this.redis.quit();
+                console.log('[Kalshi] Shutdown complete.');
+                process.exit(0);
+            } catch (err: unknown) {
+                const message = err instanceof Error ? err.message : String(err);
+                console.error('[Kalshi] Shutdown error:', message);
+                process.exit(1);
+            }
+        };
+
+        process.on('SIGTERM', () => shutdown('SIGTERM'));
+        process.on('SIGINT', () => shutdown('SIGINT'));
     }
 
     private async init() {
@@ -171,21 +249,27 @@ class KalshiIngestionWorker {
             });
 
             this.ws.on('error', (err) => {
+                // Error handler MUST exist to prevent Node crash
                 console.error("[Kalshi] WebSocket error:", err.message);
             });
 
             this.ws.on('close', () => {
-                console.log("[Kalshi] WebSocket closed, falling back to polling...");
+                console.log("[Kalshi] WebSocket closed.");
                 this.ws = null;
-                this.startPolling();
 
-                // Attempt reconnect after delay
-                setTimeout(() => this.connectWebSocket(), this.reconnectInterval);
+                // Only reconnect if not shutting down
+                if (!this.isShuttingDown) {
+                    this.startPolling();
+                    setTimeout(() => this.connectWebSocket(), this.reconnectInterval);
+                }
             });
 
-        } catch (error) {
-            console.error("[Kalshi] WebSocket connection failed:", error);
-            this.startPolling();
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : String(error);
+            console.error("[Kalshi] WebSocket connection failed:", message);
+            if (!this.isShuttingDown) {
+                this.startPolling();
+            }
         }
     }
 

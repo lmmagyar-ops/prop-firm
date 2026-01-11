@@ -31,6 +31,10 @@ vi.mock('@/db', () => ({
 vi.mock('@/lib/market', () => ({
     MarketService: {
         getLatestPrice: vi.fn(),
+        getBatchOrderBookPrices: vi.fn((marketIds: string[]) => {
+            // Return empty Map by default - individual tests will override
+            return new Map();
+        })
     },
 }));
 
@@ -288,6 +292,10 @@ describe('ChallengeEvaluator - Profit Target & Pass', () => {
 
         vi.mocked(db.query.challenges.findFirst).mockResolvedValue(challenge as any);
         vi.mocked(db.query.positions.findMany).mockResolvedValue([position as any]);
+        // Mock batch price fetch - returns Map of marketId -> price data
+        vi.mocked(MarketService.getBatchOrderBookPrices).mockResolvedValue(
+            new Map([['market-abc', { price: '0.56', source: 'mock', asset_id: 'market-abc' }]]) as any
+        );
         vi.mocked(MarketService.getLatestPrice).mockResolvedValue({
             price: '0.56', // 1000 * 0.56 = $560 position value
             source: 'live',
@@ -341,6 +349,9 @@ describe('ChallengeEvaluator - Position Calculations', () => {
 
         vi.mocked(db.query.challenges.findFirst).mockResolvedValue(challenge as any);
         vi.mocked(db.query.positions.findMany).mockResolvedValue([position as any]);
+        vi.mocked(MarketService.getBatchOrderBookPrices).mockResolvedValue(
+            new Map([['market-abc', { price: '0.30', source: 'mock', asset_id: 'market-abc' }]]) as any
+        );
         vi.mocked(MarketService.getLatestPrice).mockResolvedValue({
             price: '0.30', // YES dropped to 30 cents = NO is now 70 cents
             source: 'live',
@@ -371,6 +382,12 @@ describe('ChallengeEvaluator - Position Calculations', () => {
 
         vi.mocked(db.query.challenges.findFirst).mockResolvedValue(challenge as any);
         vi.mocked(db.query.positions.findMany).mockResolvedValue(positions as any);
+        vi.mocked(MarketService.getBatchOrderBookPrices).mockResolvedValue(
+            new Map([
+                ['market-1', { price: '0.55', source: 'mock', asset_id: 'market-1' }],
+                ['market-2', { price: '0.50', source: 'mock', asset_id: 'market-2' }]
+            ]) as any
+        );
         vi.mocked(MarketService.getLatestPrice)
             .mockResolvedValueOnce({ price: '0.55', source: 'live', timestamp: Date.now() } as any) // market-1: YES up
             .mockResolvedValueOnce({ price: '0.50', source: 'live', timestamp: Date.now() } as any); // market-2: YES down (NO up)

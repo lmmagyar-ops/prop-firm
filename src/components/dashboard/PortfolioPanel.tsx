@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { Briefcase, X, TrendingUp, TrendingDown, ExternalLink } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -31,9 +31,14 @@ export function PortfolioPanel() {
     useEffect(() => {
         const fetchPositions = async () => {
             try {
-                const res = await fetch("/api/trade/positions");
-                if (res.ok) {
-                    const data = await res.json();
+                // PERF: Parallel fetch instead of sequential waterfall
+                const [positionsRes, balanceRes] = await Promise.all([
+                    fetch("/api/trade/positions"),
+                    fetch("/api/user/balance")
+                ]);
+
+                if (positionsRes.ok) {
+                    const data = await positionsRes.json();
                     setPositions(data.positions || []);
 
                     // Calculate summary
@@ -41,10 +46,8 @@ export function PortfolioPanel() {
                         (acc: number, p: Position) => acc + (p.shares * p.currentPrice), 0
                     );
 
-                    // Get challenge data for cash
-                    const challengeRes = await fetch("/api/user/balance");
-                    if (challengeRes.ok) {
-                        const balanceData = await challengeRes.json();
+                    if (balanceRes.ok) {
+                        const balanceData = await balanceRes.json();
                         const cash = parseFloat(balanceData.balance || "0");
                         setSummary({
                             cash,
@@ -71,7 +74,11 @@ export function PortfolioPanel() {
         };
     }, []);
 
-    const totalPnL = positions.reduce((acc, p) => acc + p.unrealizedPnL, 0);
+    // PERF: Memoize to avoid recalculating on every render
+    const totalPnL = useMemo(() =>
+        positions.reduce((acc, p) => acc + p.unrealizedPnL, 0),
+        [positions]
+    );
     const positionCount = positions.length;
 
     return (

@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { cn } from "@/lib/utils";
 import type { EventMetadata } from "@/app/actions/market";
 
@@ -10,9 +11,9 @@ interface BinaryEventCardProps {
 
 /**
  * BinaryEventCard - Polymarket style Yes/No card
- * Includes price breakdown to add height naturally
+ * Memoized to prevent INP issues from cascade re-renders
  */
-export function BinaryEventCard({ event, onTrade }: BinaryEventCardProps) {
+export const BinaryEventCard = memo(function BinaryEventCard({ event, onTrade }: BinaryEventCardProps) {
     const market = event.markets[0];
     if (!market) return null;
 
@@ -92,4 +93,4 @@ export function BinaryEventCard({ event, onTrade }: BinaryEventCardProps) {
             </div>
         </div>
     );
-}
+});

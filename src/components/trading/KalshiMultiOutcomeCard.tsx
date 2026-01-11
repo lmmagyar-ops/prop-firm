@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/formatters";
 import { getCleanOutcomeName } from "@/lib/market-utils";
@@ -13,8 +14,9 @@ interface KalshiMultiOutcomeCardProps {
 /**
  * KalshiMultiOutcomeCard - Table-style card for range/bracket markets
  * Light theme with white background like native Kalshi
+ * Memoized to prevent INP issues from cascade re-renders
  */
-export function KalshiMultiOutcomeCard({ event, onTrade }: KalshiMultiOutcomeCardProps) {
+export const KalshiMultiOutcomeCard = memo(function KalshiMultiOutcomeCard({ event, onTrade }: KalshiMultiOutcomeCardProps) {
     if (!event.markets || event.markets.length === 0) return null;
 
     // Show top 3 outcomes
@@ -110,5 +112,5 @@ export function KalshiMultiOutcomeCard({ event, onTrade }: KalshiMultiOutcomeCar
             </div>
         </div>
     );
-}
+});
 

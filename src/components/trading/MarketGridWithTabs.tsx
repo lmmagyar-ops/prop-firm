@@ -1,11 +1,9 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useTransition } from "react";
 import { cn } from "@/lib/utils";
 import { TrendingUp } from "lucide-react";
-import type { MockMarket } from "@/lib/mock-markets";
 import type { EventMetadata } from "@/app/actions/market";
-import { MarketCardClient } from "./TradePageComponents";
 import { SmartEventCard } from "./SmartEventCard";
 import { EventDetailModal } from "./EventDetailModal";
 import { SearchModal } from "./SearchModal";
@@ -13,7 +11,6 @@ import { KalshiMatchupCard } from "./KalshiMatchupCard";
 import { KalshiMultiOutcomeCard } from "./KalshiMultiOutcomeCard";
 
 interface CategoryTabsProps {
-    markets: MockMarket[];
     events?: EventMetadata[];
     balance: number;
     userId: string;
@@ -36,10 +33,11 @@ const CATEGORIES = [
     { id: 'Other', label: 'World' },
 ];
 
-export function MarketGridWithTabs({ markets, events = [], balance, userId, platform = "polymarket" }: CategoryTabsProps) {
+export function MarketGridWithTabs({ events = [], balance, userId, platform = "polymarket" }: CategoryTabsProps) {
     const [activeTab, setActiveTab] = useState('trending');
     const [selectedEvent, setSelectedEvent] = useState<EventMetadata | null>(null);
     const [detailModalOpen, setDetailModalOpen] = useState(false);
+    const [isPending, startTransition] = useTransition();
 
     // Platform display config
     const platformConfig = {
@@ -66,32 +64,18 @@ export function MarketGridWithTabs({ markets, events = [], balance, userId, plat
         }
     }, [events, activeTab]);
 
-    // Filter and sort markets based on active tab
-    const filteredMarkets = useMemo(() => {
-        let result = [...markets];
-
-        if (activeTab === 'trending') {
-            result.sort((a, b) => (b.volume || 0) - (a.volume || 0));
-        } else if (activeTab === 'all') {
-            result.sort((a, b) => (b.volume || 0) - (a.volume || 0));
-        } else {
-            result = result.filter(m => {
-                const cats = (m as any).categories || [m.category];
-                return cats.includes(activeTab);
-            });
-            result.sort((a, b) => (b.volume || 0) - (a.volume || 0));
-        }
-
-        return result;
-    }, [markets, activeTab]);
-
     // Handler for when user clicks on an event card
+    // Uses Total Transition Hoisting - ALL expensive work inside startTransition
     const handleEventClick = (eventId: string) => {
-        const event = events.find(e => e.id === eventId);
-        if (event) {
-            setSelectedEvent(event);
-            setDetailModalOpen(true);
-        }
+        // Defer ALL expensive operations (lookup + modal rendering)
+        // This frees the main thread in <16ms for immediate visual feedback
+        startTransition(() => {
+            const event = events.find(e => e.id === eventId);
+            if (event) {
+                setSelectedEvent(event);
+                setDetailModalOpen(true);
+            }
+        });
     };
 
     // Handler for trading from within the detail modal
@@ -100,7 +84,7 @@ export function MarketGridWithTabs({ markets, events = [], balance, userId, plat
         // TODO: Integrate with actual trading execution
     };
 
-    const totalItems = filteredEvents.length + filteredMarkets.length;
+    const totalItems = filteredEvents.length;
 
     return (
         <div className="space-y-6">
@@ -164,8 +148,10 @@ export function MarketGridWithTabs({ markets, events = [], balance, userId, plat
                     <SearchModal
                         events={events}
                         onSelectEvent={(event) => {
-                            setSelectedEvent(event);
-                            setDetailModalOpen(true);
+                            startTransition(() => {
+                                setSelectedEvent(event);
+                                setDetailModalOpen(true);
+                            });
                         }}
                     />
                     <span className="text-sm text-zinc-500">
@@ -190,16 +176,20 @@ export function MarketGridWithTabs({ markets, events = [], balance, userId, plat
                                     <KalshiMultiOutcomeCard
                                         event={event}
                                         onTrade={(marketId, side) => {
-                                            setSelectedEvent(event);
-                                            setDetailModalOpen(true);
+                                            startTransition(() => {
+                                                setSelectedEvent(event);
+                                                setDetailModalOpen(true);
+                                            });
                                         }}
                                     />
                                 ) : (
                                     <KalshiMatchupCard
                                         event={event}
                                         onTrade={(marketId, side) => {
-                                            setSelectedEvent(event);
-                                            setDetailModalOpen(true);
+                                            startTransition(() => {
+                                                setSelectedEvent(event);
+                                                setDetailModalOpen(true);
+                                            });
                                         }}
                                     />
                                 )
@@ -208,22 +198,14 @@ export function MarketGridWithTabs({ markets, events = [], balance, userId, plat
                                 <SmartEventCard
                                     event={event}
                                     onTrade={(marketId, side) => {
-                                        setSelectedEvent(event);
-                                        setDetailModalOpen(true);
+                                        startTransition(() => {
+                                            setSelectedEvent(event);
+                                            setDetailModalOpen(true);
+                                        });
                                     }}
                                 />
                             )}
                         </div>
-                    ))}
-
-                    {/* Render Binary Markets */}
-                    {filteredMarkets.map((market) => (
-                        <MarketCardClient
-                            key={market.id}
-                            market={market}
-                            balance={balance}
-                            userId={userId}
-                        />
                     ))}
                 </div>
             )}

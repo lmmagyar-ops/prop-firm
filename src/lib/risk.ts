@@ -2,7 +2,7 @@ import { db } from "@/db";
 import { challenges, positions } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { ChallengeRules } from "@/types/trading";
-import { getActiveMarkets, MarketMetadata } from "@/app/actions/market";
+import { getActiveMarkets, getMarketById, MarketMetadata } from "@/app/actions/market";
 import { ArbitrageDetector } from "./arbitrage-detector";
 
 export class RiskEngine {
@@ -44,6 +44,14 @@ export class RiskEngine {
         // Use Start of Day Balance (default to current/start if missing)
         const sodBalance = parseFloat(challenge.startOfDayBalance || challenge.currentBalance);
 
+        // PERF: Fetch ALL open positions ONCE - derive all metrics in memory
+        const allOpenPositions = await db.query.positions.findMany({
+            where: and(
+                eq(positions.challengeId, challengeId),
+                eq(positions.status, "OPEN")
+            )
+        });
+
         // --- RULE 1: MAX TOTAL DRAWDOWN (8% Static) ---
         const MAX_TOTAL_DD_PERCENT = rules.maxTotalDrawdownPercent || 0.08;
         const totalEquityFloor = startBalance * (1 - MAX_TOTAL_DD_PERCENT);
@@ -61,32 +69,31 @@ export class RiskEngine {
         }
 
         // --- RULE 3: PER-MARKET EXPOSURE (5%) ---
-        console.log("\n[RULE 3] Per-Market Exposure Check:");
-        console.log("  maxPositionSizePercent:", rules.maxPositionSizePercent);
+        // PERF: Compute from cached positions instead of separate DB query
         const maxPerMarket = startBalance * (rules.maxPositionSizePercent || 0.05);
-        console.log("  Max Per Market: $" + maxPerMarket.toFixed(2));
-        const currentExposure = await this.getMarketExposure(challengeId, marketId);
-        console.log("  Current Exposure: $" + currentExposure.toFixed(2));
-        console.log("  New Total: $" + (currentExposure + tradeAmount).toFixed(2));
+        const currentExposure = allOpenPositions
+            .filter(p => p.marketId === marketId)
+            .reduce((sum, p) => sum + parseFloat(p.sizeAmount), 0);
 
         if (currentExposure + tradeAmount > maxPerMarket) {
-            console.log("  ❌ BLOCKED: Per-Market Limit");
             return {
                 allowed: false,
                 reason: `Max per-market exposure (5%) exceeded. Current: $${currentExposure.toFixed(2)}, Limit: $${maxPerMarket.toFixed(2)}`
             };
         }
-        console.log("  ✅ PASS");
+
 
         // --- RULE 4: PER-CATEGORY EXPOSURE (10%) ---
-        const markets = await getActiveMarkets();
-        const market = markets.find(m => m.id === marketId);
+        // Use efficient single-market lookup instead of fetching all markets
+        const market = await getMarketById(marketId);
 
         if (market?.categories && market.categories.length > 0) {
             const maxPerCategory = startBalance * (rules.maxCategoryExposurePercent || 0.10);
-            // Check exposure for each category the market is in
+            // For category exposure, we need all markets for category mapping
+            const allMarkets = await getActiveMarkets();
             for (const category of market.categories) {
-                const categoryExposure = await this.getCategoryExposure(challengeId, category, markets);
+                // PERF: Use cached positions instead of DB query
+                const categoryExposure = this.getCategoryExposureFromCache(allOpenPositions, category, allMarkets);
                 if (categoryExposure + tradeAmount > maxPerCategory) {
                     return {
                         allowed: false,
@@ -137,18 +144,16 @@ export class RiskEngine {
         }
 
         // --- RULE 8: MAX OPEN POSITIONS (Tiered by Account Size) ---
-        // 5k=10, 10k=15, 25k=20
+        // PERF: Use cached positions count instead of DB query
         const maxPositions = this.getMaxPositionsForTier(startBalance);
-        const openPositionCount = await this.getOpenPositionCount(challengeId);
+        const openPositionCount = allOpenPositions.length;
 
         if (openPositionCount >= maxPositions) {
-            console.log(`  ❌ BLOCKED: Max Positions Limit (${maxPositions})`);
             return {
                 allowed: false,
                 reason: `Max ${maxPositions} open positions allowed for your account tier. Currently: ${openPositionCount}`
             };
         }
-        console.log(`  [RULE 8] Open Positions: ${openPositionCount}/${maxPositions} ✅`);
 
         // --- RULE 9: ARBITRAGE BLOCK ---
         // Block trades that would create risk-free arb positions
@@ -249,6 +254,25 @@ export class RiskEngine {
             }
         }
 
+        return totalExposure;
+    }
+
+    /**
+     * PERF: In-memory category exposure calculation using pre-fetched positions
+     * Avoids N+1 DB queries when positions are already loaded
+     */
+    private static getCategoryExposureFromCache(
+        openPositions: { marketId: string; sizeAmount: string }[],
+        category: string,
+        markets: MarketMetadata[]
+    ): number {
+        let totalExposure = 0;
+        for (const pos of openPositions) {
+            const market = markets.find(m => m.id === pos.marketId);
+            if (market?.categories?.includes(category)) {
+                totalExposure += parseFloat(pos.sizeAmount);
+            }
+        }
         return totalExposure;
     }
 

@@ -47,7 +47,6 @@ export function MarketGridWithPolling({
             )}
 
             <MarketGridWithTabs
-                markets={markets}
                 events={displayEvents}
                 balance={balance}
                 userId={userId}

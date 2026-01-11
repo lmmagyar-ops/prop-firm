@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { cn } from "@/lib/utils";
 import { TrendingUp, Users } from "lucide-react";
 import type { EventMetadata, SubMarket } from "@/app/actions/market";
@@ -11,9 +12,9 @@ interface MultiRunnerCardProps {
 
 /**
  * MultiRunnerCard - Election/List style with multiple outcomes
- * Shows TOP 2 outcomes only (like Polymarket), rest shown in detail view
+ * Memoized to prevent INP issues from cascade re-renders
  */
-export function MultiRunnerCard({ event, onTrade }: MultiRunnerCardProps) {
+export const MultiRunnerCard = memo(function MultiRunnerCard({ event, onTrade }: MultiRunnerCardProps) {
     // Show only top 2 outcomes on card (Polymarket style)
     const topOutcomes = event.markets.slice(0, 2);
     const remainingCount = event.markets.length - 2;
@@ -123,7 +124,7 @@ export function MultiRunnerCard({ event, onTrade }: MultiRunnerCardProps) {
             </div>
         </div>
     );
-}
+});
 
 interface OutcomeRowProps {
     market: SubMarket;
@@ -131,7 +132,7 @@ interface OutcomeRowProps {
     onTrade: (marketId: string, side: 'yes' | 'no') => void;
 }
 
-function OutcomeRow({ market, label, onTrade }: OutcomeRowProps) {
+const OutcomeRow = memo(function OutcomeRow({ market, label, onTrade }: OutcomeRowProps) {
     const percentage = Math.round(market.price * 100);
     const yesPrice = Math.round(market.price * 100);
     const noPrice = 100 - yesPrice;
@@ -173,4 +174,4 @@ function OutcomeRow({ market, label, onTrade }: OutcomeRowProps) {
             </div>
         </div>
     );
-}
+});

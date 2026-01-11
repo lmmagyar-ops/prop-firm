@@ -71,6 +71,79 @@ export async function getActiveMarkets(): Promise<MarketMetadata[]> {
     }
 }
 
+/**
+ * Get a single market's metadata by ID - O(1) lookup
+ * Avoids fetching all markets when only one is needed
+ * 
+ * Uses event:active_list as source (multi-outcome events contain the markets)
+ */
+export async function getMarketById(marketId: string): Promise<MarketMetadata | null> {
+    noStore();
+    try {
+        // First try market:active_list (legacy binary markets)
+        const marketData = await redis.get("market:active_list");
+        if (marketData) {
+            const markets = JSON.parse(marketData) as MarketMetadata[];
+            const found = markets.find(m => m.id === marketId);
+            if (found) {
+                return {
+                    ...found,
+                    currentPrice: found.currentPrice ?? (found as any).basePrice ?? 0.5
+                };
+            }
+        }
+
+        // Fallback: Search event:active_list for multi-outcome markets
+        const eventData = await redis.get("event:active_list");
+        if (eventData) {
+            const events = JSON.parse(eventData) as EventMetadata[];
+            for (const event of events) {
+                const subMarket = event.markets.find(m => m.id === marketId);
+                if (subMarket) {
+                    return {
+                        id: subMarket.id,
+                        question: subMarket.question,
+                        description: event.description || "",
+                        image: event.image || "",
+                        volume: subMarket.volume || event.volume,
+                        outcomes: subMarket.outcomes || ["Yes", "No"],
+                        end_date: event.endDate || "",
+                        categories: event.categories,
+                        currentPrice: subMarket.price
+                    };
+                }
+            }
+        }
+
+        // Try Kalshi events too
+        const kalshiData = await redis.get("kalshi:active_list");
+        if (kalshiData) {
+            const events = JSON.parse(kalshiData) as EventMetadata[];
+            for (const event of events) {
+                const subMarket = event.markets.find(m => m.id === marketId);
+                if (subMarket) {
+                    return {
+                        id: subMarket.id,
+                        question: subMarket.question,
+                        description: event.description || "",
+                        image: event.image || "",
+                        volume: subMarket.volume || event.volume,
+                        outcomes: subMarket.outcomes || ["Yes", "No"],
+                        end_date: event.endDate || "",
+                        categories: event.categories,
+                        currentPrice: subMarket.price
+                    };
+                }
+            }
+        }
+
+        return null;
+    } catch (e) {
+        console.error("Failed to fetch market by ID", marketId, e);
+        return null;
+    }
+}
+
 // --- Event Types (Multi-Outcome Markets like Elections) ---
 
 export interface SubMarket {

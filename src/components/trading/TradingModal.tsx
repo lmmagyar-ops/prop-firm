@@ -1,6 +1,7 @@
 
 "use client";
 
+import { memo } from "react";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { X, TrendingUp, Users } from "lucide-react";
@@ -29,10 +30,6 @@ export function TradingModal({
                     <DialogDescription className="sr-only">
                         Trading interface for {question}. Current volume: ${(volume / 1000000).toFixed(1)}M
                     </DialogDescription>
-                    {/* Header logic adjusted or moved? Actually the user said 'remove the X on the left'. 
-                        The Header component below has the X button. I will update the Header component definition instead of removing it here. 
-                        Wait, I can edit the Header component definition in the same file. 
-                        Let's just update the className here first. */}
                     <Header question={question} volume={volume} activeTraders={activeTraders} onClose={onClose} />
                     <div className="flex-1 overflow-hidden">
                         {children}
@@ -63,10 +60,10 @@ interface HeaderProps {
     mobile?: boolean;
 }
 
-function Header({ question, volume, activeTraders, onClose, mobile }: HeaderProps) {
+// Memoized to prevent re-renders that cause INP issues
+const Header = memo(function Header({ volume, activeTraders, mobile }: HeaderProps) {
     return (
         <div className="flex items-center justify-between p-4 border-b border-border bg-background/50 backdrop-blur-sm h-14">
-            {/* Badges moved to left side */}
             <div className={`flex items-center gap-4 text-xs text-zinc-400`}>
                 {!mobile && (
                     <div className="flex items-center gap-1 bg-zinc-900 px-2 py-1 rounded-md border border-zinc-800">
@@ -79,8 +76,7 @@ function Header({ question, volume, activeTraders, onClose, mobile }: HeaderProp
                     <span className="font-mono text-zinc-300 ml-1">{activeTraders}</span>
                 </div>
             </div>
-
-            {/* Title removed to avoid redundancy and overlap */}
         </div>
     );
-}
+});
+

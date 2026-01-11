@@ -11,19 +11,21 @@ vi.mock("@/db", () => ({
         })),
         query: {
             positions: {
-                findMany: vi.fn()
+                findMany: vi.fn(),
+                findFirst: vi.fn(() => null) // For arbitrage detector
             }
         }
     }
 }));
 
 vi.mock("@/app/actions/market", () => ({
-    getActiveMarkets: vi.fn()
+    getActiveMarkets: vi.fn(),
+    getMarketById: vi.fn()
 }));
 
 // Import after mocking
 import { db } from "@/db";
-import { getActiveMarkets } from "@/app/actions/market";
+import { getActiveMarkets, getMarketById } from "@/app/actions/market";
 
 describe("RiskEngine.validateTrade", () => {
     beforeEach(() => {
@@ -59,6 +61,7 @@ describe("RiskEngine.validateTrade", () => {
             })
         } as any);
 
+        vi.mocked(getMarketById).mockResolvedValue(mockMarket as any);
         vi.mocked(getActiveMarkets).mockResolvedValue([mockMarket] as any);
         vi.mocked(db.query.positions.findMany).mockResolvedValue([]); // No existing positions
 
@@ -199,6 +202,7 @@ describe("RiskEngine.validateTrade", () => {
         } as any);
 
         vi.mocked(db.query.positions.findMany).mockResolvedValue([]);
+        vi.mocked(getMarketById).mockResolvedValue(lowVolumeMarket as any);
         vi.mocked(getActiveMarkets).mockResolvedValue([lowVolumeMarket] as any);
 
         const result = await RiskEngine.validateTrade("challenge-1", "market-1", 100);
@@ -233,11 +237,12 @@ describe("RiskEngine.validateTrade", () => {
             })
         } as any);
 
-        // Mock position queries - first for market exposure, second for count
-        vi.mocked(db.query.positions.findMany)
-            .mockResolvedValueOnce([]) // No positions in new market
-            .mockResolvedValueOnce(fifteenPositions as any); // 15 total positions
+        // Now positions are fetched ONCE at the start, so mock returns all 15
+        vi.mocked(db.query.positions.findMany).mockResolvedValue(fifteenPositions as any);
 
+        vi.mocked(getMarketById).mockResolvedValue(
+            { id: "new-market", volume: 15_000_000, categories: [] } as any
+        );
         vi.mocked(getActiveMarkets).mockResolvedValue([
             { id: "new-market", volume: 15_000_000, categories: [] }
         ] as any);
@@ -278,13 +283,13 @@ describe("RiskEngine.validateTrade", () => {
             })
         } as any);
 
-        // Mock position queries differently:
-        // - First call (getMarketExposure for politics-2): return empty (no positions in this market)
-        // - Second call (getCategoryExposure): return the $800 position from politics-1
-        vi.mocked(db.query.positions.findMany)
-            .mockResolvedValueOnce([]) // No positions in politics-2 (per-market check)
-            .mockResolvedValueOnce(existingPositions as any); // $800 in politics category
+        // Now positions are fetched ONCE at the start
+        vi.mocked(db.query.positions.findMany).mockResolvedValue(existingPositions as any);
 
+        // Mock getMarketById for the target market
+        vi.mocked(getMarketById).mockResolvedValue(
+            { id: "politics-2", volume: 15_000_000, categories: ["Politics"] } as any
+        );
         vi.mocked(getActiveMarkets).mockResolvedValue(markets as any);
 
         // New $300 trade in Politics would bring category total to $1100 > $1000 limit
@@ -324,10 +329,12 @@ describe("RiskEngine - Position Tier Limits", () => {
             })
         } as any);
 
-        vi.mocked(db.query.positions.findMany)
-            .mockResolvedValueOnce([])
-            .mockResolvedValueOnce(tenPositions as any);
+        // Positions fetched once at start
+        vi.mocked(db.query.positions.findMany).mockResolvedValue(tenPositions as any);
 
+        vi.mocked(getMarketById).mockResolvedValue(
+            { id: "new-market", volume: 15_000_000, categories: [] } as any
+        );
         vi.mocked(getActiveMarkets).mockResolvedValue([
             { id: "new-market", volume: 15_000_000, categories: [] }
         ] as any);

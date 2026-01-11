@@ -81,9 +81,9 @@ export class LeaderElection {
                 this.stopRenewal();
                 onLost();
             }
-        }, 10000); // Renew every 10s (TTL is 30s, so 3x buffer)
+        }, 20000); // Renew every 20s (TTL is 30s, so 1.5x buffer - saves 50% Redis calls)
 
-        console.log(`[LeaderElection] Started lock renewal (every 10s, TTL: ${this.lockTTL}s)`);
+        console.log(`[LeaderElection] Started lock renewal (every 20s, TTL: ${this.lockTTL}s)`);
     }
 
     /**

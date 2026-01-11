@@ -3,14 +3,32 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { MarketCard } from "@/components/trading/MarketCard";
-import { TradingWidget } from "@/components/dashboard/TradingWidget";
-import { TopNavActions } from "@/components/dashboard/TopNavActions";
-import { useSession } from "next-auth/react";
+import { EventDetailModal } from "@/components/trading/EventDetailModal";
 import type { MockMarket } from "@/lib/mock-markets";
+import type { EventMetadata } from "@/app/actions/market";
 import { ChevronDown, Filter, ListFilter, SlidersHorizontal, TrendingUp } from "lucide-react";
 
 export function MarketCardClient({ market, balance, userId }: { market: MockMarket, balance: number, userId: string }) {
     const [isModalOpen, setIsModalOpen] = useState(false);
+
+    // Create a mock event wrapper for binary markets to use EventDetailModal
+    const mockEvent: EventMetadata = {
+        id: market.id,
+        slug: market.id,
+        title: market.question,
+        description: market.question,
+        volume: market.volume || 0,
+        image: market.imageUrl,
+        categories: [market.category || 'Other'],
+        markets: [{
+            id: market.id,
+            question: market.question,
+            outcomes: ['Yes', 'No'], // Binary market outcomes
+            price: market.currentPrice || 0.5,
+            volume: market.volume || 0,
+        }],
+        isMultiOutcome: false,
+    };
 
     return (
         <>
@@ -19,21 +37,19 @@ export function MarketCardClient({ market, balance, userId }: { market: MockMark
                 onClick={() => setIsModalOpen(true)}
             />
 
-            {isModalOpen && (
-                <TradingWidget
-                    initialBalance={balance}
-                    userId={userId}
-                    marketId={market.id}
-                    open={isModalOpen}
-                    onClose={() => setIsModalOpen(false)}
-                    question={market.question}
-                    volume={market.volume}
-                    activeTraders={market.activeTraders}
-                />
-            )}
+            <EventDetailModal
+                event={isModalOpen ? mockEvent : null}
+                open={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                onTrade={(marketId, side, question) => {
+                    console.log(`[Trade] ${side.toUpperCase()} on ${marketId}: ${question}`);
+                }}
+                platform="polymarket"
+            />
         </>
     );
 }
+
 
 export function CategoryStrip() {
     return (
