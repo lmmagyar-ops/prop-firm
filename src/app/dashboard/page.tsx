@@ -23,7 +23,6 @@ import { DashboardOutcomeHandler } from "@/components/dashboard/DashboardOutcome
 import { DevTools } from "@/components/dashboard/DevTools";
 import { WelcomeTour } from "@/components/dashboard/WelcomeTour";
 import { TraderSpotlight } from "@/components/dashboard/TraderSpotlight";
-import { MilestoneCelebration } from "@/components/dashboard/MilestoneCelebration";
 import { QuickActions } from "@/components/dashboard/QuickActions";
 
 // Funded Account Components
@@ -81,16 +80,6 @@ export default async function DashboardPage() {
                 <DashboardOutcomeHandler challengeHistory={challengeHistory} />
             )}
 
-            {/* Milestone Celebrations - Client Component */}
-            {hasActiveChallenge && activeChallenge && stats && (
-                <MilestoneCelebration
-                    totalTrades={lifetimeStats.totalChallengesStarted}
-                    profitProgress={stats.profitProgress}
-                    currentStreak={lifetimeStats.currentWinStreak || 0}
-                    dailyProfitRecord={stats.dailyPnL}
-                    totalProfit={stats.totalPnL}
-                />
-            )}
 
             {/* Lifetime Stats Grid - ALWAYS VISIBLE */}
             <LifetimeStatsGrid stats={lifetimeStats} />
