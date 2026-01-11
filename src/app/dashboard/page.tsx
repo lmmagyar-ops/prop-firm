@@ -289,7 +289,7 @@ export default async function DashboardPage() {
                                         You breached the risk limits on your previous attempt. Professional trading is about resilience.
                                     </p>
                                     <div className="space-y-4">
-                                        <BuyEvaluationButton label="Try Again - $99" />
+                                        <BuyEvaluationButton label="Try Again - From $79" />
                                         <p className="text-xs text-zinc-600 uppercase tracking-widest font-semibold">
                                             Reset &amp; Retry Immediately
                                         </p>
