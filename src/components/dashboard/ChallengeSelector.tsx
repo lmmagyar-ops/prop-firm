@@ -196,7 +196,7 @@ export function ChallengeSelector({ challenges, selectedChallengeId, onSelect }:
 
                                                         <div className="flex items-center justify-between text-xs">
                                                             <span className="text-zinc-400">
-                                                                Balance: ${parseFloat(challenge.currentBalance).toLocaleString()}
+                                                                Balance: ${parseFloat(challenge.equity || challenge.currentBalance).toLocaleString()}
                                                             </span>
                                                             <span className={cn(
                                                                 "font-mono font-medium",
@@ -313,9 +313,9 @@ export function ChallengeSelector({ challenges, selectedChallengeId, onSelect }:
 
                                                     <div className="flex items-center justify-between mt-3 pt-3 border-t border-zinc-700/50">
                                                         <div>
-                                                            <p className="text-xs text-zinc-500">Current Balance</p>
+                                                            <p className="text-xs text-zinc-500">Current Equity</p>
                                                             <p className="text-sm font-medium text-white">
-                                                                ${parseFloat(challenge.currentBalance).toLocaleString()}
+                                                                ${parseFloat(challenge.equity || challenge.currentBalance).toLocaleString()}
                                                             </p>
                                                         </div>
                                                         <div className="text-right">

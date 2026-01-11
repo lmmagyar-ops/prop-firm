@@ -40,8 +40,11 @@ export async function GET(req: NextRequest) {
                 for (const pos of openPositions) {
                     const shares = parseFloat(pos.shares);
                     const marketData = await MarketService.getLatestPrice(pos.marketId);
-                    const currentPrice = marketData ? parseFloat(marketData.price) : parseFloat(pos.entryPrice);
-                    positionValue += shares * currentPrice;
+                    const rawPrice = marketData ? parseFloat(marketData.price) : parseFloat(pos.entryPrice);
+                    // Adjust for direction: NO positions have inverted value
+                    const isNo = pos.direction === 'NO';
+                    const adjustedPrice = isNo ? (1 - rawPrice) : rawPrice;
+                    positionValue += shares * adjustedPrice;
                 }
 
                 const equity = cashBalance + positionValue;
