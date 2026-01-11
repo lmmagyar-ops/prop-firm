@@ -176,6 +176,13 @@ export class TradeExecutor {
             ? (1 - simulation.executedPrice)
             : simulation.executedPrice;
 
+        // DEBUG: Log final execution price after all corrections
+        logger.info(`FINAL EXECUTION PRICE`, {
+            executionPrice: executionPrice.toFixed(4),
+            direction,
+            simulationPrice: simulation.executedPrice.toFixed(4),
+        });
+
         // Calculate shares - can be overridden by options.shares for SELL
         let shares: number;
         let finalAmount = amount;
