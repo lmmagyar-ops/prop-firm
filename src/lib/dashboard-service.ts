@@ -165,7 +165,7 @@ export async function getDashboardData(userId: string) {
             entryPrice: entry,
             currentPrice: rawPrice,
             unrealizedPnL,
-            openedAt: pos.openedAt || new Date(),
+            openedAt: pos.openedAt ? new Date(pos.openedAt).toISOString() : new Date().toISOString(),
             priceSource: livePrice?.source || 'stored', // Track if using live or stale price
         };
     });
