@@ -67,7 +67,7 @@ export function PortfolioPanel() {
         const handleBalanceUpdate = () => fetchPositions();
         window.addEventListener('balance-updated', handleBalanceUpdate);
 
-        const interval = setInterval(fetchPositions, 10000);
+        const interval = setInterval(fetchPositions, 30000);
         return () => {
             clearInterval(interval);
             window.removeEventListener('balance-updated', handleBalanceUpdate);
