@@ -66,6 +66,15 @@ export default async function DashboardPage() {
     // Helper for Locked State Logic
     const latestChallenge = challengeHistory && challengeHistory.length > 0 ? challengeHistory[0] : null;
 
+    // Pre-compute date values to avoid hydration mismatch (Date.now() differs between server and client)
+    const now = Date.now();
+    const computedDaysActive = activeChallenge?.startedAt
+        ? Math.ceil((now - new Date(activeChallenge.startedAt).getTime()) / (1000 * 60 * 60 * 24))
+        : 1;
+    const computedDaysRemaining = activeChallenge?.endsAt
+        ? Math.ceil((new Date(activeChallenge.endsAt).getTime() - now) / (1000 * 60 * 60 * 24))
+        : 0;
+
     // Logic for Verification Status (Winner-Only Flow)
     const isKycVerified = (user as any).kycVerified === true;
     const hasPassedChallenge = challengeHistory.some(c => c.status === "passed");
@@ -90,7 +99,7 @@ export default async function DashboardPage() {
                     totalTrades={lifetimeStats.totalChallengesStarted}
                     winRate={lifetimeStats.successRate}
                     currentStreak={lifetimeStats.currentWinStreak || 0}
-                    daysActive={Math.ceil((Date.now() - new Date(activeChallenge.startedAt || Date.now()).getTime()) / (1000 * 60 * 60 * 24))}
+                    daysActive={computedDaysActive}
                     profitProgress={stats.profitProgress}
                     totalProfit={stats.totalPnL}
                 />
@@ -180,10 +189,7 @@ export default async function DashboardPage() {
                                 phase={activeChallenge.phase as any}
                                 status={activeChallenge.status as any}
                                 startingBalance={typeof activeChallenge.startingBalance === 'string' ? parseFloat(activeChallenge.startingBalance) : activeChallenge.startingBalance}
-                                daysRemaining={activeChallenge.endsAt
-                                    ? Math.ceil((new Date(activeChallenge.endsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
-                                    : 0
-                                }
+                                daysRemaining={computedDaysRemaining}
                             />
 
                             {/* Equity + Profit Progress */}
