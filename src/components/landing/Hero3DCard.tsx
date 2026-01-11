@@ -138,12 +138,17 @@ export function Hero3DCard() {
                         <BarChart2 className="w-3 h-3 text-zinc-500" />
                     </div>
                     <div className="space-y-1.5">
-                        {[92, 91, 90, 89].map((price, i) => (
+                        {[
+                            { price: 92, volume: 32500, width: 75 },
+                            { price: 91, volume: 28000, width: 60 },
+                            { price: 90, volume: 41200, width: 85 },
+                            { price: 89, volume: 19800, width: 40 },
+                        ].map((row, i) => (
                             <div key={i} className="flex items-center justify-between text-[10px]">
-                                <span className="text-red-400 font-mono">{price}¢</span>
-                                <span className="text-zinc-500 tabular-nums">{(Math.random() * 50000).toFixed(0)}</span>
+                                <span className="text-red-400 font-mono">{row.price}¢</span>
+                                <span className="text-zinc-500 tabular-nums">{row.volume}</span>
                                 <div className="w-12 h-1 bg-red-400/20 rounded-full overflow-hidden">
-                                    <div style={{ width: `${Math.random() * 100}%` }} className="h-full bg-red-500" />
+                                    <div style={{ width: `${row.width}%` }} className="h-full bg-red-500" />
                                 </div>
                             </div>
                         ))}
