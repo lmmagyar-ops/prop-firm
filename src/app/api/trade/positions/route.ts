@@ -96,7 +96,7 @@ export async function GET() {
             direction,
             shares,
             avgPrice: entry,
-            currentPrice: rawPrice,
+            currentPrice: isNo ? (1 - rawPrice) : rawPrice,  // Return actual value for position's side
             unrealizedPnL,
             priceSource: marketData?.source || 'stored'
         };

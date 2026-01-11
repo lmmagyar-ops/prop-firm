@@ -50,7 +50,7 @@ export function LivePositions({ initialPositions }: LivePositionsProps) {
 
             return {
                 ...pos,
-                currentPrice: livePrice,
+                currentPrice: isNo ? (1 - livePrice) : livePrice,  // Store adjusted price for position's side
                 unrealizedPnL,
                 marketTitle: liveData.title || pos.marketTitle,
             };
