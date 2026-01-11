@@ -79,6 +79,10 @@ export default async function DashboardPage() {
     const isKycVerified = (user as any).kycVerified === true;
     const hasPassedChallenge = challengeHistory.some(c => c.status === "passed");
 
+    // Calculate true equity = Cash + Position Value
+    const positionValue = positions?.reduce((sum, pos) => sum + (pos.shares * pos.currentPrice), 0) ?? 0;
+    const trueEquity = (activeChallenge?.currentBalance ?? 0) + positionValue;
+
     return (
         <div className="space-y-6">
             <WelcomeTour />
@@ -132,7 +136,7 @@ export default async function DashboardPage() {
                             {/* Equity Display (same as challenge) */}
                             <div className="mt-6">
                                 <EquityDisplay
-                                    currentBalance={activeChallenge.currentBalance}
+                                    currentBalance={trueEquity}
                                     dailyPnL={stats.dailyPnL}
                                 />
                             </div>
@@ -196,7 +200,7 @@ export default async function DashboardPage() {
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                                 <div className="lg:col-span-2">
                                     <EquityDisplay
-                                        currentBalance={activeChallenge.currentBalance}
+                                        currentBalance={trueEquity}
                                         dailyPnL={stats.dailyPnL}
                                     />
                                 </div>
