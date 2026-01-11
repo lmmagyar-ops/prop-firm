@@ -153,11 +153,12 @@ function CheckoutContent() {
 
                                 <button
                                     onClick={() => setPlatform("kalshi")}
-                                    className={`p-4 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${platform === "kalshi"
-                                        ? "bg-purple-600/10 border-purple-500 text-purple-400 shadow-[0_0_20px_-5px_rgba(147,51,234,0.3)]"
-                                        : "bg-[#162231] border-white/5 text-zinc-500 hover:bg-[#1e2d40] hover:text-white"
-                                        }`}
+                                    disabled={true}
+                                    className="p-4 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all bg-[#162231] border-white/5 text-zinc-600 cursor-not-allowed opacity-60 relative"
                                 >
+                                    <div className="absolute -top-2 -right-2 bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                        COMING SOON
+                                    </div>
                                     <div className="text-2xl">🇺🇸</div>
                                     <span className="text-sm font-bold">Kalshi</span>
                                     <span className="text-xs text-zinc-500">US Regulated • USD</span>
