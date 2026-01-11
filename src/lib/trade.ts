@@ -106,12 +106,31 @@ export class TradeExecutor {
             throw new TradingError("Market Liquidity Unavailable (Book Not Found)", 'NO_LIQUIDITY', 503);
         }
 
+        // DEBUG: Log order book details to diagnose price discrepancy
+        logger.info(`ORDER BOOK DEBUG`, {
+            marketId: marketId.slice(0, 12),
+            source: book.source,
+            topAsk: book.asks?.[0]?.price,
+            topBid: book.bids?.[0]?.price,
+            askCount: book.asks?.length || 0,
+            bidCount: book.bids?.length || 0,
+        });
+
         // Reject trades on demo order book (synthetic is allowed - uses real prices)
         if (book.source === 'demo') {
             throw new TradingError('Order book unavailable - liquidity feed down. Try again shortly.', 'NO_ORDER_BOOK', 503);
         }
 
         const simulation = MarketService.calculateImpact(book, side, amount);
+
+        // DEBUG: Log simulation results
+        logger.info(`SIMULATION DEBUG`, {
+            executedPrice: simulation.executedPrice.toFixed(4),
+            totalShares: simulation.totalShares.toFixed(2),
+            slippage: (simulation.slippagePercent * 100).toFixed(2) + '%',
+            filled: simulation.filled,
+            reason: simulation.reason,
+        });
 
         if (!simulation.filled) {
             throw new TradingError(`Trade Rejected: ${simulation.reason}`, 'SLIPPAGE_TOO_HIGH', 400);
