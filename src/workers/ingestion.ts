@@ -210,6 +210,26 @@ class IngestionWorker {
         return false;
     }
 
+    /**
+     * Clean up outcome names from raw API data
+     * - Removes leading articles (the, a, an)
+     * - Capitalizes first letter
+     * - Trims whitespace
+     */
+    private cleanOutcomeName(name: string): string {
+        let cleaned = name.trim();
+
+        // Remove leading articles (case insensitive)
+        cleaned = cleaned.replace(/^(the|a|an)\s+/i, '');
+
+        // Capitalize first letter
+        if (cleaned.length > 0) {
+            cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+        }
+
+        return cleaned;
+    }
+
     private async init() {
         await this.fetchFeaturedEvents(); // Fetch curated trending events first
         await this.fetchActiveMarkets(); // Then fetch remaining markets
@@ -305,7 +325,7 @@ class IngestionWorker {
 
                         subMarkets.push({
                             id: tokenId,
-                            question: market.question,
+                            question: this.cleanOutcomeName(market.question),
                             outcomes: outcomes,
                             price: Math.max(yesPrice, 0.01),
                             volume: parseFloat(market.volume || "0"),
@@ -426,7 +446,7 @@ class IngestionWorker {
 
                         allMarkets.push({
                             id: yesToken,
-                            question: m.question,
+                            question: this.cleanOutcomeName(m.question),
                             description: m.description,
                             image: m.image,
                             volume: m.volume,
