@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { challenges, positions, users } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { FUNDED_RULES, type FundedTier } from "@/lib/funded-rules";
+import { calculatePositionMetrics, DEFAULT_MAX_DRAWDOWN, DEFAULT_DAILY_DRAWDOWN } from "@/lib/position-utils";
 
 export async function getDashboardData(userId: string) {
     // MOCK DATA BYPASS - REMOVED (Now using real DB for everyone)
@@ -124,12 +125,13 @@ export async function getDashboardData(userId: string) {
         const livePrice = livePrices.get(pos.marketId);
         const rawPrice = livePrice ? parseFloat(livePrice.price) : parseFloat(pos.currentPrice || pos.entryPrice);
 
-        // Handle NO direction: value = 1 - yesPrice
-        const isNo = pos.direction === 'NO';
-        const effectiveCurrentValue = isNo ? (1 - rawPrice) : rawPrice;
-        const effectiveEntryValue = isNo ? (1 - entry) : entry;
-        const unrealizedPnL = (effectiveCurrentValue - effectiveEntryValue) * shares;
-        const positionValue = shares * effectiveCurrentValue;
+        // Use shared utility for direction-adjusted calculations
+        const { positionValue, unrealizedPnL, effectiveCurrentPrice } = calculatePositionMetrics(
+            shares,
+            entry,
+            rawPrice,
+            pos.direction as 'YES' | 'NO'
+        );
 
         return {
             id: pos.id,
@@ -139,9 +141,9 @@ export async function getDashboardData(userId: string) {
             sizeAmount: parseFloat(pos.sizeAmount),
             shares,
             entryPrice: entry,
-            currentPrice: effectiveCurrentValue, // Direction-adjusted price
+            currentPrice: effectiveCurrentPrice,
             unrealizedPnL,
-            positionValue, // For equity calculation
+            positionValue,
             openedAt: pos.openedAt ? new Date(pos.openedAt).toISOString() : new Date().toISOString(),
             priceSource: livePrice?.source || 'stored',
         };
@@ -165,8 +167,8 @@ export async function getDashboardData(userId: string) {
     const totalPnL = equity - startingBalance;
     const dailyPnL = equity - startOfDayBalance;
 
-    const maxDrawdownLimit = rules.maxDrawdown || 1000;
-    const dailyDrawdownLimit = rules.maxDailyDrawdown || 500;
+    const maxDrawdownLimit = rules.maxDrawdown || DEFAULT_MAX_DRAWDOWN;
+    const dailyDrawdownLimit = rules.maxDailyDrawdown || DEFAULT_DAILY_DRAWDOWN;
 
     // Drawdown = distance from peak (high water mark) to current equity
     const drawdownAmount = Math.max(0, highWaterMark - equity);

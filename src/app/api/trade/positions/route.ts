@@ -6,6 +6,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { MarketService } from "@/lib/market";
 import { createLogger } from "@/lib/logger";
+import { getDirectionAdjustedPrice } from "@/lib/position-utils";
 
 const log = createLogger("PositionsAPI");
 
@@ -79,12 +80,10 @@ export async function GET() {
         const marketData = priceMap.get(pos.marketId);
         const rawPrice = marketData ? parseFloat(marketData.price) : entry;
 
-        // Handle NO direction: P&L is inverted (profit when price drops)
-        // For NO positions: effective value = 1 - yesPrice
-        const isNo = direction === 'NO';
-        const effectiveCurrentValue = isNo ? (1 - rawPrice) : rawPrice;
-        const effectiveEntryValue = isNo ? (1 - entry) : entry;
-        const unrealizedPnL = (effectiveCurrentValue - effectiveEntryValue) * shares;
+        // Use shared utility for direction-adjusted calculations
+        const effectiveCurrentPrice = getDirectionAdjustedPrice(rawPrice, direction);
+        const effectiveEntryPrice = getDirectionAdjustedPrice(entry, direction);
+        const unrealizedPnL = (effectiveCurrentPrice - effectiveEntryPrice) * shares;
 
         // Get title from batch-fetched map
         const marketTitle = titleMap.get(pos.marketId) || pos.marketId.slice(0, 20) + "...";
@@ -96,7 +95,7 @@ export async function GET() {
             direction,
             shares,
             avgPrice: entry,
-            currentPrice: isNo ? (1 - rawPrice) : rawPrice,  // Return actual value for position's side
+            currentPrice: effectiveCurrentPrice,
             unrealizedPnL,
             priceSource: marketData?.source || 'stored'
         };
