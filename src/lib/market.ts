@@ -360,7 +360,7 @@ export class MarketService {
                 if (livePrice) {
                     const price = parseFloat(livePrice.price);
                     console.log(`[MarketService] Building synthetic orderbook for ${assetId.slice(0, 12)}... at price ${price}`);
-                    return { ...this.buildSyntheticOrderBook(price), source: 'synthetic' as const };
+                    return { ...this.buildSyntheticOrderBookPublic(price), source: 'synthetic' as const };
                 }
                 console.log(`[MarketService] No Redis orderbook for ${assetId}, using demo fallback`);
                 return { ...this.getDemoOrderBook(), source: 'demo' as const };
@@ -376,8 +376,9 @@ export class MarketService {
     /**
      * Build a synthetic order book from a known price.
      * Simulates deep liquidity around the current price.
+     * Public for use by TradeExecutor price integrity checks.
      */
-    private static buildSyntheticOrderBook(price: number): OrderBook {
+    static buildSyntheticOrderBookPublic(price: number): OrderBook {
         // Create bids slightly below and asks slightly above the current price
         const spread = 0.01; // 1 cent spread
         return {
