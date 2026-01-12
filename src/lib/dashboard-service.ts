@@ -150,9 +150,14 @@ export async function getDashboardData(userId: string) {
     });
 
     // 6. Calculate TRUE EQUITY (cash + position value)
-    const rules = activeChallenge.rulesConfig as any;
     const cashBalance = parseFloat(activeChallenge.currentBalance);
     const startingBalance = parseFloat(activeChallenge.startingBalance);
+
+    // CRITICAL: Defensive fallback for rulesConfig to prevent server crash on malformed data
+    const rawRules = activeChallenge.rulesConfig as any;
+    const rules = rawRules || {};
+    const defaultProfitTarget = startingBalance * 0.10; // 10% of starting balance
+    const profitTarget = rules.profitTarget ?? defaultProfitTarget;
 
     // Safe fallbacks: ensure HWM and SOD are valid (not 0 or missing)
     const hwmParsed = parseFloat(activeChallenge.highWaterMark || "0");
@@ -177,7 +182,7 @@ export async function getDashboardData(userId: string) {
     const drawdownUsage = (drawdownAmount / maxDrawdownLimit) * 100;
     const dailyDrawdownUsage = (dailyDrawdownAmount / dailyDrawdownLimit) * 100;
 
-    const profitProgress = Math.min(100, (totalPnL / rules.profitTarget) * 100);
+    const profitProgress = Math.min(100, (totalPnL / profitTarget) * 100);
 
     // 7. Funded-specific data
     const isFunded = activeChallenge.phase === 'funded';
