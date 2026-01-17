@@ -78,10 +78,11 @@ DATABASE_URL="..." npx tsx scripts/grant-admin.ts email@example.com
 src/
 ├── app/                    # Next.js App Router
 │   ├── admin/              # Admin dashboard (protected by role)
-│   ├── api/                # 66 API routes
+│   ├── api/                # 70+ API routes
 │   ├── dashboard/          # Trader dashboard
 │   └── (auth)/             # Login, signup, password reset
 ├── components/
+│   ├── admin/              # Admin dashboard components
 │   ├── dashboard/          # Dashboard components
 │   ├── trading/            # OrderBook, TradeModal, MarketGrid
 │   └── ui/                 # Shadcn components
@@ -95,7 +96,9 @@ src/
 │   ├── evaluator.ts        # Post-trade challenge evaluation
 │   ├── dashboard-service.ts # Dashboard data aggregation
 │   ├── position-utils.ts   # Shared position calculations
-│   └── market.ts           # MarketService (prices, order books)
+│   ├── market.ts           # MarketService (prices, order books)
+│   ├── admin-auth.ts       # requireAdmin() helper for API auth
+│   └── admin-utils.ts      # Shared admin constants (TIER_PRICES, etc.)
 ├── workers/
 │   ├── ingestion.ts        # Polymarket WebSocket + RiskMonitor
 │   ├── risk-monitor.ts     # Real-time breach detection
@@ -115,6 +118,22 @@ src/
 | Scout | $5K | $79 | 10% ($500) | 8% |
 | Grinder | $10K | $149 | 10% ($1,000) | 10% |
 | Executive | $25K | $299 | 12% ($3,000) | 10% |
+
+### Discount Codes
+
+Discount codes can be applied at checkout (`/checkout`):
+
+| Type | Example | Behavior |
+|------|---------|----------|
+| `percentage` | 20% off | `finalPrice = originalPrice × (1 - value/100)` |
+| `fixed` | $25 off | `finalPrice = originalPrice - value` |
+
+**Validation:**
+- Codes are case-insensitive
+- Checked for: expiration, max uses, min purchase, tier restrictions
+- Redemptions tracked in `discountRedemptions` table
+
+**Admin management:** `/admin/discounts`
 
 ### Challenge Flow
 
@@ -192,10 +211,38 @@ if (user?.role !== "admin") {
 }
 ```
 
+**API endpoints** use `requireAdmin()` helper:
+
+```typescript
+// src/lib/admin-auth.ts
+const { isAuthorized, response } = await requireAdmin();
+if (!isAuthorized) return response;
+```
+
 **Grant admin access:**
 ```bash
 DATABASE_URL="..." npx tsx scripts/grant-admin.ts user@email.com
 ```
+
+### 4. Mission Control Dashboard (Admin Panel)
+
+Real-time admin dashboard at `/admin/*` with the following features:
+
+| Route | Purpose | Data Source |
+|-------|---------|-------------|
+| `/admin` | Overview + Quick Actions | `/api/admin/quick-stats` |
+| `/admin/risk` | Risk Desk (liability, VaR) | `/api/admin/risk/exposure` |
+| `/admin/analytics` | Cohort retention, LTV/CAC | `/api/admin/analytics/metrics` |
+| `/admin/growth` | Growth KPIs, discount perf | `/api/admin/growth/metrics` |
+| `/admin/discounts` | Discount code management | `/api/admin/discounts/*` |
+| `/admin/traders` | Trader DNA feed | `/api/admin/activity` |
+
+**Shared utilities:** `src/lib/admin-utils.ts`
+- `TIER_PRICES` - Maps starting balance to purchase price
+- `getTierPrice()` - Helper to get price for a tier
+- `EXPOSURE_CAP`, `VAR_MULTIPLIER`, `HEDGE_RATIO` - Risk constants
+
+**Mobile responsive:** Hamburger menu with slide-out drawer for mobile screens.
 
 ---
 
