@@ -3,6 +3,7 @@ import { TradeExecutor } from "@/lib/trade";
 import { publishAdminEvent } from "@/lib/events";
 import { auth } from "@/auth";
 import { db } from "@/db";
+import { logTrade, logError } from "@/lib/event-logger";
 
 export async function POST(req: Request) {
     try {
@@ -86,9 +87,27 @@ export async function POST(req: Request) {
                 console.log("[Auto-Provision] Retrying execution...");
                 trade = await TradeExecutor.executeTrade(userId, challengeId, marketId, side, parseFloat(amount));
             } else {
+                // Log failed trade
+                await logTrade(userId, {
+                    challengeId,
+                    marketId,
+                    side,
+                    amount: parseFloat(amount),
+                    success: false,
+                    error: error.message
+                });
                 throw error;
             }
         }
+
+        // Log successful trade
+        await logTrade(userId, {
+            challengeId,
+            marketId,
+            side,
+            amount: parseFloat(amount),
+            success: true
+        });
 
         // Publish Event for Admin Panel "WOW" factor
         await publishAdminEvent("NEW_TRADE", {
@@ -108,3 +127,4 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: error.message || "Failed to execute trade" }, { status: 500 });
     }
 }
+

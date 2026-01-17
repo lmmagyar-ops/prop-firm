@@ -3,7 +3,7 @@ import Google from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import { db } from "@/db";
-import { users, accounts, sessions, verificationTokens } from "@/db/schema";
+import { users, accounts, sessions, verificationTokens, activityLogs } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcrypt";
 
@@ -91,6 +91,50 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     pages: {
         signIn: '/login',
     },
+    events: {
+        // Log successful sign-ins
+        async signIn({ user, account }) {
+            try {
+                await db.insert(activityLogs).values({
+                    userId: user.id || 'unknown',
+                    action: 'login',
+                    metadata: {
+                        provider: account?.provider || 'credentials',
+                        email: user.email,
+                    },
+                });
+                console.log(JSON.stringify({
+                    event: 'login',
+                    userId: user.id,
+                    provider: account?.provider,
+                    timestamp: new Date().toISOString(),
+                }));
+            } catch (e) {
+                console.error("[Auth] Failed to log sign-in event:", e);
+            }
+        },
+        // Log sign-outs
+        async signOut(message) {
+            try {
+                // message could be { session } or { token } depending on session strategy
+                const userId = (message as any)?.token?.id || (message as any)?.session?.user?.id;
+                if (userId) {
+                    await db.insert(activityLogs).values({
+                        userId,
+                        action: 'logout',
+                        metadata: {},
+                    });
+                    console.log(JSON.stringify({
+                        event: 'logout',
+                        userId,
+                        timestamp: new Date().toISOString(),
+                    }));
+                }
+            } catch (e) {
+                console.error("[Auth] Failed to log sign-out event:", e);
+            }
+        },
+    },
     callbacks: {
         async jwt({ token, user }) {
             if (user) {
@@ -111,3 +155,4 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     secret: process.env.AUTH_SECRET || "development-secret-key-change-in-production",
     trustHost: true,
 });
+
