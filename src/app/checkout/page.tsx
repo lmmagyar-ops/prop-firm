@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, MessageSquare, Check, ShieldCheck, Lock, CreditCard, Bitcoin, Copy, ExternalLink, ArrowRight } from "lucide-react";
+import { Loader2, MessageSquare, Check, ShieldCheck, Lock, CreditCard, Bitcoin, Copy, ExternalLink, ArrowRight, Tag } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
 function CheckoutContent() {
@@ -33,9 +33,21 @@ function CheckoutContent() {
     // Platform Selection State
     const [platform, setPlatform] = useState<"polymarket" | "kalshi" | null>(null);
 
-    // Mock addon price
+    // Discount Code State
+    const [discountCode, setDiscountCode] = useState("");
+    const [discountLoading, setDiscountLoading] = useState(false);
+    const [discountError, setDiscountError] = useState<string | null>(null);
+    const [appliedDiscount, setAppliedDiscount] = useState<{
+        code: string;
+        discountAmount: number;
+        finalPrice: number;
+        savings: number;
+    } | null>(null);
+
+    // Pricing calculation
     const splitAddonPrice = basePrice * 0.2; // 20% addon
-    const total = basePrice + (profitSplit ? splitAddonPrice : 0);
+    const evaluationPrice = appliedDiscount ? appliedDiscount.finalPrice : basePrice;
+    const total = evaluationPrice + (profitSplit ? splitAddonPrice : 0);
 
     // Soft Lock: Ensure user came from a valid internal flow
     useEffect(() => {
@@ -44,6 +56,48 @@ function CheckoutContent() {
             router.push(`/signup?intent=buy_evaluation&tier=${tierId}&price=${basePrice}`);
         }
     }, [searchParams, router, tierId, basePrice]);
+
+    // Discount Code Validation
+    const handleApplyDiscount = async () => {
+        if (!discountCode.trim()) return;
+        setDiscountLoading(true);
+        setDiscountError(null);
+
+        try {
+            const res = await fetch("/api/discount/validate", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    code: discountCode.trim().toUpperCase(),
+                    challengeSize: parseInt(size)
+                })
+            });
+
+            const data = await res.json();
+
+            if (data.valid) {
+                setAppliedDiscount({
+                    code: data.discount.code,
+                    discountAmount: data.discount.discountAmount,
+                    finalPrice: data.discount.finalPrice,
+                    savings: data.discount.savings
+                });
+                setDiscountError(null);
+            } else {
+                setDiscountError(data.error || "Invalid discount code");
+            }
+        } catch (error) {
+            setDiscountError("Failed to validate discount code");
+        } finally {
+            setDiscountLoading(false);
+        }
+    };
+
+    const handleRemoveDiscount = () => {
+        setAppliedDiscount(null);
+        setDiscountCode("");
+        setDiscountError(null);
+    };
 
     const handlePurchase = async () => {
         if (!agreedRules || !agreedRefund || !platform) return;
@@ -57,6 +111,8 @@ function CheckoutContent() {
                     tier: tierId,
                     price: total,
                     platform: platform,
+                    discountCode: appliedDiscount?.code || null,
+                    discountAmount: appliedDiscount?.discountAmount || 0,
                 }),
                 headers: { "Content-Type": "application/json" }
             });
@@ -65,24 +121,27 @@ function CheckoutContent() {
 
             const data = await res.json();
 
-            // 2. Handle Logic based on Method
-            if (paymentMethod === "card") {
-                // If MoonPay, we might redirect to a MoonPay flow or 
-                // for this MVP, just show the Confirmo invoice which HAS "Buy with Card" options often,
-                // OR simpler: Redirect to the Invoice URL which is the payment gateway.
-                // Polymarket flow: "Deposit" -> MoonPay.
-
-                // For MVP: Both flows lead to the Payment Gateway (Confirmo Invoice)
-                // In production, "Card" might specificy a MoonPay-specific link.
-                window.location.href = data.invoiceUrl;
-            } else {
-                // Crypto: Redirect to invoice or show QR
-                window.location.href = data.invoiceUrl;
+            // 2. If discount was applied, redeem it
+            if (appliedDiscount && data.challengeId) {
+                await fetch("/api/discount/redeem", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        code: appliedDiscount.code,
+                        challengeId: data.challengeId,
+                        originalPrice: basePrice,
+                        finalPrice: appliedDiscount.finalPrice,
+                        discountAmount: appliedDiscount.discountAmount
+                    })
+                });
             }
 
-            // For checking flow without leaving page (Dev Mode)
-            // setInvoiceUrl(data.invoiceUrl);
-            // setLoading(false);
+            // 3. Handle Logic based on Method
+            if (paymentMethod === "card") {
+                window.location.href = data.invoiceUrl;
+            } else {
+                window.location.href = data.invoiceUrl;
+            }
 
         } catch (error) {
             console.error(error);
@@ -277,7 +336,16 @@ function CheckoutContent() {
                             <div className="space-y-4">
                                 <div className="flex justify-between items-center text-sm">
                                     <span className="text-zinc-300">Evaluation Account (${parseInt(size).toLocaleString()})</span>
-                                    <span className="text-white font-bold font-mono">${basePrice.toFixed(2)}</span>
+                                    <div className="text-right">
+                                        {appliedDiscount && (
+                                            <span className="text-zinc-500 line-through mr-2 font-mono text-xs">
+                                                ${basePrice.toFixed(2)}
+                                            </span>
+                                        )}
+                                        <span className={`font-bold font-mono ${appliedDiscount ? 'text-green-400' : 'text-white'}`}>
+                                            ${evaluationPrice.toFixed(2)}
+                                        </span>
+                                    </div>
                                 </div>
                                 <div className="space-y-2">
                                     <label className="flex items-center gap-2 cursor-pointer group">
@@ -295,6 +363,60 @@ function CheckoutContent() {
                                         </div>
                                     )}
                                 </div>
+                            </div>
+
+                            {/* Discount Code Section */}
+                            <div className="border-t border-white/10 pt-4">
+                                <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2">
+                                    <Tag className="w-3 h-3" />
+                                    Discount Code
+                                </label>
+                                <div className="flex gap-2 mt-2">
+                                    <Input
+                                        value={discountCode}
+                                        onChange={(e) => setDiscountCode(e.target.value.toUpperCase())}
+                                        placeholder="Enter code"
+                                        className="bg-[#162231] border-0 h-10 uppercase font-mono"
+                                        disabled={!!appliedDiscount}
+                                    />
+                                    {appliedDiscount ? (
+                                        <Button
+                                            variant="ghost"
+                                            onClick={handleRemoveDiscount}
+                                            className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                                        >
+                                            Remove
+                                        </Button>
+                                    ) : (
+                                        <Button
+                                            onClick={handleApplyDiscount}
+                                            disabled={discountLoading || !discountCode.trim()}
+                                            className="bg-blue-600 hover:bg-blue-500"
+                                        >
+                                            {discountLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Apply"}
+                                        </Button>
+                                    )}
+                                </div>
+                                {discountError && (
+                                    <p className="text-red-400 text-xs mt-2">{discountError}</p>
+                                )}
+                                {appliedDiscount && (
+                                    <motion.div
+                                        initial={{ opacity: 0, height: 0 }}
+                                        animate={{ opacity: 1, height: "auto" }}
+                                        className="mt-3 bg-green-500/10 border border-green-500/20 rounded-lg p-3"
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <Check className="w-4 h-4 text-green-400" />
+                                            <span className="text-green-400 text-sm font-medium">
+                                                {appliedDiscount.code} applied!
+                                            </span>
+                                        </div>
+                                        <p className="text-xs text-zinc-400 mt-1">
+                                            You save ${appliedDiscount.savings.toFixed(2)}
+                                        </p>
+                                    </motion.div>
+                                )}
                             </div>
 
                             <div className="border-t border-white/10 pt-4 flex justify-between items-end">
