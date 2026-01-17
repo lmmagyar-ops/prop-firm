@@ -381,7 +381,13 @@ function CheckoutContent() {
                                     <Input
                                         value={discountCode}
                                         onChange={(e) => setDiscountCode(e.target.value.toUpperCase())}
-                                        placeholder="Enter code"
+                                        onKeyDown={(e) => {
+                                            if (e.key === "Enter" && discountCode.trim() && !discountLoading && !appliedDiscount) {
+                                                e.preventDefault();
+                                                handleApplyDiscount();
+                                            }
+                                        }}
+                                        placeholder="Enter code & press Enter"
                                         className="bg-[#162231] border-0 h-10 uppercase font-mono"
                                         disabled={!!appliedDiscount}
                                     />
@@ -397,7 +403,10 @@ function CheckoutContent() {
                                         <Button
                                             onClick={handleApplyDiscount}
                                             disabled={discountLoading || !discountCode.trim()}
-                                            className="bg-blue-600 hover:bg-blue-500"
+                                            className={`bg-blue-600 hover:bg-blue-500 min-w-[80px] ${discountCode.trim() && !discountLoading
+                                                    ? "animate-pulse shadow-[0_0_15px_rgba(37,99,235,0.5)]"
+                                                    : ""
+                                                }`}
                                         >
                                             {discountLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Apply"}
                                         </Button>
