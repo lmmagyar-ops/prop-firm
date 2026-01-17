@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, ShieldAlert, Users, Lock, BarChart3, Settings, LogOut, Rocket, BookOpen, UserCog } from "lucide-react";
+import { LayoutDashboard, ShieldAlert, Users, Lock, BarChart3, Settings, LogOut, Rocket, BookOpen, UserCog, Ticket, UsersRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { signOut } from "next-auth/react";
@@ -14,8 +14,13 @@ const navigation = [
     { name: "Traders DNA", href: "/admin/traders", icon: Users },
     { name: "Security", href: "/admin/security", icon: Lock },
     { name: "Analytics", href: "/admin/analytics", icon: BarChart3 },
-    { name: "Growth", href: "/admin/growth", icon: Rocket },
     { name: "Docs", href: "/admin/docs", icon: BookOpen },
+];
+
+const growthNavigation = [
+    { name: "Growth Hub", href: "/admin/growth", icon: Rocket },
+    { name: "Discount Codes", href: "/admin/discounts", icon: Ticket },
+    { name: "Affiliates", href: "/admin/affiliates", icon: UsersRound },
 ];
 
 export function AdminSidebar() {
@@ -70,6 +75,13 @@ export function AdminSidebar() {
                 <div className="text-xs font-semibold text-zinc-600 uppercase tracking-wider mb-2 px-3">Platform</div>
                 <nav className="space-y-1">
                     {navigation.map((item) => (
+                        <NavItem key={item.name} item={item} />
+                    ))}
+                </nav>
+
+                <div className="text-xs font-semibold text-zinc-600 uppercase tracking-wider mb-2 px-3 mt-6">Growth & Marketing</div>
+                <nav className="space-y-1">
+                    {growthNavigation.map((item) => (
                         <NavItem key={item.name} item={item} />
                     ))}
                 </nav>
