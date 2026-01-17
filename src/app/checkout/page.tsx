@@ -12,6 +12,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, MessageSquare, Check, ShieldCheck, Lock, CreditCard, Bitcoin, Copy, ExternalLink, ArrowRight, Tag } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
+// Type for applied discount state
+interface AppliedDiscount {
+    code: string;
+    discountAmount: number;
+    finalPrice: number;
+    savings: number;
+}
+
 function CheckoutContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -37,12 +45,7 @@ function CheckoutContent() {
     const [discountCode, setDiscountCode] = useState("");
     const [discountLoading, setDiscountLoading] = useState(false);
     const [discountError, setDiscountError] = useState<string | null>(null);
-    const [appliedDiscount, setAppliedDiscount] = useState<{
-        code: string;
-        discountAmount: number;
-        finalPrice: number;
-        savings: number;
-    } | null>(null);
+    const [appliedDiscount, setAppliedDiscount] = useState<AppliedDiscount | null>(null);
 
     // Pricing calculation
     const splitAddonPrice = basePrice * 0.2; // 20% addon
@@ -121,27 +124,30 @@ function CheckoutContent() {
 
             const data = await res.json();
 
-            // 2. If discount was applied, redeem it
+            // NOTE: Redemption is called before payment redirect. In production,
+            // consider moving this to a webhook handler that fires after confirmed payment.
+            // Current implementation is fine for low-volume MVP phase.
             if (appliedDiscount && data.challengeId) {
-                await fetch("/api/discount/redeem", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        code: appliedDiscount.code,
-                        challengeId: data.challengeId,
-                        originalPrice: basePrice,
-                        finalPrice: appliedDiscount.finalPrice,
-                        discountAmount: appliedDiscount.discountAmount
-                    })
-                });
+                try {
+                    await fetch("/api/discount/redeem", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            code: appliedDiscount.code,
+                            challengeId: data.challengeId,
+                            originalPrice: basePrice,
+                            finalPrice: appliedDiscount.finalPrice,
+                            discountAmount: appliedDiscount.discountAmount
+                        })
+                    });
+                } catch (redeemError) {
+                    // Non-blocking: Log but don't prevent checkout
+                    console.error("[Discount Redeem Error]:", redeemError);
+                }
             }
 
-            // 3. Handle Logic based on Method
-            if (paymentMethod === "card") {
-                window.location.href = data.invoiceUrl;
-            } else {
-                window.location.href = data.invoiceUrl;
-            }
+            // 3. Redirect to payment gateway
+            window.location.href = data.invoiceUrl;
 
         } catch (error) {
             console.error(error);
