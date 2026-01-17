@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, ShieldAlert, Users, Lock, BarChart3, Settings, LogOut, Rocket, BookOpen, UserCog, Ticket, UsersRound, Menu, X } from "lucide-react";
+import { LayoutDashboard, ShieldAlert, Users, Lock, BarChart3, Settings, LogOut, Rocket, BookOpen, UserCog, Ticket, UsersRound, Menu, X, Activity } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { signOut } from "next-auth/react";
@@ -13,6 +13,7 @@ const navigation = [
     { name: "Overview", href: "/admin", icon: LayoutDashboard },
     { name: "Risk Desk", href: "/admin/risk", icon: ShieldAlert },
     { name: "Users", href: "/admin/users", icon: UserCog },
+    { name: "User Activity", href: "/admin/events", icon: Activity },
     { name: "Traders DNA", href: "/admin/traders", icon: Users },
     { name: "Security", href: "/admin/security", icon: Lock },
     { name: "Analytics", href: "/admin/analytics", icon: BarChart3 },
