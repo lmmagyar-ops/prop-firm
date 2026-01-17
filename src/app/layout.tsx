@@ -18,9 +18,83 @@ export const viewport: Viewport = {
   themeColor: '#000000',
 };
 
+/**
+ * SEO Metadata Configuration
+ * 
+ * Anthropic Engineering Standards:
+ * - Comprehensive OpenGraph tags
+ * - Twitter card optimization
+ * - Canonical URL handling
+ * - Structured data ready
+ */
 export const metadata: Metadata = {
-  title: "Propshot Trading",
-  description: "World-class prediction market prop trading",
+  // Primary Meta
+  title: {
+    default: "Propshot - World's First Prediction Market Prop Firm",
+    template: "%s | Propshot",
+  },
+  description: "Trade prediction markets with our capital. Pass a simple evaluation, get funded up to $25K, and keep up to 90% of profits. Bi-weekly USDC payouts.",
+  keywords: [
+    "prop firm",
+    "prediction markets",
+    "polymarket",
+    "funded trader",
+    "event trading",
+    "prop trading",
+    "trading evaluation",
+    "crypto payouts",
+  ],
+  authors: [{ name: "Propshot" }],
+  creator: "Propshot",
+  publisher: "Propshot",
+
+  // Canonical
+  metadataBase: new URL(process.env.NEXTAUTH_URL || "https://propshot.io"),
+  alternates: {
+    canonical: "/",
+  },
+
+  // OpenGraph
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: "/",
+    siteName: "Propshot",
+    title: "Propshot - World's First Prediction Market Prop Firm",
+    description: "Trade prediction markets with our capital. Pass a simple evaluation, get funded up to $25K, keep up to 90% of profits.",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "Propshot - Prediction Market Prop Firm",
+      },
+    ],
+  },
+
+  // Twitter Card
+  twitter: {
+    card: "summary_large_image",
+    title: "Propshot - World's First Prediction Market Prop Firm",
+    description: "Trade prediction markets with our capital. Get funded up to $25K, keep 90% of profits.",
+    images: ["/og-image.png"],
+    creator: "@propshot_io",
+  },
+
+  // Robots
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+
+  // PWA
   manifest: '/manifest.json',
   icons: {
     apple: '/icon-192.png',
