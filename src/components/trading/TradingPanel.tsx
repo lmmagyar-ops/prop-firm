@@ -1,12 +1,21 @@
 
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Loader2 } from "lucide-react";
+import { Loader2, Keyboard } from "lucide-react";
 import { haptics } from "@/lib/haptics";
 import confetti from 'canvas-confetti';
+
+/**
+ * TradingPanel - Professional trading interface
+ * 
+ * Anthropic Engineering Standards:
+ * - Keyboard shortcuts for power users
+ * - Haptic feedback for mobile
+ * - Clear visual feedback
+ */
 
 interface TradingPanelProps {
     yesPrice: number; // 0.0 - 1.0
@@ -20,6 +29,7 @@ export function TradingPanel({ yesPrice, noPrice, balance, onTrade, loading: ext
     const [outcome, setOutcome] = useState<"YES" | "NO">("YES");
     const [amount, setAmount] = useState<string>("100");
     const [internalLoading, setInternalLoading] = useState(false);
+    const [showShortcuts, setShowShortcuts] = useState(false);
 
     const loading = externalLoading || internalLoading;
 
@@ -35,13 +45,12 @@ export function TradingPanel({ yesPrice, noPrice, balance, onTrade, loading: ext
 
     const { investment, currentPrice, shares, potentialReturn, returnPercent } = calculations;
 
-    const handleTrade = async () => {
-        if (investment <= 0 || investment > balance) return;
+    const handleTrade = useCallback(async () => {
+        if (investment <= 0 || investment > balance || loading) return;
 
         setInternalLoading(true);
         try {
             await onTrade(outcome, investment);
-            // Success haptic and confetti
             try { haptics.success(); } catch (e) { }
             confetti({
                 particleCount: 100,
@@ -50,12 +59,11 @@ export function TradingPanel({ yesPrice, noPrice, balance, onTrade, loading: ext
             });
         } catch (error) {
             console.error("Trade failed:", error);
-            // Error haptic
             try { haptics.error(); } catch (e) { }
         } finally {
             setInternalLoading(false);
         }
-    };
+    }, [investment, balance, loading, onTrade, outcome]);
 
     const handleOutcomeChange = (newOutcome: "YES" | "NO") => {
         setOutcome(newOutcome);
@@ -72,6 +80,47 @@ export function TradingPanel({ yesPrice, noPrice, balance, onTrade, loading: ext
         setAmount((current + inc).toString());
         try { haptics.light(); } catch (e) { }
     };
+
+    // Keyboard shortcuts
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            // Ignore if typing in an input
+            if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+                return;
+            }
+
+            switch (e.key.toLowerCase()) {
+                case 'y':
+                    handleOutcomeChange("YES");
+                    break;
+                case 'n':
+                    handleOutcomeChange("NO");
+                    break;
+                case 'b':
+                case 'enter':
+                    handleTrade();
+                    break;
+                case '1':
+                    handleAmountChange("50");
+                    break;
+                case '2':
+                    handleAmountChange("100");
+                    break;
+                case '3':
+                    handleAmountChange("500");
+                    break;
+                case '4':
+                    handleAmountChange(balance.toString());
+                    break;
+                case '?':
+                    setShowShortcuts(prev => !prev);
+                    break;
+            }
+        };
+
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [handleTrade, balance]);
 
     return (
         <div className="space-y-6">
