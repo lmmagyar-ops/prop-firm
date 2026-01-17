@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
 import { db } from "@/db";
-import { challenges, users } from "@/db/schema";
-import { eq, sql, and, gte, lt } from "drizzle-orm";
+import { challenges } from "@/db/schema";
+import { requireAdmin } from "@/lib/admin-auth";
+import { getTierPrice } from "@/lib/admin-utils";
 
 /**
  * GET /api/admin/revenue/total
@@ -12,21 +12,9 @@ import { eq, sql, and, gte, lt } from "drizzle-orm";
  * which represents the tier price paid (5k->$79, 10k->$149, 25k->$299)
  */
 export async function GET() {
-    const session = await auth();
-
-    if (!session?.user?.id) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Verify admin role
-    const user = await db.query.users.findFirst({
-        where: eq(users.id, session.user.id),
-        columns: { role: true }
-    });
-
-    if (user?.role !== "admin") {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    // SECURITY: Verify admin access
+    const { isAuthorized, response } = await requireAdmin();
+    if (!isAuthorized) return response;
 
     try {
         // Get current date boundaries
@@ -35,17 +23,6 @@ export async function GET() {
         const startOfWeek = new Date(startOfToday);
         startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay()); // Sunday
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-
-        // Map tier starting balance to actual purchase price
-        // (startingBalance is the virtual balance, but we need the actual purchase price)
-        const tierPrices: Record<string, number> = {
-            "5000": 79,
-            "5000.00": 79,
-            "10000": 149,
-            "10000.00": 149,
-            "25000": 299,
-            "25000.00": 299,
-        };
 
         // Get all challenges
         const allChallenges = await db.select({
@@ -60,7 +37,7 @@ export async function GET() {
         let totalChallenges = allChallenges.length;
 
         for (const challenge of allChallenges) {
-            const price = tierPrices[challenge.startingBalance] || 0;
+            const price = getTierPrice(challenge.startingBalance);
             total += price;
 
             if (challenge.startedAt) {

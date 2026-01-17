@@ -1,38 +1,19 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
 import { db } from "@/db";
 import { challenges, users, affiliates, affiliateReferrals, discountRedemptions, discountCodes } from "@/db/schema";
-import { eq, sql, gte, and, count } from "drizzle-orm";
+import { requireAdmin } from "@/lib/admin-auth";
+import { getTierPrice } from "@/lib/admin-utils";
 
 /**
  * GET /api/admin/growth/metrics
  * Returns growth-related KPIs and discount performance data
  */
 export async function GET() {
-    const session = await auth();
-
-    if (!session?.user?.id) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Verify admin role
-    const user = await db.query.users.findFirst({
-        where: eq(users.id, session.user.id),
-        columns: { role: true }
-    });
-
-    if (user?.role !== "admin") {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    // SECURITY: Verify admin access
+    const { isAuthorized, response } = await requireAdmin();
+    if (!isAuthorized) return response;
 
     try {
-        // Tier price mapping
-        const tierPrices: Record<string, number> = {
-            "5000": 79, "5000.00": 79,
-            "10000": 149, "10000.00": 149,
-            "25000": 299, "25000.00": 299,
-        };
-
         // Get all users and challenges
         const allUsers = await db.select().from(users);
         const allChallenges = await db.select().from(challenges);
@@ -44,7 +25,7 @@ export async function GET() {
         for (const challenge of allChallenges) {
             if (challenge.userId) {
                 customersWithPurchases.add(challenge.userId);
-                totalRevenue += tierPrices[challenge.startingBalance] || 0;
+                totalRevenue += getTierPrice(challenge.startingBalance);
             }
         }
 
@@ -104,7 +85,7 @@ export async function GET() {
 
             let dayRevenue = 0;
             for (const c of dayChallenges) {
-                dayRevenue += tierPrices[c.startingBalance] || 0;
+                dayRevenue += getTierPrice(c.startingBalance);
             }
 
             // Calculate average discount rate for the day
@@ -129,8 +110,8 @@ export async function GET() {
         // Discount code leaderboard
         const discountLeaderboard = discounts.map(d => {
             const codeRedemptions = redemptions.filter(r => r.discountCodeId === d.id);
-            const totalRevenue = codeRedemptions.reduce((sum, r) => sum + parseFloat(r.finalPrice), 0);
-            const totalSavings = codeRedemptions.reduce((sum, r) => sum + parseFloat(r.discountAmount), 0);
+            const codeRevenue = codeRedemptions.reduce((sum, r) => sum + parseFloat(r.finalPrice), 0);
+            const codeSavings = codeRedemptions.reduce((sum, r) => sum + parseFloat(r.discountAmount), 0);
 
             return {
                 code: d.code,
@@ -138,8 +119,8 @@ export async function GET() {
                 type: d.type,
                 value: parseFloat(d.value),
                 redemptions: codeRedemptions.length,
-                revenue: Math.round(totalRevenue),
-                savings: Math.round(totalSavings),
+                revenue: Math.round(codeRevenue),
+                savings: Math.round(codeSavings),
                 active: d.active,
             };
         }).sort((a, b) => b.redemptions - a.redemptions);

@@ -4,8 +4,13 @@ import { db } from "@/db";
 import { challenges, users, payouts, positions } from "@/db/schema";
 import { eq, and, gte, sql, count } from "drizzle-orm";
 import { cookies } from "next/headers";
+import { requireAdmin } from "@/lib/admin-auth";
 
 export async function GET() {
+    // SECURITY: Verify admin role before processing
+    const { isAuthorized, response, user: adminUser } = await requireAdmin();
+    if (!isAuthorized) return response;
+
     try {
         const session = await auth();
         const email = session?.user?.email;

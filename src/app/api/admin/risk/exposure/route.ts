@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
 import { db } from "@/db";
-import { challenges, users } from "@/db/schema";
-import { eq, sql } from "drizzle-orm";
+import { challenges } from "@/db/schema";
+import { eq } from "drizzle-orm";
+import { requireAdmin } from "@/lib/admin-auth";
+import { EXPOSURE_CAP, VAR_MULTIPLIER, HEDGE_RATIO } from "@/lib/admin-utils";
 
 /**
  * GET /api/admin/risk/exposure
@@ -13,21 +14,9 @@ import { eq, sql } from "drizzle-orm";
  * Hedged = Estimated portion covered by challenge fees
  */
 export async function GET() {
-    const session = await auth();
-
-    if (!session?.user?.id) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Verify admin role
-    const user = await db.query.users.findFirst({
-        where: eq(users.id, session.user.id),
-        columns: { role: true }
-    });
-
-    if (user?.role !== "admin") {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    // SECURITY: Verify admin access
+    const { isAuthorized, response } = await requireAdmin();
+    if (!isAuthorized) return response;
 
     try {
         // Get all active challenges with their balances
@@ -58,15 +47,13 @@ export async function GET() {
         }
 
         // Value at Risk (5% of total exposure - simplified model)
-        const valueAtRisk = totalLiability * 0.05;
+        const valueAtRisk = totalLiability * VAR_MULTIPLIER;
 
-        // Exposure cap (example: 2M exposure limit)
-        const exposureCap = 2000000;
-        const exposureUtilization = Math.round((totalLiability / exposureCap) * 100);
+        // Exposure utilization
+        const exposureUtilization = Math.round((totalLiability / EXPOSURE_CAP) * 100);
 
         // Hedged positions estimate (challenge fees collected provide some coverage)
-        // Rough estimate: ~10% of liability is "hedged" through fees
-        const hedgedAmount = totalLiability * 0.1;
+        const hedgedAmount = totalLiability * HEDGE_RATIO;
 
         // Risk status determination
         let riskStatus: "low" | "medium" | "high" | "critical" = "low";
@@ -78,7 +65,7 @@ export async function GET() {
             totalLiability,
             valueAtRisk,
             exposureUtilization,
-            exposureCap,
+            exposureCap: EXPOSURE_CAP,
             hedgedAmount,
             riskStatus,
             breakdown: {

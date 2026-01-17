@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
 import { db } from "@/db";
 import { challenges, users } from "@/db/schema";
-import { eq, sql, gte, lt, and, count } from "drizzle-orm";
+import { requireAdmin } from "@/lib/admin-auth";
+import { getTierPrice } from "@/lib/admin-utils";
 
 /**
  * GET /api/admin/analytics/metrics
@@ -14,30 +14,11 @@ import { eq, sql, gte, lt, and, count } from "drizzle-orm";
  * CAC = Marketing spend / new customers (estimated)
  */
 export async function GET() {
-    const session = await auth();
-
-    if (!session?.user?.id) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Verify admin role
-    const user = await db.query.users.findFirst({
-        where: eq(users.id, session.user.id),
-        columns: { role: true }
-    });
-
-    if (user?.role !== "admin") {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    // SECURITY: Verify admin access
+    const { isAuthorized, response } = await requireAdmin();
+    if (!isAuthorized) return response;
 
     try {
-        // Tier price mapping
-        const tierPrices: Record<string, number> = {
-            "5000": 79, "5000.00": 79,
-            "10000": 149, "10000.00": 149,
-            "25000": 299, "25000.00": 299,
-        };
-
         // Get all users with their challenges
         const allUsers = await db.select({
             id: users.id,
@@ -66,7 +47,7 @@ export async function GET() {
 
             const purchaseMonth = `${challenge.startedAt.getFullYear()}-${String(challenge.startedAt.getMonth() + 1).padStart(2, '0')}`;
             userData.purchaseMonths.add(purchaseMonth);
-            userData.totalSpent += tierPrices[challenge.startingBalance] || 0;
+            userData.totalSpent += getTierPrice(challenge.startingBalance);
         }
 
         // Generate cohort data for last 5 months
