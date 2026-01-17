@@ -71,8 +71,7 @@ export function Sidebar({ active, verificationStatus = "locked", hasActiveChalle
             </div>
 
             <nav className="flex-1 px-4 space-y-1">
-                <NavItem icon={User} label="Private Profile" href="/dashboard/private-profile" isActive={activePage === "Private Profile"} />
-                <NavItem icon={Users} label="Public Profile" href="/dashboard/public-profile" isActive={activePage === "Public Profile"} />
+                {/* Primary Navigation - Dashboard & Trade at top */}
                 <NavItem icon={LayoutDashboard} label="Dashboard" href="/dashboard" isActive={activePage === "Dashboard"} />
                 {/* Trade - Locked when no active challenge */}
                 {hasActiveChallenge ? (
@@ -90,27 +89,21 @@ export function Sidebar({ active, verificationStatus = "locked", hasActiveChalle
                         <span className="text-sm font-medium">Trade (Locked)</span>
                     </div>
                 )}
-                <NavItem icon={Award} label="Certificates" href="/dashboard/certificates" isActive={activePage === "Certificates"} />
-                <NavItem icon={ShoppingCart} label="Buy Evaluation" href="/buy-evaluation" highlight isActive={activePage === "Buy Evaluation"} />
 
-                {/* Verification Item */}
-                <div className="pt-2 pb-2">
-                    {verificationStatus === "verified" ? (
-                        <NavItem icon={ShieldCheck} label="Identity Verified" href="/dashboard/verification" isActive={activePage === "Verification"} className="text-green-500" />
-                    ) : verificationStatus === "pending" ? (
-                        <NavItem icon={Shield} label="Verify Identity" href="/dashboard/verification" isActive={activePage === "Verification"} className="text-yellow-500 animate-pulse" />
-                    ) : (
-                        <div className="px-4 py-3 flex items-center gap-3 text-zinc-600 cursor-not-allowed">
-                            <Lock className="w-4 h-4" />
-                            <span className="text-sm font-medium">Verification (Locked)</span>
-                        </div>
-                    )}
+                {/* Secondary Navigation */}
+                <div className="pt-3">
+                    <NavItem icon={Users} label="Public Profile" href="/dashboard/public-profile" isActive={activePage === "Public Profile"} />
+                    <NavItem icon={Award} label="Certificates" href="/dashboard/certificates" isActive={activePage === "Certificates"} />
+                    <NavItem icon={ShoppingCart} label="Buy Evaluation" href="/buy-evaluation" highlight isActive={activePage === "Buy Evaluation"} />
                 </div>
 
-                <NavItem icon={Settings} label="Settings" href="/dashboard/settings" isActive={activePage === "Settings"} />
-                <NavItem icon={Wallet} label="Payouts" href="/dashboard/payouts" isActive={activePage === "Payouts"} />
-                <NavItem icon={HelpCircle} label="FAQ" href="/dashboard/faq" isActive={activePage === "FAQ"} />
-                <NavItem icon={Trophy} label="Leaderboard" href="/dashboard/leaderboard" isActive={activePage === "Leaderboard"} />
+                {/* Settings & Support */}
+                <div className="pt-3">
+                    <NavItem icon={Settings} label="Settings" href="/dashboard/settings" isActive={activePage === "Settings"} />
+                    <NavItem icon={Wallet} label="Payouts" href="/dashboard/payouts" isActive={activePage === "Payouts"} />
+                    <NavItem icon={HelpCircle} label="FAQ" href="/dashboard/faq" isActive={activePage === "FAQ"} />
+                    <NavItem icon={Trophy} label="Leaderboard" href="/dashboard/leaderboard" isActive={activePage === "Leaderboard"} />
+                </div>
             </nav>
 
             <div className="p-4">

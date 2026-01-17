@@ -119,17 +119,7 @@ export function UserInformationTab({ user, onTabChange }: UserInformationTabProp
                     </div>
                 </div>
 
-                {/* Kraken ID */}
-                <div>
-                    <Label htmlFor="krakenId" className="text-zinc-400">Kraken ID (Optional)</Label>
-                    <Input
-                        id="krakenId"
-                        value={formData.krakenId}
-                        onChange={(e) => setFormData({ ...formData, krakenId: e.target.value })}
-                        placeholder="For Kalshi API integration"
-                        className="mt-2 bg-[#0E1217] border-[#2E3A52] text-white font-mono placeholder:text-zinc-600 focus:border-blue-500/50"
-                    />
-                </div>
+                {/* Kraken ID - Hidden for now, not needed for MVP */}
 
                 {/* Social Media Profiles */}
                 <div className="bg-[#1A232E] border border-[#2E3A52] rounded-xl p-6 space-y-4">

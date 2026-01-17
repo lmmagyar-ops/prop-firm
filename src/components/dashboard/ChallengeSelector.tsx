@@ -113,9 +113,12 @@ export function ChallengeSelector({ challenges, selectedChallengeId, onSelect }:
                         <span className="text-sm">{getPlatformIcon(selectedChallenge.platform)}</span>
                         <Briefcase className="w-4 h-4 text-blue-500" />
                         <span className="font-medium text-white">
-                            ${parseInt(selectedChallenge.startingBalance).toLocaleString()} Eval
+                            ${parseFloat(selectedChallenge.equity || selectedChallenge.currentBalance).toLocaleString(undefined, { maximumFractionDigits: 0 })}
                         </span>
-                        <span className="text-zinc-500 font-mono text-xs">
+                        <span className="text-zinc-500 text-xs">
+                            ({parseInt(selectedChallenge.startingBalance) >= 25000 ? '25k' : parseInt(selectedChallenge.startingBalance) >= 10000 ? '10k' : '5k'})
+                        </span>
+                        <span className="text-zinc-600 font-mono text-xs">
                             #{selectedChallenge.accountNumber || selectedChallenge.id.slice(0, 8).toUpperCase()}
                         </span>
                         <ChevronDown className={cn(
@@ -233,7 +236,10 @@ export function ChallengeSelector({ challenges, selectedChallengeId, onSelect }:
                     >
                         <Briefcase className="w-4 h-4 text-blue-500" />
                         <span className="font-medium text-white text-xs">
-                            ${parseInt(selectedChallenge.startingBalance).toLocaleString()}
+                            ${parseFloat(selectedChallenge.equity || selectedChallenge.currentBalance).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                        </span>
+                        <span className="text-zinc-500 text-[10px]">
+                            ({parseInt(selectedChallenge.startingBalance) >= 25000 ? '25k' : parseInt(selectedChallenge.startingBalance) >= 10000 ? '10k' : '5k'})
                         </span>
                     </button>
 
