@@ -5,6 +5,27 @@ import { discountCodes, discountRedemptions, challenges } from "@/db/schema";
 import { eq, and, sql } from "drizzle-orm";
 
 /**
+ * Patterns that identify test/demo discount codes
+ * These should NEVER work in production
+ */
+const TEST_CODE_PATTERNS = [
+    /^TEST/i,
+    /^DEMO/i,
+    /^DEV/i,
+    /^STAGING/i,
+    /^FAKE/i,
+    /^DUMMY/i,
+    /^SAMPLE/i,
+    /^XXX/i,
+    /^PLACEHOLDER/i,
+    /^DEBUG/i,
+];
+
+function isTestCode(code: string): boolean {
+    return TEST_CODE_PATTERNS.some(pattern => pattern.test(code));
+}
+
+/**
  * POST /api/discount/validate
  * Validates a discount code and returns calculated pricing
  */
@@ -20,11 +41,22 @@ export async function POST(req: NextRequest) {
             );
         }
 
+        const normalizedCode = code.toUpperCase().trim();
+
+        // SECURITY: Block test codes in production
+        if (process.env.NODE_ENV === 'production' && isTestCode(normalizedCode)) {
+            console.warn(`[Security] Blocked test code attempt: ${normalizedCode}`);
+            return NextResponse.json({
+                valid: false,
+                error: "Invalid discount code"
+            });
+        }
+
         const userId = session?.user?.id;
 
         // Find the discount code
         const discount = await db.query.discountCodes.findFirst({
-            where: eq(discountCodes.code, code.toUpperCase())
+            where: eq(discountCodes.code, normalizedCode)
         });
 
         if (!discount) {

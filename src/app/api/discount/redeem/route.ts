@@ -5,6 +5,27 @@ import { discountCodes, discountRedemptions } from "@/db/schema";
 import { eq, and, sql } from "drizzle-orm";
 
 /**
+ * Patterns that identify test/demo discount codes
+ * These should NEVER work in production
+ */
+const TEST_CODE_PATTERNS = [
+    /^TEST/i,
+    /^DEMO/i,
+    /^DEV/i,
+    /^STAGING/i,
+    /^FAKE/i,
+    /^DUMMY/i,
+    /^SAMPLE/i,
+    /^XXX/i,
+    /^PLACEHOLDER/i,
+    /^DEBUG/i,
+];
+
+function isTestCode(code: string): boolean {
+    return TEST_CODE_PATTERNS.some(pattern => pattern.test(code));
+}
+
+/**
  * POST /api/discount/redeem
  * Redeems a discount code and records the redemption
  * This should be called during checkout/payment processing
@@ -30,9 +51,39 @@ export async function POST(req: NextRequest) {
             );
         }
 
+        const normalizedCode = code.toUpperCase().trim();
+
+        // SECURITY: Block test codes in production
+        if (process.env.NODE_ENV === 'production' && isTestCode(normalizedCode)) {
+            console.warn(`[Security] Blocked test code redemption attempt: ${normalizedCode} by user ${userId}`);
+            return NextResponse.json(
+                { error: "Invalid discount code" },
+                { status: 400 }
+            );
+        }
+
+        // SECURITY: Validate discount amount is reasonable (prevent client-side manipulation)
+        if (discountAmount < 0 || discountAmount > originalPrice) {
+            console.warn(`[Security] Invalid discount amount: ${discountAmount} (original: ${originalPrice}) by user ${userId}`);
+            return NextResponse.json(
+                { error: "Invalid discount calculation" },
+                { status: 400 }
+            );
+        }
+
+        // SECURITY: Validate final price matches
+        const expectedFinalPrice = Math.max(0, originalPrice - discountAmount);
+        if (Math.abs(finalPrice - expectedFinalPrice) > 0.01) {
+            console.warn(`[Security] Price mismatch: got ${finalPrice}, expected ${expectedFinalPrice} by user ${userId}`);
+            return NextResponse.json(
+                { error: "Price validation failed" },
+                { status: 400 }
+            );
+        }
+
         // Find the discount code
         const discount = await db.query.discountCodes.findFirst({
-            where: eq(discountCodes.code, code.toUpperCase())
+            where: eq(discountCodes.code, normalizedCode)
         });
 
         if (!discount) {
