@@ -29,9 +29,24 @@ interface ChallengeSelectorProps {
     onSelect: (challengeId: string) => void;
 }
 
+// Detect if user is on Mac
+function useIsMac() {
+    const [isMac, setIsMac] = useState(true);
+
+    useEffect(() => {
+        const isMacOS = typeof navigator !== 'undefined' &&
+            (navigator.platform?.toLowerCase().includes('mac') ||
+                navigator.userAgent?.toLowerCase().includes('mac'));
+        setIsMac(isMacOS);
+    }, []);
+
+    return isMac;
+}
+
 export function ChallengeSelector({ challenges, selectedChallengeId, onSelect }: ChallengeSelectorProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
+    const isMac = useIsMac();
 
     // PERF: Debounced resize listener to avoid excessive re-renders
     const resizeTimeout = useRef<NodeJS.Timeout | null>(null);
@@ -217,7 +232,7 @@ export function ChallengeSelector({ challenges, selectedChallengeId, onSelect }:
                                     {/* Footer hint */}
                                     <div className="p-2 bg-zinc-900/50 border-t border-zinc-800">
                                         <p className="text-[10px] text-zinc-600 text-center">
-                                            Press <kbd className="px-1 py-0.5 bg-zinc-800 rounded text-zinc-400">⌘K</kbd> to open • <kbd className="px-1 py-0.5 bg-zinc-800 rounded text-zinc-400">1-9</kbd> to quick switch
+                                            Press <kbd className="px-1 py-0.5 bg-zinc-800 rounded text-zinc-400">{isMac ? '⌘' : 'Ctrl+'}K</kbd> to open • <kbd className="px-1 py-0.5 bg-zinc-800 rounded text-zinc-400">1-9</kbd> to quick switch
                                         </p>
                                     </div>
                                 </motion.div>

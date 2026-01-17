@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
     DropdownMenu,
@@ -15,14 +16,34 @@ import { signOut, useSession } from "next-auth/react";
 import Link from "next/link";
 import { User, CreditCard, Settings, LogOut } from "lucide-react";
 
+// Detect if user is on Mac
+function useIsMac() {
+    const [isMac, setIsMac] = useState(true); // Default to Mac symbols on SSR
+
+    useEffect(() => {
+        // Check for Mac using navigator.platform or userAgent
+        const isMacOS = typeof navigator !== 'undefined' &&
+            (navigator.platform?.toLowerCase().includes('mac') ||
+                navigator.userAgent?.toLowerCase().includes('mac'));
+        setIsMac(isMacOS);
+    }, []);
+
+    return isMac;
+}
+
 export function UserNav() {
     const { data: session } = useSession();
     const user = session?.user;
+    const isMac = useIsMac();
 
     // Use initials or fallback
     const initials = user?.name
         ? user.name.substring(0, 2).toUpperCase()
         : "TR"; // Trader
+
+    // Keyboard shortcut symbols
+    const mod = isMac ? "⌘" : "Ctrl+";
+    const shift = isMac ? "⇧" : "Shift+";
 
     return (
         <DropdownMenu>
@@ -48,21 +69,21 @@ export function UserNav() {
                         <DropdownMenuItem className="focus:bg-zinc-800 focus:text-white cursor-pointer">
                             <User className="mr-2 h-4 w-4" />
                             <span>Profile</span>
-                            <DropdownMenuShortcut>⇧⌘P</DropdownMenuShortcut>
+                            <DropdownMenuShortcut>{shift}{mod}P</DropdownMenuShortcut>
                         </DropdownMenuItem>
                     </Link>
                     <Link href="/billing">
                         <DropdownMenuItem className="focus:bg-zinc-800 focus:text-white cursor-pointer">
                             <CreditCard className="mr-2 h-4 w-4" />
                             <span>Billing</span>
-                            <DropdownMenuShortcut>⌘B</DropdownMenuShortcut>
+                            <DropdownMenuShortcut>{mod}B</DropdownMenuShortcut>
                         </DropdownMenuItem>
                     </Link>
                     <Link href="/settings">
                         <DropdownMenuItem className="focus:bg-zinc-800 focus:text-white cursor-pointer">
                             <Settings className="mr-2 h-4 w-4" />
                             <span>Settings</span>
-                            <DropdownMenuShortcut>⌘S</DropdownMenuShortcut>
+                            <DropdownMenuShortcut>{mod}S</DropdownMenuShortcut>
                         </DropdownMenuItem>
                     </Link>
                 </DropdownMenuGroup>
@@ -73,7 +94,7 @@ export function UserNav() {
                 >
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Log out</span>
-                    <DropdownMenuShortcut>⇧⌘Q</DropdownMenuShortcut>
+                    <DropdownMenuShortcut>{shift}{mod}Q</DropdownMenuShortcut>
                 </DropdownMenuItem>
             </DropdownMenuContent>
         </DropdownMenu>

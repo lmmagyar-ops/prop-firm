@@ -10,12 +10,27 @@ interface SearchModalProps {
     onSelectEvent: (event: EventMetadata) => void;
 }
 
+// Detect if user is on Mac
+function useIsMac() {
+    const [isMac, setIsMac] = useState(true);
+
+    useEffect(() => {
+        const isMacOS = typeof navigator !== 'undefined' &&
+            (navigator.platform?.toLowerCase().includes('mac') ||
+                navigator.userAgent?.toLowerCase().includes('mac'));
+        setIsMac(isMacOS);
+    }, []);
+
+    return isMac;
+}
+
 export function SearchModal({ events, onSelectEvent }: SearchModalProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [query, setQuery] = useState("");
     const [selectedIndex, setSelectedIndex] = useState(0);
     const inputRef = useRef<HTMLInputElement>(null);
     const resultsRef = useRef<HTMLDivElement>(null);
+    const isMac = useIsMac();
 
     // Filter events based on query
     const filteredEvents = query.trim()
@@ -96,7 +111,7 @@ export function SearchModal({ events, onSelectEvent }: SearchModalProps) {
                 <Search className="w-4 h-4" />
                 <span>Search markets...</span>
                 <kbd className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-zinc-700 rounded text-xs text-zinc-400">
-                    ⌘K
+                    {isMac ? '⌘' : 'Ctrl+'}K
                 </kbd>
             </button>
         );
