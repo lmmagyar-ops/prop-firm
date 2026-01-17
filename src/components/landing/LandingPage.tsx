@@ -8,6 +8,8 @@ import Link from "next/link";
 import { QuizSection } from "./QuizSection";
 import { ComparisonSection } from "./ComparisonSection";
 import { FAQSection } from "./FAQSection";
+import { Testimonials } from "./Testimonials";
+import { LiveStatsBar } from "./LiveStatsBar";
 
 export function LandingPage() {
     const [activeStep, setActiveStep] = useState(0);
@@ -44,6 +46,9 @@ export function LandingPage() {
             {/* As Featured In - Press Logos */}
             <PressLogos />
 
+            {/* Live Platform Stats */}
+            <LiveStatsBar />
+
             {/* How It Works Section */}
             <HowItWorksSection activeStep={activeStep} timelineRef={timelineRef} />
 
@@ -55,6 +60,9 @@ export function LandingPage() {
 
             {/* Comparison Table Section */}
             <ComparisonSection />
+
+            {/* Testimonials - Social Proof */}
+            <Testimonials />
 
             {/* FAQ Section */}
             <FAQSection />
