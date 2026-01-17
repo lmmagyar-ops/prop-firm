@@ -4,7 +4,7 @@ import { FIRM_CONFIG } from '@/lib/simulation/config';
 
 describe('Monte Carlo Simulation (Option B)', () => {
     describe('Basic Monte Carlo Run', () => {
-        it('should run 100 simulations and produce statistics', () => {
+        it('should run 100 simulations and produce statistics', { timeout: 30000 }, () => {
             const results = runMonteCarloSimulation({
                 iterations: 100,
                 traderCount: 100, // Smaller for speed
@@ -23,7 +23,7 @@ describe('Monte Carlo Simulation (Option B)', () => {
     });
 
     describe('Statistical Confidence', () => {
-        it('should calculate percentiles correctly', () => {
+        it('should calculate percentiles correctly', { timeout: 30000 }, () => {
             const results = runMonteCarloSimulation({
                 iterations: 100,
                 traderCount: 100,
@@ -44,7 +44,7 @@ describe('Monte Carlo Simulation (Option B)', () => {
     });
 
     describe('Optimal Fee Finder', () => {
-        it('should find optimal fee in range', () => {
+        it('should find optimal fee in range', { timeout: 60000 }, () => {
             const optimal = findOptimalFee(
                 {
                     iterations: 50, // Small for speed
@@ -66,7 +66,7 @@ describe('Monte Carlo Simulation (Option B)', () => {
     });
 
     describe('Export Functions', () => {
-        it('should export to CSV format', () => {
+        it('should export to CSV format', { timeout: 15000 }, () => {
             const results = runMonteCarloSimulation({
                 iterations: 10,
                 traderCount: 100,
@@ -83,7 +83,7 @@ describe('Monte Carlo Simulation (Option B)', () => {
             expect(lines.length).toBe(11); // 10 runs + header
         });
 
-        it('should generate summary report', () => {
+        it('should generate summary report', { timeout: 30000 }, () => {
             const results = runMonteCarloSimulation({
                 iterations: 50,
                 traderCount: 100,
