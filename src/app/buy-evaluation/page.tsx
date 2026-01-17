@@ -111,6 +111,15 @@ function BuyEvaluationContent() {
                         isUniform={false}
                     />
 
+                    {/* TODO: Add EOD (End-of-Day) Rule - Futures prop firms have this, we don't yet */}
+                    {/* <MetricRow
+                        label="EOD Rule"
+                        tooltip="End-of-day position close requirement. We don't require this."
+                        values={plans.map(() => "None ✓")}
+                        isUniform
+                        highlight="green"
+                    /> */}
+
                     {/* Duration Row */}
                     <MetricRow
                         label="Challenge Duration"
