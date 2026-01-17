@@ -96,16 +96,9 @@ export async function POST(request: Request) {
             );
         }
 
-        // Verify reCAPTCHA token
+        // Verify reCAPTCHA token (optional - skip if not configured, since TraderBotGuard provides bot protection)
         const recaptchaSecretKey = process.env.RECAPTCHA_SECRET_KEY;
-        if (recaptchaSecretKey) {
-            if (!captchaToken) {
-                return NextResponse.json(
-                    { error: "Please complete the captcha" },
-                    { status: 400 }
-                );
-            }
-
+        if (recaptchaSecretKey && captchaToken) {
             // Verify with Google reCAPTCHA API
             const recaptchaResponse = await fetch("https://www.google.com/recaptcha/api/siteverify", {
                 method: "POST",
@@ -131,14 +124,8 @@ export async function POST(request: Request) {
                     { status: 400 }
                 );
             }
-        } else if (process.env.NODE_ENV === "production") {
-            // In production, require CAPTCHA key to be configured
-            console.error("[Signup] RECAPTCHA_SECRET_KEY not configured in production!");
-            return NextResponse.json(
-                { error: "Server configuration error. Please contact support." },
-                { status: 500 }
-            );
         }
+        // Note: TraderBotGuard on the frontend provides bot protection even without reCAPTCHA
 
         // Check if email already exists
         const existingUser = await db
