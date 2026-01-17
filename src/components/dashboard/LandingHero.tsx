@@ -7,6 +7,7 @@ import { ChevronRight, ArrowRight } from "lucide-react";
 import { PLANS } from "@/config/plans";
 import { Navbar } from "@/components/Navbar";
 import { ProbabilityOrbs } from "@/components/ProbabilityOrbs";
+import { UrgencyTimer } from "@/components/landing/UrgencyTimer";
 
 export function LandingHero() {
     const [selectedPlanKey, setSelectedPlanKey] = useState<keyof typeof PLANS>("grinder");
@@ -70,11 +71,16 @@ export function LandingHero() {
                 </div>
 
                 {/* Price Display */}
-                <div className="animate-slide-up-delay-2 flex items-baseline gap-2 mb-8">
+                <div className="animate-slide-up-delay-2 flex items-baseline gap-2 mb-4">
                     <span className="text-5xl md:text-6xl font-black text-white tracking-tight">
                         ${activePlan.price}
                     </span>
                     <span className="text-[var(--vapi-gray-text)] text-lg">/one-time</span>
+                </div>
+
+                {/* Urgency Timer - FOMO */}
+                <div className="animate-slide-up-delay-2 mb-8">
+                    <UrgencyTimer hoursToExpire={24} label="Launch pricing ends in" />
                 </div>
 
                 {/* CTA Button - Mint Pill Style */}

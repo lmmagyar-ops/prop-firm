@@ -5,4 +5,7 @@ export { ComparisonSection } from './ComparisonSection';
 export { FAQSection } from './FAQSection';
 export { Testimonials } from './Testimonials';
 export { LiveStatsBar } from './LiveStatsBar';
+export { ExitIntentModal } from './ExitIntentModal';
+export { UrgencyTimer } from './UrgencyTimer';
+
 

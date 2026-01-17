@@ -2,7 +2,7 @@
 
 import { DashboardView } from "@/components/dashboard/DashboardView";
 import { LandingHero } from "@/components/dashboard/LandingHero";
-import { LandingPage } from "@/components/landing";
+import { LandingPage, ExitIntentModal } from "@/components/landing";
 import { VoiceAssistant } from "@/components/VoiceAssistant";
 import { useEffect, useState } from "react";
 import { trackEvent, VoiceEvents, wasVoiceAIUsed } from "@/lib/analytics";
@@ -50,6 +50,10 @@ export default function Page() {
 
       {/* Voice AI Assistant */}
       <VoiceAssistant />
+
+      {/* Exit Intent Popup - Captures leaving visitors */}
+      <ExitIntentModal discountCode="STAYFUNDED" discountPercent={15} />
     </div>
   );
 }
+
