@@ -15,8 +15,10 @@ npm run db:push      # Push Drizzle schema to PostgreSQL
 npm run db:generate  # Generate migrations
 
 # Testing
-npm run test         # Vitest unit tests
-npm run test:engine  # Trading engine verification
+npm run test                                    # All Vitest unit tests
+npm run test:engine                             # Trading engine verification
+npm run test -- tests/discount-security.test.ts # Discount security (47 tests)
+npm run test -- tests/payout-logic.test.ts      # Payout flow tests
 
 # Workers (local)
 npx tsx src/workers/ingestion.ts  # Start price ingestion
@@ -297,6 +299,54 @@ REDIS_PORT=6379
 ```bash
 # Push schema to production
 DATABASE_URL="..." npm run db:push
+```
+
+---
+
+## Testing
+
+### Test Suites
+
+| Suite | File | Description |
+|-------|------|-------------|
+| **Discount Security** | `tests/discount-security.test.ts` | 47 tests covering validation, calculation, auth, fraud prevention |
+| **Payout Logic** | `tests/payout-logic.test.ts` | Profit split calculations, payout eligibility |
+| **Achievements** | `tests/achievements.test.ts` | Trading achievement unlock logic |
+| **Trade Engine** | `npm run test:engine` | Full trade execution verification |
+
+### Running Tests
+
+```bash
+# All tests
+npm run test
+
+# Specific suite
+npm run test -- tests/discount-security.test.ts
+
+# Watch mode
+npm run test -- --watch
+
+# Coverage
+npm run test -- --coverage
+```
+
+### Discount Security Tests (Critical)
+
+The discount system is protected by 47 tests covering:
+
+- **Validation**: Date ranges, usage limits, tier eligibility, new customer checks
+- **Calculation**: Percentage discounts, fixed amounts, rounding, edge cases
+- **Authentication**: Auth requirements for redemption vs. validation
+- **Authorization**: Admin-only operations (create, delete, view all)
+- **Fraud Prevention**: IP tracking, duplicate detection, price manipulation
+- **Test Code Detection**: Blocks `TEST*`, `DEMO*`, `DEV*` etc. in production
+
+**Production Protection**: Codes starting with test patterns are automatically blocked:
+```typescript
+const TEST_CODE_PATTERNS = [
+    /^TEST/i, /^DEMO/i, /^DEV/i, /^STAGING/i,
+    /^FAKE/i, /^DUMMY/i, /^SAMPLE/i, /^DEBUG/i
+];
 ```
 
 ---
