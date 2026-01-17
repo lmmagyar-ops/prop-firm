@@ -1,6 +1,7 @@
 
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { TopNav } from "@/components/dashboard/TopNav";
+import { PageViewTracker } from "@/components/PageViewTracker";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { challenges } from "@/db/schema";
@@ -34,6 +35,9 @@ export default async function DashboardLayout({
 
     return (
         <div className="min-h-screen bg-[#0E1217] flex font-sans text-white">
+            {/* Page View Tracking */}
+            <PageViewTracker userId={userId} />
+
             {/* Sidebar now auto-detects active page from URL */}
             <Sidebar hasActiveChallenge={hasActiveChallenge} />
 
@@ -47,3 +51,4 @@ export default async function DashboardLayout({
         </div>
     );
 }
+
