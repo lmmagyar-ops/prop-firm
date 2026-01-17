@@ -409,16 +409,49 @@ r.get('event:active_list').then(d => console.log(JSON.parse(d).length + ' events
 "
 ```
 
----
 
-## Git Workflow
+## Git Workflow (Staging-First)
 
-- **main** → Production (Vercel auto-deploy)
-- **staging** → Testing branch
-- Merge to main for production releases
+- **develop** → Staging (Vercel preview URL)
+- **main** → Production (auto-deploys to prop-firmx.vercel.app)
 
 ```bash
-git checkout main
-git merge staging
-git push origin main
+# Make changes on develop first
+git checkout develop
+# ... make changes ...
+git push origin develop
+# Test on Vercel preview URL
+
+# Promote to production
+git checkout main && git merge develop && git push origin main
 ```
+
+See `.agent/workflows/deploy.md` for detailed instructions.
+
+---
+
+## Recent Component Additions (Jan 2026)
+
+### Trading UX Enhancements
+| Component | Purpose |
+|-----------|---------|
+| `OrderBook.tsx` | Enhanced with order clustering, spread indicator, depth bars |
+| `TradingPanel.tsx` | Added keyboard shortcuts (Y/N/B/1-4/?) |
+| `MobileTradeSheet.tsx` | Bottom sheet for mobile trading (drag-to-dismiss) |
+| `PWAInstallPrompt.tsx` | iOS/Android install prompt |
+
+### Landing Page
+| Component | Purpose |
+|-----------|---------|
+| `LiveStatsBar.tsx` | Animated platform stats (disabled for launch) |
+| `Testimonials.tsx` | Auto-rotate carousel (disabled for launch) |
+| `ExitIntentModal.tsx` | Exit-intent popup with discount code |
+| `UrgencyTimer.tsx` | Countdown timer for FOMO |
+
+### SEO
+| File | Purpose |
+|------|---------|
+| `sitemap.ts` | Dynamic sitemap generation |
+| `robots.ts` | Crawler rules |
+| `about/page.tsx` | SEO landing page |
+
