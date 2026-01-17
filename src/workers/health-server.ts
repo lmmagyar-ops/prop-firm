@@ -2,7 +2,10 @@
  * Health Server for Railway Health Checks
  * 
  * Minimal HTTP server that exposes a /health endpoint for Railway's
- * container health monitoring. Returns 503 if Redis is unreachable.
+ * container health monitoring. 
+ * 
+ * IMPORTANT: Returns 200 even during Redis issues to prevent cascading restarts.
+ * Railway will restart if this returns 503, so we only do that for fatal issues.
  */
 
 import http from 'http';
@@ -14,7 +17,7 @@ interface HealthStatus {
     workerId?: string;
     isLeader?: boolean;
     uptime?: number;
-    redis?: 'connected' | 'disconnected';
+    redis?: 'connected' | 'disconnected' | 'reconnecting';
     reason?: string;
 }
 
@@ -42,10 +45,10 @@ export function startHealthServer(
             };
 
             try {
-                // Verify Redis connectivity with timeout
+                // Check Redis status with short timeout
                 const pingPromise = redis.ping();
                 const timeoutPromise = new Promise((_, reject) =>
-                    setTimeout(() => reject(new Error('Redis ping timeout')), 5000)
+                    setTimeout(() => reject(new Error('Redis ping timeout')), 2000)
                 );
 
                 await Promise.race([pingPromise, timeoutPromise]);
@@ -54,13 +57,19 @@ export function startHealthServer(
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify(health));
             } catch (err: unknown) {
+                // IMPORTANT: Return 200 even with Redis issues!
+                // Railway restarts on 503, which causes cascading failures.
+                // The worker can reconnect to Redis automatically.
                 const message = err instanceof Error ? err.message : String(err);
-                health.status = 'unhealthy';
-                health.redis = 'disconnected';
+                health.status = 'degraded'; // Not unhealthy, just degraded
+                health.redis = 'reconnecting';
                 health.reason = message;
 
-                res.writeHead(503, { 'Content-Type': 'application/json' });
+                // Still return 200 - process is alive, Redis will reconnect
+                res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify(health));
+
+                console.log('[Health] Degraded mode - Redis reconnecting:', message);
             }
             return;
         }
