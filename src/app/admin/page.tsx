@@ -70,7 +70,7 @@ export default function AdminDashboard() {
                 {/* System Heartbeat and Revenue Ticker */}
                 <div className="flex flex-col md:flex-row gap-4">
                     <SystemHeartbeat />
-                    <RevenueOdometer targetValue={13500} />
+                    <RevenueOdometer />
                 </div>
 
                 <div className="flex justify-between items-center">
