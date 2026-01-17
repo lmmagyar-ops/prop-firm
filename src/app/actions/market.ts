@@ -183,15 +183,82 @@ export async function getActiveEvents(platform: Platform = "polymarket"): Promis
         if (!data) return [];
 
         const events = JSON.parse(data) as EventMetadata[];
+        const now = new Date();
 
-        // NOTE: Prices are already stored in the event data from ingestion.
-        // We removed the N*M Redis calls for order book enrichment here
-        // to prevent >100 round-trips on every page load.
-        // Live prices are fetched on-demand in the trading widget.
+        // Filter out expired events (end date in the past)
+        const activeEvents = events.filter(event => {
+            // If no end date, assume it's still active
+            if (!event.endDate) return true;
 
-        return events;
+            try {
+                const endDate = new Date(event.endDate);
+                // Keep events that haven't ended yet
+                // Add 1 hour buffer for settlement time
+                return endDate.getTime() + (60 * 60 * 1000) > now.getTime();
+            } catch {
+                // If date parsing fails, keep the event
+                return true;
+            }
+        });
+
+        // Also filter individual markets within events that may have expired
+        const filteredEvents = activeEvents.map(event => {
+            if (!event.markets || event.markets.length === 0) return event;
+
+            // Filter out sub-markets with names indicating past dates
+            const filteredMarkets = event.markets.filter(market => {
+                const q = market.question.toLowerCase();
+
+                // Check for date patterns like "January 12" or "January 12?"
+                const datePatterns = [
+                    /january\s+\d{1,2}(?:\?|$|\s)/i,
+                    /february\s+\d{1,2}(?:\?|$|\s)/i,
+                    /march\s+\d{1,2}(?:\?|$|\s)/i,
+                    /april\s+\d{1,2}(?:\?|$|\s)/i,
+                    /may\s+\d{1,2}(?:\?|$|\s)/i,
+                    /june\s+\d{1,2}(?:\?|$|\s)/i,
+                    /july\s+\d{1,2}(?:\?|$|\s)/i,
+                    /august\s+\d{1,2}(?:\?|$|\s)/i,
+                    /september\s+\d{1,2}(?:\?|$|\s)/i,
+                    /october\s+\d{1,2}(?:\?|$|\s)/i,
+                    /november\s+\d{1,2}(?:\?|$|\s)/i,
+                    /december\s+\d{1,2}(?:\?|$|\s)/i,
+                ];
+
+                for (const pattern of datePatterns) {
+                    const match = q.match(pattern);
+                    if (match) {
+                        // Extract the date and check if it's past
+                        const matchText = match[0].trim().replace('?', '');
+                        const currentYear = now.getFullYear();
+                        const parsedDate = new Date(`${matchText} ${currentYear}`);
+
+                        // If parsing worked and date is in the past (with 1 day buffer)
+                        if (!isNaN(parsedDate.getTime())) {
+                            const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+                            if (parsedDate < oneDayAgo) {
+                                return false; // Filter out this market
+                            }
+                        }
+                    }
+                }
+
+                return true; // Keep the market
+            });
+
+            // Only return event if it still has markets
+            return {
+                ...event,
+                markets: filteredMarkets
+            };
+        }).filter(event => event.markets.length > 0);
+
+        console.log(`[getActiveEvents] Filtered ${events.length - filteredEvents.length} expired events`);
+
+        return filteredEvents;
     } catch (e) {
         console.error(`Failed to fetch active events for ${platform}`, e);
         return [];
     }
 }
+
