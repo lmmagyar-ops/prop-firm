@@ -11,7 +11,8 @@ import {
     Zap,
     Clock,
     CheckCircle,
-    XCircle
+    XCircle,
+    Ticket
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -148,7 +149,7 @@ export function AdminQuickActions() {
             </div>
 
             {/* Operational Stats Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
                 {/* Pending Payouts */}
                 <Link href="/admin/payouts" className="group">
                     <div className="bg-zinc-800/50 hover:bg-zinc-800 border border-white/5 hover:border-amber-500/30 rounded-lg p-4 transition-all">
@@ -220,6 +221,19 @@ export function AdminQuickActions() {
                         <div className={`text-2xl font-bold ${(stats?.riskAlerts || 0) > 0 ? "text-red-500" : "text-white"
                             }`}>
                             {stats?.riskAlerts || 0}
+                        </div>
+                    </div>
+                </Link>
+
+                {/* Create Discount - Quick Action */}
+                <Link href="/admin/discounts" className="group">
+                    <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 hover:from-purple-500/20 hover:to-pink-500/20 border border-purple-500/30 hover:border-purple-500/50 rounded-lg p-4 transition-all">
+                        <div className="flex items-center gap-2 mb-2">
+                            <Ticket className="w-4 h-4 text-purple-400" />
+                            <span className="text-xs text-purple-300">Create Discount</span>
+                        </div>
+                        <div className="text-sm font-medium text-purple-200">
+                            + New Code
                         </div>
                     </div>
                 </Link>

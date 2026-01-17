@@ -1,11 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, ShieldAlert, Users, Lock, BarChart3, Settings, LogOut, Rocket, BookOpen, UserCog, Ticket, UsersRound } from "lucide-react";
+import { LayoutDashboard, ShieldAlert, Users, Lock, BarChart3, Settings, LogOut, Rocket, BookOpen, UserCog, Ticket, UsersRound, Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { signOut } from "next-auth/react";
+import { Button } from "@/components/ui/button";
 
 const navigation = [
     { name: "Overview", href: "/admin", icon: LayoutDashboard },
@@ -25,8 +27,9 @@ const growthNavigation = [
 
 export function AdminSidebar() {
     const pathname = usePathname();
+    const [mobileOpen, setMobileOpen] = useState(false);
 
-    const NavItem = ({ item, isBottom = false }: { item: { name: string, href: string, icon: any }, isBottom?: boolean }) => {
+    const NavItem = ({ item, onClick }: { item: { name: string, href: string, icon: any }, onClick?: () => void }) => {
         const Icon = item.icon;
         const isActive = item.href === "/admin"
             ? pathname === "/admin"
@@ -36,6 +39,7 @@ export function AdminSidebar() {
             <Link
                 href={item.href}
                 className="relative group block"
+                onClick={onClick}
             >
                 {isActive && (
                     <motion.div
@@ -60,10 +64,10 @@ export function AdminSidebar() {
         );
     };
 
-    return (
-        <div className="flex flex-col h-full bg-zinc-950/80 border-r border-white/5 backdrop-blur-xl w-64">
+    const SidebarContent = ({ onItemClick }: { onItemClick?: () => void }) => (
+        <>
             <div className="p-6 border-b border-white/5">
-                <Link href="/" className="flex items-center gap-2 group">
+                <Link href="/" className="flex items-center gap-2 group" onClick={onItemClick}>
                     <div className="h-8 w-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center group-hover:bg-indigo-500/20 transition-colors">
                         <span className="font-bold text-indigo-500">M</span>
                     </div>
@@ -75,14 +79,14 @@ export function AdminSidebar() {
                 <div className="text-xs font-semibold text-zinc-600 uppercase tracking-wider mb-2 px-3">Platform</div>
                 <nav className="space-y-1">
                     {navigation.map((item) => (
-                        <NavItem key={item.name} item={item} />
+                        <NavItem key={item.name} item={item} onClick={onItemClick} />
                     ))}
                 </nav>
 
                 <div className="text-xs font-semibold text-zinc-600 uppercase tracking-wider mb-2 px-3 mt-6">Growth & Marketing</div>
                 <nav className="space-y-1">
                     {growthNavigation.map((item) => (
-                        <NavItem key={item.name} item={item} />
+                        <NavItem key={item.name} item={item} onClick={onItemClick} />
                     ))}
                 </nav>
             </div>
@@ -90,7 +94,7 @@ export function AdminSidebar() {
             <div className="p-4 border-t border-white/5">
                 <div className="text-xs font-semibold text-zinc-600 uppercase tracking-wider mb-2 px-3">System</div>
                 <nav className="space-y-1">
-                    <NavItem item={{ name: "Settings", href: "/admin/settings", icon: Settings }} />
+                    <NavItem item={{ name: "Settings", href: "/admin/settings", icon: Settings }} onClick={onItemClick} />
                     <button
                         onClick={() => signOut({ callbackUrl: "/" })}
                         className="w-full relative flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg text-red-500/70 hover:text-red-400 hover:bg-red-500/10 transition-all group"
@@ -100,6 +104,65 @@ export function AdminSidebar() {
                     </button>
                 </nav>
             </div>
-        </div>
+        </>
+    );
+
+    return (
+        <>
+            {/* Mobile Header with Hamburger */}
+            <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-zinc-950/95 border-b border-white/5 backdrop-blur-xl">
+                <div className="flex items-center justify-between px-4 py-3">
+                    <Link href="/" className="flex items-center gap-2">
+                        <div className="h-8 w-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center">
+                            <span className="font-bold text-indigo-500">M</span>
+                        </div>
+                        <span className="font-bold text-lg tracking-tight text-white/90">Mission Control</span>
+                    </Link>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setMobileOpen(!mobileOpen)}
+                        className="h-10 w-10 p-0"
+                    >
+                        {mobileOpen ? (
+                            <X className="h-5 w-5 text-zinc-400" />
+                        ) : (
+                            <Menu className="h-5 w-5 text-zinc-400" />
+                        )}
+                    </Button>
+                </div>
+            </div>
+
+            {/* Mobile Drawer */}
+            <AnimatePresence>
+                {mobileOpen && (
+                    <>
+                        {/* Backdrop */}
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setMobileOpen(false)}
+                            className="lg:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+                        />
+                        {/* Drawer */}
+                        <motion.div
+                            initial={{ x: -280 }}
+                            animate={{ x: 0 }}
+                            exit={{ x: -280 }}
+                            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                            className="lg:hidden fixed top-0 left-0 bottom-0 z-50 w-72 bg-zinc-950 border-r border-white/5 flex flex-col"
+                        >
+                            <SidebarContent onItemClick={() => setMobileOpen(false)} />
+                        </motion.div>
+                    </>
+                )}
+            </AnimatePresence>
+
+            {/* Desktop Sidebar */}
+            <div className="hidden lg:flex flex-col h-full bg-zinc-950/80 border-r border-white/5 backdrop-blur-xl w-64">
+                <SidebarContent />
+            </div>
+        </>
     );
 }
