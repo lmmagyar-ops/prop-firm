@@ -150,6 +150,7 @@ export default async function TradePage() {
                         balance={balance}
                         userId={userId}
                         platform={platform}
+                        challengeId={data?.activeChallenge?.id}
                     />
                 )}
             </div>
