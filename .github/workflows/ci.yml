@@ -35,7 +35,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install --legacy-peer-deps
 
       - name: Type check
         run: npm run type-check
@@ -59,7 +59,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install --legacy-peer-deps
 
       # CI=true triggers vitest.config.ts to skip simulation/ tests
       - name: Run tests
@@ -93,7 +93,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install --legacy-peer-deps
 
       # Run ONLY simulation tests (CI=false to include them)
       - name: Run simulation tests
@@ -117,7 +117,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install --legacy-peer-deps
 
       - name: Build application
         run: npm run build
