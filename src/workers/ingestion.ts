@@ -550,6 +550,11 @@ class IngestionWorker {
                         // delisted or inactive. Keep low-probability markets (0.1%+).
                         if (yesPrice < 0.001) continue;
 
+                        // Skip markets with exactly 50% price (±0.5%) - these are placeholder
+                        // prices with no real trading activity (e.g., 2028 elections).
+                        // Real markets almost never land exactly at 50%.
+                        if (Math.abs(yesPrice - 0.5) < 0.005) continue;
+
                         allEventTokenIds.push(tokenId);
 
                         subMarkets.push({
@@ -668,6 +673,12 @@ class IngestionWorker {
 
                             // Skip stale markets where both prices are 0 or near-0
                             if (yesPrice < 0.001 && noPrice < 0.001) {
+                                continue;
+                            }
+
+                            // Skip markets with exactly 50% price (±0.5%) - placeholder prices
+                            // with no real trading activity. Real markets rarely hit exactly 50%.
+                            if (Math.abs(yesPrice - 0.5) < 0.005) {
                                 continue;
                             }
 
