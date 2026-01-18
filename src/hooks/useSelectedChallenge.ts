@@ -62,6 +62,13 @@ export function useSelectedChallenge(challenges: Challenge[]) {
         }
         // Auto-select: Pick the most recent active challenge only if nothing stored
         else {
+            // Clear the stale stored values since they don't match any active challenges
+            if (preferredId) {
+                console.log("[ChallengeSelector] Clearing stale stored ID:", preferredId);
+                localStorage.removeItem("selectedChallengeId");
+                document.cookie = "selectedChallengeId=; path=/; max-age=0"; // Delete cookie
+            }
+
             console.log("[ChallengeSelector] No valid stored selection, auto-selecting...");
             const mostRecent = challenges
                 .filter(c => c.status === "active")
