@@ -11,6 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, MessageSquare, Check, ShieldCheck, Lock, CreditCard, Bitcoin, Copy, ExternalLink, ArrowRight, Tag } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
+import { useSession } from "next-auth/react";
 
 // Type for applied discount state
 interface AppliedDiscount {
@@ -33,6 +34,22 @@ function CheckoutContent() {
     const [profitSplit, setProfitSplit] = useState(false);
     const [agreedRules, setAgreedRules] = useState(false);
     const [agreedRefund, setAgreedRefund] = useState(false);
+
+    // User identity - pre-filled from session
+    const { data: session } = useSession();
+    const [firstName, setFirstName] = useState("");
+    const [lastName, setLastName] = useState("");
+    const [email, setEmail] = useState("");
+
+    // Pre-fill identity from session when available
+    useEffect(() => {
+        if (session?.user) {
+            const nameParts = (session.user.name || "").split(" ");
+            setFirstName(nameParts[0] || "");
+            setLastName(nameParts.slice(1).join(" ") || "");
+            setEmail(session.user.email || "");
+        }
+    }, [session]);
 
     // Payment Method State
     const [paymentMethod, setPaymentMethod] = useState<"card" | "crypto">("card");
@@ -181,16 +198,26 @@ function CheckoutContent() {
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-1">
                                     <label className="text-xs font-bold text-blue-400">First Name</label>
-                                    <Input placeholder="John" className="bg-[#162231] border-0 h-10" />
+                                    <Input
+                                        placeholder="John"
+                                        value={firstName}
+                                        onChange={(e) => setFirstName(e.target.value)}
+                                        className="bg-[#162231] border-0 h-10"
+                                    />
                                 </div>
                                 <div className="space-y-1">
                                     <label className="text-xs font-bold text-blue-400">Last Name</label>
-                                    <Input placeholder="Doe" className="bg-[#162231] border-0 h-10" />
+                                    <Input
+                                        placeholder="Doe"
+                                        value={lastName}
+                                        onChange={(e) => setLastName(e.target.value)}
+                                        className="bg-[#162231] border-0 h-10"
+                                    />
                                 </div>
                             </div>
                             <div className="space-y-1 mt-4">
                                 <label className="text-xs font-bold text-blue-400">Email Address</label>
-                                <Input value="sliponchain@gmail.com" readOnly className="bg-[#162231] border-0 h-10 font-mono text-zinc-400 cursor-not-allowed" />
+                                <Input value={email} readOnly className="bg-[#162231] border-0 h-10 font-mono text-zinc-400 cursor-not-allowed" />
                             </div>
                         </div>
 
@@ -404,8 +431,8 @@ function CheckoutContent() {
                                             onClick={handleApplyDiscount}
                                             disabled={discountLoading || !discountCode.trim()}
                                             className={`bg-blue-600 hover:bg-blue-500 min-w-[80px] ${discountCode.trim() && !discountLoading
-                                                    ? "animate-pulse shadow-[0_0_15px_rgba(37,99,235,0.5)]"
-                                                    : ""
+                                                ? "animate-pulse shadow-[0_0_15px_rgba(37,99,235,0.5)]"
+                                                : ""
                                                 }`}
                                         >
                                             {discountLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Apply"}
