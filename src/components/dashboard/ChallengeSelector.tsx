@@ -174,11 +174,17 @@ export function ChallengeSelector({ challenges, selectedChallengeId, onSelect }:
                                                     key={challenge.id}
                                                     onClick={() => {
                                                         const wasAlreadySelected = challenge.id === selectedChallengeId;
+                                                        console.log("[ChallengeSelector] Click! Switching to:", challenge.id, "wasAlreadySelected:", wasAlreadySelected);
                                                         onSelect(challenge.id);
                                                         setIsOpen(false);
                                                         // Reload page to fetch correct platform markets (only if switching)
                                                         if (!wasAlreadySelected) {
-                                                            setTimeout(() => window.location.reload(), 100);
+                                                            // Verify storage was set before reload
+                                                            setTimeout(() => {
+                                                                const stored = localStorage.getItem("selectedChallengeId");
+                                                                console.log("[ChallengeSelector] Before reload - localStorage:", stored);
+                                                                window.location.reload();
+                                                            }, 300);
                                                         }
                                                     }}
                                                     className={cn(
@@ -299,11 +305,16 @@ export function ChallengeSelector({ challenges, selectedChallengeId, onSelect }:
                                                     key={challenge.id}
                                                     onClick={() => {
                                                         const wasAlreadySelected = challenge.id === selectedChallengeId;
+                                                        console.log("[ChallengeSelector] Click! Switching to:", challenge.id, "wasAlreadySelected:", wasAlreadySelected);
                                                         onSelect(challenge.id);
                                                         setIsOpen(false);
                                                         // Reload page to fetch correct platform markets (only if switching)
                                                         if (!wasAlreadySelected) {
-                                                            setTimeout(() => window.location.reload(), 100);
+                                                            setTimeout(() => {
+                                                                const stored = localStorage.getItem("selectedChallengeId");
+                                                                console.log("[ChallengeSelector] Before reload - localStorage:", stored);
+                                                                window.location.reload();
+                                                            }, 300);
                                                         }
                                                     }}
                                                     className={cn(
