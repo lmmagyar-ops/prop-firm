@@ -195,12 +195,13 @@ export class RiskEngine {
 
     /**
      * Get exposure limit based on market volume tier
-     * >$10M = 5%, $1-10M = 2.5%, $100k-1M = 0.5%, <$100k = 0 (blocked)
+     * More permissive limits to allow proper trading while protecting against illiquid markets
+     * >$10M = 10%, $1-10M = 5%, $100k-1M = 2%, <$100k = blocked
      */
     private static getExposureLimitByVolume(balance: number, volume: number): number {
-        if (volume >= 10_000_000) return balance * 0.05;   // 5% for high volume
-        if (volume >= 1_000_000) return balance * 0.025;   // 2.5% for medium volume
-        if (volume >= 100_000) return balance * 0.005;     // 0.5% for low volume
+        if (volume >= 10_000_000) return balance * 0.10;   // 10% for high volume ($1000 on $10k)
+        if (volume >= 1_000_000) return balance * 0.05;    // 5% for medium volume ($500 on $10k)
+        if (volume >= 100_000) return balance * 0.02;      // 2% for low volume ($200 on $10k)
         return 0; // Block trading on <$100k volume markets (handled by RULE 7)
     }
 
