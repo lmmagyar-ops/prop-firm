@@ -5,6 +5,7 @@ import { motion, AnimatePresence, useDragControls, PanInfo } from "framer-motion
 import { X, TrendingUp, TrendingDown, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { haptics } from "@/lib/haptics";
+import { toast } from "sonner";
 import confetti from "canvas-confetti";
 
 /**
@@ -97,8 +98,10 @@ export function MobileTradeSheet({
                 origin: { y: 0.8 }
             });
             onClose();
-        } catch (error) {
-            console.error("Trade failed:", error);
+        } catch (error: any) {
+            const errorMessage = error?.message || "Trade failed";
+            console.error("Trade failed:", errorMessage);
+            toast.error(errorMessage);
             try { haptics.error(); } catch (e) { }
         } finally {
             setLoading(false);

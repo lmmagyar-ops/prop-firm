@@ -330,6 +330,20 @@ npm run test -- --watch
 npm run test -- --coverage
 ```
 
+### CI Test Tiering (Anthropic Pattern)
+
+Tests are **tiered by execution time** to keep CI fast:
+
+| Tier | Tests | When Run | Max Time |
+|------|-------|----------|----------|
+| **Unit/Integration** | Business logic, API mocks | Every push | ~2 min |
+| **Simulation** | Monte Carlo, stress tests | Nightly (6 AM UTC) | 2h |
+
+**How it works:**
+- `vitest.config.ts` detects `CI=true` and excludes `tests/simulation/**`
+- GitHub Actions workflow has separate `simulation` job on schedule
+- Manual trigger: **Actions → CI → Run workflow → ✓ Run simulations**
+
 ### Discount Security Tests (Critical)
 
 The discount system is protected by 47 tests covering:

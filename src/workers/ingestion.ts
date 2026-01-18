@@ -323,10 +323,33 @@ class IngestionWorker {
             if (!categories.includes('Crypto')) categories.push('Crypto');
         }
 
-        // Sports
-        if (q.includes('nfl') || q.includes('nba') || q.includes('super bowl') ||
-            q.includes('world cup') || q.includes('playoffs') || q.includes('championship') ||
-            q.includes('world series') || q.includes('stanley cup') || q.includes('ufc')) {
+        // Sports - Expanded detection for better coverage
+        // Major leagues
+        if (q.includes('nfl') || q.includes('nba') || q.includes('nhl') ||
+            q.includes('mlb') || q.includes('ncaa') || q.includes('cfb') ||
+            q.includes('cbb') || q.includes('ufc') || q.includes('mma') ||
+            // Championship/tournament keywords
+            q.includes('super bowl') || q.includes('world cup') || q.includes('playoffs') ||
+            q.includes('championship') || q.includes('world series') || q.includes('stanley cup') ||
+            q.includes('champions league') || q.includes('ucl') || q.includes('mvp') ||
+            q.includes('finals') || q.includes('tournament') ||
+            // Soccer leagues  
+            q.includes('premier league') || q.includes('epl') || q.includes('la liga') ||
+            q.includes('bundesliga') || q.includes('serie a') || q.includes('ligue 1') ||
+            q.includes('fifa') || q.includes('soccer') ||
+            // NFL Teams (major markets)
+            q.includes('bills') || q.includes('dolphins') || q.includes('patriots') || q.includes('jets') ||
+            q.includes('ravens') || q.includes('bengals') || q.includes('browns') || q.includes('steelers') ||
+            q.includes('broncos') || q.includes('chiefs') || q.includes('raiders') || q.includes('chargers') ||
+            q.includes('cowboys') || q.includes('giants') || q.includes('eagles') || q.includes('commanders') ||
+            q.includes('packers') || q.includes('vikings') || q.includes('49ers') || q.includes('seahawks') ||
+            // NBA Teams (major markets)
+            q.includes('lakers') || q.includes('celtics') || q.includes('warriors') || q.includes('knicks') ||
+            q.includes('nuggets') || q.includes('mavericks') || q.includes('thunder') || q.includes('heat') ||
+            q.includes('bucks') || q.includes('76ers') || q.includes('suns') || q.includes('clippers') ||
+            // Common sports figures/terms
+            q.includes('jokic') || q.includes('lebron') || q.includes('curry') || q.includes('mahomes') ||
+            q.includes('kelce') || q.includes('giannis') || q.includes('shai') || q.includes('tatum')) {
             if (!categories.includes('Sports')) categories.push('Sports');
         }
 

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Loader2, Keyboard } from "lucide-react";
 import { haptics } from "@/lib/haptics";
+import { toast } from "sonner";
 import confetti from 'canvas-confetti';
 
 /**
@@ -57,8 +58,10 @@ export function TradingPanel({ yesPrice, noPrice, balance, onTrade, loading: ext
                 spread: 70,
                 origin: { y: 0.6 }
             });
-        } catch (error) {
-            console.error("Trade failed:", error);
+        } catch (error: any) {
+            const errorMessage = error?.message || "Trade failed";
+            console.error("Trade failed:", errorMessage);
+            toast.error(errorMessage);
             try { haptics.error(); } catch (e) { }
         } finally {
             setInternalLoading(false);
