@@ -187,7 +187,7 @@ class KalshiIngestionWorker {
             for (const [eventTicker, eventMarkets] of marketsByEvent) {
                 // Use first market's title as event title, or derive from ticker
                 const primaryMarket = eventMarkets[0];
-                let eventTitle = primaryMarket.event_title || primaryMarket.title || eventTicker;
+                const eventTitle = primaryMarket.event_title || primaryMarket.title || eventTicker;
 
                 // Deduplicate by title
                 const normalizedTitle = eventTitle.trim().toLowerCase();

@@ -35,7 +35,7 @@ export function ChartsVsReality() {
             if (!isDragging) {
                 if (time - lastTime > 30) { // Limit framerate for this specific auto-movement
                     setSliderValue(prev => {
-                        let next = prev + 0.2 * direction;
+                        const next = prev + 0.2 * direction;
                         if (next > 65) direction = -1;
                         if (next < 35) direction = 1;
                         return next;

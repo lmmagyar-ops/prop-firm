@@ -66,7 +66,7 @@ export function DashboardView({ initialBalance = null, demoMode = false, userId 
             return;
         }
 
-        let isLive = false;
+        const isLive = false;
 
         // DISABLED: WebSocket (Not available on Vercel serverless)
         // TODO: Re-enable when WS server is deployed to Railway/Render

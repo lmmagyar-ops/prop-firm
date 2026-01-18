@@ -48,7 +48,7 @@ export function generateChartData(
     }
 
     const data: ChartDataPoint[] = [];
-    let price = currentPrice;
+    const price = currentPrice;
 
     // We generate backwards from now to start? No, generates forward from start to now.
     // We want the LAST point to be currentPrice.

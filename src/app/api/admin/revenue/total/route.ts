@@ -34,7 +34,7 @@ export async function GET() {
         let today = 0;
         let thisWeek = 0;
         let thisMonth = 0;
-        let totalChallenges = allChallenges.length;
+        const totalChallenges = allChallenges.length;
 
         for (const challenge of allChallenges) {
             const price = getTierPrice(challenge.startingBalance);

@@ -60,7 +60,7 @@ export async function GET(
         // In a real app, you'd have a 'daily_snapshots' table. 
         // Here we'll simulate it by aggregating trades by day.
         const timelineData = [];
-        let runningBalance = Number(challenge.currentBalance); // This is current, so working backwards might be hard without logic.
+        const runningBalance = Number(challenge.currentBalance); // This is current, so working backwards might be hard without logic.
         // Simpler approach for MVP: Start from 'startingBalance' and apply trades.
 
 

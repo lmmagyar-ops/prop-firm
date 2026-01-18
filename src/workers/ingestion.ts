@@ -471,7 +471,7 @@ class IngestionWorker {
             // Primary query: high-volume active events sorted by recent activity
             const url = "https://gamma-api.polymarket.com/events?active=true&closed=false&order=volume24hr&ascending=false&limit=100";
             const response = await fetch(url);
-            let events = await response.json();
+            const events = await response.json();
 
             if (!Array.isArray(events)) {
                 console.error("[Ingestion] Invalid response from Events API");
@@ -544,7 +544,7 @@ class IngestionWorker {
                         seenQuestions.add(normalizedQ);
 
                         const tokenId = clobTokens[0];
-                        let yesPrice = parseFloat(prices[0] || "0");
+                        const yesPrice = parseFloat(prices[0] || "0");
 
                         // Skip markets with truly 0% prices (exactly 0) - these are
                         // delisted or inactive. Keep low-probability markets (0.1%+).

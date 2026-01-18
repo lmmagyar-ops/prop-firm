@@ -160,7 +160,7 @@ export class MarketService {
 
             // Fetch prices for each market from the preloaded maps
             for (const marketId of marketIds) {
-                let market = kalshiMarkets.get(marketId) || polyMarkets.get(marketId);
+                const market = kalshiMarkets.get(marketId) || polyMarkets.get(marketId);
 
                 if (market) {
                     results.set(marketId, {
