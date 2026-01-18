@@ -306,6 +306,15 @@ class IngestionWorker {
         }
 
         // SPORTS DETECTION - Check multiple sources
+        // First, check for economy/finance exclusion keywords to prevent false positives
+        const isEconomyMarket = (
+            q.includes('fed') || q.includes('gdp') || q.includes('inflation') ||
+            q.includes('rate cut') || q.includes('rate hike') || q.includes('recession') ||
+            q.includes('stock') || q.includes('s&p') || q.includes('nasdaq') ||
+            q.includes('bond') || q.includes('yield') || q.includes('cpi') ||
+            q.includes('tariff') || q.includes('trade war') || q.includes('economic')
+        );
+
         // 1. Check tags for sports identifiers
         const sportsTags = ['nfl', 'nba', 'nhl', 'mlb', 'ncaa', 'ufc', 'mma', 'soccer', 'football',
             'basketball', 'hockey', 'tennis', 'golf', 'esports', 'epl', 'premier league',
@@ -317,6 +326,7 @@ class IngestionWorker {
         const hasSportsImage = sportsImagePatterns.some(pattern => imageLower.includes(pattern));
 
         // 3. Check title keywords (existing logic, expanded)
+        // Note: Removed ambiguous team names like 'nuggets', 'jazz', 'heat' that could match non-sports
         const hasSportsKeyword = (
             q.includes('nfl') || q.includes('nba') || q.includes('nhl') ||
             q.includes('mlb') || q.includes('ncaa') || q.includes('cfb') ||
@@ -337,11 +347,10 @@ class IngestionWorker {
             q.includes('texans') || q.includes('colts') || q.includes('titans') || q.includes('jaguars') ||
             q.includes('falcons') || q.includes('panthers') || q.includes('saints') || q.includes('buccaneers') ||
             q.includes('cardinals') || q.includes('rams') || q.includes('lions') || q.includes('bears') ||
-            // NBA Teams
+            // NBA Teams (excluding ambiguous: nuggets, jazz, heat, thunder, suns, rockets)
             q.includes('lakers') || q.includes('celtics') || q.includes('warriors') || q.includes('knicks') ||
-            q.includes('nuggets') || q.includes('mavericks') || q.includes('thunder') || q.includes('heat') ||
-            q.includes('bucks') || q.includes('76ers') || q.includes('suns') || q.includes('clippers') ||
-            q.includes('jazz') || q.includes('pelicans') || q.includes('spurs') || q.includes('rockets') ||
+            q.includes('mavericks') || q.includes('bucks') || q.includes('76ers') || q.includes('clippers') ||
+            q.includes('pelicans') || q.includes('spurs') ||
             // Player names
             q.includes('jokic') || q.includes('lebron') || q.includes('curry') || q.includes('mahomes') ||
             q.includes('kelce') || q.includes('giannis') || q.includes('shai') || q.includes('tatum') ||
@@ -350,7 +359,8 @@ class IngestionWorker {
             (q.includes(' vs ') && (q.includes('win') || q.includes('beat') || q.includes('game')))
         );
 
-        if (hasSportsTag || hasSportsImage || hasSportsKeyword) {
+        // Only add Sports category if it's not an economy market
+        if (!isEconomyMarket && (hasSportsTag || hasSportsImage || hasSportsKeyword)) {
             if (!categories.includes('Sports')) categories.push('Sports');
         }
 
