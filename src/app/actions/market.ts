@@ -247,6 +247,12 @@ export async function getActiveEvents(platform: Platform = "polymarket"): Promis
                     }
                 }
 
+                // DEFENSIVE FILTER: Skip markets with exactly 50% price (±0.5%)
+                // These are placeholder prices with no real trading activity
+                if (Math.abs(market.price - 0.5) < 0.005) {
+                    return false;
+                }
+
                 return true; // Keep the market
             });
 
