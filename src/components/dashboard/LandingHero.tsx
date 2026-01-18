@@ -42,7 +42,7 @@ export function LandingHero() {
                     </h1>
 
                     <p className="text-lg md:text-xl text-[var(--vapi-gray-text)] max-w-2xl mx-auto leading-relaxed">
-                        Pass our challenge. Trade prediction markets.
+                        Pass our evaluation. Trade prediction markets.
                         <span className="text-white font-medium"> Keep up to 90% of what you earn.</span>
                     </p>
                 </div>

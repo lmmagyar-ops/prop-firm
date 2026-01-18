@@ -137,7 +137,7 @@ export function ChallengeHistoryTable({ challenges }: ChallengeHistoryTableProps
 
             {filteredChallenges.length === 0 && (
                 <div className="text-center py-12 text-zinc-500">
-                    No challenges found
+                    No evaluations found
                 </div>
             )}
         </div>
