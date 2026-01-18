@@ -68,13 +68,33 @@ export async function getDashboardData(userId: string) {
         });
     };
 
-    // 3. Find active challenge
-    const activeChallenge = await db.query.challenges.findFirst({
-        where: and(
-            eq(challenges.userId, userId),
-            eq(challenges.status, "active")
-        ),
-    });
+    // 3. Find active challenge (prefer the selected one from cookie)
+    // Import cookies for server-side reading
+    const { cookies } = await import("next/headers");
+    const cookieStore = await cookies();
+    const selectedChallengeId = cookieStore.get("selectedChallengeId")?.value;
+
+    // If user has selected a specific challenge, try to find that one
+    let activeChallenge = null;
+    if (selectedChallengeId) {
+        activeChallenge = await db.query.challenges.findFirst({
+            where: and(
+                eq(challenges.id, selectedChallengeId),
+                eq(challenges.userId, userId),
+                eq(challenges.status, "active")
+            ),
+        });
+    }
+
+    // Fallback to any active challenge if selected one not found
+    if (!activeChallenge) {
+        activeChallenge = await db.query.challenges.findFirst({
+            where: and(
+                eq(challenges.userId, userId),
+                eq(challenges.status, "active")
+            ),
+        });
+    }
 
     // Common history data
     const challengeHistory = mapChallengeHistory(allChallenges);
@@ -154,10 +174,10 @@ export async function getDashboardData(userId: string) {
     const startingBalance = parseFloat(activeChallenge.startingBalance);
 
     // CRITICAL: Defensive fallback for rulesConfig to prevent server crash on malformed data
-    const rawRules = activeChallenge.rulesConfig as any;
+    const rawRules = activeChallenge.rulesConfig as Record<string, unknown> | null;
     const rules = rawRules || {};
     const defaultProfitTarget = startingBalance * 0.10; // 10% of starting balance
-    const profitTarget = rules.profitTarget ?? defaultProfitTarget;
+    const profitTarget = (rules.profitTarget as number) ?? defaultProfitTarget;
 
     // Safe fallbacks: ensure HWM and SOD are valid (not 0 or missing)
     const hwmParsed = parseFloat(activeChallenge.highWaterMark || "0");
@@ -172,8 +192,8 @@ export async function getDashboardData(userId: string) {
     const totalPnL = equity - startingBalance;
     const dailyPnL = equity - startOfDayBalance;
 
-    const maxDrawdownLimit = rules.maxDrawdown || DEFAULT_MAX_DRAWDOWN;
-    const dailyDrawdownLimit = rules.maxDailyDrawdown || DEFAULT_DAILY_DRAWDOWN;
+    const maxDrawdownLimit = (rules.maxDrawdown as number) || DEFAULT_MAX_DRAWDOWN;
+    const dailyDrawdownLimit = (rules.maxDailyDrawdown as number) || DEFAULT_DAILY_DRAWDOWN;
 
     // Drawdown = distance from peak (high water mark) to current equity
     const drawdownAmount = Math.max(0, highWaterMark - equity);
