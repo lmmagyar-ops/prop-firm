@@ -87,6 +87,12 @@ export class RiskEngine {
         // Use efficient single-market lookup instead of fetching all markets
         const market = await getMarketById(marketId);
 
+        // DEBUG: Log market lookup result
+        console.log(`[RISK] Market lookup for ${marketId.slice(0, 12)}...:`);
+        console.log(`[RISK]   Found: ${!!market}`);
+        console.log(`[RISK]   Volume: $${market?.volume?.toLocaleString() || 'undefined'}`);
+        console.log(`[RISK]   Question: ${market?.question?.slice(0, 50) || 'unknown'}`);
+
         if (market?.categories && market.categories.length > 0) {
             const maxPerCategory = startBalance * (rules.maxCategoryExposurePercent || 0.10);
             // For category exposure, we need all markets for category mapping
