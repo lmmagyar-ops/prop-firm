@@ -43,6 +43,15 @@ export function useSelectedChallenge(challenges: Challenge[]) {
         // Use stored value from localStorage OR cookie
         const preferredId = stored || cookieValue;
 
+        // DEBUG: Log what we're checking
+        console.log("[ChallengeSelector] Debug:", {
+            storedInLocalStorage: stored,
+            storedInCookie: cookieValue,
+            preferredId,
+            challengeIds: challenges.map(c => ({ id: c.id, status: c.status })),
+            foundMatch: preferredId ? challenges.some(c => c.id === preferredId && c.status === "active") : false
+        });
+
         // If we have a stored ID and it's still valid (exists in challenges list AND is active)
         if (preferredId && challenges.some(c => c.id === preferredId && c.status === "active")) {
             console.log("[ChallengeSelector] Restoring saved selection:", preferredId);
