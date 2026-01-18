@@ -207,7 +207,7 @@ export default async function DashboardPage() {
                                 <div>
                                     <ProfitProgress
                                         totalPnL={stats.totalPnL}
-                                        profitTarget={activeChallenge.rulesConfig.profitTarget}
+                                        profitTarget={(activeChallenge.rulesConfig as Record<string, number>)?.profitTarget ?? 0}
                                         profitProgress={stats.profitProgress}
                                     />
                                 </div>
@@ -219,8 +219,8 @@ export default async function DashboardPage() {
                                 dailyDrawdownUsage={stats.dailyDrawdownUsage}
                                 startOfDayBalance={activeChallenge.startOfDayBalance}
                                 startingBalance={activeChallenge.startingBalance}
-                                maxDrawdownPercent={activeChallenge.rulesConfig?.maxDrawdownPercent || 10}
-                                dailyDrawdownPercent={activeChallenge.rulesConfig?.dailyDrawdownPercent || 5}
+                                maxDrawdownPercent={(activeChallenge.rulesConfig as Record<string, number>)?.maxDrawdownPercent ?? 10}
+                                dailyDrawdownPercent={(activeChallenge.rulesConfig as Record<string, number>)?.dailyDrawdownPercent ?? 5}
                             />
                         </>
                     )}

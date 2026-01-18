@@ -208,7 +208,7 @@ describe("RiskEngine.validateTrade", () => {
         const result = await RiskEngine.validateTrade("challenge-1", "market-1", 100);
 
         expect(result.allowed).toBe(false);
-        expect(result.reason).toContain("volume too low");
+        expect(result.reason).toContain("too little trading activity");
     });
 
     it("should reject when max open positions exceeded", async () => {
