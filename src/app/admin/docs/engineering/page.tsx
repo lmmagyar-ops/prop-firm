@@ -2,7 +2,6 @@
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
     Code2,
     Database,
@@ -17,13 +16,10 @@ import {
     CheckCircle2,
     RefreshCw,
     Lock,
-    BarChart3,
     Terminal,
     Workflow,
     Timer,
-    Globe,
     Wallet,
-    TrendingUp,
     FileCode,
     Bug,
     Rocket,
