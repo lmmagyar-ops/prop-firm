@@ -65,21 +65,21 @@ export function UserNav() {
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator className="bg-zinc-800" />
                 <DropdownMenuGroup>
-                    <Link href="/profile">
+                    <Link href="/dashboard/public-profile">
                         <DropdownMenuItem className="focus:bg-zinc-800 focus:text-white cursor-pointer">
                             <User className="mr-2 h-4 w-4" />
                             <span>Profile</span>
                             <DropdownMenuShortcut>{shift}{mod}P</DropdownMenuShortcut>
                         </DropdownMenuItem>
                     </Link>
-                    <Link href="/billing">
+                    <Link href="/dashboard/payouts">
                         <DropdownMenuItem className="focus:bg-zinc-800 focus:text-white cursor-pointer">
                             <CreditCard className="mr-2 h-4 w-4" />
                             <span>Billing</span>
                             <DropdownMenuShortcut>{mod}B</DropdownMenuShortcut>
                         </DropdownMenuItem>
                     </Link>
-                    <Link href="/settings">
+                    <Link href="/dashboard/settings">
                         <DropdownMenuItem className="focus:bg-zinc-800 focus:text-white cursor-pointer">
                             <Settings className="mr-2 h-4 w-4" />
                             <span>Settings</span>
