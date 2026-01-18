@@ -277,31 +277,42 @@ export async function getActiveEvents(platform: Platform = "polymarket"): Promis
                             // Skip if already in featured events
                             if (existingTitles.has(m.question.toLowerCase().trim())) return false;
                             // Keep if has categories (especially Sports)
-                            return m.categories && m.categories.length > 0;
+                            if (!m.categories || m.categories.length === 0) return false;
+
+                            // DEFENSIVE FILTER: Skip markets with exactly 50% price (±0.5%)
+                            // These are placeholder prices with no real trading activity
+                            const price = m.currentPrice ?? (m as any).basePrice ?? 0.5;
+                            if (Math.abs(price - 0.5) < 0.005) return false;
+
+                            return true;
                         })
-                        .map(m => ({
-                            id: m.id,
-                            title: m.question,
-                            slug: m.id,
-                            description: m.description || "",
-                            image: m.image || "",
-                            volume: m.volume || 0,
-                            endDate: m.end_date,
-                            categories: m.categories || [],
-                            markets: [{
+                        .map(m => {
+                            // Use basePrice (what ingestion writes) with proper fallback chain
+                            const price = m.currentPrice ?? (m as any).basePrice ?? 0.5;
+                            return {
                                 id: m.id,
-                                question: m.question,
-                                outcomes: m.outcomes || ["Yes", "No"],
-                                price: m.currentPrice ?? 0.5,
+                                title: m.question,
+                                slug: m.id,
+                                description: m.description || "",
+                                image: m.image || "",
                                 volume: m.volume || 0,
-                            }],
-                            isMultiOutcome: false,
-                        }));
+                                endDate: m.end_date,
+                                categories: m.categories || [],
+                                markets: [{
+                                    id: m.id,
+                                    question: m.question,
+                                    outcomes: m.outcomes || ["Yes", "No"],
+                                    price: price,
+                                    volume: m.volume || 0,
+                                }],
+                                isMultiOutcome: false,
+                            };
+                        });
 
                     // Merge: Featured events first, then converted binary markets
                     filteredEvents = [...filteredEvents, ...convertedEvents];
 
-                    console.log(`[getActiveEvents] Merged ${convertedEvents.length} binary markets with ${activeEvents.length} featured events`);
+                    console.log(`[getActiveEvents] Merged ${convertedEvents.length} binary markets (skipped ${binaryMarkets.length - convertedEvents.length - existingTitles.size} 50% placeholders)`);
                 }
             } catch (err) {
                 // Silent fail - don't break if binary markets aren't available
