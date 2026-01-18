@@ -120,7 +120,7 @@ export class RiskEngine {
                 console.log(`  ❌ BLOCKED: Volume-Tiered Exposure Limit`);
                 return {
                     allowed: false,
-                    reason: `Max exposure for ${volumeTier} market: $${exposureLimit.toFixed(2)} (trade: $${tradeAmount.toFixed(2)})`
+                    reason: `This market has limited liquidity. Max trade: $${exposureLimit.toFixed(0)}. Try a smaller amount or choose a higher-volume market.`
                 };
             }
             console.log(`  ✅ PASS`);
@@ -130,7 +130,7 @@ export class RiskEngine {
             if (tradeAmount > maxImpact) {
                 return {
                     allowed: false,
-                    reason: `Trade too large for market liquidity. Max: $${maxImpact.toFixed(2)} (10% of $${marketVolume.toFixed(0)} 24h volume)`
+                    reason: `Trade too large for this market. Max trade: $${maxImpact.toFixed(0)}. Try a smaller amount.`
                 };
             }
 
@@ -138,7 +138,7 @@ export class RiskEngine {
             if (marketVolume < (rules.minMarketVolume || 100_000)) {
                 return {
                     allowed: false,
-                    reason: `Market volume too low (<$100k). Trading blocked for safety.`
+                    reason: `This market has too little trading activity. Choose a higher-volume market to trade.`
                 };
             }
         }
