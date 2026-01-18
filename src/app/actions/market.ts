@@ -180,9 +180,12 @@ export async function getActiveEvents(platform: Platform = "polymarket"): Promis
         // Fetch from platform-specific Redis key
         const redisKey = platform === "kalshi" ? "kalshi:active_list" : "event:active_list";
         const data = await redis.get(redisKey);
-        if (!data) return [];
 
-        const events = JSON.parse(data) as EventMetadata[];
+        let events: EventMetadata[] = [];
+        if (data) {
+            events = JSON.parse(data) as EventMetadata[];
+        }
+
         const now = new Date();
 
         // Filter out expired events (end date in the past)
@@ -202,7 +205,7 @@ export async function getActiveEvents(platform: Platform = "polymarket"): Promis
         });
 
         // Also filter individual markets within events that may have expired
-        const filteredEvents = activeEvents.map(event => {
+        let filteredEvents = activeEvents.map(event => {
             if (!event.markets || event.markets.length === 0) return event;
 
             // Filter out sub-markets with names indicating past dates
@@ -254,7 +257,59 @@ export async function getActiveEvents(platform: Platform = "polymarket"): Promis
             };
         }).filter(event => event.markets.length > 0);
 
-        console.log(`[getActiveEvents] Filtered ${events.length - filteredEvents.length} expired events`);
+        // --- ENHANCEMENT: Merge high-volume binary markets (especially Sports) ---
+        // This ensures individual game markets appear in the Sports tab
+        if (platform === "polymarket") {
+            try {
+                const binaryData = await redis.get("market:active_list");
+                if (binaryData) {
+                    const binaryMarkets = JSON.parse(binaryData) as MarketMetadata[];
+
+                    // Get existing event titles for deduplication (case-insensitive)
+                    const existingTitles = new Set(
+                        filteredEvents.map(e => e.title.toLowerCase().trim())
+                    );
+
+                    // Convert binary markets to EventMetadata format
+                    // Focus on Sports and other high-volume markets not already in featured events
+                    const convertedEvents: EventMetadata[] = binaryMarkets
+                        .filter(m => {
+                            // Skip if already in featured events
+                            if (existingTitles.has(m.question.toLowerCase().trim())) return false;
+                            // Keep if has categories (especially Sports)
+                            return m.categories && m.categories.length > 0;
+                        })
+                        .map(m => ({
+                            id: m.id,
+                            title: m.question,
+                            slug: m.id,
+                            description: m.description || "",
+                            image: m.image || "",
+                            volume: m.volume || 0,
+                            endDate: m.end_date,
+                            categories: m.categories || [],
+                            markets: [{
+                                id: m.id,
+                                question: m.question,
+                                outcomes: m.outcomes || ["Yes", "No"],
+                                price: m.currentPrice || 0.5,
+                                volume: m.volume || 0,
+                            }],
+                            isMultiOutcome: false,
+                        }));
+
+                    // Merge: Featured events first, then converted binary markets
+                    filteredEvents = [...filteredEvents, ...convertedEvents];
+
+                    console.log(`[getActiveEvents] Merged ${convertedEvents.length} binary markets with ${activeEvents.length} featured events`);
+                }
+            } catch (err) {
+                // Silent fail - don't break if binary markets aren't available
+                console.error("[getActiveEvents] Failed to merge binary markets:", err);
+            }
+        }
+
+        console.log(`[getActiveEvents] Returning ${filteredEvents.length} total events`);
 
         return filteredEvents;
     } catch (e) {
