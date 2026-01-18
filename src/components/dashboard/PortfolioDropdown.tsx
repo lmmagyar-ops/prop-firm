@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Briefcase, TrendingUp, TrendingDown, ArrowRight } from "lucide-react";
+import { Briefcase, TrendingUp, TrendingDown, ArrowRight, X, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 // Types matching our DB schema conceptually
 interface Position {
@@ -22,10 +23,36 @@ export function PortfolioDropdown() {
     const [isOpen, setIsOpen] = useState(false);
     const [positions, setPositions] = useState<Position[]>([]);
     const [loading, setLoading] = useState(false); // Init false to avoid layout shift, fetch on mount
+    const [closingId, setClosingId] = useState<string | null>(null);
 
-    // TODO: Add real data fetching hook
-    // For now, mocking the "empty state" or handling logic
-    // We will need a server action or API route to get current positions quickly
+    // Close position handler
+    const handleClosePosition = async (positionId: string, e: React.MouseEvent) => {
+        e.stopPropagation(); // Prevent dropdown from closing
+        setClosingId(positionId);
+        try {
+            const response = await fetch(`/api/trade/close`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ positionId }),
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to close position');
+            }
+
+            const result = await response.json();
+            toast.success(`Position closed for $${result.proceeds?.toFixed(2) || '0.00'}`);
+
+            // Remove from local state
+            setPositions(prev => prev.filter(p => p.id !== positionId));
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Failed to close position';
+            toast.error(message);
+        } finally {
+            setClosingId(null);
+        }
+    };
 
     // Checking for recent update trigger (local storage or event)
     useEffect(() => {
@@ -103,8 +130,21 @@ export function PortfolioDropdown() {
                             ) : (
                                 <div className="divide-y divide-zinc-800/50">
                                     {positions.map((pos) => (
-                                        <div key={pos.id} className="p-3 hover:bg-zinc-800/50 transition-colors group/item">
-                                            <div className="flex justify-between items-start mb-1">
+                                        <div key={pos.id} className="p-3 hover:bg-zinc-800/50 transition-colors group/item relative">
+                                            {/* Close button - visible on hover */}
+                                            <button
+                                                onClick={(e) => handleClosePosition(pos.id, e)}
+                                                disabled={closingId === pos.id}
+                                                className="absolute top-2 right-2 p-1 rounded-full bg-zinc-800 text-zinc-500 hover:bg-red-500/20 hover:text-red-400 opacity-0 group-hover/item:opacity-100 transition-all"
+                                                title="Close position"
+                                            >
+                                                {closingId === pos.id ? (
+                                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                                ) : (
+                                                    <X className="w-3 h-3" />
+                                                )}
+                                            </button>
+                                            <div className="flex justify-between items-start mb-1 pr-6">
                                                 <span className="text-xs font-medium text-white line-clamp-1 flex-1 pr-2">
                                                     {pos.marketTitle}
                                                 </span>
