@@ -5,6 +5,10 @@ import { eq, and } from "drizzle-orm";
 import { MarketService } from "@/lib/market";
 import { getDirectionAdjustedPrice } from "@/lib/position-utils";
 
+// Force dynamic - never cache this endpoint
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function GET(req: NextRequest) {
     try {
         const { searchParams } = new URL(req.url);

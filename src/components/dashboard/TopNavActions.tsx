@@ -33,9 +33,12 @@ export function TopNavActions({ userId }: TopNavActionsProps) {
     useEffect(() => {
         async function fetchChallenges() {
             try {
-                const response = await fetch(`/api/challenges?userId=${userId}`);
+                const response = await fetch(`/api/challenges?userId=${userId}&_t=${Date.now()}`, {
+                    cache: 'no-store'
+                });
                 if (response.ok) {
                     const data = await response.json();
+                    console.log("[TopNavActions] Fetched challenges:", data.challenges?.map((c: any) => ({ id: c.id, accountNumber: c.accountNumber })));
                     setChallenges(data.challenges || []);
                 }
             } catch (error) {
