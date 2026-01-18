@@ -40,11 +40,14 @@ describe('VERIFICATION: Position Value Math', () => {
         // Given: 100 shares of YES position, YES price = 0.55
         const shares = 100;
         const yesPrice = 0.55;
-        const direction = 'YES';
 
-        // Calculate
-        const effectivePrice = direction === 'NO' ? (1 - yesPrice) : yesPrice;
-        const positionValue = shares * effectivePrice;
+        // Use helper function to avoid TypeScript type narrowing issue
+        function calculatePositionValue(dir: 'YES' | 'NO', sp: number, yp: number): number {
+            const effectivePrice = dir === 'NO' ? (1 - yp) : yp;
+            return sp * effectivePrice;
+        }
+
+        const positionValue = calculatePositionValue('YES', shares, yesPrice);
 
         // Expected: 100 * 0.55 = 55
         expect(positionValue).toBeCloseTo(55, 2);

@@ -98,9 +98,12 @@ describe('Discount Validation Logic', () => {
         });
 
         it('should handle null validUntil (no expiration)', () => {
-            const validUntil: Date | null = null;
-            const now = new Date();
-            const isExpired = validUntil !== null && now > validUntil;
+            // Simulate checking expiration when validUntil is null (no expiry)
+            function checkExpiration(validUntil: Date | null, now: Date): boolean {
+                if (validUntil === null) return false; // null = never expires
+                return now.getTime() > validUntil.getTime();
+            }
+            const isExpired = checkExpiration(null, new Date());
             expect(isExpired).toBeFalsy();
         });
     });
@@ -156,7 +159,7 @@ describe('Discount Validation Logic', () => {
     describe('New Customer Validation', () => {
         it('should reject existing customer when newCustomersOnly is true', () => {
             const newCustomersOnly = true;
-            const userChallengeCount = 2;
+            const userChallengeCount: number = 2;
             const isNewCustomer = userChallengeCount === 0;
             expect(newCustomersOnly && !isNewCustomer).toBeTruthy();
         });
@@ -278,16 +281,20 @@ describe('Discount Security', () => {
     describe('Authentication Requirements', () => {
         it('should require auth for redemption', () => {
             // Redemption requires session.user.id
-            const session: { user?: { id?: string } } | null = null;
-            const hasAuth = session?.user?.id;
+            function getAuthFromSession(session: { user?: { id?: string } } | null): string | undefined {
+                return session?.user?.id;
+            }
+            const hasAuth = getAuthFromSession(null);
             expect(hasAuth).toBeFalsy();
         });
 
         it('should allow anonymous validation (for checkout preview)', () => {
             // Validation can work without auth (for checkout display)
             // Per-user checks are skipped if not logged in
-            const session: { user?: { id?: string } } | null = null;
-            const userId = session?.user?.id;
+            function getUserIdFromSession(session: { user?: { id?: string } } | null): string | undefined {
+                return session?.user?.id;
+            }
+            const userId = getUserIdFromSession(null);
             expect(userId).toBeFalsy();
         });
     });
