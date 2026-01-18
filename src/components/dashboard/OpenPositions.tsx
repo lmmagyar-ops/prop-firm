@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
     Table,
     TableBody,
@@ -31,15 +31,17 @@ export function OpenPositions({ positions: initialPositions }: OpenPositionsProp
     const [closingId, setClosingId] = useState<string | null>(null);
 
     // Sync with parent when initialPositions change
-    useState(() => {
+    useEffect(() => {
         setPositions(initialPositions);
-    });
+    }, [initialPositions]);
 
     const handleClosePosition = async (positionId: string) => {
         setClosingId(positionId);
         try {
-            const response = await fetch(`/api/trade/positions/${positionId}/close`, {
+            const response = await fetch(`/api/trade/close`, {
                 method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ positionId }),
             });
 
             if (!response.ok) {
@@ -52,8 +54,9 @@ export function OpenPositions({ positions: initialPositions }: OpenPositionsProp
 
             // Remove from local state
             setPositions(prev => prev.filter(p => p.id !== positionId));
-        } catch (error: any) {
-            toast.error(error.message || 'Failed to close position');
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Failed to close position';
+            toast.error(message);
         } finally {
             setClosingId(null);
         }
