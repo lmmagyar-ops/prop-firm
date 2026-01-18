@@ -35,6 +35,15 @@ export function PWAInstallPrompt() {
         const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
         setIsIOS(iOS);
 
+        // Detect if on mobile device (not desktop)
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+            || (navigator.maxTouchPoints > 0 && window.innerWidth < 768);
+
+        // Only show on mobile devices
+        if (!isMobile) {
+            return;
+        }
+
         // Detect if running as standalone (already installed)
         const standalone = window.matchMedia("(display-mode: standalone)").matches;
         setIsStandalone(standalone);
