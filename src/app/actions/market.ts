@@ -292,7 +292,7 @@ export async function getActiveEvents(platform: Platform = "polymarket"): Promis
                                 id: m.id,
                                 question: m.question,
                                 outcomes: m.outcomes || ["Yes", "No"],
-                                price: m.currentPrice || 0.5,
+                                price: m.currentPrice ?? 0.5,
                                 volume: m.volume || 0,
                             }],
                             isMultiOutcome: false,
