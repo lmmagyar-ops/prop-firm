@@ -5,12 +5,14 @@ import { Briefcase, TrendingUp, TrendingDown, ArrowRight, X, Loader2 } from "luc
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 // Types matching our DB schema conceptually
 interface Position {
     id: string;
+    marketId: string;
     marketTitle: string;
     direction: "YES" | "NO";
     shares: number;
@@ -20,10 +22,17 @@ interface Position {
 }
 
 export function PortfolioDropdown() {
+    const router = useRouter();
     const [isOpen, setIsOpen] = useState(false);
     const [positions, setPositions] = useState<Position[]>([]);
     const [loading, setLoading] = useState(false); // Init false to avoid layout shift, fetch on mount
     const [closingId, setClosingId] = useState<string | null>(null);
+
+    // Navigate to trade page with market
+    const handleNavigateToMarket = (marketId: string) => {
+        setIsOpen(false);
+        router.push(`/dashboard/trade?market=${marketId}`);
+    };
 
     // Close position handler
     const handleClosePosition = async (positionId: string, e: React.MouseEvent) => {
@@ -130,7 +139,7 @@ export function PortfolioDropdown() {
                             ) : (
                                 <div className="divide-y divide-zinc-800/50">
                                     {positions.map((pos) => (
-                                        <div key={pos.id} className="p-3 hover:bg-zinc-800/50 transition-colors group/item relative">
+                                        <div key={pos.id} className="p-3 hover:bg-zinc-800/50 transition-colors group/item relative cursor-pointer" onClick={() => handleNavigateToMarket(pos.marketId)}>
                                             {/* Close button - visible on hover */}
                                             <button
                                                 onClick={(e) => handleClosePosition(pos.id, e)}

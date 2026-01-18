@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { Briefcase, X, TrendingUp, TrendingDown, ExternalLink, RefreshCw } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { useRouter } from "next/navigation";
 
 interface Position {
     id: string;
@@ -24,10 +25,17 @@ interface AccountSummary {
 }
 
 export function PortfolioPanel() {
+    const router = useRouter();
     const [isOpen, setIsOpen] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [positions, setPositions] = useState<Position[]>([]);
     const [summary, setSummary] = useState<AccountSummary>({ equity: 0, cash: 0, positionValue: 0 });
+
+    // Navigate to trade page with market ID
+    const handleNavigateToMarket = (marketId: string) => {
+        setIsOpen(false);
+        router.push(`/dashboard/trade?market=${marketId}`);
+    };
 
     // Extract fetch logic for manual refresh
     const fetchPositions = useCallback(async () => {
@@ -227,7 +235,11 @@ export function PortfolioPanel() {
                                             const isUp = pos.unrealizedPnL >= 0;
 
                                             return (
-                                                <div key={pos.id} className="p-4 hover:bg-zinc-800/30 transition-colors">
+                                                <div
+                                                    key={pos.id}
+                                                    className="p-4 hover:bg-zinc-800/30 transition-colors cursor-pointer"
+                                                    onClick={() => handleNavigateToMarket(pos.marketId)}
+                                                >
                                                     {/* Market Title */}
                                                     <div className="flex items-start justify-between mb-2">
                                                         <div className="flex-1 pr-2">
