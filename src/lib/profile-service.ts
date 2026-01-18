@@ -1,7 +1,7 @@
 
 import { db } from "@/db";
-import { users, challenges, payouts } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { users, challenges, payouts, trades } from "@/db/schema";
+import { eq, and, inArray } from "drizzle-orm";
 import type { Challenge } from "@/types/user";
 
 export async function getPrivateProfileData(userId: string) {
@@ -72,8 +72,16 @@ export async function getPrivateProfileData(userId: string) {
         sum + parseFloat(p.amount), 0
     );
 
-    // 4. Calculate metrics
-    const metrics = calculateMetrics(allChallenges, lifetimeProfitWithdrawn);
+    // 4. Get all trades for user's challenges to calculate actual trading volume
+    const challengeIds = allChallenges.map(c => c.id);
+    const allTrades = challengeIds.length > 0
+        ? await db.query.trades.findMany({
+            where: inArray(trades.challengeId, challengeIds),
+        })
+        : [];
+
+    // 5. Calculate metrics with actual trade data
+    const metrics = calculateMetrics(allChallenges, lifetimeProfitWithdrawn, allTrades);
 
     // 5. Format accounts
     const accounts = allChallenges.map((c, idx) => ({
@@ -116,16 +124,27 @@ export async function getPublicProfileData(userId: string) {
     };
 }
 
-function calculateMetrics(challenges: Challenge[], lifetimeProfitWithdrawn: number) {
-    // Calculate from challenges data
-    const totalVolume = challenges.reduce((sum, c) =>
-        sum + parseFloat(c.startingBalance), 0
+interface TradeRecord {
+    id: string;
+    challengeId: string | null;
+    amount: string;
+    realizedPnL: string | null;
+}
+
+function calculateMetrics(challenges: Challenge[], lifetimeProfitWithdrawn: number, allTrades: TradeRecord[]) {
+    // Calculate ACTUAL trading volume from trades (sum of all trade amounts)
+    const lifetimeTradingVolume = allTrades.reduce((sum, t) =>
+        sum + parseFloat(t.amount || "0"), 0
     );
 
+    // Get funded challenge IDs
     const fundedChallenges = challenges.filter(c => c.status === 'passed');
-    const fundedVolume = fundedChallenges.reduce((sum, c) =>
-        sum + parseFloat(c.startingBalance), 0
-    );
+    const fundedChallengeIds = new Set(fundedChallenges.map(c => c.id));
+
+    // Calculate funded volume from trades on funded challenges
+    const fundedTradingVolume = allTrades
+        .filter(t => t.challengeId && fundedChallengeIds.has(t.challengeId))
+        .reduce((sum, t) => sum + parseFloat(t.amount || "0"), 0);
 
     // Calculate withdrawable profit from active funded accounts
     const activeFundedChallenges = challenges.filter(c =>
@@ -139,14 +158,15 @@ function calculateMetrics(challenges: Challenge[], lifetimeProfitWithdrawn: numb
         return sum + withdrawable;
     }, 0);
 
-    // TODO: Calculate from actual trade data
-    const winningTrades = 0;
-    const totalTrades = 1;
-    const tradingWinRate = totalTrades > 0 ? (winningTrades / totalTrades) * 100 : 0;
+    // Calculate win rate from trades with realized P&L
+    const tradesWithPnL = allTrades.filter(t => t.realizedPnL !== null);
+    const winningTrades = tradesWithPnL.filter(t => parseFloat(t.realizedPnL || "0") > 0).length;
+    const totalTradesWithPnL = tradesWithPnL.length;
+    const tradingWinRate = totalTradesWithPnL > 0 ? (winningTrades / totalTradesWithPnL) * 100 : 0;
 
     return {
-        lifetimeTradingVolume: totalVolume,
-        fundedTradingVolume: fundedVolume,
+        lifetimeTradingVolume,
+        fundedTradingVolume,
         currentWithdrawableProfit,
         highestWinRateAsset: "Politics", // TODO: Calculate from trade history
         tradingWinRate,
