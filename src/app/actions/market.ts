@@ -247,9 +247,12 @@ export async function getActiveEvents(platform: Platform = "polymarket"): Promis
                     }
                 }
 
-                // DEFENSIVE FILTER: Skip markets with exactly 50% price (±0.5%)
-                // These are placeholder prices with no real trading activity
-                if (Math.abs(market.price - 0.5) < 0.005) {
+                // DEFENSIVE FILTER: Skip markets with exactly 50% price (±0.5%) AND low volume
+                // 50% + low volume = placeholder with no real trading
+                // 50% + high volume = legitimate contentious market, let it through
+                const isFiftyPercent = Math.abs(market.price - 0.5) < 0.005;
+                const isLowVolume = (market.volume || 0) < 50000; // Under $50k
+                if (isFiftyPercent && isLowVolume) {
                     return false;
                 }
 
@@ -285,10 +288,12 @@ export async function getActiveEvents(platform: Platform = "polymarket"): Promis
                             // Keep if has categories (especially Sports)
                             if (!m.categories || m.categories.length === 0) return false;
 
-                            // DEFENSIVE FILTER: Skip markets with exactly 50% price (±0.5%)
-                            // These are placeholder prices with no real trading activity
+                            // DEFENSIVE FILTER: Skip 50% price + low volume (placeholder data)
+                            // High-volume 50% markets are legitimate and get through
                             const price = m.currentPrice ?? (m as any).basePrice ?? 0.5;
-                            if (Math.abs(price - 0.5) < 0.005) return false;
+                            const isFiftyPercent = Math.abs(price - 0.5) < 0.005;
+                            const isLowVolume = (m.volume || 0) < 50000;
+                            if (isFiftyPercent && isLowVolume) return false;
 
                             return true;
                         })
