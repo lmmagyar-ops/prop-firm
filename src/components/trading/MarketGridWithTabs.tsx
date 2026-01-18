@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useTransition, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { TrendingUp } from "lucide-react";
+import { TrendingUp, Clock } from "lucide-react";
 import type { EventMetadata } from "@/app/actions/market";
 import { SmartEventCard } from "./SmartEventCard";
 import { EventDetailModal } from "./EventDetailModal";
@@ -23,6 +23,7 @@ interface CategoryTabsProps {
 const CATEGORIES = [
     { id: 'trending', label: 'Trending', icon: TrendingUp, special: true },
     { id: 'breaking', label: 'Breaking', special: true },
+    { id: 'ending', label: 'Ending Soon', icon: Clock, special: true },
     { id: 'new', label: 'New', special: false },
     { id: 'all', label: 'All', special: false },
     { id: 'Politics', label: 'Politics' },
@@ -73,6 +74,20 @@ export function MarketGridWithTabs({ events = [], balance, userId, platform = "p
         if (activeTab === 'trending') {
             // Show all featured events on trending, sorted by volume
             return [...events].sort((a, b) => (b.volume || 0) - (a.volume || 0));
+        } else if (activeTab === 'ending') {
+            // Filter events ending within 48 hours
+            const now = Date.now();
+            const hours48 = 48 * 60 * 60 * 1000;
+            return events.filter(e => {
+                if (!e.endDate) return false;
+                const endTime = new Date(e.endDate).getTime();
+                return endTime > now && endTime - now < hours48;
+            }).sort((a, b) => {
+                // Sort by soonest ending first
+                const aEnd = new Date(a.endDate || 0).getTime();
+                const bEnd = new Date(b.endDate || 0).getTime();
+                return aEnd - bEnd;
+            });
         } else if (activeTab === 'all') {
             return [...events].sort((a, b) => (b.volume || 0) - (a.volume || 0));
         } else {
