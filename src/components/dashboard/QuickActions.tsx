@@ -43,7 +43,7 @@ export function QuickActions({ hasActiveChallenge, hasPositions }: QuickActionsP
                             </Button>
                         </Link>
 
-                        <Link href="/dashboard/analytics">
+                        <Link href="/dashboard/private-profile">
                             <Button
                                 variant="ghost"
                                 className="w-full justify-start gap-3 text-left hover:bg-[#2E3A52]"

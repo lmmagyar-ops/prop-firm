@@ -5,7 +5,6 @@ import { useEffect, useState } from "react";
 import { useSearchParams, usePathname } from "next/navigation";
 import {
     LayoutDashboard,
-    User,
     Users,
     Award,
     ShoppingCart,
@@ -16,8 +15,6 @@ import {
     MessageSquare,
     Clock,
     TrendingUp,
-    Shield,
-    ShieldCheck,
     Lock
 } from "lucide-react";
 
@@ -42,7 +39,7 @@ function getActiveFromPath(pathname: string): string {
     return "Dashboard";
 }
 
-export function Sidebar({ active, verificationStatus = "locked", hasActiveChallenge = false }: SidebarProps) {
+export function Sidebar({ active, hasActiveChallenge = false }: SidebarProps) {
     const searchParams = useSearchParams();
     const pathname = usePathname();
     const [showTradeGlow, setShowTradeGlow] = useState(false);
@@ -111,7 +108,7 @@ export function Sidebar({ active, verificationStatus = "locked", hasActiveChalle
                     <Clock className="w-8 h-8 text-white/20 absolute -bottom-2 -right-2" />
                     <div className="relative z-10">
                         <p className="font-bold text-xs text-blue-100 uppercase mb-1">Support</p>
-                        <Link href="#" className="flex items-center gap-2 text-sm font-semibold hover:underline">
+                        <Link href="/dashboard/faq" className="flex items-center gap-2 text-sm font-semibold hover:underline">
                             <MessageSquare className="w-4 h-4" /> Chat with us
                         </Link>
                     </div>
@@ -121,7 +118,18 @@ export function Sidebar({ active, verificationStatus = "locked", hasActiveChalle
     );
 }
 
-function NavItem({ icon: Icon, label, isActive, highlight, href = "#", className, glow, onClick }: any) {
+interface NavItemProps {
+    icon: React.ComponentType<{ className?: string }>;
+    label: string;
+    isActive?: boolean;
+    highlight?: boolean;
+    href?: string;
+    className?: string;
+    glow?: boolean;
+    onClick?: () => void;
+}
+
+function NavItem({ icon: Icon, label, isActive, highlight, href = "#", className, glow, onClick }: NavItemProps) {
     return (
         <Link
             href={href}
