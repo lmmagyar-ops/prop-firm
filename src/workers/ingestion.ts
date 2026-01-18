@@ -273,10 +273,17 @@ class IngestionWorker {
     /**
      * Get all applicable categories for a market
      * Returns array so markets can appear in multiple tabs (like Polymarket)
+     * 
+     * @param apiCategory - Legacy single category from API
+     * @param question - Event title or market question (for keyword matching)
+     * @param tags - Polymarket tags array (e.g., ['NFL', 'Bills vs Broncos'])
+     * @param imageUrl - Event image URL (often contains sport identifiers)
      */
-    private getCategories(apiCategory: string | null, question: string): string[] {
+    private getCategories(apiCategory: string | null, question: string, tags?: string[], imageUrl?: string): string[] {
         const categories: string[] = [];
         const q = question.toLowerCase();
+        const tagsLower = (tags || []).map(t => t.toLowerCase());
+        const imageLower = (imageUrl || '').toLowerCase();
 
         // Map Polymarket's native category first
         const categoryMap: Record<string, string> = {
@@ -296,6 +303,55 @@ class IngestionWorker {
 
         if (apiCategory && categoryMap[apiCategory]) {
             categories.push(categoryMap[apiCategory]);
+        }
+
+        // SPORTS DETECTION - Check multiple sources
+        // 1. Check tags for sports identifiers
+        const sportsTags = ['nfl', 'nba', 'nhl', 'mlb', 'ncaa', 'ufc', 'mma', 'soccer', 'football',
+            'basketball', 'hockey', 'tennis', 'golf', 'esports', 'epl', 'premier league',
+            'la liga', 'bundesliga', 'serie a', 'champions league', 'sports'];
+        const hasSportsTag = tagsLower.some(tag => sportsTags.some(st => tag.includes(st)));
+
+        // 2. Check image URL for sports identifiers (Polymarket uses /nfl.png, /nba.png, etc.)
+        const sportsImagePatterns = ['/nfl', '/nba', '/nhl', '/mlb', '/ufc', '/soccer', '/sports', '/epl', '/premier'];
+        const hasSportsImage = sportsImagePatterns.some(pattern => imageLower.includes(pattern));
+
+        // 3. Check title keywords (existing logic, expanded)
+        const hasSportsKeyword = (
+            q.includes('nfl') || q.includes('nba') || q.includes('nhl') ||
+            q.includes('mlb') || q.includes('ncaa') || q.includes('cfb') ||
+            q.includes('cbb') || q.includes('ufc') || q.includes('mma') ||
+            q.includes('super bowl') || q.includes('world cup') || q.includes('playoffs') ||
+            q.includes('championship') || q.includes('world series') || q.includes('stanley cup') ||
+            q.includes('champions league') || q.includes('ucl') || q.includes('mvp') ||
+            q.includes('finals') || q.includes('tournament') ||
+            q.includes('premier league') || q.includes('epl') || q.includes('la liga') ||
+            q.includes('bundesliga') || q.includes('serie a') || q.includes('ligue 1') ||
+            q.includes('fifa') || q.includes('soccer') ||
+            // NFL Teams
+            q.includes('bills') || q.includes('dolphins') || q.includes('patriots') || q.includes('jets') ||
+            q.includes('ravens') || q.includes('bengals') || q.includes('browns') || q.includes('steelers') ||
+            q.includes('broncos') || q.includes('chiefs') || q.includes('raiders') || q.includes('chargers') ||
+            q.includes('cowboys') || q.includes('giants') || q.includes('eagles') || q.includes('commanders') ||
+            q.includes('packers') || q.includes('vikings') || q.includes('49ers') || q.includes('seahawks') ||
+            q.includes('texans') || q.includes('colts') || q.includes('titans') || q.includes('jaguars') ||
+            q.includes('falcons') || q.includes('panthers') || q.includes('saints') || q.includes('buccaneers') ||
+            q.includes('cardinals') || q.includes('rams') || q.includes('lions') || q.includes('bears') ||
+            // NBA Teams
+            q.includes('lakers') || q.includes('celtics') || q.includes('warriors') || q.includes('knicks') ||
+            q.includes('nuggets') || q.includes('mavericks') || q.includes('thunder') || q.includes('heat') ||
+            q.includes('bucks') || q.includes('76ers') || q.includes('suns') || q.includes('clippers') ||
+            q.includes('jazz') || q.includes('pelicans') || q.includes('spurs') || q.includes('rockets') ||
+            // Player names
+            q.includes('jokic') || q.includes('lebron') || q.includes('curry') || q.includes('mahomes') ||
+            q.includes('kelce') || q.includes('giannis') || q.includes('shai') || q.includes('tatum') ||
+            q.includes('patrick mahomes') || q.includes('josh allen') || q.includes('lamar jackson') ||
+            // Game patterns
+            (q.includes(' vs ') && (q.includes('win') || q.includes('beat') || q.includes('game')))
+        );
+
+        if (hasSportsTag || hasSportsImage || hasSportsKeyword) {
+            if (!categories.includes('Sports')) categories.push('Sports');
         }
 
         // US Politics (domestic)
@@ -321,36 +377,6 @@ class IngestionWorker {
             q.includes('eth') || q.includes('crypto') || q.includes('solana') ||
             q.includes('xrp') || q.includes('tether') || q.includes('usdt')) {
             if (!categories.includes('Crypto')) categories.push('Crypto');
-        }
-
-        // Sports - Expanded detection for better coverage
-        // Major leagues
-        if (q.includes('nfl') || q.includes('nba') || q.includes('nhl') ||
-            q.includes('mlb') || q.includes('ncaa') || q.includes('cfb') ||
-            q.includes('cbb') || q.includes('ufc') || q.includes('mma') ||
-            // Championship/tournament keywords
-            q.includes('super bowl') || q.includes('world cup') || q.includes('playoffs') ||
-            q.includes('championship') || q.includes('world series') || q.includes('stanley cup') ||
-            q.includes('champions league') || q.includes('ucl') || q.includes('mvp') ||
-            q.includes('finals') || q.includes('tournament') ||
-            // Soccer leagues  
-            q.includes('premier league') || q.includes('epl') || q.includes('la liga') ||
-            q.includes('bundesliga') || q.includes('serie a') || q.includes('ligue 1') ||
-            q.includes('fifa') || q.includes('soccer') ||
-            // NFL Teams (major markets)
-            q.includes('bills') || q.includes('dolphins') || q.includes('patriots') || q.includes('jets') ||
-            q.includes('ravens') || q.includes('bengals') || q.includes('browns') || q.includes('steelers') ||
-            q.includes('broncos') || q.includes('chiefs') || q.includes('raiders') || q.includes('chargers') ||
-            q.includes('cowboys') || q.includes('giants') || q.includes('eagles') || q.includes('commanders') ||
-            q.includes('packers') || q.includes('vikings') || q.includes('49ers') || q.includes('seahawks') ||
-            // NBA Teams (major markets)
-            q.includes('lakers') || q.includes('celtics') || q.includes('warriors') || q.includes('knicks') ||
-            q.includes('nuggets') || q.includes('mavericks') || q.includes('thunder') || q.includes('heat') ||
-            q.includes('bucks') || q.includes('76ers') || q.includes('suns') || q.includes('clippers') ||
-            // Common sports figures/terms
-            q.includes('jokic') || q.includes('lebron') || q.includes('curry') || q.includes('mahomes') ||
-            q.includes('kelce') || q.includes('giannis') || q.includes('shai') || q.includes('tatum')) {
-            if (!categories.includes('Sports')) categories.push('Sports');
         }
 
         // Business/Finance
@@ -540,7 +566,7 @@ class IngestionWorker {
                     // Sort sub-markets by price descending (highest probability first)
                     subMarkets.sort((a, b) => b.price - a.price);
 
-                    const categories = this.getCategories(null, event.title);
+                    const categories = this.getCategories(null, event.title, event.tags, event.image);
 
                     processedEvents.push({
                         id: event.id || event.slug,
@@ -627,7 +653,7 @@ class IngestionWorker {
                         const yesToken = clobTokens[0];
                         if (!yesToken || seenIds.has(yesToken)) continue;
 
-                        const categories = this.getCategories(m.category, m.question);
+                        const categories = this.getCategories(m.category, m.question, m.tags, m.image);
 
                         for (const cat of categories) {
                             categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
