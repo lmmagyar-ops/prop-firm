@@ -6,9 +6,10 @@ interface BigNumberDisplayProps {
     value: number;
     className?: string;
     prefix?: string;
+    suffix?: string;
 }
 
-export function BigNumberDisplay({ value, prefix = "$", className }: BigNumberDisplayProps) {
+export function BigNumberDisplay({ value, prefix = "$", suffix, className }: BigNumberDisplayProps) {
     // Stable formatting without layout shift
     const formatted = new Intl.NumberFormat("en-US", {
         minimumFractionDigits: 2,
@@ -22,9 +23,11 @@ export function BigNumberDisplay({ value, prefix = "$", className }: BigNumberDi
 
     return (
         <div className={cn("inline-flex items-baseline font-mono tracking-tighter tabular-nums", className)}>
-            <span className="opacity-50 mr-1">{prefix}</span>
+            {prefix && <span className="opacity-50 mr-1">{prefix}</span>}
             <span>{integer}</span>
             <span className="text-[0.6em] opacity-60 ml-0.5">.{decimal}</span>
+            {suffix && <span className="opacity-50 ml-1 text-[0.6em]">{suffix}</span>}
         </div>
     );
 }
+

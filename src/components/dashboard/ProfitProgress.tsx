@@ -11,10 +11,13 @@ export function ProfitProgress({ totalPnL, profitTarget, profitProgress }: Profi
         <div className="bg-zinc-900/50 border border-white/10 rounded-2xl p-6 h-full flex flex-col justify-center">
             <div className="flex justify-between mb-4 items-end">
                 <div>
-                    <span className="text-sm font-bold text-zinc-400 uppercase tracking-wider block mb-1">Profit Target</span>
+                    <span className="text-sm font-bold text-zinc-400 uppercase tracking-wider block mb-1">Your Profit</span>
                     <span className="text-2xl font-mono text-white font-bold">${Math.max(0, totalPnL).toFixed(2)}</span>
                 </div>
-                <span className="text-sm font-mono text-zinc-500 mb-1"> / ${profitTarget.toFixed(2)}</span>
+                <div className="text-right">
+                    <span className="text-xs text-zinc-500 block mb-0.5">Target</span>
+                    <span className="text-sm font-mono text-zinc-400 bg-zinc-800 px-2 py-0.5 rounded">${profitTarget.toFixed(2)}</span>
+                </div>
             </div>
 
             <div className="h-4 bg-zinc-800 rounded-full overflow-hidden mb-2 border border-white/5">
