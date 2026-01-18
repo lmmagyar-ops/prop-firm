@@ -100,12 +100,15 @@ export async function getMarketById(marketId: string): Promise<MarketMetadata | 
             for (const event of events) {
                 const subMarket = event.markets.find(m => m.id === marketId);
                 if (subMarket) {
+                    // Use max of sub-market and event volume for liquidity assessment
+                    // Sub-markets of big events (Bitcoin, Fed) should inherit parent's liquidity
+                    const effectiveVolume = Math.max(subMarket.volume || 0, event.volume || 0);
                     return {
                         id: subMarket.id,
                         question: subMarket.question,
                         description: event.description || "",
                         image: event.image || "",
-                        volume: subMarket.volume || event.volume,
+                        volume: effectiveVolume,
                         outcomes: subMarket.outcomes || ["Yes", "No"],
                         end_date: event.endDate || "",
                         categories: event.categories,
@@ -122,12 +125,14 @@ export async function getMarketById(marketId: string): Promise<MarketMetadata | 
             for (const event of events) {
                 const subMarket = event.markets.find(m => m.id === marketId);
                 if (subMarket) {
+                    // Use max of sub-market and event volume for liquidity assessment
+                    const effectiveVolume = Math.max(subMarket.volume || 0, event.volume || 0);
                     return {
                         id: subMarket.id,
                         question: subMarket.question,
                         description: event.description || "",
                         image: event.image || "",
-                        volume: subMarket.volume || event.volume,
+                        volume: effectiveVolume,
                         outcomes: subMarket.outcomes || ["Yes", "No"],
                         end_date: event.endDate || "",
                         categories: event.categories,
