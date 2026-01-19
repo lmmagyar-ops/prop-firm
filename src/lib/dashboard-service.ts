@@ -142,6 +142,16 @@ export async function getDashboardData(userId: string) {
         const entry = parseFloat(pos.entryPrice);
         const shares = parseFloat(pos.shares);
 
+        // Guard against NaN from invalid database values
+        if (isNaN(entry) || isNaN(shares) || shares <= 0) {
+            console.warn("[DashboardService] Invalid position data:", {
+                id: pos.id,
+                entryPrice: pos.entryPrice,
+                shares: pos.shares
+            });
+            return null; // Mark for filtering
+        }
+
         const livePrice = livePrices.get(pos.marketId);
         const rawPrice = livePrice ? parseFloat(livePrice.price) : parseFloat(pos.currentPrice || pos.entryPrice);
 
@@ -158,7 +168,7 @@ export async function getDashboardData(userId: string) {
             marketId: pos.marketId,
             marketTitle: marketTitles.get(pos.marketId) || `Market ${pos.marketId.slice(0, 8)}...`,
             direction: pos.direction as 'YES' | 'NO',
-            sizeAmount: parseFloat(pos.sizeAmount),
+            sizeAmount: parseFloat(pos.sizeAmount) || 0,
             shares,
             entryPrice: entry,
             currentPrice: effectiveCurrentPrice,
@@ -167,7 +177,7 @@ export async function getDashboardData(userId: string) {
             openedAt: pos.openedAt ? new Date(pos.openedAt).toISOString() : new Date().toISOString(),
             priceSource: livePrice?.source || 'stored',
         };
-    });
+    }).filter((p): p is NonNullable<typeof p> => p !== null); // Filter out invalid positions
 
     // 6. Calculate TRUE EQUITY (cash + position value)
     const cashBalance = parseFloat(activeChallenge.currentBalance);
