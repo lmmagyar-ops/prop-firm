@@ -118,6 +118,7 @@ export async function GET() {
         const openPositions = await db
             .select({
                 challengeId: positions.challengeId,
+                marketId: positions.marketId,
                 shares: positions.shares,
                 entryPrice: positions.entryPrice,
                 currentPrice: positions.currentPrice,
@@ -126,12 +127,22 @@ export async function GET() {
             .from(positions)
             .where(eq(positions.status, 'OPEN'));
 
-        // Calculate position values per challenge
+        // Fetch live prices from Redis for accurate P&L
+        const { MarketService } = await import("@/lib/market");
+        const marketIds = [...new Set(openPositions.map(p => p.marketId))];
+        const livePrices = marketIds.length > 0
+            ? await MarketService.getBatchOrderBookPrices(marketIds)
+            : new Map<string, { price: string }>();
+
+        // Calculate position values per challenge using live prices
         const positionValuesByChallenge = new Map<string, number>();
         for (const pos of openPositions) {
             const shares = parseFloat(pos.shares);
-            // Use entry price as estimate (live prices would require Redis calls)
-            const price = parseFloat(pos.currentPrice || pos.entryPrice);
+            // Use live price from Redis, fallback to currentPrice, then entryPrice
+            const livePrice = livePrices.get(pos.marketId);
+            const price = livePrice
+                ? parseFloat(livePrice.price)
+                : parseFloat(pos.currentPrice || pos.entryPrice);
             // For NO positions, value = shares * (1 - yesPrice)
             const effectivePrice = pos.direction === 'NO' ? (1 - price) : price;
             const value = shares * effectivePrice;
