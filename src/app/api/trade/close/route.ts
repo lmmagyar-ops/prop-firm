@@ -60,14 +60,16 @@ export async function POST(req: NextRequest) {
         // Calculate the current market value of the position
         const marketValue = shares * noAdjustedPrice;
 
-        // Execute SELL trade for the current market value
+        // Execute SELL trade with explicit share count
+        // CRITICAL: Pass shares explicitly to avoid recalculation mismatch
         const trade = await TradeExecutor.executeTrade(
             userId,
             challenge.id,
             position.marketId,
             "SELL",
-            marketValue, // Sell at current market value
-            posDirection // Pass direction to correctly identify which position to close
+            marketValue, // Approximate market value (amount is overridden by shares option)
+            posDirection, // Pass direction to correctly identify which position to close
+            { shares } // Explicitly pass share count to sell
         );
 
         // Fetch updated balance (challenge is updated by TradeExecutor)
