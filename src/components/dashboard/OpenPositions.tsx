@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
     Table,
     TableBody,
@@ -27,6 +28,7 @@ interface OpenPositionsProps {
 }
 
 export function OpenPositions({ positions: initialPositions }: OpenPositionsProps) {
+    const router = useRouter();
     const [positions, setPositions] = useState(initialPositions);
     const [closingId, setClosingId] = useState<string | null>(null);
 
@@ -55,8 +57,11 @@ export function OpenPositions({ positions: initialPositions }: OpenPositionsProp
             const result = await response.json();
             toast.success(`Position closed for $${result.proceeds?.toFixed(2) || '0.00'}`);
 
-            // Remove from local state
+            // Remove from local state immediately for instant UI feedback
             setPositions(prev => prev.filter(p => p.id !== positionId));
+
+            // Force server refresh to ensure data consistency
+            router.refresh();
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Failed to close position';
             toast.error(message);
