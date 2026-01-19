@@ -125,9 +125,12 @@ export async function getDashboardData(userId: string) {
         };
     }
 
-    // 4. Get open positions for active challenge
+    // 4. Get open positions for active challenge (only OPEN status, exclude closed)
     const openPositions = await db.query.positions.findMany({
-        where: eq(positions.challengeId, activeChallenge.id),
+        where: and(
+            eq(positions.challengeId, activeChallenge.id),
+            eq(positions.status, 'OPEN')
+        ),
     });
 
     // 5. Calculate position values FIRST (needed for equity-based stats)
