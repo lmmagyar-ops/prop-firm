@@ -850,59 +850,143 @@ export default function UsersPage() {
 
                                     {/* Actions */}
                                     <div className="pt-2 border-t border-white/5 space-y-2">
-                                        {/* Role Change Button */}
-                                        <Button
-                                            variant="outline"
-                                            onClick={() => updateUser(selectedUser.id, { role: selectedUser.role === 'admin' ? 'user' : 'admin' })}
-                                            disabled={updatingUserId === selectedUser.id}
-                                            className={`w-full ${selectedUser.role === 'admin'
-                                                ? 'border-purple-500/20 text-purple-400 hover:bg-purple-500/10'
-                                                : 'border-blue-500/20 text-blue-400 hover:bg-blue-500/10'}`}
-                                        >
-                                            {updatingUserId === selectedUser.id ? (
-                                                <>
-                                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                                    Updating...
-                                                </>
-                                            ) : selectedUser.role === 'admin' ? (
-                                                <>
-                                                    <User className="h-4 w-4 mr-2" />
-                                                    Demote to User
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <Shield className="h-4 w-4 mr-2" />
-                                                    Promote to Admin
-                                                </>
-                                            )}
-                                        </Button>
+                                        {/* Role Change Button with Confirmation */}
+                                        <AlertDialog>
+                                            <AlertDialogTrigger asChild>
+                                                <Button
+                                                    variant="outline"
+                                                    disabled={updatingUserId === selectedUser.id}
+                                                    className={`w-full ${selectedUser.role === 'admin'
+                                                        ? 'border-purple-500/20 text-purple-400 hover:bg-purple-500/10'
+                                                        : 'border-blue-500/20 text-blue-400 hover:bg-blue-500/10'}`}
+                                                >
+                                                    {updatingUserId === selectedUser.id ? (
+                                                        <>
+                                                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                                            Updating...
+                                                        </>
+                                                    ) : selectedUser.role === 'admin' ? (
+                                                        <>
+                                                            <User className="h-4 w-4 mr-2" />
+                                                            Demote to User
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Shield className="h-4 w-4 mr-2" />
+                                                            Promote to Admin
+                                                        </>
+                                                    )}
+                                                </Button>
+                                            </AlertDialogTrigger>
+                                            <AlertDialogContent className="bg-zinc-900 border-zinc-700">
+                                                <AlertDialogHeader>
+                                                    <AlertDialogTitle className={selectedUser.role === 'admin' ? 'text-orange-400' : 'text-blue-400'}>
+                                                        {selectedUser.role === 'admin' ? 'Demote to User?' : 'Promote to Admin?'}
+                                                    </AlertDialogTitle>
+                                                    <AlertDialogDescription className="text-zinc-400">
+                                                        {selectedUser.role === 'admin' ? (
+                                                            <>
+                                                                This will remove admin privileges from <strong className="text-zinc-200">{selectedUser.name || selectedUser.email}</strong>.
+                                                                They will no longer be able to access the admin panel.
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                This will grant full admin access to <strong className="text-zinc-200">{selectedUser.name || selectedUser.email}</strong>.
+                                                                <p className="mt-2 text-orange-400/80">⚠️ Admins can view all users, modify accounts, and access sensitive data.</p>
+                                                            </>
+                                                        )}
+                                                    </AlertDialogDescription>
+                                                </AlertDialogHeader>
+                                                <AlertDialogFooter>
+                                                    <AlertDialogCancel className="bg-zinc-800 border-zinc-700 text-zinc-300 hover:bg-zinc-700">Cancel</AlertDialogCancel>
+                                                    <AlertDialogAction
+                                                        onClick={() => updateUser(selectedUser.id, { role: selectedUser.role === 'admin' ? 'user' : 'admin' })}
+                                                        className={selectedUser.role === 'admin' ? 'bg-orange-600 hover:bg-orange-700' : 'bg-blue-600 hover:bg-blue-700'}
+                                                    >
+                                                        {selectedUser.role === 'admin' ? (
+                                                            <>
+                                                                <User className="h-4 w-4 mr-2" />
+                                                                Yes, Demote to User
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <Shield className="h-4 w-4 mr-2" />
+                                                                Yes, Make Admin
+                                                            </>
+                                                        )}
+                                                    </AlertDialogAction>
+                                                </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                        </AlertDialog>
 
-                                        {/* Ban/Unban Button */}
-                                        <Button
-                                            variant="outline"
-                                            onClick={() => updateUser(selectedUser.id, { isActive: !selectedUser.isActive })}
-                                            disabled={updatingUserId === selectedUser.id}
-                                            className={`w-full ${selectedUser.isActive
-                                                ? 'border-orange-500/20 text-orange-400 hover:bg-orange-500/10'
-                                                : 'border-green-500/20 text-green-400 hover:bg-green-500/10'}`}
-                                        >
-                                            {updatingUserId === selectedUser.id ? (
-                                                <>
-                                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                                    Updating...
-                                                </>
-                                            ) : selectedUser.isActive ? (
-                                                <>
-                                                    <Ban className="h-4 w-4 mr-2" />
-                                                    Ban User
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <UserCheck className="h-4 w-4 mr-2" />
-                                                    Unban User
-                                                </>
-                                            )}
-                                        </Button>
+                                        {/* Ban/Unban Button with Confirmation */}
+                                        <AlertDialog>
+                                            <AlertDialogTrigger asChild>
+                                                <Button
+                                                    variant="outline"
+                                                    disabled={updatingUserId === selectedUser.id}
+                                                    className={`w-full ${selectedUser.isActive
+                                                        ? 'border-orange-500/20 text-orange-400 hover:bg-orange-500/10'
+                                                        : 'border-green-500/20 text-green-400 hover:bg-green-500/10'}`}
+                                                >
+                                                    {updatingUserId === selectedUser.id ? (
+                                                        <>
+                                                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                                            Updating...
+                                                        </>
+                                                    ) : selectedUser.isActive ? (
+                                                        <>
+                                                            <Ban className="h-4 w-4 mr-2" />
+                                                            Ban User
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <UserCheck className="h-4 w-4 mr-2" />
+                                                            Unban User
+                                                        </>
+                                                    )}
+                                                </Button>
+                                            </AlertDialogTrigger>
+                                            <AlertDialogContent className="bg-zinc-900 border-zinc-700">
+                                                <AlertDialogHeader>
+                                                    <AlertDialogTitle className={selectedUser.isActive ? 'text-red-400' : 'text-green-400'}>
+                                                        {selectedUser.isActive ? 'Ban User?' : 'Unban User?'}
+                                                    </AlertDialogTitle>
+                                                    <AlertDialogDescription className="text-zinc-400">
+                                                        {selectedUser.isActive ? (
+                                                            <>
+                                                                This will ban <strong className="text-zinc-200">{selectedUser.name || selectedUser.email}</strong> from the platform.
+                                                                <p className="mt-2">They will not be able to log in or trade until unbanned.</p>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                This will restore access for <strong className="text-zinc-200">{selectedUser.name || selectedUser.email}</strong>.
+                                                                <p className="mt-2">They will be able to log in and trade again.</p>
+                                                            </>
+                                                        )}
+                                                    </AlertDialogDescription>
+                                                </AlertDialogHeader>
+                                                <AlertDialogFooter>
+                                                    <AlertDialogCancel className="bg-zinc-800 border-zinc-700 text-zinc-300 hover:bg-zinc-700">Cancel</AlertDialogCancel>
+                                                    <AlertDialogAction
+                                                        onClick={() => updateUser(selectedUser.id, { isActive: !selectedUser.isActive })}
+                                                        className={selectedUser.isActive ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'}
+                                                    >
+                                                        {selectedUser.isActive ? (
+                                                            <>
+                                                                <Ban className="h-4 w-4 mr-2" />
+                                                                Yes, Ban User
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <UserCheck className="h-4 w-4 mr-2" />
+                                                                Yes, Unban User
+                                                            </>
+                                                        )}
+                                                    </AlertDialogAction>
+                                                </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                        </AlertDialog>
 
                                         <Link
                                             href={selectedUser.challenges[0] ? `/admin/traders/${selectedUser.challenges[0].id}` : '#'}
