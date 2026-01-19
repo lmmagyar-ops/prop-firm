@@ -5,13 +5,14 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { TopNavActions } from "./TopNavActions";
-import { useSession } from "next-auth/react";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 
-export function TopNav() {
+interface TopNavProps {
+    userId: string;
+}
+
+export function TopNav({ userId }: TopNavProps) {
     const pathname = usePathname();
-    const { data: session } = useSession();
-    const userId = session?.user?.id || "demo-user-1";
 
     return (
         <>

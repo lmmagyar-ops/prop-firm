@@ -42,7 +42,7 @@ export default async function DashboardLayout({
             <Sidebar hasActiveChallenge={hasActiveChallenge} />
 
             <main className="flex-1 ml-0 md:ml-64 flex flex-col min-h-screen">
-                <TopNav />
+                <TopNav userId={userId} />
 
                 <div className="flex-1 p-6 max-w-[1800px] mx-auto w-full">
                     {children}
