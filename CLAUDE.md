@@ -469,19 +469,38 @@ Add new keywords here when important events aren't appearing.
 
 ## Git Workflow (Staging-First)
 
-- **develop** → Staging (Vercel preview URL)
-- **main** → Production (auto-deploys to prop-firmx.vercel.app)
+> [!CAUTION]
+> **NEVER push directly to `main` branch.** All changes MUST go to `develop` first for staging validation. This prevents production incidents.
+
+### Branch Strategy
+
+| Branch | Environment | URL |
+|--------|-------------|-----|
+| `develop` | Staging | Vercel preview URL |
+| `main` | Production | prop-firmx.vercel.app |
+
+### Standard Workflow
 
 ```bash
-# Make changes on develop first
+# 1. ALWAYS work on develop
 git checkout develop
 # ... make changes ...
-git push origin develop
-# Test on Vercel preview URL
 
-# Promote to production
+# 2. Push to staging ONLY
+git push origin develop
+
+# 3. Test on Vercel preview URL
+# Wait for user verification before promoting
+
+# 4. Promote to production (ONLY after staging verification)
 git checkout main && git merge develop && git push origin main
 ```
+
+### Rules for Agents
+
+1. **Default branch is `develop`** - All code changes push here first
+2. **Never auto-push to `main`** - Requires explicit user approval
+3. **Run `/deploy` workflow** for production promotions
 
 See `.agent/workflows/deploy.md` for detailed instructions.
 

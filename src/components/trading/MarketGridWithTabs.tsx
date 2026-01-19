@@ -1,30 +1,27 @@
 "use client";
 
-import { useState, useMemo, useTransition, useEffect } from "react";
+import { useState, useMemo, useTransition } from "react";
 import { cn } from "@/lib/utils";
-import { TrendingUp, Clock } from "lucide-react";
+import { TrendingUp } from "lucide-react";
 import type { EventMetadata } from "@/app/actions/market";
 import { SmartEventCard } from "./SmartEventCard";
 import { EventDetailModal } from "./EventDetailModal";
 import { SearchModal } from "./SearchModal";
 import { KalshiMatchupCard } from "./KalshiMatchupCard";
 import { KalshiMultiOutcomeCard } from "./KalshiMultiOutcomeCard";
-import { MobileTradeSheet } from "./MobileTradeSheet";
 
 interface CategoryTabsProps {
     events?: EventMetadata[];
     balance: number;
     userId: string;
     platform?: "polymarket" | "kalshi";
-    challengeId?: string;
 }
 
 // All available categories matching Polymarket
 const CATEGORIES = [
     { id: 'trending', label: 'Trending', icon: TrendingUp, special: true },
-    { id: 'breaking', label: 'Breaking', special: true },
-    { id: 'ending', label: 'Ending Soon', icon: Clock, special: true },
-    { id: 'new', label: 'New', special: false },
+    { id: 'Breaking', label: 'Breaking', special: true },
+    { id: 'New', label: 'New', special: false },
     { id: 'all', label: 'All', special: false },
     { id: 'Politics', label: 'Politics' },
     { id: 'Geopolitics', label: 'Geopolitics' },
@@ -36,29 +33,11 @@ const CATEGORIES = [
     { id: 'Other', label: 'World' },
 ];
 
-export function MarketGridWithTabs({ events = [], balance, userId, platform = "polymarket", challengeId }: CategoryTabsProps) {
+export function MarketGridWithTabs({ events = [], balance, userId, platform = "polymarket" }: CategoryTabsProps) {
     const [activeTab, setActiveTab] = useState('trending');
     const [selectedEvent, setSelectedEvent] = useState<EventMetadata | null>(null);
     const [detailModalOpen, setDetailModalOpen] = useState(false);
     const [isPending, startTransition] = useTransition();
-
-    // Mobile trade sheet state
-    const [tradeSheetOpen, setTradeSheetOpen] = useState(false);
-    const [tradeSheetMarket, setTradeSheetMarket] = useState<{
-        id: string;
-        title: string;
-        yesPrice: number;
-        noPrice: number;
-    } | null>(null);
-
-    // Detect mobile
-    const [isMobile, setIsMobile] = useState(false);
-    useEffect(() => {
-        const check = () => setIsMobile(window.innerWidth < 768);
-        check();
-        window.addEventListener('resize', check);
-        return () => window.removeEventListener('resize', check);
-    }, []);
 
     // Platform display config
     const platformConfig = {
@@ -74,20 +53,6 @@ export function MarketGridWithTabs({ events = [], balance, userId, platform = "p
         if (activeTab === 'trending') {
             // Show all featured events on trending, sorted by volume
             return [...events].sort((a, b) => (b.volume || 0) - (a.volume || 0));
-        } else if (activeTab === 'ending') {
-            // Filter events ending within 48 hours
-            const now = Date.now();
-            const hours48 = 48 * 60 * 60 * 1000;
-            return events.filter(e => {
-                if (!e.endDate) return false;
-                const endTime = new Date(e.endDate).getTime();
-                return endTime > now && endTime - now < hours48;
-            }).sort((a, b) => {
-                // Sort by soonest ending first
-                const aEnd = new Date(a.endDate || 0).getTime();
-                const bEnd = new Date(b.endDate || 0).getTime();
-                return aEnd - bEnd;
-            });
         } else if (activeTab === 'all') {
             return [...events].sort((a, b) => (b.volume || 0) - (a.volume || 0));
         } else {
@@ -111,53 +76,6 @@ export function MarketGridWithTabs({ events = [], balance, userId, platform = "p
                 setDetailModalOpen(true);
             }
         });
-    };
-
-    // Handler for quick trade from Yes/No buttons
-    const handleQuickTrade = (event: EventMetadata, marketId: string, side: 'yes' | 'no') => {
-        const market = event.markets.find(m => m.id === marketId) || event.markets[0];
-        if (!market) return;
-
-        if (isMobile) {
-            // Mobile: Open quick trade sheet
-            setTradeSheetMarket({
-                id: market.id,
-                title: event.title,
-                yesPrice: market.price,
-                noPrice: 1 - market.price,
-            });
-            setTradeSheetOpen(true);
-        } else {
-            // Desktop: Open full detail modal
-            startTransition(() => {
-                setSelectedEvent(event);
-                setDetailModalOpen(true);
-            });
-        }
-    };
-
-    // Execute trade from MobileTradeSheet
-    const executeTrade = async (outcome: "YES" | "NO", amount: number) => {
-        if (!tradeSheetMarket || !challengeId) {
-            console.error("[Trade] Missing market or challenge ID");
-            return;
-        }
-
-        const res = await fetch("/api/trade", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                challengeId,
-                marketId: tradeSheetMarket.id,
-                side: outcome,
-                amount,
-            }),
-        });
-
-        if (!res.ok) {
-            const data = await res.json();
-            throw new Error(data.error || "Trade failed");
-        }
     };
 
     // Handler for trading from within the detail modal
@@ -257,19 +175,34 @@ export function MarketGridWithTabs({ events = [], balance, userId, platform = "p
                                 event.isMultiOutcome ? (
                                     <KalshiMultiOutcomeCard
                                         event={event}
-                                        onTrade={(marketId, side) => handleQuickTrade(event, marketId, side)}
+                                        onTrade={(marketId, side) => {
+                                            startTransition(() => {
+                                                setSelectedEvent(event);
+                                                setDetailModalOpen(true);
+                                            });
+                                        }}
                                     />
                                 ) : (
                                     <KalshiMatchupCard
                                         event={event}
-                                        onTrade={(marketId, side) => handleQuickTrade(event, marketId, side)}
+                                        onTrade={(marketId, side) => {
+                                            startTransition(() => {
+                                                setSelectedEvent(event);
+                                                setDetailModalOpen(true);
+                                            });
+                                        }}
                                     />
                                 )
                             ) : (
                                 // Polymarket uses SmartEventCard for all
                                 <SmartEventCard
                                     event={event}
-                                    onTrade={(marketId, side) => handleQuickTrade(event, marketId, side)}
+                                    onTrade={(marketId, side) => {
+                                        startTransition(() => {
+                                            setSelectedEvent(event);
+                                            setDetailModalOpen(true);
+                                        });
+                                    }}
                                 />
                             )}
                         </div>
@@ -285,20 +218,6 @@ export function MarketGridWithTabs({ events = [], balance, userId, platform = "p
                 onTrade={handleTrade}
                 platform={platform}
             />
-
-            {/* Mobile Quick Trade Sheet */}
-            {tradeSheetMarket && (
-                <MobileTradeSheet
-                    isOpen={tradeSheetOpen}
-                    onClose={() => setTradeSheetOpen(false)}
-                    marketTitle={tradeSheetMarket.title}
-                    yesPrice={tradeSheetMarket.yesPrice}
-                    noPrice={tradeSheetMarket.noPrice}
-                    balance={balance}
-                    onTrade={executeTrade}
-                />
-            )}
         </div>
     );
 }
-
