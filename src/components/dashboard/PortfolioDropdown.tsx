@@ -51,7 +51,13 @@ export function PortfolioDropdown() {
             }
 
             const result = await response.json();
-            toast.success(`Position closed for $${result.proceeds?.toFixed(2) || '0.00'}`);
+            const pnl = result.pnl || 0;
+            const pnlText = pnl >= 0 ? `+$${pnl.toFixed(2)}` : `-$${Math.abs(pnl).toFixed(2)}`;
+            if (pnl >= 0) {
+                toast.success(`Position closed: ${pnlText} profit`);
+            } else {
+                toast.error(`Position closed: ${pnlText} loss`);
+            }
 
             // Remove from local state
             setPositions(prev => prev.filter(p => p.id !== positionId));

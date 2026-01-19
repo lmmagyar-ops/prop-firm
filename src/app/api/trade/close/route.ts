@@ -44,6 +44,8 @@ export async function POST(req: NextRequest) {
 
         // Close the position by selling all shares
         const shares = parseFloat(position.shares);
+        const entryPrice = parseFloat(position.entryPrice);
+        const invested = parseFloat(position.sizeAmount || '0'); // Original investment
 
         // Get current market price to calculate sell amount
         const { MarketService } = await import("@/lib/market");
@@ -77,12 +79,15 @@ export async function POST(req: NextRequest) {
             where: eq(challenges.id, challenge.id),
         });
 
-        // Calculate proceeds for display
+        // Calculate proceeds and P&L for display
         const proceeds = parseFloat(trade.shares) * parseFloat(trade.price);
+        const pnl = proceeds - invested; // Profit/loss = what you got back - what you invested
 
         return NextResponse.json({
             success: true,
             proceeds, // Amount user received from closing
+            invested, // Original investment amount
+            pnl,      // Profit or loss
             trade: {
                 id: trade.id,
                 shares: parseFloat(trade.shares),
