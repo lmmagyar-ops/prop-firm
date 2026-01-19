@@ -48,8 +48,8 @@ export function ChallengeSelector({ challenges, selectedChallengeId, onSelect }:
     const [isMobile, setIsMobile] = useState(false);
     const isMac = useIsMac();
 
-    // DEBUG: Log challenges prop on every render
-    console.log("[ChallengeSelector PROP] challenges:", challenges.map(c => ({ id: c.id, accountNumber: c.accountNumber })));
+    // DEBUG: Log challenges prop on every render (JSON for visibility)
+    console.log("[ChallengeSelector PROP] IDs:", JSON.stringify(challenges.map(c => c.id)));
 
     // PERF: Debounced resize listener to avoid excessive re-renders
     const resizeTimeout = useRef<NodeJS.Timeout | null>(null);
