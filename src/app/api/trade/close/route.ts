@@ -77,8 +77,12 @@ export async function POST(req: NextRequest) {
             where: eq(challenges.id, challenge.id),
         });
 
+        // Calculate proceeds for display
+        const proceeds = parseFloat(trade.shares) * parseFloat(trade.price);
+
         return NextResponse.json({
             success: true,
+            proceeds, // Amount user received from closing
             trade: {
                 id: trade.id,
                 shares: parseFloat(trade.shares),
