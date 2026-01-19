@@ -298,12 +298,44 @@ class IngestionWorker {
      * @param question - Event title or market question (for keyword matching)
      * @param tags - Polymarket tags array (e.g., ['NFL', 'Bills vs Broncos'])
      * @param imageUrl - Event image URL (often contains sport identifiers)
+     * @param options - Additional fields for Breaking/New detection
      */
-    private getCategories(apiCategory: string | null, question: string, tags?: string[], imageUrl?: string): string[] {
+    private getCategories(
+        apiCategory: string | null,
+        question: string,
+        tags?: string[],
+        imageUrl?: string,
+        options?: { createdAt?: string; volume24hr?: number; isHighVolume?: boolean }
+    ): string[] {
         const categories: string[] = [];
         const q = question.toLowerCase();
         const tagsLower = (tags || []).map(t => t.toLowerCase());
         const imageLower = (imageUrl || '').toLowerCase();
+
+        // === BREAKING DETECTION ===
+        // Breaking = High 24h volume OR breaking news keywords
+        const breakingKeywords = [
+            'just in', 'breaking', 'urgent', 'shock', 'announcement', 'declares',
+            'dies', 'assassination', 'attack', 'crash', 'collapse', 'emergency'
+        ];
+        const hasBreakingKeyword = breakingKeywords.some(kw => q.includes(kw));
+        const isBreaking = hasBreakingKeyword || options?.isHighVolume;
+
+        if (isBreaking) {
+            categories.push('Breaking');
+        }
+
+        // === NEW DETECTION ===
+        // New = Created within last 7 days
+        if (options?.createdAt) {
+            const createdDate = new Date(options.createdAt);
+            const sevenDaysAgo = new Date();
+            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+            if (createdDate > sevenDaysAgo) {
+                categories.push('New');
+            }
+        }
 
         // Map Polymarket's native category first
         const categoryMap: Record<string, string> = {
@@ -630,7 +662,22 @@ class IngestionWorker {
                     // Sort sub-markets by price descending (highest probability first)
                     subMarkets.sort((a, b) => b.price - a.price);
 
-                    const categories = this.getCategories(null, event.title, event.tags, event.image);
+                    // Determine if this is a "high volume" event (top 15 by 24h volume = Breaking)
+                    // Events are already sorted by volume24hr descending, so index determines rank
+                    const eventIndex = events.indexOf(event);
+                    const isHighVolume = eventIndex < 15;
+
+                    const categories = this.getCategories(
+                        null,
+                        event.title,
+                        event.tags,
+                        event.image,
+                        {
+                            createdAt: event.createdAt,
+                            volume24hr: event.volume24hr,
+                            isHighVolume
+                        }
+                    );
 
                     processedEvents.push({
                         id: event.id || event.slug,
@@ -639,6 +686,8 @@ class IngestionWorker {
                         description: event.description,
                         image: event.image,
                         volume: event.volume || 0,
+                        volume24hr: event.volume24hr || 0,
+                        createdAt: event.createdAt,
                         categories: categories,
                         markets: subMarkets,
                         isMultiOutcome: subMarkets.length > 1,
