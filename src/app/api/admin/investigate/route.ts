@@ -7,8 +7,10 @@ import { eq, or, like } from "drizzle-orm";
 // Temporary endpoint to investigate Mat's suspicious P&L
 // GET /api/admin/investigate?email=marcio
 export async function GET(req: Request) {
-    const adminCheck = await requireAdmin();
-    if (adminCheck) return adminCheck;
+    const adminAuth = await requireAdmin();
+    if (!adminAuth.isAuthorized) {
+        return adminAuth.response;
+    }
 
     const { searchParams } = new URL(req.url);
     const searchEmail = searchParams.get("email") || "marcio";
