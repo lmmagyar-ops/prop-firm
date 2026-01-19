@@ -20,8 +20,8 @@ interface CategoryTabsProps {
 // All available categories matching Polymarket
 const CATEGORIES = [
     { id: 'trending', label: 'Trending', icon: TrendingUp, special: true },
-    { id: 'breaking', label: 'Breaking', special: true },
-    { id: 'new', label: 'New', special: false },
+    { id: 'Breaking', label: 'Breaking', special: true },
+    { id: 'New', label: 'New', special: false },
     { id: 'all', label: 'All', special: false },
     { id: 'Politics', label: 'Politics' },
     { id: 'Geopolitics', label: 'Geopolitics' },
