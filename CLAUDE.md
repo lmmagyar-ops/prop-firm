@@ -423,6 +423,49 @@ r.get('event:active_list').then(d => console.log(JSON.parse(d).length + ' events
 "
 ```
 
+### Stale Market Fix (Run `/stale-market` workflow)
+
+| Issue | Solution |
+|-------|----------|
+| Single market wrong | `POST /api/admin/force-sync-market` with `{"query": "market_name"}` |
+| All markets stale | `POST /api/admin/force-sync-market` with `{"syncAll": true}` |
+| Persistent staleness | Restart Railway ingestion worker |
+
+---
+
+## Operational Tools
+
+### Admin Endpoints
+
+| Endpoint | Purpose |
+|----------|---------|
+| `/api/admin/refresh-market?query=X` | Check live Polymarket price for market X |
+| `/api/admin/force-sync-market` | Force-update Redis directly (bypasses Railway) |
+| `/api/admin/reset-challenge` | Reset a user's challenge (balance corruption fix) |
+| `/api/admin/investigate?email=X` | Forensic audit for a user |
+| `/api/cron/balance-audit` | Balance integrity check (runs daily 2AM UTC) |
+
+### Cron Jobs
+
+| Job | Schedule | File |
+|-----|----------|------|
+| Balance Audit | Daily 2 AM UTC | `src/app/api/cron/balance-audit/route.ts` |
+
+### Force-Include Keywords
+
+The ingestion worker always fetches events matching these keywords, regardless of volume rank:
+
+```typescript
+// src/workers/ingestion.ts, line ~45
+const FORCE_INCLUDE_KEYWORDS = [
+    "portugal", "presidential", "uk election", "germany", "france",
+    "macron", "starmer", "bitcoin", "ethereum", "super bowl",
+    "nba", "trump", "gaza", "ukraine", "china", "taiwan"
+];
+```
+
+Add new keywords here when important events aren't appearing.
+
 
 ## Git Workflow (Staging-First)
 
