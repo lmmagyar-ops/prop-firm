@@ -38,7 +38,7 @@ export function TopNavActions({ userId }: TopNavActionsProps) {
                 });
                 if (response.ok) {
                     const data = await response.json();
-                    console.log("[TopNavActions] Fetched IDs:", JSON.stringify(data.challenges?.map((c: any) => c.id)));
+                    console.log("[TopNavActions] userId:", userId, "Fetched IDs:", JSON.stringify(data.challenges?.map((c: any) => c.id)));
                     setChallenges(data.challenges || []);
                 }
             } catch (error) {
