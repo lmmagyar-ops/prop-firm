@@ -193,8 +193,11 @@ export async function POST(req: NextRequest) {
 
     } catch (error: any) {
         log.error("Trade execution failed", error);
+        // Return detailed error for debugging (remove in production)
         return NextResponse.json({
-            error: error.message || "Trade failed"
+            error: error.message || "Trade failed",
+            stack: error.stack?.split('\n').slice(0, 5).join('\n'), // First 5 lines of stack
+            name: error.name
         }, { status: 500 });
     }
 }
