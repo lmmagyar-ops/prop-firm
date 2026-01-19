@@ -117,7 +117,7 @@ export async function GET(req: Request) {
 
             const result: BalanceAuditResult = {
                 challengeId: challenge.id,
-                userId: challenge.userId,
+                userId: challenge.userId || 'unknown',
                 status: challenge.status,
                 startingBalance,
                 storedBalance,

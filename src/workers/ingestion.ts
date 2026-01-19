@@ -38,7 +38,27 @@ dotenv.config();
 
 const CLOB_WS_URL = "wss://ws-live-data.polymarket.com";
 // Gamma API Base: We append filters dynamically in fetchActiveMarkets
-const GAMMA_API_URL = "https://gamma-api.polymarket.com/markets?limit=100&active=true&closed=false&order=volume&descending=true";
+const GAMMA_API_URL = "https://gamma-api.polymarket.com/markets?limit=250&active=true&closed=false&order=volume&descending=true";
+
+// Force-include keywords: Events matching these will ALWAYS be fetched regardless of volume ranking
+const FORCE_INCLUDE_KEYWORDS = [
+    "portugal",
+    "presidential",
+    "uk election",
+    "germany",
+    "france",
+    "macron",
+    "starmer",
+    "bitcoin",
+    "ethereum",
+    "super bowl",
+    "nba",
+    "trump",
+    "gaza",
+    "ukraine",
+    "china",
+    "taiwan"
+];
 const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6380";
 
 class IngestionWorker {
@@ -479,7 +499,8 @@ class IngestionWorker {
             console.log("[Ingestion] Fetching High-Volume Events (Sorted by 24h Volume)...");
 
             // Primary query: high-volume active events sorted by recent activity
-            const url = "https://gamma-api.polymarket.com/events?active=true&closed=false&order=volume24hr&ascending=false&limit=100";
+            // Increased limit from 100 to 250 for broader coverage of important events
+            const url = "https://gamma-api.polymarket.com/events?active=true&closed=false&order=volume24hr&ascending=false&limit=250";
             const response = await fetch(url);
             const events = await response.json();
 
@@ -503,6 +524,34 @@ class IngestionWorker {
                 }
                 console.log(`[Ingestion] Added ${breakingEvents.filter((be: any) => !seenSlugs.has(be.slug)).length} breaking events.`);
             }
+
+            // Tertiary query: Force-include important events that may not be in top volume
+            // This ensures events like Portugal election are always fetched
+            console.log("[Ingestion] Fetching force-include events by keyword...");
+            const existingSlugs = new Set(events.map((e: any) => e.slug));
+            let forceIncludedCount = 0;
+
+            for (const keyword of FORCE_INCLUDE_KEYWORDS) {
+                try {
+                    // Search by title via the events endpoint
+                    const keywordUrl = `https://gamma-api.polymarket.com/events?active=true&closed=false&limit=20&title_like=${encodeURIComponent(keyword)}`;
+                    const keywordRes = await fetch(keywordUrl);
+                    const keywordEvents = await keywordRes.json();
+
+                    if (Array.isArray(keywordEvents)) {
+                        for (const ke of keywordEvents) {
+                            if (!existingSlugs.has(ke.slug)) {
+                                events.push(ke);
+                                existingSlugs.add(ke.slug);
+                                forceIncludedCount++;
+                            }
+                        }
+                    }
+                } catch (err) {
+                    // Silent fail for individual keyword fetches
+                }
+            }
+            console.log(`[Ingestion] Force-included ${forceIncludedCount} additional events by keyword.`);
 
             const processedEvents: any[] = [];
             const allEventTokenIds: string[] = [];

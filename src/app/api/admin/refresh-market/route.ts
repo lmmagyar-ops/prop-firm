@@ -72,8 +72,8 @@ export async function POST(req: Request) {
                 closed: targetMarket.closed,
                 volume: targetMarket.volume,
                 prices: prices,
-                yesPrice: prices[0] ? (parseFloat(prices[0]) * 100).toFixed(1) + '%' : 'N/A',
-                noPrice: prices[1] ? (parseFloat(prices[1]) * 100).toFixed(1) + '%' : 'N/A',
+                yesPrice: prices[0] ? (parseFloat(String(prices[0])) * 100).toFixed(1) + '%' : 'N/A',
+                noPrice: prices[1] ? (parseFloat(String(prices[1])) * 100).toFixed(1) + '%' : 'N/A',
                 clobTokenIds: targetMarket.clobTokenIds,
                 outcomes: targetMarket.outcomes,
                 endDate: targetMarket.endDate,
@@ -140,7 +140,7 @@ export async function GET(req: Request) {
 
                         markets.push({
                             question: market.question,
-                            yesPrice: prices[0] ? (parseFloat(prices[0]) * 100).toFixed(1) + '%' : 'N/A',
+                            yesPrice: prices[0] ? (parseFloat(String(prices[0])) * 100).toFixed(1) + '%' : 'N/A',
                             volume: market.volume,
                             closed: market.closed
                         });
