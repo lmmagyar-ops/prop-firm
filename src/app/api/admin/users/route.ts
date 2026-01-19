@@ -90,8 +90,9 @@ export async function GET() {
 
             if (row.challengeId) {
                 const startingBalance = (row.rulesConfig as any)?.startingBalance || 10000;
-                const pnl = Number(row.currentBalance || 0) - startingBalance;
+                const cashBalance = Number(row.currentBalance || 0);
 
+                // Note: Full P&L with position values will be calculated after positions query
                 user.challenges.push({
                     id: row.challengeId,
                     status: row.status,
@@ -99,16 +100,57 @@ export async function GET() {
                     balance: row.currentBalance,
                     platform: row.platform,
                     startedAt: row.startedAt,
-                    pnl: pnl,
+                    startingBalance: startingBalance,
+                    cashBalance: cashBalance,
+                    positionValue: 0, // Will be filled in later
+                    pnl: 0, // Will be calculated after position values
                 });
 
                 user.totalChallenges++;
-                user.totalPnL += pnl;
 
                 if (row.status === 'active') user.activeChallenges++;
                 if (row.status === 'passed') user.passedChallenges++;
                 if (row.status === 'failed') user.failedChallenges++;
             }
+        }
+
+        // Fetch all open positions to calculate position values
+        const openPositions = await db
+            .select({
+                challengeId: positions.challengeId,
+                shares: positions.shares,
+                entryPrice: positions.entryPrice,
+                currentPrice: positions.currentPrice,
+                direction: positions.direction,
+            })
+            .from(positions)
+            .where(eq(positions.status, 'OPEN'));
+
+        // Calculate position values per challenge
+        const positionValuesByChallenge = new Map<string, number>();
+        for (const pos of openPositions) {
+            const shares = parseFloat(pos.shares);
+            // Use entry price as estimate (live prices would require Redis calls)
+            const price = parseFloat(pos.currentPrice || pos.entryPrice);
+            // For NO positions, value = shares * (1 - yesPrice)
+            const effectivePrice = pos.direction === 'NO' ? (1 - price) : price;
+            const value = shares * effectivePrice;
+
+            const existing = positionValuesByChallenge.get(pos.challengeId ?? '') || 0;
+            positionValuesByChallenge.set(pos.challengeId ?? '', existing + value);
+        }
+
+        // Update P&L for all challenges with equity-based calculation
+        for (const user of userMap.values()) {
+            let userTotalPnL = 0;
+            for (const challenge of user.challenges) {
+                const positionValue = positionValuesByChallenge.get(challenge.id) || 0;
+                challenge.positionValue = positionValue;
+                const equity = challenge.cashBalance + positionValue;
+                challenge.pnl = equity - challenge.startingBalance;
+                userTotalPnL += challenge.pnl;
+            }
+            user.totalPnL = userTotalPnL;
         }
 
         // Get trade counts for each challenge
