@@ -119,44 +119,68 @@ export async function GET(req: Request) {
     try {
         console.log(`[Admin] Searching Polymarket for: "${query}"`);
 
-        // Search events (includes multi-outcome markets like elections)
-        const eventsUrl = `https://gamma-api.polymarket.com/events?active=true&closed=false&limit=100`;
-        const eventsRes = await fetch(eventsUrl);
-        const events = await eventsRes.json();
-
         const q = query.toLowerCase();
         const matchingEvents: any[] = [];
+        const seenSlugs = new Set<string>();
 
-        if (Array.isArray(events)) {
-            for (const event of events) {
-                if (event.title?.toLowerCase().includes(q)) {
-                    const markets: any[] = [];
+        // Method 1: Targeted search using title_like parameter (most accurate)
+        const targetedUrl = `https://gamma-api.polymarket.com/events?active=true&closed=false&limit=50&title_like=${encodeURIComponent(query)}`;
+        const targetedRes = await fetch(targetedUrl);
+        const targetedEvents = await targetedRes.json();
 
-                    for (const market of (event.markets || [])) {
-                        let prices: number[] = [];
-                        try {
-                            prices = JSON.parse(market.outcomePrices || '[]');
-                        } catch { }
-
-                        markets.push({
-                            question: market.question,
-                            yesPrice: prices[0] ? (parseFloat(String(prices[0])) * 100).toFixed(1) + '%' : 'N/A',
-                            volume: market.volume,
-                            closed: market.closed
-                        });
-                    }
-
-                    // Sort by price descending
-                    markets.sort((a, b) => parseFloat(b.yesPrice) - parseFloat(a.yesPrice));
-
-                    matchingEvents.push({
-                        title: event.title,
-                        slug: event.slug,
-                        volume: event.volume,
-                        markets: markets.slice(0, 10) // Top 10 outcomes
-                    });
+        if (Array.isArray(targetedEvents)) {
+            for (const event of targetedEvents) {
+                if (!seenSlugs.has(event.slug)) {
+                    seenSlugs.add(event.slug);
                 }
             }
+            console.log(`[Admin] Targeted search found ${targetedEvents.length} events`);
+        }
+
+        // Method 2: Also search the top 500 events by volume for broader coverage
+        const eventsUrl = `https://gamma-api.polymarket.com/events?active=true&closed=false&limit=500&order=volume&ascending=false`;
+        const eventsRes = await fetch(eventsUrl);
+        const allEvents = await eventsRes.json();
+
+        // Combine both result sets
+        const combinedEvents = [...(Array.isArray(targetedEvents) ? targetedEvents : [])];
+
+        if (Array.isArray(allEvents)) {
+            for (const event of allEvents) {
+                if (!seenSlugs.has(event.slug) && event.title?.toLowerCase().includes(q)) {
+                    combinedEvents.push(event);
+                    seenSlugs.add(event.slug);
+                }
+            }
+        }
+
+        // Process all combined events into the response format
+        for (const event of combinedEvents) {
+            const markets: any[] = [];
+
+            for (const market of (event.markets || [])) {
+                let prices: number[] = [];
+                try {
+                    prices = JSON.parse(market.outcomePrices || '[]');
+                } catch { }
+
+                markets.push({
+                    question: market.question,
+                    yesPrice: prices[0] ? (parseFloat(String(prices[0])) * 100).toFixed(1) + '%' : 'N/A',
+                    volume: market.volume,
+                    closed: market.closed
+                });
+            }
+
+            // Sort by price descending
+            markets.sort((a, b) => parseFloat(b.yesPrice) - parseFloat(a.yesPrice));
+
+            matchingEvents.push({
+                title: event.title,
+                slug: event.slug,
+                volume: event.volume,
+                markets: markets.slice(0, 10) // Top 10 outcomes
+            });
         }
 
         return NextResponse.json({
