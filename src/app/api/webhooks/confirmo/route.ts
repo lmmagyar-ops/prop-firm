@@ -117,7 +117,17 @@ export async function POST(req: NextRequest) {
                 platform,
             });
 
-            console.log(`[Confirmo] Challenge provisioned for ${userId} (tier: ${tier}, platform: ${platform}, paid: $${paidAmount})`);
+            // FORENSIC LOGGING: Track webhook-provisioned challenge
+            console.log(`[BALANCE_FORENSIC] ${JSON.stringify({
+                timestamp: new Date().toISOString(),
+                operation: 'WEBHOOK_PROVISION',
+                userId: userId.slice(0, 8),
+                tier,
+                startingBalance: `$${startingBalance}`,
+                platform,
+                paidAmount: `$${paidAmount}`,
+                source: 'webhooks/confirmo'
+            })}`);
         }
 
         return NextResponse.json({ received: true });

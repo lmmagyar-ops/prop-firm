@@ -53,7 +53,14 @@ export async function POST(req: Request) {
             })
             .where(eq(challenges.id, challengeId));
 
-        console.log(`[Admin] Challenge ${challengeId} reset to $${startingBalance}`);
+        // FORENSIC LOGGING: Track admin reset
+        console.log(`[BALANCE_FORENSIC] ${JSON.stringify({
+            timestamp: new Date().toISOString(),
+            operation: 'ADMIN_RESET',
+            challengeId: challengeId.slice(0, 8),
+            newBalance: `$${startingBalance}`,
+            source: 'admin/reset-challenge'
+        })}`);
 
         return NextResponse.json({
             success: true,

@@ -60,7 +60,17 @@ export class ChallengeManager {
             })
             .returning();
 
-        console.log(`[ChallengeManager] Created Challenge ${newChallenge.id} for User ${userId}`);
+        // FORENSIC LOGGING: Track challenge creation balance
+        console.log(`[BALANCE_FORENSIC] ${JSON.stringify({
+            timestamp: new Date().toISOString(),
+            operation: 'CHALLENGE_CREATED',
+            challengeId: newChallenge.id.slice(0, 8),
+            userId: userId.slice(0, 8),
+            startingBalance: `$${rules.startingBalance}`,
+            currentBalance: `$${newChallenge.currentBalance}`,
+            source: 'ChallengeManager.createChallenge'
+        })}`);
+
         return newChallenge;
     }
 
