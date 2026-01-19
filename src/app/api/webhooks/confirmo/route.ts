@@ -40,6 +40,8 @@ function getRulesConfig(tier: string) {
     return {
         startingBalance,
         rulesConfig: {
+            // Include startingBalance in rulesConfig for consistency with legacy challenges
+            startingBalance,
             // CRITICAL: profitTarget and maxDrawdown must be ABSOLUTE DOLLAR VALUES
             profitTarget: startingBalance * 0.10, // 10% in absolute $
             maxDrawdown: startingBalance * 0.08, // 8% in absolute $
@@ -57,6 +59,7 @@ function getRulesConfig(tier: string) {
             minMarketVolume: 100_000, // $100k
         }
     };
+
 }
 
 export async function POST(req: NextRequest) {

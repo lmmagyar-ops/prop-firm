@@ -33,8 +33,16 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Challenge not found" }, { status: 404 });
         }
 
-        const rulesConfig = challenge.rulesConfig as any;
-        const startingBalance = rulesConfig?.startingBalance || 10000;
+        // FIX: Use the startingBalance column directly, NOT rulesConfig
+        // rulesConfig.startingBalance may not exist for webhook-created challenges
+        const startingBalance = parseFloat(challenge.startingBalance);
+        if (isNaN(startingBalance) || startingBalance <= 0) {
+            return NextResponse.json({
+                error: "Invalid startingBalance in challenge record",
+                debug: { storedValue: challenge.startingBalance }
+            }, { status: 400 });
+        }
+
 
         // 2. Delete all trades for this challenge
         await db.delete(trades).where(eq(trades.challengeId, challengeId));

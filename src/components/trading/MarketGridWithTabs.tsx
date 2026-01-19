@@ -15,7 +15,9 @@ interface CategoryTabsProps {
     balance: number;
     userId: string;
     platform?: "polymarket" | "kalshi";
+    challengeId?: string;
 }
+
 
 // All available categories matching Polymarket
 const CATEGORIES = [

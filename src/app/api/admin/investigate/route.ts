@@ -53,7 +53,7 @@ export async function GET(req: NextRequest) {
                 const startingBalance = parseFloat(challenge.startingBalance);
                 let expectedBalance = startingBalance;
                 for (const trade of challengeTrades) {
-                    if (trade.side === 'BUY') {
+                    if (trade.type === 'BUY') {
                         expectedBalance -= parseFloat(trade.amount);
                     } else {
                         expectedBalance += parseFloat(trade.amount);
@@ -75,11 +75,10 @@ export async function GET(req: NextRequest) {
                     trades: challengeTrades.map(t => ({
                         id: t.id,
                         marketId: t.marketId?.slice(0, 12) + '...',
-                        side: t.side,
+                        type: t.type,
                         amount: parseFloat(t.amount),
                         shares: parseFloat(t.shares),
                         price: parseFloat(t.price),
-                        status: t.status,
                         executedAt: t.executedAt,
                     })),
                     positions: challengePositions.map(p => ({
