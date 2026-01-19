@@ -36,6 +36,7 @@ export function OpenPositions({ positions: initialPositions }: OpenPositionsProp
     }, [initialPositions]);
 
     const handleClosePosition = async (positionId: string) => {
+        console.log("[ClosePosition] Starting close for:", positionId);
         setClosingId(positionId);
         try {
             const response = await fetch(`/api/trade/close`, {
@@ -43,6 +44,8 @@ export function OpenPositions({ positions: initialPositions }: OpenPositionsProp
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ positionId }),
             });
+
+            console.log("[ClosePosition] Response status:", response.status);
 
             if (!response.ok) {
                 const error = await response.json();
