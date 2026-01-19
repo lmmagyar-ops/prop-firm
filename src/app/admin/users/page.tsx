@@ -614,7 +614,7 @@ export default function UsersPage() {
                                                     <div className="flex items-center gap-6 text-right">
                                                         <div>
                                                             <div className={`font-mono text-sm ${user.totalPnL >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                                                {user.totalPnL >= 0 ? '+' : ''}${user.totalPnL.toFixed(2)}
+                                                                {(user.totalPnL || 0) >= 0 ? '+' : ''}${(user.totalPnL || 0).toFixed(2)}
                                                             </div>
                                                             <div className="text-[10px] text-zinc-500">Total P&L</div>
                                                         </div>
@@ -677,7 +677,7 @@ export default function UsersPage() {
                                         <div className="p-3 bg-zinc-800/50 rounded-lg">
                                             <div className="text-xs text-zinc-500 mb-1">Total P&L</div>
                                             <div className={`font-mono font-bold ${selectedUser.totalPnL >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                                {selectedUser.totalPnL >= 0 ? '+' : ''}${selectedUser.totalPnL.toFixed(2)}
+                                                {(selectedUser.totalPnL || 0) >= 0 ? '+' : ''}${(selectedUser.totalPnL || 0).toFixed(2)}
                                             </div>
                                         </div>
                                         <div className="p-3 bg-zinc-800/50 rounded-lg">
@@ -795,7 +795,7 @@ export default function UsersPage() {
                                                                             <AlertDialogHeader>
                                                                                 <AlertDialogTitle className="text-zinc-100">Reset Challenge?</AlertDialogTitle>
                                                                                 <AlertDialogDescription className="text-zinc-400">
-                                                                                    This will delete all trades and positions, reset the balance to ${parseFloat(challenge.balance).toFixed(2)}, and set the status back to &quot;active&quot;.
+                                                                                    This will delete all trades and positions, reset the balance to ${parseFloat(challenge.balance || '0').toFixed(2)}, and set the status back to &quot;active&quot;.
                                                                                 </AlertDialogDescription>
                                                                             </AlertDialogHeader>
                                                                             <AlertDialogFooter>
@@ -826,12 +826,12 @@ export default function UsersPage() {
                                                     </div>
                                                     <div className="flex items-center justify-between text-sm">
                                                         <span className="text-zinc-400">Balance</span>
-                                                        <span className="font-mono text-white">${parseFloat(challenge.balance).toFixed(2)}</span>
+                                                        <span className="font-mono text-white">${parseFloat(challenge.balance || '0').toFixed(2)}</span>
                                                     </div>
                                                     <div className="flex items-center justify-between text-sm">
                                                         <span className="text-zinc-400">P&L</span>
                                                         <span className={`font-mono ${challenge.pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                                            {challenge.pnl >= 0 ? '+' : ''}${challenge.pnl.toFixed(2)}
+                                                            {(challenge.pnl || 0) >= 0 ? '+' : ''}${(challenge.pnl || 0).toFixed(2)}
                                                         </span>
                                                     </div>
                                                     <div className="flex items-center justify-between text-sm">
