@@ -4,6 +4,8 @@ import { eq, and } from "drizzle-orm";
 import { ChallengeRules } from "@/types/trading";
 import { getActiveMarkets, getMarketById, MarketMetadata } from "@/app/actions/market";
 import { ArbitrageDetector } from "./arbitrage-detector";
+import { MarketService } from "./market";
+import { getDirectionAdjustedPrice } from "./position-utils";
 
 export class RiskEngine {
 
@@ -52,20 +54,42 @@ export class RiskEngine {
             )
         });
 
+        // Calculate total position value for EQUITY-based drawdown checks
+        // CRITICAL: currentBalance is CASH only. Equity = Cash + Position Value
+        let totalPositionValue = 0;
+        if (allOpenPositions.length > 0) {
+            const positionMarketIds = allOpenPositions.map(p => p.marketId);
+            const livePrices = await MarketService.getBatchOrderBookPrices(positionMarketIds);
+
+            for (const pos of allOpenPositions) {
+                const shares = parseFloat(pos.shares);
+                const direction = (pos.direction as 'YES' | 'NO') || 'YES';
+                const priceData = livePrices.get(pos.marketId);
+                const rawPrice = priceData ? parseFloat(priceData.price) : parseFloat(pos.entryPrice);
+                const effectivePrice = getDirectionAdjustedPrice(rawPrice, direction);
+                totalPositionValue += shares * effectivePrice;
+            }
+        }
+        const currentEquity = currentBalance + totalPositionValue;
+        console.log("Position Value: $" + totalPositionValue.toFixed(2));
+        console.log("Current Equity: $" + currentEquity.toFixed(2));
+
         // --- RULE 1: MAX TOTAL DRAWDOWN (8% Static) ---
         const MAX_TOTAL_DD_PERCENT = rules.maxTotalDrawdownPercent || 0.08;
         const totalEquityFloor = startBalance * (1 - MAX_TOTAL_DD_PERCENT);
 
-        if (currentBalance - estimatedLoss < totalEquityFloor) {
-            return { allowed: false, reason: `Max Total Drawdown (8%) Reached. Floor: $${totalEquityFloor.toFixed(2)}` };
+        // Use EQUITY (not just cash) for drawdown comparison
+        if (currentEquity - estimatedLoss < totalEquityFloor) {
+            return { allowed: false, reason: `Max Total Drawdown (8%) Reached. Floor: $${totalEquityFloor.toFixed(2)}, Equity: $${currentEquity.toFixed(2)}` };
         }
 
         // --- RULE 2: MAX DAILY DRAWDOWN (4% of SOD Balance) ---
         const MAX_DAILY_DD_PERCENT = rules.maxDailyDrawdownPercent || 0.04;
         const dailyEquityFloor = sodBalance * (1 - MAX_DAILY_DD_PERCENT);
 
-        if (currentBalance - estimatedLoss < dailyEquityFloor) {
-            return { allowed: false, reason: `Max Daily Loss (4%) Reached. Daily Floor: $${dailyEquityFloor.toFixed(2)}` };
+        // Use EQUITY (not just cash) for daily drawdown comparison
+        if (currentEquity - estimatedLoss < dailyEquityFloor) {
+            return { allowed: false, reason: `Max Daily Loss (4%) Reached. Daily Floor: $${dailyEquityFloor.toFixed(2)}, Equity: $${currentEquity.toFixed(2)}` };
         }
 
         // --- RULE 3: PER-EVENT EXPOSURE (5%) ---
