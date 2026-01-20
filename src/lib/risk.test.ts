@@ -302,6 +302,120 @@ describe("RiskEngine.validateTrade", () => {
     });
 });
 
+describe("RiskEngine - Volume and Liquidity Rules", () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it("should block trade when it exceeds volume-tiered exposure limit (RULE 5)", async () => {
+        const mockChallenge = {
+            id: "challenge-1",
+            status: "active",
+            currentBalance: "25000",
+            startingBalance: "25000",
+            startOfDayBalance: "25000",
+            rulesConfig: {
+                maxPositionSizePercent: 0.05,
+                maxVolumeImpactPercent: 0.10,
+                minMarketVolume: 100_000
+            }
+        };
+
+        // Medium volume market ($1-10M) = 2.5% max exposure = $625
+        const mediumVolumeMarket = {
+            id: "market-1",
+            volume: 5_000_000,
+            categories: []
+        };
+
+        vi.mocked(db.select).mockReturnValue({
+            from: vi.fn().mockReturnValue({
+                where: vi.fn().mockResolvedValue([mockChallenge])
+            })
+        } as any);
+
+        vi.mocked(db.query.positions.findMany).mockResolvedValue([]);
+        vi.mocked(getMarketById).mockResolvedValue(mediumVolumeMarket as any);
+        vi.mocked(getActiveMarkets).mockResolvedValue([mediumVolumeMarket] as any);
+
+        // $700 trade should be blocked (limit is $625 for 2.5% tier)
+        const result = await RiskEngine.validateTrade("challenge-1", "market-1", 700);
+
+        expect(result.allowed).toBe(false);
+        expect(result.reason).toContain("limited liquidity");
+    });
+
+    it("should allow trade when market impact is within 10% limit (RULE 6)", async () => {
+        // NOTE: With current config (minMarketVolume=$100k, per-event=5%), RULE 6 is effectively
+        // shadowed by RULE 3. Per-event limit ($1250 on $25k) is always tighter than
+        // market impact limit (10% of $100k+ = $10k+). This test verifies RULE 6 passes
+        // when trade is well within limits.
+        const mockChallenge = {
+            id: "challenge-1",
+            status: "active",
+            currentBalance: "25000",
+            startingBalance: "25000",
+            startOfDayBalance: "25000",
+            rulesConfig: {
+                maxPositionSizePercent: 0.05,
+                maxVolumeImpactPercent: 0.10,
+                minMarketVolume: 100_000
+            }
+        };
+
+        const highVolumeMarket = {
+            id: "market-1",
+            volume: 15_000_000, // High volume - 5% tier = $1250 limit, 10% impact = $1.5M
+            categories: []
+        };
+
+        vi.mocked(db.select).mockReturnValue({
+            from: vi.fn().mockReturnValue({
+                where: vi.fn().mockResolvedValue([mockChallenge])
+            })
+        } as any);
+
+        vi.mocked(db.query.positions.findMany).mockResolvedValue([]);
+        vi.mocked(getMarketById).mockResolvedValue(highVolumeMarket as any);
+        vi.mocked(getActiveMarkets).mockResolvedValue([highVolumeMarket] as any);
+
+        // $1000 trade - passes RULE 3 ($1000 < $1250), passes RULE 5 (high vol = $1250 limit),
+        // and passes RULE 6 ($1000 < $1.5M)
+        const result = await RiskEngine.validateTrade("challenge-1", "market-1", 1000);
+
+        expect(result.allowed).toBe(true);
+    });
+
+    it("should block trade when market data unavailable (DEFENSIVE)", async () => {
+        const mockChallenge = {
+            id: "challenge-1",
+            status: "active",
+            currentBalance: "10000",
+            startingBalance: "10000",
+            startOfDayBalance: "10000",
+            rulesConfig: {
+                maxPositionSizePercent: 0.05,
+                minMarketVolume: 100_000
+            }
+        };
+
+        vi.mocked(db.select).mockReturnValue({
+            from: vi.fn().mockReturnValue({
+                where: vi.fn().mockResolvedValue([mockChallenge])
+            })
+        } as any);
+
+        vi.mocked(db.query.positions.findMany).mockResolvedValue([]);
+        vi.mocked(getMarketById).mockResolvedValue(null); // Market data unavailable!
+        vi.mocked(getActiveMarkets).mockResolvedValue([]);
+
+        const result = await RiskEngine.validateTrade("challenge-1", "unknown-market", 100);
+
+        expect(result.allowed).toBe(false);
+        expect(result.reason).toContain("Market data unavailable");
+    });
+});
+
 describe("RiskEngine - Position Tier Limits", () => {
     // Testing getMaxPositionsForTier via validateTrade behavior
     // (method is private but its effect is observable)
