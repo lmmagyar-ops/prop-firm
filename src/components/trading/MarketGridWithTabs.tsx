@@ -9,6 +9,9 @@ import { EventDetailModal } from "./EventDetailModal";
 import { SearchModal } from "./SearchModal";
 import { KalshiMatchupCard } from "./KalshiMatchupCard";
 import { KalshiMultiOutcomeCard } from "./KalshiMultiOutcomeCard";
+import { MobileTradeSheet } from "./MobileTradeSheet";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { useTradeExecution } from "@/hooks/useTradeExecution";
 
 interface CategoryTabsProps {
     events?: EventMetadata[];
@@ -40,6 +43,26 @@ export function MarketGridWithTabs({ events = [], balance, userId, platform = "p
     const [selectedEvent, setSelectedEvent] = useState<EventMetadata | null>(null);
     const [detailModalOpen, setDetailModalOpen] = useState(false);
     const [isPending, startTransition] = useTransition();
+
+    // Mobile detection for MobileTradeSheet
+    const isMobile = useMediaQuery("(max-width: 768px)");
+
+    // Quick trade state for MobileTradeSheet
+    const [quickTradeOpen, setQuickTradeOpen] = useState(false);
+    const [quickTradeMarket, setQuickTradeMarket] = useState<{
+        id: string;
+        title: string;
+        yesPrice: number;
+        noPrice: number;
+        initialSide: 'yes' | 'no';
+    } | null>(null);
+
+    // Trade execution hook
+    const { executeTrade } = useTradeExecution({
+        onSuccess: () => {
+            setQuickTradeOpen(false);
+        }
+    });
 
     // Platform display config
     const platformConfig = {
@@ -80,10 +103,43 @@ export function MarketGridWithTabs({ events = [], balance, userId, platform = "p
         });
     };
 
+    // Handler for quick trade button press on card
+    const handleQuickTrade = (marketId: string, side: 'yes' | 'no') => {
+        // Find the event containing this market
+        const event = events.find(e => e.markets.some(m => m.id === marketId));
+        const market = event?.markets.find(m => m.id === marketId);
+
+        if (!event || !market) return;
+
+        if (isMobile) {
+            // Mobile: Open MobileTradeSheet
+            const yesPrice = market.price;
+            const noPrice = 1 - market.price;
+            setQuickTradeMarket({
+                id: marketId,
+                title: event.title,
+                yesPrice,
+                noPrice,
+                initialSide: side
+            });
+            setQuickTradeOpen(true);
+        } else {
+            // Desktop: Open detail modal (existing behavior)
+            setSelectedEvent(event);
+            setDetailModalOpen(true);
+        }
+    };
+
+    // Handler for executing trade from MobileTradeSheet
+    const handleMobileTradeExecute = async (outcome: "YES" | "NO", amount: number) => {
+        if (!quickTradeMarket) return;
+        await executeTrade(quickTradeMarket.id, outcome, amount);
+    };
+
     // Handler for trading from within the detail modal
     const handleTrade = (marketId: string, side: 'yes' | 'no', question: string) => {
         console.log(`[Trade] ${side.toUpperCase()} on ${marketId}: ${question}`);
-        // TODO: Integrate with actual trading execution
+        // Detail modal has its own TradingSidebar that handles execution
     };
 
     const totalItems = filteredEvents.length;
@@ -177,34 +233,19 @@ export function MarketGridWithTabs({ events = [], balance, userId, platform = "p
                                 event.isMultiOutcome ? (
                                     <KalshiMultiOutcomeCard
                                         event={event}
-                                        onTrade={(marketId, side) => {
-                                            startTransition(() => {
-                                                setSelectedEvent(event);
-                                                setDetailModalOpen(true);
-                                            });
-                                        }}
+                                        onTrade={(marketId, side) => handleQuickTrade(marketId, side)}
                                     />
                                 ) : (
                                     <KalshiMatchupCard
                                         event={event}
-                                        onTrade={(marketId, side) => {
-                                            startTransition(() => {
-                                                setSelectedEvent(event);
-                                                setDetailModalOpen(true);
-                                            });
-                                        }}
+                                        onTrade={(marketId, side) => handleQuickTrade(marketId, side)}
                                     />
                                 )
                             ) : (
                                 // Polymarket uses SmartEventCard for all
                                 <SmartEventCard
                                     event={event}
-                                    onTrade={(marketId, side) => {
-                                        startTransition(() => {
-                                            setSelectedEvent(event);
-                                            setDetailModalOpen(true);
-                                        });
-                                    }}
+                                    onTrade={(marketId, side) => handleQuickTrade(marketId, side)}
                                 />
                             )}
                         </div>
@@ -220,6 +261,22 @@ export function MarketGridWithTabs({ events = [], balance, userId, platform = "p
                 onTrade={handleTrade}
                 platform={platform}
             />
+
+            {/* Mobile Trade Sheet - Opens on mobile when Yes/No tapped */}
+            {quickTradeMarket && (
+                <MobileTradeSheet
+                    isOpen={quickTradeOpen}
+                    onClose={() => {
+                        setQuickTradeOpen(false);
+                        setQuickTradeMarket(null);
+                    }}
+                    marketTitle={quickTradeMarket.title}
+                    yesPrice={quickTradeMarket.yesPrice}
+                    noPrice={quickTradeMarket.noPrice}
+                    balance={balance}
+                    onTrade={handleMobileTradeExecute}
+                />
+            )}
         </div>
     );
 }
