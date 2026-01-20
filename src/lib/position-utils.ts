@@ -32,9 +32,12 @@ export function getDirectionAdjustedPrice(
 /**
  * Calculates position value and unrealized P&L with direction handling.
  * 
+ * IMPORTANT: entryPrice from DB is ALREADY direction-adjusted (for NO: stored as 1 - yesPrice).
+ * Only currentPrice (raw YES price from live feed) needs adjustment.
+ * 
  * @param shares - Number of shares held
- * @param entryPrice - Original entry price (YES price at entry)
- * @param currentPrice - Current YES token price
+ * @param entryPrice - Original entry price (ALREADY direction-adjusted in DB)
+ * @param currentPrice - Current YES token price (raw, needs direction adjustment)
  * @param direction - Position direction ('YES' or 'NO')
  * @returns Object with positionValue and unrealizedPnL
  */
@@ -44,11 +47,16 @@ export function calculatePositionMetrics(
     currentPrice: number,
     direction: 'YES' | 'NO'
 ): { positionValue: number; unrealizedPnL: number; effectiveCurrentPrice: number } {
+    // Current price from market feed is raw YES price - needs direction adjustment
     const effectiveCurrentPrice = getDirectionAdjustedPrice(currentPrice, direction);
-    const effectiveEntryPrice = getDirectionAdjustedPrice(entryPrice, direction);
+
+    // Entry price is ALREADY direction-adjusted when stored in DB (see trade.ts line 175-177)
+    // DO NOT adjust it again - that causes the double-adjustment bug!
+    const effectiveEntryPrice = entryPrice;
 
     const positionValue = shares * effectiveCurrentPrice;
     const unrealizedPnL = (effectiveCurrentPrice - effectiveEntryPrice) * shares;
 
     return { positionValue, unrealizedPnL, effectiveCurrentPrice };
 }
+

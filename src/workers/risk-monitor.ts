@@ -135,12 +135,16 @@ export class RiskMonitor {
             const shares = parseFloat(pos.shares);
             const isNo = pos.direction === 'NO';
 
-            // Calculate effective values
+            // Current price from live feed is raw YES price - needs direction adjustment
             const effectiveCurrentValue = isNo ? (1 - livePrice) : livePrice;
-            const effectiveEntryValue = isNo ? (1 - entryPrice) : entryPrice;
+
+            // Entry price is ALREADY direction-adjusted when stored in DB (see trade.ts line 175-177)
+            // DO NOT adjust it again - that causes double-adjustment bug!
+            const effectiveEntryValue = entryPrice;
 
             unrealizedPnL += (effectiveCurrentValue - effectiveEntryValue) * shares;
         }
+
 
         // Calculate equity (current balance + unrealized P&L)
         const equity = currentBalance + unrealizedPnL;
