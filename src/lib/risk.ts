@@ -110,12 +110,25 @@ export class RiskEngine {
             ? `"${eventInfo.eventTitle.slice(0, 30)}..."`
             : "this market";
 
+        // DETAILED LOGGING for debugging per-event limit bypasses
+        console.log(`[RISK] --- RULE 3: PER-EVENT EXPOSURE ---`);
+        console.log(`[RISK]   Event: ${eventLabel}`);
+        console.log(`[RISK]   Event found: ${!!eventInfo}`);
+        console.log(`[RISK]   Markets in event: ${marketIdsToCheck.length}`);
+        console.log(`[RISK]   Current exposure: $${currentExposure.toFixed(2)}`);
+        console.log(`[RISK]   Trade amount: $${tradeAmount.toFixed(2)}`);
+        console.log(`[RISK]   Max per event: $${maxPerEvent.toFixed(2)} (5% of $${startBalance})`);
+        console.log(`[RISK]   Total after trade: $${(currentExposure + tradeAmount).toFixed(2)}`);
+        console.log(`[RISK]   Would exceed limit: ${(currentExposure + tradeAmount) > maxPerEvent}`);
+
         if (currentExposure + tradeAmount > maxPerEvent) {
+            console.log(`[RISK]   ❌ BLOCKED: Per-event limit exceeded`);
             return {
                 allowed: false,
                 reason: `Max exposure for ${eventLabel} (5%) exceeded. Current: $${currentExposure.toFixed(2)}, Limit: $${maxPerEvent.toFixed(2)}`
             };
         }
+        console.log(`[RISK]   ✅ PASS: Per-event limit OK`);
 
 
         // --- RULE 4: PER-CATEGORY EXPOSURE (10%) ---
