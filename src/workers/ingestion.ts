@@ -70,7 +70,9 @@ class IngestionWorker {
     private riskMonitor: RiskMonitor;
     private isLeader = false;
     private heartbeatInterval: NodeJS.Timeout | null = null;
+    private wsPingInterval: NodeJS.Timeout | null = null;  // WebSocket keep-alive
     private isShuttingDown = false;
+
 
     // Memory bounds - prevent unbounded array/map growth
     private readonly MAX_ACTIVE_TOKENS = 2000;
@@ -183,11 +185,18 @@ class IngestionWorker {
                     this.heartbeatInterval = null;
                 }
 
+                // 2b. Stop WebSocket ping interval
+                if (this.wsPingInterval) {
+                    clearInterval(this.wsPingInterval);
+                    this.wsPingInterval = null;
+                }
+
                 // 3. Close WebSocket cleanly
                 if (this.ws) {
                     this.ws.close(1000, 'Shutdown');
                     this.ws = null;
                 }
+
 
                 // 4. Stop risk monitor
                 this.riskMonitor.stop();
@@ -830,12 +839,31 @@ class IngestionWorker {
             return;
         }
 
+        // Clear any existing ping interval
+        if (this.wsPingInterval) {
+            clearInterval(this.wsPingInterval);
+            this.wsPingInterval = null;
+        }
+
         console.log(`[Ingestion] WS Connecting...`);
         this.ws = new WebSocket(CLOB_WS_URL);
 
         this.ws.on("open", () => {
             console.log("[Ingestion] WS Connected.");
             this.subscribeWS();
+
+            // Start ping/pong keep-alive - prevents server from closing idle connections
+            // Polymarket servers typically close connections after ~60s of inactivity
+            this.wsPingInterval = setInterval(() => {
+                if (this.ws?.readyState === WebSocket.OPEN) {
+                    this.ws.ping();  // WebSocket protocol ping
+                }
+            }, 30000);  // Ping every 30 seconds
+        });
+
+        this.ws.on("pong", () => {
+            // Server responded to our ping - connection is alive
+            // Just silently acknowledge, no logging needed
         });
 
         this.ws.on("message", async (data) => {
@@ -851,10 +879,15 @@ class IngestionWorker {
         });
 
         this.ws.on("close", () => {
-            console.log("[Ingestion] WS Closed.");
+            // Clear ping interval on disconnect
+            if (this.wsPingInterval) {
+                clearInterval(this.wsPingInterval);
+                this.wsPingInterval = null;
+            }
+
+            console.log("[Ingestion] WS Closed. Reconnecting...");
             // Only reconnect if not shutting down
             if (!this.isShuttingDown) {
-                console.log("[Ingestion] Reconnecting in 5s...");
                 setTimeout(() => this.connectWS(), this.reconnectInterval);
             }
         });
@@ -865,6 +898,7 @@ class IngestionWorker {
             // Close will be triggered automatically, which will trigger reconnect
         });
     }
+
 
     private subscribeWS() {
         const payload = {
