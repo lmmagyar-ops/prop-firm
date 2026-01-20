@@ -156,15 +156,40 @@ export async function getDashboardData(userId: string) {
         }
 
         const livePrice = livePrices.get(pos.marketId);
-        const rawPrice = livePrice ? parseFloat(livePrice.price) : parseFloat(pos.currentPrice || pos.entryPrice);
 
-        // Use shared utility for direction-adjusted calculations
-        const { positionValue, unrealizedPnL, effectiveCurrentPrice } = calculatePositionMetrics(
-            shares,
-            entry,
-            rawPrice,
-            pos.direction as 'YES' | 'NO'
-        );
+        // CRITICAL: Determine if we're using raw YES price (needs adjustment) or stored price (already adjusted)
+        // - Live prices from order book are RAW YES prices → need direction adjustment
+        // - Stored currentPrice in DB is ALREADY direction-adjusted → no adjustment needed
+        let rawPrice: number;
+        let needsDirectionAdjustment: boolean;
+
+        if (livePrice) {
+            // Live price from order book is raw YES price
+            rawPrice = parseFloat(livePrice.price);
+            needsDirectionAdjustment = true;
+        } else {
+            // Fallback: Use stored price (already direction-adjusted in DB)
+            rawPrice = parseFloat(pos.currentPrice || pos.entryPrice);
+            needsDirectionAdjustment = false;
+        }
+
+        // Calculate P&L with proper adjustment handling
+        let effectiveCurrentPrice: number;
+        let unrealizedPnL: number;
+        let positionValue: number;
+
+        if (needsDirectionAdjustment) {
+            // Use shared utility for direction-adjusted calculations
+            const metrics = calculatePositionMetrics(shares, entry, rawPrice, pos.direction as 'YES' | 'NO');
+            effectiveCurrentPrice = metrics.effectiveCurrentPrice;
+            unrealizedPnL = metrics.unrealizedPnL;
+            positionValue = metrics.positionValue;
+        } else {
+            // Stored prices are already adjusted - use them directly
+            effectiveCurrentPrice = rawPrice;
+            positionValue = shares * effectiveCurrentPrice;
+            unrealizedPnL = (effectiveCurrentPrice - entry) * shares;
+        }
 
         return {
             id: pos.id,
@@ -181,6 +206,7 @@ export async function getDashboardData(userId: string) {
             priceSource: livePrice?.source || 'stored',
         };
     }).filter((p): p is NonNullable<typeof p> => p !== null); // Filter out invalid positions
+
 
     // 6. Calculate TRUE EQUITY (cash + position value)
     const cashBalance = parseFloat(activeChallenge.currentBalance);
