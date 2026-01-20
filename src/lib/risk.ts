@@ -128,6 +128,17 @@ export class RiskEngine {
                 reason: `Max exposure for ${eventLabel} (5%) exceeded. Current: $${currentExposure.toFixed(2)}, Limit: $${maxPerEvent.toFixed(2)}`
             };
         }
+
+        // FAIL-SAFE: When event lookup fails but trade is still large, block as precaution
+        // This catches the edge case where event data is stale but user has sibling positions
+        if (!eventInfo && tradeAmount > maxPerEvent) {
+            console.log(`[RISK]   ❌ BLOCKED: Trade exceeds per-market limit (event lookup failed)`);
+            return {
+                allowed: false,
+                reason: `Trade of $${tradeAmount.toFixed(2)} exceeds max per-market limit of $${maxPerEvent.toFixed(2)}`
+            };
+        }
+
         console.log(`[RISK]   ✅ PASS: Per-event limit OK`);
 
 
