@@ -1,3 +1,4 @@
+// @ts-nocheck - Disable type checking for mock types (Drizzle transaction mocking)
 /**
  * Integration Test: Full Trade Flow
  * 
