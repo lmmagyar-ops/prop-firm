@@ -20,12 +20,14 @@ vi.mock("@/db", () => ({
 
 vi.mock("@/app/actions/market", () => ({
     getActiveMarkets: vi.fn(),
-    getMarketById: vi.fn()
+    getMarketById: vi.fn(),
+    getEventInfoForMarket: vi.fn(() => null) // Returns null = standalone market (uses per-market fallback)
 }));
 
 // Import after mocking
 import { db } from "@/db";
-import { getActiveMarkets, getMarketById } from "@/app/actions/market";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- imported to verify mock exists
+import { getActiveMarkets, getMarketById, getEventInfoForMarket } from "@/app/actions/market";
 
 describe("RiskEngine.validateTrade", () => {
     beforeEach(() => {
@@ -173,7 +175,7 @@ describe("RiskEngine.validateTrade", () => {
         const result = await RiskEngine.validateTrade("challenge-1", "market-1", 150);
 
         expect(result.allowed).toBe(false);
-        expect(result.reason).toContain("per-market exposure");
+        expect(result.reason).toContain("exposure"); // Changed from "per-market" to "per-event" after RULE 3 update
     });
 
     it("should reject when market volume too low", async () => {
