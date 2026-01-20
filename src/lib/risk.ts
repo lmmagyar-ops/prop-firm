@@ -128,13 +128,22 @@ export class RiskEngine {
         console.log(`[RISK]   Volume: $${market?.volume?.toLocaleString() || 'undefined'}`);
         console.log(`[RISK]   Question: ${market?.question?.slice(0, 50) || 'unknown'}`);
 
-        if (market?.categories && market.categories.length > 0) {
+        // Infer categories from market title if not provided by API
+        // (Polymarket/Kalshi don't include categories in their data)
+        const marketCategories = market?.categories?.length
+            ? market.categories
+            : this.inferCategoriesFromTitle(market?.question || '');
+
+        console.log(`[RISK]   Categories: ${marketCategories.length > 0 ? marketCategories.join(', ') : 'none detected'}`);
+
+        if (marketCategories.length > 0) {
             const maxPerCategory = startBalance * (rules.maxCategoryExposurePercent || 0.10);
             // For category exposure, we need all markets for category mapping
             const allMarkets = await getActiveMarkets();
-            for (const category of market.categories) {
+            for (const category of marketCategories) {
                 // PERF: Use cached positions instead of DB query
                 const categoryExposure = this.getCategoryExposureFromCache(allOpenPositions, category, allMarkets);
+                console.log(`[RISK]   ${category} exposure: $${categoryExposure.toFixed(2)} / $${maxPerCategory.toFixed(2)}`);
                 if (categoryExposure + tradeAmount > maxPerCategory) {
                     return {
                         allowed: false,
@@ -237,12 +246,12 @@ export class RiskEngine {
     /**
      * Get exposure limit based on market volume tier
      * More permissive limits to allow proper trading while protecting against illiquid markets
-     * >$10M = 10%, $1-10M = 5%, $100k-1M = 2%, <$100k = blocked
+     * >$10M = 5%, $1-10M = 2.5%, $100k-1M = 2%, <$100k = blocked
      */
     private static getExposureLimitByVolume(balance: number, volume: number): number {
-        if (volume >= 10_000_000) return balance * 0.10;   // 10% for high volume ($1000 on $10k)
-        if (volume >= 1_000_000) return balance * 0.05;    // 5% for medium volume ($500 on $10k)
-        if (volume >= 100_000) return balance * 0.02;      // 2% for low volume ($200 on $10k)
+        if (volume >= 10_000_000) return balance * 0.05;   // 5% for high volume ($1250 on $25k)
+        if (volume >= 1_000_000) return balance * 0.025;   // 2.5% for medium volume ($625 on $25k)
+        if (volume >= 100_000) return balance * 0.02;      // 2% for low volume ($500 on $25k)
         return 0; // Block trading on <$100k volume markets (handled by RULE 7)
     }
 
@@ -311,11 +320,50 @@ export class RiskEngine {
         let totalExposure = 0;
         for (const pos of openPositions) {
             const market = markets.find(m => m.id === pos.marketId);
-            if (market?.categories?.includes(category)) {
+            // Use API categories if available, otherwise infer from title
+            const marketCategories = market?.categories?.length
+                ? market.categories
+                : this.inferCategoriesFromTitle(market?.question || '');
+            if (marketCategories.includes(category)) {
                 totalExposure += parseFloat(pos.sizeAmount);
             }
         }
         return totalExposure;
+    }
+
+    /**
+     * Infer categories from market title keywords
+     * Used when Polymarket/Kalshi don't provide category data
+     */
+    private static inferCategoriesFromTitle(title: string): string[] {
+        const categories: string[] = [];
+        const titleLower = title.toLowerCase();
+
+        // Crypto keywords
+        const cryptoKeywords = ['bitcoin', 'btc', 'ethereum', 'eth', 'crypto', 'solana', 'sol', 'dogecoin', 'doge', 'xrp', 'ripple'];
+        if (cryptoKeywords.some(kw => titleLower.includes(kw))) {
+            categories.push('Crypto');
+        }
+
+        // Politics keywords
+        const politicsKeywords = ['trump', 'biden', 'president', 'election', 'congress', 'senate', 'governor', 'vote', 'democrat', 'republican', 'political'];
+        if (politicsKeywords.some(kw => titleLower.includes(kw))) {
+            categories.push('Politics');
+        }
+
+        // Sports keywords
+        const sportsKeywords = ['nfl', 'nba', 'mlb', 'nhl', 'super bowl', 'championship', 'playoffs', 'game', 'match', 'football', 'basketball', 'baseball', 'soccer'];
+        if (sportsKeywords.some(kw => titleLower.includes(kw))) {
+            categories.push('Sports');
+        }
+
+        // Economics keywords
+        const economicsKeywords = ['fed', 'interest rate', 'inflation', 'gdp', 'unemployment', 'recession', 'stock', 's&p', 'nasdaq', 'dow'];
+        if (economicsKeywords.some(kw => titleLower.includes(kw))) {
+            categories.push('Economics');
+        }
+
+        return categories;
     }
 
     /**
