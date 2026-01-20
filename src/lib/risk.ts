@@ -187,12 +187,15 @@ export class RiskEngine {
             };
         }
 
-        const marketVolume = market.volume || 0;
+        // DEFENSIVE: Parse volume as number (may be string from Redis)
+        const rawVolume = market.volume;
+        const marketVolume = typeof rawVolume === 'string' ? parseFloat(rawVolume) : (rawVolume || 0);
 
-        // Additional safety: if volume is 0, something is wrong with data
-        if (marketVolume === 0) {
-            console.log(`[RISK] ⚠️ WARNING: Market volume is $0 - possible data issue`);
+        // Additional safety: if volume is 0 or NaN, something is wrong with data
+        if (marketVolume === 0 || isNaN(marketVolume)) {
+            console.log(`[RISK] ⚠️ WARNING: Market volume is $0 or invalid - possible data issue`);
             console.log(`[RISK]   Market: ${market.question?.slice(0, 50) || marketId}`);
+            console.log(`[RISK]   Raw volume value: ${rawVolume} (type: ${typeof rawVolume})`);
         }
 
         // --- RULE 5: VOLUME-TIERED EXPOSURE ---
