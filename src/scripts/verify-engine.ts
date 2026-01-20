@@ -5,8 +5,6 @@ import { eq } from 'drizzle-orm';
 import { TradeExecutor } from '@/lib/trade';
 import { TRADING_CONFIG } from '@/config/trading';
 import { createLogger } from '@/lib/logger';
-
-import { createLogger } from '@/lib/logger';
 import Redis from 'ioredis';
 
 const logger = createLogger('EngineVerification');
