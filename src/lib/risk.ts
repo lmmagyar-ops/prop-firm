@@ -334,33 +334,58 @@ export class RiskEngine {
     /**
      * Infer categories from market title keywords
      * Used when Polymarket/Kalshi don't provide category data
+     * Matches the UI category tabs: Crypto, Politics, Geopolitics, Sports, Finance, Tech, Culture, World
      */
     private static inferCategoriesFromTitle(title: string): string[] {
         const categories: string[] = [];
         const titleLower = title.toLowerCase();
 
         // Crypto keywords
-        const cryptoKeywords = ['bitcoin', 'btc', 'ethereum', 'eth', 'crypto', 'solana', 'sol', 'dogecoin', 'doge', 'xrp', 'ripple'];
+        const cryptoKeywords = ['bitcoin', 'btc', 'ethereum', 'eth', 'crypto', 'solana', 'sol', 'dogecoin', 'doge', 'xrp', 'ripple', 'blockchain', 'nft', 'defi'];
         if (cryptoKeywords.some(kw => titleLower.includes(kw))) {
             categories.push('Crypto');
         }
 
-        // Politics keywords
-        const politicsKeywords = ['trump', 'biden', 'president', 'election', 'congress', 'senate', 'governor', 'vote', 'democrat', 'republican', 'political'];
+        // Politics keywords (domestic US politics)
+        const politicsKeywords = ['trump', 'biden', 'president', 'election', 'congress', 'senate', 'governor', 'vote', 'democrat', 'republican', 'political', 'kamala', 'harris', 'desantis', 'white house'];
         if (politicsKeywords.some(kw => titleLower.includes(kw))) {
             categories.push('Politics');
         }
 
+        // Geopolitics keywords (international relations, wars, treaties)
+        const geopoliticsKeywords = ['ukraine', 'russia', 'china', 'taiwan', 'nato', 'war', 'military', 'invasion', 'ceasefire', 'sanctions', 'treaty', 'diplomacy', 'iran', 'israel', 'palestine', 'gaza', 'middle east', 'north korea'];
+        if (geopoliticsKeywords.some(kw => titleLower.includes(kw))) {
+            categories.push('Geopolitics');
+        }
+
         // Sports keywords
-        const sportsKeywords = ['nfl', 'nba', 'mlb', 'nhl', 'super bowl', 'championship', 'playoffs', 'game', 'match', 'football', 'basketball', 'baseball', 'soccer'];
+        const sportsKeywords = ['nfl', 'nba', 'mlb', 'nhl', 'super bowl', 'championship', 'playoffs', 'game', 'match', 'football', 'basketball', 'baseball', 'soccer', 'ufc', 'boxing', 'tennis', 'golf', 'olympics'];
         if (sportsKeywords.some(kw => titleLower.includes(kw))) {
             categories.push('Sports');
         }
 
-        // Economics keywords
-        const economicsKeywords = ['fed', 'interest rate', 'inflation', 'gdp', 'unemployment', 'recession', 'stock', 's&p', 'nasdaq', 'dow'];
-        if (economicsKeywords.some(kw => titleLower.includes(kw))) {
-            categories.push('Economics');
+        // Finance keywords (markets, stocks, economy)
+        const financeKeywords = ['fed', 'interest rate', 'inflation', 'gdp', 'unemployment', 'recession', 'stock', 's&p', 'nasdaq', 'dow', 'treasury', 'bond', 'yield', 'market', 'economy', 'jobs report', 'earnings'];
+        if (financeKeywords.some(kw => titleLower.includes(kw))) {
+            categories.push('Finance');
+        }
+
+        // Tech keywords
+        const techKeywords = ['apple', 'google', 'microsoft', 'meta', 'amazon', 'nvidia', 'tesla', 'ai', 'artificial intelligence', 'chatgpt', 'openai', 'tech', 'iphone', 'android', 'software', 'startup'];
+        if (techKeywords.some(kw => titleLower.includes(kw))) {
+            categories.push('Tech');
+        }
+
+        // Culture keywords (entertainment, celebrities, social)
+        const cultureKeywords = ['oscars', 'grammy', 'celebrity', 'movie', 'film', 'tv show', 'netflix', 'disney', 'music', 'album', 'twitter', 'tiktok', 'viral', 'influencer', 'kardashian', 'swift', 'taylor'];
+        if (cultureKeywords.some(kw => titleLower.includes(kw))) {
+            categories.push('Culture');
+        }
+
+        // World keywords (international events not geopolitical)
+        const worldKeywords = ['climate', 'earthquake', 'hurricane', 'pandemic', 'who', 'united nations', 'world cup', 'pope', 'royal', 'queen', 'king charles', 'paris', 'london', 'tokyo', 'brazil', 'india', 'africa'];
+        if (worldKeywords.some(kw => titleLower.includes(kw))) {
+            categories.push('World');
         }
 
         return categories;
