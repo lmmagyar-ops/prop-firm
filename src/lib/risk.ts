@@ -166,44 +166,60 @@ export class RiskEngine {
             }
         }
 
-        // --- RULE 5: VOLUME-TIERED EXPOSURE (Funded Stage Enhanced) ---
-        // >$10M = 5%, $1-10M = 2.5%, $100k-1M = 0.5%, <$100k = blocked (RULE 7)
-        if (market) {
-            const marketVolume = market.volume || 0;
-            const exposureLimit = this.getExposureLimitByVolume(startBalance, marketVolume);
-            const volumeTier = this.getVolumeTierLabel(marketVolume);
+        // --- RULE 5-7: VOLUME-BASED CHECKS ---
+        // DEFENSIVE: Block trade if market data unavailable (prevents bypassing volume rules)
+        if (!market) {
+            console.log(`[RISK] ❌ BLOCKED: Market data unavailable for ${marketId}`);
+            return {
+                allowed: false,
+                reason: "Market data unavailable. Please try again or choose a different market."
+            };
+        }
 
-            console.log(`  [RULE 5] Volume-Tiered Exposure Check:`);
-            console.log(`    Market Volume: $${marketVolume.toLocaleString()}`);
-            console.log(`    Tier: ${volumeTier}`);
-            console.log(`    Max Exposure: $${exposureLimit.toFixed(2)}`);
-            console.log(`    Trade Amount: $${tradeAmount.toFixed(2)}`);
+        const marketVolume = market.volume || 0;
 
-            if (tradeAmount > exposureLimit && exposureLimit > 0) {
-                console.log(`  ❌ BLOCKED: Volume-Tiered Exposure Limit`);
-                return {
-                    allowed: false,
-                    reason: `This market has limited liquidity. Max trade: $${exposureLimit.toFixed(0)}. Try a smaller amount or choose a higher-volume market.`
-                };
-            }
-            console.log(`  ✅ PASS`);
+        // Additional safety: if volume is 0, something is wrong with data
+        if (marketVolume === 0) {
+            console.log(`[RISK] ⚠️ WARNING: Market volume is $0 - possible data issue`);
+            console.log(`[RISK]   Market: ${market.question?.slice(0, 50) || marketId}`);
+        }
 
-            // --- RULE 6: LIQUIDITY ENFORCEMENT (10% of 24h Volume) ---
-            const maxImpact = marketVolume * (rules.maxVolumeImpactPercent || 0.10);
-            if (tradeAmount > maxImpact) {
-                return {
-                    allowed: false,
-                    reason: `Trade too large for this market. Max trade: $${maxImpact.toFixed(0)}. Try a smaller amount.`
-                };
-            }
+        // --- RULE 5: VOLUME-TIERED EXPOSURE ---
+        // >$10M = 5%, $1-10M = 2.5%, $100k-1M = 2%, <$100k = blocked (RULE 7)
+        const exposureLimit = this.getExposureLimitByVolume(startBalance, marketVolume);
+        const volumeTier = this.getVolumeTierLabel(marketVolume);
 
-            // --- RULE 7: MINIMUM VOLUME FILTER ---
-            if (marketVolume < (rules.minMarketVolume || 100_000)) {
-                return {
-                    allowed: false,
-                    reason: `This market has too little trading activity. Choose a higher-volume market to trade.`
-                };
-            }
+        console.log(`  [RULE 5] Volume-Tiered Exposure Check:`);
+        console.log(`    Market Volume: $${marketVolume.toLocaleString()}`);
+        console.log(`    Tier: ${volumeTier}`);
+        console.log(`    Max Exposure: $${exposureLimit.toFixed(2)}`);
+        console.log(`    Trade Amount: $${tradeAmount.toFixed(2)}`);
+
+        if (tradeAmount > exposureLimit && exposureLimit > 0) {
+            console.log(`  ❌ BLOCKED: Volume-Tiered Exposure Limit`);
+            return {
+                allowed: false,
+                reason: `This market has limited liquidity. Max trade: $${exposureLimit.toFixed(0)}. Try a smaller amount or choose a higher-volume market.`
+            };
+        }
+        console.log(`  ✅ PASS`);
+
+        // --- RULE 6: LIQUIDITY ENFORCEMENT (10% of 24h Volume) ---
+        const maxImpact = marketVolume * (rules.maxVolumeImpactPercent || 0.10);
+        if (tradeAmount > maxImpact && maxImpact > 0) {
+            return {
+                allowed: false,
+                reason: `Trade too large for this market. Max trade: $${maxImpact.toFixed(0)}. Try a smaller amount.`
+            };
+        }
+
+        // --- RULE 7: MINIMUM VOLUME FILTER ---
+        const minVolume = rules.minMarketVolume || 100_000;
+        if (marketVolume < minVolume) {
+            return {
+                allowed: false,
+                reason: `This market has insufficient volume ($${marketVolume.toLocaleString()}). Minimum required: $${minVolume.toLocaleString()}.`
+            };
         }
 
         // --- RULE 8: MAX OPEN POSITIONS (Tiered by Account Size) ---
