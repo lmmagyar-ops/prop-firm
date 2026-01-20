@@ -149,6 +149,58 @@ export async function getMarketById(marketId: string): Promise<MarketMetadata | 
     }
 }
 
+/**
+ * Get the parent event ID and sibling market IDs for a given market.
+ * Used for per-EVENT exposure limits (not per-market).
+ */
+export async function getEventInfoForMarket(marketId: string): Promise<{
+    eventId: string;
+    eventTitle: string;
+    siblingMarketIds: string[];
+} | null> {
+    noStore();
+    try {
+        // Search event:active_list for multi-outcome markets
+        const eventData = await redis.get("event:active_list");
+        if (eventData) {
+            const events = JSON.parse(eventData) as EventMetadata[];
+            for (const event of events) {
+                const found = event.markets.find(m => m.id === marketId);
+                if (found) {
+                    return {
+                        eventId: event.id,
+                        eventTitle: event.title,
+                        siblingMarketIds: event.markets.map(m => m.id)
+                    };
+                }
+            }
+        }
+
+        // Try Kalshi events too
+        const kalshiData = await redis.get("kalshi:active_list");
+        if (kalshiData) {
+            const events = JSON.parse(kalshiData) as EventMetadata[];
+            for (const event of events) {
+                const found = event.markets.find(m => m.id === marketId);
+                if (found) {
+                    return {
+                        eventId: event.id,
+                        eventTitle: event.title,
+                        siblingMarketIds: event.markets.map(m => m.id)
+                    };
+                }
+            }
+        }
+
+        // Not found in any event - market is standalone (its own "event")
+        return null;
+    } catch (e) {
+        console.error("Failed to get event info for market", marketId, e);
+        return null;
+    }
+}
+
+
 // --- Event Types (Multi-Outcome Markets like Elections) ---
 
 export interface SubMarket {

@@ -68,17 +68,28 @@ export class RiskEngine {
             return { allowed: false, reason: `Max Daily Loss (4%) Reached. Daily Floor: $${dailyEquityFloor.toFixed(2)}` };
         }
 
-        // --- RULE 3: PER-MARKET EXPOSURE (5%) ---
-        // PERF: Compute from cached positions instead of separate DB query
-        const maxPerMarket = startBalance * (rules.maxPositionSizePercent || 0.05);
+        // --- RULE 3: PER-EVENT EXPOSURE (5%) ---
+        // Changed from per-market to per-EVENT: all markets within same event count together
+        // e.g., "Bitcoin dip to $85k" and "Bitcoin reach $100k" are part of same event
+        const { getEventInfoForMarket } = await import("@/app/actions/market");
+        const eventInfo = await getEventInfoForMarket(marketId);
+
+        const maxPerEvent = startBalance * (rules.maxPositionSizePercent || 0.05);
+
+        // Sum exposure across ALL markets in this event (or just this market if standalone)
+        const marketIdsToCheck = eventInfo?.siblingMarketIds || [marketId];
         const currentExposure = allOpenPositions
-            .filter(p => p.marketId === marketId)
+            .filter(p => marketIdsToCheck.includes(p.marketId))
             .reduce((sum, p) => sum + parseFloat(p.sizeAmount), 0);
 
-        if (currentExposure + tradeAmount > maxPerMarket) {
+        const eventLabel = eventInfo?.eventTitle
+            ? `"${eventInfo.eventTitle.slice(0, 30)}..."`
+            : "this market";
+
+        if (currentExposure + tradeAmount > maxPerEvent) {
             return {
                 allowed: false,
-                reason: `Max per-market exposure (5%) exceeded. Current: $${currentExposure.toFixed(2)}, Limit: $${maxPerMarket.toFixed(2)}`
+                reason: `Max exposure for ${eventLabel} (5%) exceeded. Current: $${currentExposure.toFixed(2)}, Limit: $${maxPerEvent.toFixed(2)}`
             };
         }
 
