@@ -807,7 +807,7 @@ class IngestionWorker {
                             question: this.cleanOutcomeName(m.question),
                             description: m.description,
                             image: m.image,
-                            volume: m.volume,
+                            volume: volume, // Use already-parsed volume (line 759)
                             outcomes: outcomes,
                             end_date: m.endDate,
                             categories: categories,

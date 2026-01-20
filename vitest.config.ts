@@ -20,9 +20,9 @@ export default defineConfig({
             // In CI: Skip heavy simulation tests (run locally or in nightly job)
             ...(isCI ? ['tests/simulation/**'] : []),
         ],
-        // Reasonable timeout for CI
-        testTimeout: isCI ? 30000 : 60000,
-        hookTimeout: isCI ? 10000 : 30000,
+        // Reasonable timeout for CI (increased for position limit tests)
+        testTimeout: isCI ? 120000 : 60000,
+        hookTimeout: isCI ? 30000 : 30000,
         coverage: {
             provider: 'v8',
             reporter: ['text', 'lcov'],

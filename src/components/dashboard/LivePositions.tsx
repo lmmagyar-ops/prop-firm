@@ -43,9 +43,11 @@ export function LivePositions({ initialPositions }: LivePositionsProps) {
             const livePrice = parseFloat(liveData.price);
 
             // Calculate P&L with correct direction handling
+            // NOTE: Live price from SSE is raw YES price - needs direction adjustment
+            // Entry price from server is ALREADY direction-adjusted - do NOT adjust again!
             const isNo = pos.direction === 'NO';
             const effectiveCurrentValue = isNo ? (1 - livePrice) : livePrice;
-            const effectiveEntryValue = isNo ? (1 - pos.entryPrice) : pos.entryPrice;
+            const effectiveEntryValue = pos.entryPrice; // Already direction-adjusted from server!
             const unrealizedPnL = (effectiveCurrentValue - effectiveEntryValue) * pos.shares;
 
             return {

@@ -4,6 +4,8 @@ import { eq, and } from "drizzle-orm";
 import { ChallengeRules } from "@/types/trading";
 import { getActiveMarkets, getMarketById, MarketMetadata } from "@/app/actions/market";
 import { ArbitrageDetector } from "./arbitrage-detector";
+import { MarketService } from "./market";
+import { getDirectionAdjustedPrice } from "./position-utils";
 
 export class RiskEngine {
 
@@ -52,20 +54,42 @@ export class RiskEngine {
             )
         });
 
+        // Calculate total position value for EQUITY-based drawdown checks
+        // CRITICAL: currentBalance is CASH only. Equity = Cash + Position Value
+        let totalPositionValue = 0;
+        if (allOpenPositions.length > 0) {
+            const positionMarketIds = allOpenPositions.map(p => p.marketId);
+            const livePrices = await MarketService.getBatchOrderBookPrices(positionMarketIds);
+
+            for (const pos of allOpenPositions) {
+                const shares = parseFloat(pos.shares);
+                const direction = (pos.direction as 'YES' | 'NO') || 'YES';
+                const priceData = livePrices.get(pos.marketId);
+                const rawPrice = priceData ? parseFloat(priceData.price) : parseFloat(pos.entryPrice);
+                const effectivePrice = getDirectionAdjustedPrice(rawPrice, direction);
+                totalPositionValue += shares * effectivePrice;
+            }
+        }
+        const currentEquity = currentBalance + totalPositionValue;
+        console.log("Position Value: $" + totalPositionValue.toFixed(2));
+        console.log("Current Equity: $" + currentEquity.toFixed(2));
+
         // --- RULE 1: MAX TOTAL DRAWDOWN (8% Static) ---
         const MAX_TOTAL_DD_PERCENT = rules.maxTotalDrawdownPercent || 0.08;
         const totalEquityFloor = startBalance * (1 - MAX_TOTAL_DD_PERCENT);
 
-        if (currentBalance - estimatedLoss < totalEquityFloor) {
-            return { allowed: false, reason: `Max Total Drawdown (8%) Reached. Floor: $${totalEquityFloor.toFixed(2)}` };
+        // Use EQUITY (not just cash) for drawdown comparison
+        if (currentEquity - estimatedLoss < totalEquityFloor) {
+            return { allowed: false, reason: `Max Total Drawdown (8%) Reached. Floor: $${totalEquityFloor.toFixed(2)}, Equity: $${currentEquity.toFixed(2)}` };
         }
 
         // --- RULE 2: MAX DAILY DRAWDOWN (4% of SOD Balance) ---
         const MAX_DAILY_DD_PERCENT = rules.maxDailyDrawdownPercent || 0.04;
         const dailyEquityFloor = sodBalance * (1 - MAX_DAILY_DD_PERCENT);
 
-        if (currentBalance - estimatedLoss < dailyEquityFloor) {
-            return { allowed: false, reason: `Max Daily Loss (4%) Reached. Daily Floor: $${dailyEquityFloor.toFixed(2)}` };
+        // Use EQUITY (not just cash) for daily drawdown comparison
+        if (currentEquity - estimatedLoss < dailyEquityFloor) {
+            return { allowed: false, reason: `Max Daily Loss (4%) Reached. Daily Floor: $${dailyEquityFloor.toFixed(2)}, Equity: $${currentEquity.toFixed(2)}` };
         }
 
         // --- RULE 3: PER-EVENT EXPOSURE (5%) ---
@@ -86,12 +110,36 @@ export class RiskEngine {
             ? `"${eventInfo.eventTitle.slice(0, 30)}..."`
             : "this market";
 
+        // DETAILED LOGGING for debugging per-event limit bypasses
+        console.log(`[RISK] --- RULE 3: PER-EVENT EXPOSURE ---`);
+        console.log(`[RISK]   Event: ${eventLabel}`);
+        console.log(`[RISK]   Event found: ${!!eventInfo}`);
+        console.log(`[RISK]   Markets in event: ${marketIdsToCheck.length}`);
+        console.log(`[RISK]   Current exposure: $${currentExposure.toFixed(2)}`);
+        console.log(`[RISK]   Trade amount: $${tradeAmount.toFixed(2)}`);
+        console.log(`[RISK]   Max per event: $${maxPerEvent.toFixed(2)} (5% of $${startBalance})`);
+        console.log(`[RISK]   Total after trade: $${(currentExposure + tradeAmount).toFixed(2)}`);
+        console.log(`[RISK]   Would exceed limit: ${(currentExposure + tradeAmount) > maxPerEvent}`);
+
         if (currentExposure + tradeAmount > maxPerEvent) {
+            console.log(`[RISK]   ❌ BLOCKED: Per-event limit exceeded`);
             return {
                 allowed: false,
                 reason: `Max exposure for ${eventLabel} (5%) exceeded. Current: $${currentExposure.toFixed(2)}, Limit: $${maxPerEvent.toFixed(2)}`
             };
         }
+
+        // FAIL-SAFE: When event lookup fails but trade is still large, block as precaution
+        // This catches the edge case where event data is stale but user has sibling positions
+        if (!eventInfo && tradeAmount > maxPerEvent) {
+            console.log(`[RISK]   ❌ BLOCKED: Trade exceeds per-market limit (event lookup failed)`);
+            return {
+                allowed: false,
+                reason: `Trade of $${tradeAmount.toFixed(2)} exceeds max per-market limit of $${maxPerEvent.toFixed(2)}`
+            };
+        }
+
+        console.log(`[RISK]   ✅ PASS: Per-event limit OK`);
 
 
         // --- RULE 4: PER-CATEGORY EXPOSURE (10%) ---
@@ -104,13 +152,22 @@ export class RiskEngine {
         console.log(`[RISK]   Volume: $${market?.volume?.toLocaleString() || 'undefined'}`);
         console.log(`[RISK]   Question: ${market?.question?.slice(0, 50) || 'unknown'}`);
 
-        if (market?.categories && market.categories.length > 0) {
+        // Infer categories from market title if not provided by API
+        // (Polymarket/Kalshi don't include categories in their data)
+        const marketCategories = market?.categories?.length
+            ? market.categories
+            : this.inferCategoriesFromTitle(market?.question || '');
+
+        console.log(`[RISK]   Categories: ${marketCategories.length > 0 ? marketCategories.join(', ') : 'none detected'}`);
+
+        if (marketCategories.length > 0) {
             const maxPerCategory = startBalance * (rules.maxCategoryExposurePercent || 0.10);
             // For category exposure, we need all markets for category mapping
             const allMarkets = await getActiveMarkets();
-            for (const category of market.categories) {
+            for (const category of marketCategories) {
                 // PERF: Use cached positions instead of DB query
                 const categoryExposure = this.getCategoryExposureFromCache(allOpenPositions, category, allMarkets);
+                console.log(`[RISK]   ${category} exposure: $${categoryExposure.toFixed(2)} / $${maxPerCategory.toFixed(2)}`);
                 if (categoryExposure + tradeAmount > maxPerCategory) {
                     return {
                         allowed: false,
@@ -120,44 +177,63 @@ export class RiskEngine {
             }
         }
 
-        // --- RULE 5: VOLUME-TIERED EXPOSURE (Funded Stage Enhanced) ---
-        // >$10M = 5%, $1-10M = 2.5%, $100k-1M = 0.5%, <$100k = blocked (RULE 7)
-        if (market) {
-            const marketVolume = market.volume || 0;
-            const exposureLimit = this.getExposureLimitByVolume(startBalance, marketVolume);
-            const volumeTier = this.getVolumeTierLabel(marketVolume);
+        // --- RULE 5-7: VOLUME-BASED CHECKS ---
+        // DEFENSIVE: Block trade if market data unavailable (prevents bypassing volume rules)
+        if (!market) {
+            console.log(`[RISK] ❌ BLOCKED: Market data unavailable for ${marketId}`);
+            return {
+                allowed: false,
+                reason: "Market data unavailable. Please try again or choose a different market."
+            };
+        }
 
-            console.log(`  [RULE 5] Volume-Tiered Exposure Check:`);
-            console.log(`    Market Volume: $${marketVolume.toLocaleString()}`);
-            console.log(`    Tier: ${volumeTier}`);
-            console.log(`    Max Exposure: $${exposureLimit.toFixed(2)}`);
-            console.log(`    Trade Amount: $${tradeAmount.toFixed(2)}`);
+        // DEFENSIVE: Parse volume as number (may be string from Redis)
+        const rawVolume = market.volume;
+        const marketVolume = typeof rawVolume === 'string' ? parseFloat(rawVolume) : (rawVolume || 0);
 
-            if (tradeAmount > exposureLimit && exposureLimit > 0) {
-                console.log(`  ❌ BLOCKED: Volume-Tiered Exposure Limit`);
-                return {
-                    allowed: false,
-                    reason: `This market has limited liquidity. Max trade: $${exposureLimit.toFixed(0)}. Try a smaller amount or choose a higher-volume market.`
-                };
-            }
-            console.log(`  ✅ PASS`);
+        // Additional safety: if volume is 0 or NaN, something is wrong with data
+        if (marketVolume === 0 || isNaN(marketVolume)) {
+            console.log(`[RISK] ⚠️ WARNING: Market volume is $0 or invalid - possible data issue`);
+            console.log(`[RISK]   Market: ${market.question?.slice(0, 50) || marketId}`);
+            console.log(`[RISK]   Raw volume value: ${rawVolume} (type: ${typeof rawVolume})`);
+        }
 
-            // --- RULE 6: LIQUIDITY ENFORCEMENT (10% of 24h Volume) ---
-            const maxImpact = marketVolume * (rules.maxVolumeImpactPercent || 0.10);
-            if (tradeAmount > maxImpact) {
-                return {
-                    allowed: false,
-                    reason: `Trade too large for this market. Max trade: $${maxImpact.toFixed(0)}. Try a smaller amount.`
-                };
-            }
+        // --- RULE 5: VOLUME-TIERED EXPOSURE ---
+        // >$10M = 5%, $1-10M = 2.5%, $100k-1M = 2%, <$100k = blocked (RULE 7)
+        const exposureLimit = this.getExposureLimitByVolume(startBalance, marketVolume);
+        const volumeTier = this.getVolumeTierLabel(marketVolume);
 
-            // --- RULE 7: MINIMUM VOLUME FILTER ---
-            if (marketVolume < (rules.minMarketVolume || 100_000)) {
-                return {
-                    allowed: false,
-                    reason: `This market has too little trading activity. Choose a higher-volume market to trade.`
-                };
-            }
+        console.log(`  [RULE 5] Volume-Tiered Exposure Check:`);
+        console.log(`    Market Volume: $${marketVolume.toLocaleString()}`);
+        console.log(`    Tier: ${volumeTier}`);
+        console.log(`    Max Exposure: $${exposureLimit.toFixed(2)}`);
+        console.log(`    Trade Amount: $${tradeAmount.toFixed(2)}`);
+
+        if (tradeAmount > exposureLimit && exposureLimit > 0) {
+            console.log(`  ❌ BLOCKED: Volume-Tiered Exposure Limit`);
+            return {
+                allowed: false,
+                reason: `This market has limited liquidity. Max trade: $${exposureLimit.toFixed(0)}. Try a smaller amount or choose a higher-volume market.`
+            };
+        }
+        console.log(`  ✅ PASS`);
+
+        // --- RULE 6: LIQUIDITY ENFORCEMENT (10% of 24h Volume) ---
+        const maxImpact = marketVolume * (rules.maxVolumeImpactPercent || 0.10);
+        if (tradeAmount > maxImpact && maxImpact > 0) {
+            return {
+                allowed: false,
+                reason: `Trade too large for this market. Max trade: $${maxImpact.toFixed(0)}. Try a smaller amount.`
+            };
+        }
+
+        // --- RULE 7: MINIMUM VOLUME FILTER ---
+        const minVolume = rules.minMarketVolume || 100_000;
+        if (marketVolume < minVolume) {
+            return {
+                allowed: false,
+                reason: `This market has insufficient volume ($${marketVolume.toLocaleString()}). Minimum required: $${minVolume.toLocaleString()}.`
+            };
         }
 
         // --- RULE 8: MAX OPEN POSITIONS (Tiered by Account Size) ---
@@ -213,12 +289,12 @@ export class RiskEngine {
     /**
      * Get exposure limit based on market volume tier
      * More permissive limits to allow proper trading while protecting against illiquid markets
-     * >$10M = 10%, $1-10M = 5%, $100k-1M = 2%, <$100k = blocked
+     * >$10M = 5%, $1-10M = 2.5%, $100k-1M = 2%, <$100k = blocked
      */
     private static getExposureLimitByVolume(balance: number, volume: number): number {
-        if (volume >= 10_000_000) return balance * 0.10;   // 10% for high volume ($1000 on $10k)
-        if (volume >= 1_000_000) return balance * 0.05;    // 5% for medium volume ($500 on $10k)
-        if (volume >= 100_000) return balance * 0.02;      // 2% for low volume ($200 on $10k)
+        if (volume >= 10_000_000) return balance * 0.05;   // 5% for high volume ($1250 on $25k)
+        if (volume >= 1_000_000) return balance * 0.025;   // 2.5% for medium volume ($625 on $25k)
+        if (volume >= 100_000) return balance * 0.02;      // 2% for low volume ($500 on $25k)
         return 0; // Block trading on <$100k volume markets (handled by RULE 7)
     }
 
@@ -287,11 +363,75 @@ export class RiskEngine {
         let totalExposure = 0;
         for (const pos of openPositions) {
             const market = markets.find(m => m.id === pos.marketId);
-            if (market?.categories?.includes(category)) {
+            // Use API categories if available, otherwise infer from title
+            const marketCategories = market?.categories?.length
+                ? market.categories
+                : this.inferCategoriesFromTitle(market?.question || '');
+            if (marketCategories.includes(category)) {
                 totalExposure += parseFloat(pos.sizeAmount);
             }
         }
         return totalExposure;
+    }
+
+    /**
+     * Infer categories from market title keywords
+     * Used when Polymarket/Kalshi don't provide category data
+     * Matches the UI category tabs: Crypto, Politics, Geopolitics, Sports, Finance, Tech, Culture, World
+     */
+    private static inferCategoriesFromTitle(title: string): string[] {
+        const categories: string[] = [];
+        const titleLower = title.toLowerCase();
+
+        // Crypto keywords
+        const cryptoKeywords = ['bitcoin', 'btc', 'ethereum', 'eth', 'crypto', 'solana', 'sol', 'dogecoin', 'doge', 'xrp', 'ripple', 'blockchain', 'nft', 'defi'];
+        if (cryptoKeywords.some(kw => titleLower.includes(kw))) {
+            categories.push('Crypto');
+        }
+
+        // Politics keywords (domestic US politics)
+        const politicsKeywords = ['trump', 'biden', 'president', 'election', 'congress', 'senate', 'governor', 'vote', 'democrat', 'republican', 'political', 'kamala', 'harris', 'desantis', 'white house'];
+        if (politicsKeywords.some(kw => titleLower.includes(kw))) {
+            categories.push('Politics');
+        }
+
+        // Geopolitics keywords (international relations, wars, treaties)
+        const geopoliticsKeywords = ['ukraine', 'russia', 'china', 'taiwan', 'nato', 'war', 'military', 'invasion', 'ceasefire', 'sanctions', 'treaty', 'diplomacy', 'iran', 'israel', 'palestine', 'gaza', 'middle east', 'north korea'];
+        if (geopoliticsKeywords.some(kw => titleLower.includes(kw))) {
+            categories.push('Geopolitics');
+        }
+
+        // Sports keywords
+        const sportsKeywords = ['nfl', 'nba', 'mlb', 'nhl', 'super bowl', 'championship', 'playoffs', 'game', 'match', 'football', 'basketball', 'baseball', 'soccer', 'ufc', 'boxing', 'tennis', 'golf', 'olympics'];
+        if (sportsKeywords.some(kw => titleLower.includes(kw))) {
+            categories.push('Sports');
+        }
+
+        // Finance keywords (markets, stocks, economy)
+        const financeKeywords = ['fed', 'interest rate', 'inflation', 'gdp', 'unemployment', 'recession', 'stock', 's&p', 'nasdaq', 'dow', 'treasury', 'bond', 'yield', 'market', 'economy', 'jobs report', 'earnings'];
+        if (financeKeywords.some(kw => titleLower.includes(kw))) {
+            categories.push('Finance');
+        }
+
+        // Tech keywords
+        const techKeywords = ['apple', 'google', 'microsoft', 'meta', 'amazon', 'nvidia', 'tesla', 'ai', 'artificial intelligence', 'chatgpt', 'openai', 'tech', 'iphone', 'android', 'software', 'startup'];
+        if (techKeywords.some(kw => titleLower.includes(kw))) {
+            categories.push('Tech');
+        }
+
+        // Culture keywords (entertainment, celebrities, social)
+        const cultureKeywords = ['oscars', 'grammy', 'celebrity', 'movie', 'film', 'tv show', 'netflix', 'disney', 'music', 'album', 'twitter', 'tiktok', 'viral', 'influencer', 'kardashian', 'swift', 'taylor'];
+        if (cultureKeywords.some(kw => titleLower.includes(kw))) {
+            categories.push('Culture');
+        }
+
+        // World keywords (international events not geopolitical)
+        const worldKeywords = ['climate', 'earthquake', 'hurricane', 'pandemic', 'who', 'united nations', 'world cup', 'pope', 'royal', 'queen', 'king charles', 'paris', 'london', 'tokyo', 'brazil', 'india', 'africa'];
+        if (worldKeywords.some(kw => titleLower.includes(kw))) {
+            categories.push('World');
+        }
+
+        return categories;
     }
 
     /**

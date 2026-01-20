@@ -81,8 +81,10 @@ export async function GET() {
         const rawPrice = marketData ? parseFloat(marketData.price) : entry;
 
         // Use shared utility for direction-adjusted calculations
+        // NOTE: Entry price from DB is ALREADY direction-adjusted (see trade.ts line 175-177)
+        // Only the current/raw price from order book needs direction adjustment
         const effectiveCurrentPrice = getDirectionAdjustedPrice(rawPrice, direction);
-        const effectiveEntryPrice = getDirectionAdjustedPrice(entry, direction);
+        const effectiveEntryPrice = entry; // DO NOT adjust - already stored direction-adjusted!
         const unrealizedPnL = (effectiveCurrentPrice - effectiveEntryPrice) * shares;
 
         // Get title from batch-fetched map

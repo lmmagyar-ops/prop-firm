@@ -197,6 +197,38 @@ The `RiskMonitor` runs every 5 seconds in the ingestion worker:
 
 **File:** `src/workers/risk-monitor.ts`
 
+### Risk Rules Specification (9-Layer Protocol)
+
+Pre-trade validation in `RiskEngine.validateTrade()` enforces 9 rules:
+
+| # | Rule | Limit | Notes |
+|---|------|-------|-------|
+| 1 | Max Total Drawdown | 8-10% of start | Equity-based (cash + positions) |
+| 2 | Daily Drawdown | 4-5% of SOD | Resets at midnight UTC |
+| 3 | Per-Event Exposure | 5% of start | **Sibling markets aggregated** |
+| 4 | Category Exposure | 10% per category | 8 categories tracked |
+| 5 | Volume-Tiered Exposure | Varies by volume tier | See table below |
+| 6 | Liquidity Enforcement | 10% of 24h volume | Prevents market impact |
+| 7 | Minimum Volume Filter | $100k | Blocks illiquid markets |
+| 8 | Position Limits | Tier-based (10-50) | Prevents over-diversification |
+| 9 | Trade Frequency | 60/hour | Rate limiting |
+
+**Volume Tiers (RULE 5):**
+| Volume | Max Exposure |
+|--------|--------------|
+| >$10M | 5% of balance |
+| $1-10M | 2.5% of balance |
+| $100k-1M | 2% of balance |
+| <$100k | Blocked (RULE 7) |
+
+**Key Files:**
+- `src/lib/risk.ts` - RiskEngine implementation
+- `docs/RISK_RULES.md` - Formal specification
+- `src/lib/risk.test.ts` - 13 unit tests
+- `src/lib/trade-flow.integration.test.ts` - 6 integration tests
+
+**RULE 3 Critical Note:** When event lookup fails (market removed from Redis), the fail-safe blocks trades exceeding the per-market limit to prevent bypass.
+
 ### 3. Admin Access Control
 
 Admin routes (`/admin/*`) are protected by role check:
@@ -309,7 +341,9 @@ DATABASE_URL="..." npm run db:push
 
 | Suite | File | Description |
 |-------|------|-------------|
-| **Discount Security** | `tests/discount-security.test.ts` | 47 tests covering validation, calculation, auth, fraud prevention |
+| **Risk Rules** | `src/lib/risk.test.ts` | 13 tests: drawdown, exposure, volume, positions |
+| **Trade Flow** | `src/lib/trade-flow.integration.test.ts` | 6 integration tests: full trade lifecycle |
+| **Discount Security** | `tests/discount-security.test.ts` | 47 tests: validation, calculation, fraud prevention |
 | **Payout Logic** | `tests/payout-logic.test.ts` | Profit split calculations, payout eligibility |
 | **Achievements** | `tests/achievements.test.ts` | Trading achievement unlock logic |
 | **Trade Engine** | `npm run test:engine` | Full trade execution verification |
@@ -531,3 +565,18 @@ See `.agent/workflows/deploy.md` for detailed instructions.
 | `robots.ts` | Crawler rules |
 | `about/page.tsx` | SEO landing page |
 
+### Risk Rules Hardening (Jan 20)
+| Commit | Fix |
+|--------|-----|
+| `0e149a3` | RULE 3 bypass: fail-safe when event lookup fails |
+| `ac95df6` | Volume data type: store parsed number, not string |
+| `da9f0ad` | Market unavailable: improved error UX |
+| `7d49a6c` | Cleanup: removed 12 legacy debug scripts |
+| `9152655` | Testing: 6 new trade flow integration tests |
+
+**Scripts Removed:**
+- `check-challenges.mjs`, `create-admin-cardman*.ts/mjs`, `investigate-users.ts`
+- `test-pub.ts`, `test-trade-api.ts`, `verify-trade.ts`
+- `check-market-volumes.ts`, `generate-clob-keys.ts`, `investigate-pnl.ts`, `seed-check.ts`
+
+**Scripts Retained:** `grant-admin.ts`, `verify-admins.ts`, `update-position-prices.ts`, `llm-market-fixer.ts`, `refresh-kalshi.ts`, `refresh-markets.ts`, `verify-engine.ts`, `verify-prices.ts`

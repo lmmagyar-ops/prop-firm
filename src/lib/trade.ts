@@ -70,7 +70,12 @@ export class TradeExecutor {
 
         // Reject trades on demo data (no real price available)
         if (marketData.source === 'demo') {
-            throw new TradingError('Market data unavailable - price feed down. Try again shortly.', 'NO_MARKET_DATA', 503);
+            console.log(`[Trade] ❌ No market data for ${marketId} - falling back to demo`);
+            throw new TradingError(
+                'This market is currently unavailable. It may have been removed or is temporarily offline. Please refresh and try a different market.',
+                'NO_MARKET_DATA',
+                503
+            );
         }
 
         // Configurable Staleness Check
