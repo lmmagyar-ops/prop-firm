@@ -96,27 +96,41 @@ export class MarketService {
 
     /**
      * Fetches the latest price for an asset from Redis cache.
-     * Falls back to demo data if Redis is unavailable.
+     * Falls back to event list data, then demo data if Redis is unavailable.
      */
     static async getLatestPrice(assetId: string): Promise<MarketPrice | null> {
         try {
-            const key = `market:price:${assetId}`;
-            const data = await getRedis().get(key);
-            if (!data) {
-                // Try to look up from event lists instead
-                const eventPrice = await this.lookupPriceFromEvents(assetId);
-                if (eventPrice) return { ...eventPrice, source: 'event_list' as const };
-
-                console.log(`[MarketService] No Redis data for ${assetId}, using demo fallback`);
-                return { ...this.getDemoPrice(assetId), source: 'demo' as const };
+            // Try consolidated prices key first (new format - 1 Redis call)
+            const allPricesData = await getRedis().get('market:prices:all');
+            if (allPricesData) {
+                try {
+                    const allPrices = JSON.parse(allPricesData);
+                    if (allPrices[assetId]) {
+                        const parsed = allPrices[assetId];
+                        return {
+                            price: parsed.price?.toString() || '0.5',
+                            asset_id: assetId,
+                            timestamp: parsed.timestamp || Date.now(),
+                            source: 'live' as const
+                        };
+                    }
+                } catch {
+                    // Invalid JSON, continue to fallback
+                }
             }
-            const parsed = JSON.parse(data) as MarketPrice;
-            return { ...parsed, source: 'live' as const };
+
+            // Try to look up from event lists (already loaded, no additional Redis call)
+            const eventPrice = await this.lookupPriceFromEvents(assetId);
+            if (eventPrice) return { ...eventPrice, source: 'event_list' as const };
+
+            console.log(`[MarketService] No price data for ${assetId}, using demo fallback`);
+            return { ...this.getDemoPrice(assetId), source: 'demo' as const };
         } catch (error: any) {
             console.error(`[MarketService] Redis error, using demo fallback:`, error.message);
             return { ...this.getDemoPrice(assetId), source: 'demo' as const };
         }
     }
+
 
     /**
      * Batch fetch prices for multiple assets in a single operation.

@@ -911,7 +911,8 @@ class IngestionWorker {
     // Price update batching to reduce Redis commands
     private priceBuffer: Map<string, any> = new Map();
     private lastFlush: number = 0;
-    private readonly FLUSH_INTERVAL_MS = 5000; // Flush every 5 seconds (was 1s - saves 80% Redis calls)
+    // COST OPTIMIZATION: 30s interval = 2,880 flushes/day (vs 17,280 at 5s)
+    private readonly FLUSH_INTERVAL_MS = 30000;
 
     private async processMessage(message: any) {
         const msgs = Array.isArray(message) ? message : [message];
@@ -942,27 +943,27 @@ class IngestionWorker {
         if (this.priceBuffer.size === 0) return;
 
         try {
-            // Batch all price updates into a single MSET command
-            const pipeline = this.redis.pipeline();
+            // COST OPTIMIZATION: Store ALL prices in SINGLE key instead of 322 individual keys
+            // This reduces Redis commands from 323/flush to just 2/flush (SET + PUBLISH)
             const allPrices: Record<string, any> = {};
 
-            // Convert Map entries to array for compatibility
+            // Convert Map entries to object
             const entries = Array.from(this.priceBuffer.entries());
             for (const entry of entries) {
                 const [assetId, msg] = entry;
                 allPrices[assetId] = msg;
-                pipeline.set(`market:price:${assetId}`, JSON.stringify(msg));
             }
 
-            // Single publish with all updates (UI can parse batch)
-            pipeline.publish("market:prices", JSON.stringify(allPrices));
+            // Single SET with all prices (1 command instead of 322!)
+            await this.redis.set('market:prices:all', JSON.stringify(allPrices));
 
-            await pipeline.exec();
+            // Single publish for real-time UI updates
+            await this.redis.publish('market:prices', JSON.stringify(allPrices));
 
             // Clear buffer after successful flush
             this.priceBuffer.clear();
         } catch (err) {
-            console.error("[Ingestion] Flush error:", err);
+            console.error('[Ingestion] Flush error:', err);
         }
     }
 

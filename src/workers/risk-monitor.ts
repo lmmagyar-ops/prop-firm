@@ -33,7 +33,8 @@ export class RiskMonitor {
     private redis: Redis;
     private isRunning = false;
     private checkInterval: NodeJS.Timeout | null = null;
-    private readonly CHECK_INTERVAL_MS = 5000; // Check every 5 seconds
+    // COST OPTIMIZATION: 30s interval = 2,880 checks/day (vs 17,280 at 5s)
+    private readonly CHECK_INTERVAL_MS = 30000;
 
     constructor(redis: Redis) {
         this.redis = redis;
@@ -259,28 +260,23 @@ export class RiskMonitor {
     }
 
     /**
-     * Batch fetch prices from Redis
+     * Batch fetch prices from Redis - reads from single consolidated key
      */
     private async batchFetchPrices(marketIds: string[]): Promise<Map<string, number>> {
         const prices = new Map<string, number>();
         if (marketIds.length === 0) return prices;
 
         try {
-            const pipeline = this.redis.pipeline();
+            // COST OPTIMIZATION: Read from single key instead of 300+ individual keys
+            // This is 1 Redis command instead of ~300!
+            const data = await this.redis.get('market:prices:all');
+            if (!data) return prices;
+
+            const allPrices = JSON.parse(data);
             for (const id of marketIds) {
-                pipeline.get(`market:price:${id}`);
-            }
-
-            const results = await pipeline.exec();
-            if (!results) return prices;
-
-            for (let i = 0; i < marketIds.length; i++) {
-                const [err, data] = results[i] || [];
-                if (!err && data) {
-                    try {
-                        const parsed = JSON.parse(data as string);
-                        prices.set(marketIds[i], parseFloat(parsed.price || parsed.mid || '0'));
-                    } catch { }
+                if (allPrices[id]) {
+                    const parsed = allPrices[id];
+                    prices.set(id, parseFloat(parsed.price || parsed.mid || '0'));
                 }
             }
         } catch (error: any) {
