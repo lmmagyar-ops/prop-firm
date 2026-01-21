@@ -25,7 +25,7 @@ git push origin develop
 
 ### 2. Test on Staging
 - Vercel auto-generates a preview URL for the `develop` branch
-- Preview URL pattern: `prop-firmx-git-develop-*.vercel.app`
+- Preview URL: `https://prop-firmx-git-develop-oversightresearch-4292s-projects.vercel.app`
 - Also visible in Vercel dashboard under Deployments
 
 ### 3. Promote to Production
