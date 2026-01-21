@@ -911,8 +911,8 @@ class IngestionWorker {
     // Price update batching to reduce Redis commands
     private priceBuffer: Map<string, any> = new Map();
     private lastFlush: number = 0;
-    // COST OPTIMIZATION: 30s interval = 2,880 flushes/day (vs 17,280 at 5s)
-    private readonly FLUSH_INTERVAL_MS = 30000;
+    // COST OPTIMIZATION: 60s interval = 1,440 flushes/day (vs 2,880 at 30s)
+    private readonly FLUSH_INTERVAL_MS = 60000;
 
     private async processMessage(message: any) {
         const msgs = Array.isArray(message) ? message : [message];
