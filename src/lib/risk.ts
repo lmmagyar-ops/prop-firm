@@ -211,9 +211,11 @@ export class RiskEngine {
 
         if (tradeAmount > exposureLimit && exposureLimit > 0) {
             console.log(`  ❌ BLOCKED: Volume-Tiered Exposure Limit`);
+            // Calculate the percentage for clarity
+            const limitPercent = marketVolume >= 10_000_000 ? '5%' : marketVolume >= 1_000_000 ? '2.5%' : '2%';
             return {
                 allowed: false,
-                reason: `This market has limited liquidity. Max trade: $${exposureLimit.toFixed(0)}. Try a smaller amount or choose a higher-volume market.`
+                reason: `Max single trade: $${exposureLimit.toFixed(0)} (${limitPercent} per-trade limit for your account). Enter a smaller amount.`
             };
         }
         console.log(`  ✅ PASS`);
