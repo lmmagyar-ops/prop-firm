@@ -573,6 +573,16 @@ See `.agent/workflows/deploy.md` for detailed instructions.
 | `da9f0ad` | Market unavailable: improved error UX |
 | `7d49a6c` | Cleanup: removed 12 legacy debug scripts |
 | `9152655` | Testing: 6 new trade flow integration tests |
+| `9ea0f7d` | CI: fixed TypeScript errors and test timeouts |
+| `772ebaa` | Mobile UX: MobileTradeSheet quick trading |
+| `019a1e0` | Docs: fixed staging URL in deploy workflow |
+| `8d0c39b` | Maintenance: fixed duplicate import in verify-engine.ts |
+
+**MobileTradeSheet Integration:**
+- Mobile Yes/No buttons → open lightweight bottom sheet (not full modal)
+- Desktop Yes/No buttons → open full EventDetailModal (unchanged)
+- Uses `useMediaQuery("(max-width: 768px)")` for detection
+- Trade execution wired via `useTradeExecution` hook
 
 **Scripts Removed:**
 - `check-challenges.mjs`, `create-admin-cardman*.ts/mjs`, `investigate-users.ts`
