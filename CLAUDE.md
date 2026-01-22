@@ -48,13 +48,12 @@ DATABASE_URL="..." npx tsx scripts/grant-admin.ts email@example.com
 │  │  - RiskMonitor (5s breach detection)                       │  │
 │  │  - Health server (:3001/health)                            │  │
 │  └───────────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────┘
-                              ↕
-┌─────────────────────────────────────────────────────────────────┐
-│                       UPSTASH REDIS                             │
-│  - Price cache: market:price:{id}, market:book:{id}            │
-│  - Event lists: event:active_list, kalshi:active_list          │
-│  - Leader election locks                                        │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │  Redis (Flat-rate $5/mo)                                   │  │
+│  │  - Price cache: market:price:{id}, market:book:{id}        │  │
+│  │  - Event lists: event:active_list, kalshi:active_list      │  │
+│  │  - Leader election locks                                    │  │
+│  └───────────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -66,7 +65,7 @@ DATABASE_URL="..." npx tsx scripts/grant-admin.ts email@example.com
 |-------|------------|
 | **Framework** | Next.js 16 (App Router), React 19 |
 | **Database** | Prisma Postgres (Vercel), Drizzle ORM |
-| **Cache** | Upstash Redis (TLS) |
+| **Cache** | Railway Redis (flat-rate, via REDIS_URL) |
 | **Auth** | NextAuth v5 (email/password + Google OAuth) |
 | **UI** | Tailwind v4, Shadcn/ui, Framer Motion |
 | **Real-time** | Redis pub/sub, WebSocket streams |
@@ -303,10 +302,10 @@ AUTH_GOOGLE_SECRET=...
 # Database
 DATABASE_URL=postgres://...@db.prisma.io:5432/postgres?sslmode=require
 
-# Redis (Upstash)
-REDIS_HOST=your-host.upstash.io
-REDIS_PASSWORD=...
-REDIS_PORT=6379
+# Redis (Railway - internal reference)
+REDIS_URL=${{Redis.REDIS_URL}}
+# Or use public proxy for external access:
+# REDIS_URL=redis://default:PASSWORD@HOST.proxy.rlwy.net:PORT
 ```
 
 ---
