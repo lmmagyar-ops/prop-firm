@@ -11,8 +11,14 @@ import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-auth";
 import Redis from "ioredis";
 
-// Redis client
+// Redis client - Priority: REDIS_URL (Railway) > REDIS_HOST/PASSWORD (legacy Upstash) > localhost
 function getRedis(): Redis {
+    if (process.env.REDIS_URL) {
+        return new Redis(process.env.REDIS_URL, {
+            connectTimeout: 5000,
+            lazyConnect: true,
+        });
+    }
     if (process.env.REDIS_HOST && process.env.REDIS_PASSWORD) {
         return new Redis({
             host: process.env.REDIS_HOST,
@@ -23,7 +29,7 @@ function getRedis(): Redis {
             lazyConnect: true,
         });
     }
-    return new Redis(process.env.REDIS_URL || "redis://localhost:6380", {
+    return new Redis("redis://localhost:6380", {
         connectTimeout: 5000,
         lazyConnect: true,
     });

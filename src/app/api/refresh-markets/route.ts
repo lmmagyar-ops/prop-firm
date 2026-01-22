@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import Redis from "ioredis";
 
+// Priority: REDIS_URL (Railway) > REDIS_HOST/PASSWORD (legacy Upstash) > localhost
 const getRedisConfig = () => {
+    if (process.env.REDIS_URL) {
+        return process.env.REDIS_URL;
+    }
     if (process.env.REDIS_HOST && process.env.REDIS_PASSWORD) {
         return {
             host: process.env.REDIS_HOST,
@@ -10,7 +14,7 @@ const getRedisConfig = () => {
             tls: {}
         };
     }
-    return process.env.REDIS_URL || "redis://localhost:6380";
+    return "redis://localhost:6380";
 };
 
 export async function GET() {

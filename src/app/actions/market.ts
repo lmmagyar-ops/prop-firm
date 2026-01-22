@@ -4,7 +4,13 @@ import Redis from "ioredis";
 
 import { unstable_noStore as noStore } from "next/cache";
 
+// Priority: REDIS_URL (Railway) > REDIS_HOST/PASSWORD (legacy Upstash) > localhost
 const getRedisConfig = () => {
+    // Priority 1: Use REDIS_URL if set (Railway or any standard Redis)
+    if (process.env.REDIS_URL) {
+        return process.env.REDIS_URL;
+    }
+    // Priority 2: Legacy Upstash with TLS (deprecated)
     if (process.env.REDIS_HOST && process.env.REDIS_PASSWORD) {
         return {
             host: process.env.REDIS_HOST,
@@ -13,7 +19,8 @@ const getRedisConfig = () => {
             tls: {} // Required for Upstash
         };
     }
-    return process.env.REDIS_URL || "redis://localhost:6380";
+    // Priority 3: Local development fallback
+    return "redis://localhost:6380";
 };
 
 const redis = new Redis(getRedisConfig() as any);

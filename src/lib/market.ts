@@ -1,8 +1,18 @@
 import Redis from "ioredis";
 
-// Support both Upstash (REDIS_HOST/PASSWORD) and local (REDIS_URL) configs
+// Priority: REDIS_URL (Railway) > REDIS_HOST/PASSWORD (legacy Upstash) > localhost
 function createRedisClient(): Redis {
-    // Production: Use Upstash with TLS
+    // Priority 1: Use REDIS_URL if set (Railway or any standard Redis)
+    if (process.env.REDIS_URL) {
+        return new Redis(process.env.REDIS_URL, {
+            connectTimeout: 5000,
+            commandTimeout: 5000,
+            maxRetriesPerRequest: 1,
+            lazyConnect: true,
+        });
+    }
+
+    // Priority 2: Legacy Upstash with TLS (deprecated)
     if (process.env.REDIS_HOST && process.env.REDIS_PASSWORD) {
         return new Redis({
             host: process.env.REDIS_HOST,
@@ -16,8 +26,8 @@ function createRedisClient(): Redis {
         });
     }
 
-    // Local: Use REDIS_URL
-    return new Redis(process.env.REDIS_URL || "redis://localhost:6380", {
+    // Priority 3: Local development fallback
+    return new Redis("redis://localhost:6380", {
         connectTimeout: 5000,
         commandTimeout: 5000,
         maxRetriesPerRequest: 1,
