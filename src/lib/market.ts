@@ -326,6 +326,7 @@ export class MarketService {
 
     /**
      * Look up price from event lists (kalshi:active_list or event:active_list)
+     * Falls back to market:active_list for binary markets not in featured events.
      * This allows us to get live prices for position P&L calculations
      */
     static async lookupPriceFromEvents(marketId: string): Promise<MarketPrice | null> {
@@ -348,7 +349,7 @@ export class MarketService {
                 }
             }
 
-            // Try Polymarket
+            // Try Polymarket featured events
             const polyData = await redis.get('event:active_list');
             if (polyData) {
                 const events = JSON.parse(polyData);
@@ -361,6 +362,23 @@ export class MarketService {
                             timestamp: Date.now()
                         };
                     }
+                }
+            }
+
+            // FALLBACK: Check market:active_list for binary markets not in featured events
+            // These are high-volume single-outcome markets displayed in the grid
+            const binaryData = await redis.get('market:active_list');
+            if (binaryData) {
+                const markets = JSON.parse(binaryData);
+                const market = markets.find((m: any) => m.id === marketId);
+                if (market) {
+                    const price = market.currentPrice ?? market.basePrice ?? 0.5;
+                    return {
+                        price: price.toString(),
+                        asset_id: marketId,
+                        timestamp: Date.now(),
+                        source: 'event_list' as const  // Treat as live data since it came from ingestion
+                    };
                 }
             }
 
