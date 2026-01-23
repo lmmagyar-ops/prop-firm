@@ -821,10 +821,17 @@ class IngestionWorker {
                 }
             }
 
-            // Store in Redis (with memory bounds)
-            this.activeTokenIds = allMarkets.slice(0, this.MAX_ACTIVE_TOKENS).map(m => m.id);
+            // Store in Redis
             await this.redis.set("market:active_list", JSON.stringify(allMarkets));
-            console.log(`[Ingestion] Stored ${allMarkets.length} diverse markets in Redis (tracking ${this.activeTokenIds.length} tokens).`);
+
+            // MERGE binary market IDs with existing event token IDs (don't overwrite!)
+            // This ensures order books are fetched for BOTH event markets AND binary markets
+            const binaryTokenIds = allMarkets.map(m => m.id);
+            const combined = [...new Set([...this.activeTokenIds, ...binaryTokenIds])]; // Dedupe
+            this.activeTokenIds = combined.slice(0, this.MAX_ACTIVE_TOKENS);
+
+            console.log(`[Ingestion] Stored ${allMarkets.length} diverse markets in Redis.`);
+            console.log(`[Ingestion] Tracking ${this.activeTokenIds.length} total tokens for order books (events + binary).`);
             console.log(`[Ingestion] Category breakdown:`, categoryCounts);
 
         } catch (err) {
