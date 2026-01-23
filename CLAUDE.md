@@ -604,6 +604,7 @@ See `.agent/workflows/deploy.md` for detailed instructions.
 |-----|---------|
 | **Incident 39** | Removed `Math.max(0, totalPnL)` floor in `dashboard-service.ts` that was showing phantom profit when underwater |
 | **PayoutProgressCard** | Now shows red text + TrendingDown icon when P&L is negative |
+| **Trade History UX** | Added `RecentTradesWidget` to dashboard + "Trade History" sidebar link |
 
 > [!IMPORTANT]
 > The payout *calculation* still correctly floors to 0 (you can't withdraw negative). Only the *display* was fixed to show accurate P&L.
