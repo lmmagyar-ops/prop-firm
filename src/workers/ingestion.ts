@@ -603,6 +603,9 @@ class IngestionWorker {
                 try {
                     if (!event.markets || event.markets.length === 0) continue;
 
+                    // Guard against missing title
+                    if (!event.title) continue;
+
                     // Event-level deduplication by title (prevents duplicate "LeBron James" etc.)
                     const normalizedTitle = event.title.trim().toLowerCase();
                     if (seenEventTitles.has(normalizedTitle)) continue;
@@ -703,7 +706,8 @@ class IngestionWorker {
                         isMultiOutcome: subMarkets.length > 1,
                     });
                 } catch (e) {
-                    // Skip invalid event
+                    // Log errors for debugging instead of silently skipping
+                    console.error(`[Ingestion] Error processing event ${event?.title || event?.slug || 'unknown'}:`, e);
                 }
             }
 
