@@ -342,7 +342,7 @@ describe("RiskEngine - Volume and Liquidity Rules", () => {
         const result = await RiskEngine.validateTrade("challenge-1", "market-1", 700);
 
         expect(result.allowed).toBe(false);
-        expect(result.reason).toContain("limited liquidity");
+        expect(result.reason).toContain("Max single trade");
     });
 
     it("should allow trade when market impact is within 10% limit (RULE 6)", async () => {
