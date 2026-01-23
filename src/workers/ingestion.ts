@@ -318,7 +318,7 @@ class IngestionWorker {
     ): string[] {
         const categories: string[] = [];
         const q = question.toLowerCase();
-        const tagsLower = (tags || []).map(t => t.toLowerCase());
+        const tagsLower = (tags || []).filter(t => typeof t === 'string').map(t => t.toLowerCase());
         const imageLower = (imageUrl || '').toLowerCase();
 
         // === BREAKING DETECTION ===
