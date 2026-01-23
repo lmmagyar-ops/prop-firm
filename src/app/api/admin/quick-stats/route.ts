@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { challenges, users, payouts, positions } from "@/db/schema";
-import { eq, and, gte, sql, count } from "drizzle-orm";
+import { eq, and, gte, sql, count, inArray } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { requireAdmin } from "@/lib/admin-auth";
 
@@ -98,7 +98,8 @@ export async function GET() {
                                 and(
                                     eq(challenges.id, selectedChallengeId),
                                     eq(challenges.userId, userId),
-                                    eq(challenges.status, "active")
+                                    // Include all resettable statuses (not just active)
+                                    inArray(challenges.status, ["active", "funded", "passed", "verification"])
                                 )
                             )
                             .limit(1);
@@ -115,7 +116,8 @@ export async function GET() {
                         .where(
                             and(
                                 eq(challenges.userId, userId),
-                                eq(challenges.status, "active")
+                                // Include all resettable statuses (not just active)
+                                inArray(challenges.status, ["active", "funded", "passed", "verification"])
                             )
                         )
                         .orderBy(sql`${challenges.startedAt} DESC`)
