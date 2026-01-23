@@ -273,8 +273,9 @@ export async function getDashboardData(userId: string) {
             : 0;
         const daysUntilPayout = Math.max(0, cycleLength - daysSinceCycleStart);
 
-        // Net profit available for payout
-        const netProfit = Math.max(0, totalPnL);
+        // Net profit for display (can be negative to show true P&L)
+        // NOTE: Payout eligibility check is separate (PayoutService floors to 0)
+        const netProfit = totalPnL;
 
         // Eligibility check (simplified - full check in PayoutService)
         const hasMinTradingDays = activeTradingDays >= fundedRules.minTradingDays;

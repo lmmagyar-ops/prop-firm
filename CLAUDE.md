@@ -589,3 +589,22 @@ See `.agent/workflows/deploy.md` for detailed instructions.
 - `check-market-volumes.ts`, `generate-clob-keys.ts`, `investigate-pnl.ts`, `seed-check.ts`
 
 **Scripts Retained:** `grant-admin.ts`, `verify-admins.ts`, `update-position-prices.ts`, `llm-market-fixer.ts`, `refresh-kalshi.ts`, `refresh-markets.ts`, `verify-engine.ts`, `verify-prices.ts`
+
+### Infrastructure Migration (Jan 22)
+| Change | Details |
+|--------|---------|
+| **Redis Provider** | Migrated from Upstash to Railway Redis (flat-rate $5/mo) |
+| **Connection String** | Use `REDIS_URL` only (Railway internal reference: `${{Redis.REDIS_URL}}`) |
+| **Legacy Vars Removed** | Purged `REDIS_HOST`, `REDIS_PASSWORD` from Vercel |
+| **Ingestion Hardening** | Fixed multi-layer caching, source-branch mismatch, API type drift |
+| **Order Book Coverage** | Achieved 100% coverage (~2,000 active markets) |
+
+### Dashboard Fixes (Jan 23)
+| Fix | Details |
+|-----|---------|
+| **Incident 39** | Removed `Math.max(0, totalPnL)` floor in `dashboard-service.ts` that was showing phantom profit when underwater |
+| **PayoutProgressCard** | Now shows red text + TrendingDown icon when P&L is negative |
+
+> [!IMPORTANT]
+> The payout *calculation* still correctly floors to 0 (you can't withdraw negative). Only the *display* was fixed to show accurate P&L.
+
