@@ -525,6 +525,7 @@ class IngestionWorker {
     }
 
     private async init() {
+        console.log('[Ingestion] 🚀 CODE VERSION: 2026-01-22-v2 (merged token IDs fix)');
         await this.fetchFeaturedEvents(); // Fetch curated trending events first
         await this.fetchActiveMarkets(); // Then fetch remaining markets
         this.connectWS();
