@@ -122,7 +122,34 @@ export class ChallengeEvaluator {
         // === CHECK PROFIT TARGET (Challenge/Verification phase only) ===
         // Funded accounts do NOT have a profit target - they accumulate profit for payouts
         const profit = equity - startingBalance;
+
+        // FORENSIC LOGGING: Always log evaluation state for debugging
+        console.log(`[EVALUATOR_FORENSIC] ${JSON.stringify({
+            challengeId: challengeId.slice(0, 8),
+            phase: challenge.phase,
+            isFunded,
+            cashBalance: currentBalance.toFixed(2),
+            positionCount: openPositions.length,
+            positionValue: positionValue.toFixed(2),
+            equity: equity.toFixed(2),
+            startingBalance: startingBalance.toFixed(2),
+            profit: profit.toFixed(2),
+            profitTarget,
+            wouldTransition: !isFunded && profit >= profitTarget,
+        })}`);
+
         if (!isFunded && profit >= profitTarget) {
+            // FORENSIC: Log detailed transition info
+            console.log(`[EVALUATOR_FORENSIC] ⚠️ FUNDED TRANSITION TRIGGERED`, {
+                challengeId: challengeId.slice(0, 8),
+                positions: openPositions.map(p => ({
+                    marketId: p.marketId.slice(0, 12),
+                    shares: p.shares,
+                    direction: p.direction,
+                    entryPrice: p.entryPrice,
+                })),
+            });
+
             // Transition to funded phase
             console.log(`[Evaluator] 🎉 Challenge ${challengeId.slice(0, 8)} PASSED! Transitioning to FUNDED. Profit: $${profit.toFixed(2)}`);
 
