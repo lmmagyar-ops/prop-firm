@@ -11,6 +11,7 @@ import { EquityDisplay } from "@/components/dashboard/EquityDisplay";
 import { ProfitProgress } from "@/components/dashboard/ProfitProgress";
 import { RiskMeters } from "@/components/dashboard/RiskMeters";
 import { LivePositions } from "@/components/dashboard/LivePositions";
+import { RecentTradesWidget } from "@/components/dashboard/RecentTradesWidget";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { getDashboardData } from "@/lib/dashboard-service";
@@ -227,6 +228,9 @@ export default async function DashboardPage() {
 
                     {/* Open Positions with LIVE SSE Updates */}
                     <LivePositions initialPositions={positions || []} />
+
+                    {/* Recent Trades Widget */}
+                    <RecentTradesWidget />
 
                 </>
             )}
