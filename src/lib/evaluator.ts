@@ -63,14 +63,26 @@ export class ChallengeEvaluator {
         let positionValue = 0;
         for (const pos of openPositions) {
             const livePrice = livePrices.get(pos.marketId);
-            // Market data returns YES price, so for NO positions we need (1 - yesPrice)
-            const yesPrice = livePrice
-                ? parseFloat(livePrice.price)
-                : (pos.currentPrice ? parseFloat(pos.currentPrice) : parseFloat(pos.entryPrice));
+            const shares = parseFloat(pos.shares);
 
-            // For NO positions, value = shares * (1 - yesPrice)
-            const effectivePrice = pos.direction === 'NO' ? (1 - yesPrice) : yesPrice;
-            positionValue += parseFloat(pos.shares) * effectivePrice;
+            // CRITICAL FIX: Handle price sources differently
+            // - Live prices from order book are RAW YES prices → need direction adjustment
+            // - Stored prices (currentPrice, entryPrice) are ALREADY direction-adjusted → use directly
+            let effectivePrice: number;
+
+            if (livePrice) {
+                // Live price is raw YES price - apply direction adjustment
+                const yesPrice = parseFloat(livePrice.price);
+                effectivePrice = pos.direction === 'NO' ? (1 - yesPrice) : yesPrice;
+            } else {
+                // Fallback: Use stored price (ALREADY direction-adjusted in DB)
+                // DO NOT apply direction adjustment again - that causes double-adjustment bug!
+                effectivePrice = pos.currentPrice
+                    ? parseFloat(pos.currentPrice)
+                    : parseFloat(pos.entryPrice);
+            }
+
+            positionValue += shares * effectivePrice;
         }
 
         const equity = currentBalance + positionValue;

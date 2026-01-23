@@ -65,8 +65,22 @@ export class RiskEngine {
                 const shares = parseFloat(pos.shares);
                 const direction = (pos.direction as 'YES' | 'NO') || 'YES';
                 const priceData = livePrices.get(pos.marketId);
-                const rawPrice = priceData ? parseFloat(priceData.price) : parseFloat(pos.entryPrice);
-                const effectivePrice = getDirectionAdjustedPrice(rawPrice, direction);
+
+                // CRITICAL FIX: Handle price sources differently
+                // - Live prices from order book are RAW YES prices → need direction adjustment
+                // - Stored prices (entryPrice) are ALREADY direction-adjusted → use directly
+                let effectivePrice: number;
+
+                if (priceData) {
+                    // Live price is raw YES price - apply direction adjustment
+                    const rawPrice = parseFloat(priceData.price);
+                    effectivePrice = getDirectionAdjustedPrice(rawPrice, direction);
+                } else {
+                    // Fallback: Use stored entryPrice (ALREADY direction-adjusted in DB)
+                    // DO NOT apply direction adjustment again!
+                    effectivePrice = parseFloat(pos.entryPrice);
+                }
+
                 totalPositionValue += shares * effectivePrice;
             }
         }
