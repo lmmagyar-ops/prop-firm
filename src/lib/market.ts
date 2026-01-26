@@ -241,7 +241,11 @@ export class MarketService {
                 if (book) {
                     // Use best bid (what you could sell at) for mark-to-market
                     const bestBid = book.bids?.[0]?.price;
-                    if (bestBid) {
+                    const bidPrice = parseFloat(bestBid || '0');
+
+                    // CRITICAL: Validate price is in valid range for active markets
+                    // Prices ≤0.01 or ≥0.99 indicate resolved/invalid data
+                    if (bidPrice > 0.01 && bidPrice < 0.99) {
                         results.set(marketId, {
                             price: bestBid,
                             asset_id: marketId,
@@ -249,6 +253,9 @@ export class MarketService {
                             source: 'live'
                         });
                         continue;
+                    } else if (bestBid) {
+                        // Log invalid prices for debugging
+                        console.warn(`[MarketService] Invalid order book price for ${marketId.slice(0, 12)}...: ${bestBid} (rejected, using fallback)`);
                     }
                 }
 

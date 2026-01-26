@@ -78,7 +78,21 @@ export async function GET() {
 
         // Get price from batch-fetched map (this is the YES/bid price from order book)
         const marketData = priceMap.get(pos.marketId);
-        const rawPrice = marketData ? parseFloat(marketData.price) : entry;
+        let rawPrice = marketData ? parseFloat(marketData.price) : null;
+
+        // SANITY CHECK: Validate price is reasonable for active market
+        // If price is 0, NaN, or out of valid range, use entry price as fallback
+        if (!rawPrice || rawPrice <= 0.01 || rawPrice >= 0.99 || isNaN(rawPrice)) {
+            if (marketData) {
+                log.warn("Invalid live price detected, using entry price fallback", {
+                    marketId: pos.marketId.slice(0, 12),
+                    invalidPrice: marketData.price,
+                    source: marketData.source,
+                    fallbackTo: entry
+                });
+            }
+            rawPrice = entry; // Fall back to entry price (safe, shows 0 P&L)
+        }
 
         // Use shared utility for direction-adjusted calculations
         // NOTE: Entry price from DB is ALREADY direction-adjusted (see trade.ts line 175-177)

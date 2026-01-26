@@ -65,6 +65,7 @@ export class RiskEngine {
                 const shares = parseFloat(pos.shares);
                 const direction = (pos.direction as 'YES' | 'NO') || 'YES';
                 const priceData = livePrices.get(pos.marketId);
+                const entryPrice = parseFloat(pos.entryPrice);
 
                 // CRITICAL FIX: Handle price sources differently
                 // - Live prices from order book are RAW YES prices → need direction adjustment
@@ -72,13 +73,24 @@ export class RiskEngine {
                 let effectivePrice: number;
 
                 if (priceData) {
-                    // Live price is raw YES price - apply direction adjustment
                     const rawPrice = parseFloat(priceData.price);
-                    effectivePrice = getDirectionAdjustedPrice(rawPrice, direction);
+
+                    // SANITY CHECK: Validate price is in valid range for active markets
+                    if (rawPrice > 0.01 && rawPrice < 0.99 && !isNaN(rawPrice)) {
+                        // Live price is raw YES price - apply direction adjustment
+                        effectivePrice = getDirectionAdjustedPrice(rawPrice, direction);
+                    } else {
+                        // Invalid price - log and use entry as fallback
+                        console.warn("[RiskEngine] Invalid live price, using entry fallback:", {
+                            marketId: pos.marketId.slice(0, 12),
+                            invalidPrice: priceData.price
+                        });
+                        effectivePrice = entryPrice;
+                    }
                 } else {
                     // Fallback: Use stored entryPrice (ALREADY direction-adjusted in DB)
                     // DO NOT apply direction adjustment again!
-                    effectivePrice = parseFloat(pos.entryPrice);
+                    effectivePrice = entryPrice;
                 }
 
                 totalPositionValue += shares * effectivePrice;
