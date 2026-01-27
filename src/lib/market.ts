@@ -347,11 +347,16 @@ export class MarketService {
                 for (const event of events) {
                     const market = event.markets?.find((m: any) => m.id === marketId);
                     if (market) {
-                        return {
-                            price: market.price.toString(),
-                            asset_id: marketId,
-                            timestamp: Date.now()
-                        };
+                        const price = parseFloat(market.price);
+                        // Skip invalid/stale prices that indicate resolved markets
+                        if (price > 0.01 && price < 0.99) {
+                            return {
+                                price: market.price.toString(),
+                                asset_id: marketId,
+                                timestamp: Date.now()
+                            };
+                        }
+                        // Invalid price - fall through to next lookup
                     }
                 }
             }
@@ -363,11 +368,16 @@ export class MarketService {
                 for (const event of events) {
                     const market = event.markets?.find((m: any) => m.id === marketId);
                     if (market) {
-                        return {
-                            price: market.price.toString(),
-                            asset_id: marketId,
-                            timestamp: Date.now()
-                        };
+                        const price = parseFloat(market.price);
+                        // Skip invalid/stale prices that indicate resolved markets
+                        if (price > 0.01 && price < 0.99) {
+                            return {
+                                price: market.price.toString(),
+                                asset_id: marketId,
+                                timestamp: Date.now()
+                            };
+                        }
+                        // Invalid price - fall through to next lookup
                     }
                 }
             }
@@ -380,12 +390,16 @@ export class MarketService {
                 const market = markets.find((m: any) => m.id === marketId);
                 if (market) {
                     const price = market.currentPrice ?? market.basePrice ?? 0.5;
-                    return {
-                        price: price.toString(),
-                        asset_id: marketId,
-                        timestamp: Date.now(),
-                        source: 'event_list' as const  // Treat as live data since it came from ingestion
-                    };
+                    // Skip invalid/stale prices that indicate resolved markets
+                    if (price > 0.01 && price < 0.99) {
+                        return {
+                            price: price.toString(),
+                            asset_id: marketId,
+                            timestamp: Date.now(),
+                            source: 'event_list' as const
+                        };
+                    }
+                    // Invalid price - fall through to demo price
                 }
             }
 
