@@ -606,6 +606,11 @@ See `.agent/workflows/deploy.md` for detailed instructions.
 | **PayoutProgressCard** | Now shows red text + TrendingDown icon when P&L is negative |
 | **Trade History UX** | Added `RecentTradesWidget` to dashboard + "Trade History" sidebar link |
 
+### Price Fallback Hardening (Jan 27)
+| Fix | Details |
+|-----|---------|
+| **Incident 40** | Added price validation to `lookupPriceFromEvents()` in `market.ts` - stale/resolved market prices (≤0.01 or ≥0.99) now fall through to demo price (0.55) instead of showing 0¢. Root cause: event lists stored snapshot prices at ingestion time, and near-resolved markets were cached with invalid prices. |
+
 > [!IMPORTANT]
 > The payout *calculation* still correctly floors to 0 (you can't withdraw negative). Only the *display* was fixed to show accurate P&L.
 
