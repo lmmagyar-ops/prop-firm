@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { challenges, positions, trades } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-auth";
 
@@ -61,6 +61,7 @@ export async function POST(req: Request) {
                 phase: "challenge",  // Reset funded accounts back to challenge phase
                 pendingFailureAt: null,  // Clear any pending failure
                 activeTradingDays: 0,  // Reset trading day count
+                startedAt: new Date(),  // Reset start date for fresh evaluation period
             })
             .where(eq(challenges.id, challengeId));
 
