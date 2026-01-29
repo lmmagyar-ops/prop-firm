@@ -6,10 +6,18 @@ import { NextResponse } from "next/server";
 
 // Bootstrap admin emails from environment variable (comma-separated)
 // Set ADMIN_BOOTSTRAP_EMAILS in .env for initial setup before DB admins exist
+// WARNING: Remove this env var in production after granting admin via DB
 const BOOTSTRAP_ADMIN_EMAILS = (process.env.ADMIN_BOOTSTRAP_EMAILS || "")
     .split(",")
     .map(email => email.trim().toLowerCase())
     .filter(email => email.length > 0);
+
+if (BOOTSTRAP_ADMIN_EMAILS.length > 0 && process.env.NODE_ENV === "production") {
+    console.warn(
+        "[Admin Auth] WARNING: ADMIN_BOOTSTRAP_EMAILS is set in production. " +
+        "This bypasses database role checks. Remove after initial setup."
+    );
+}
 
 export async function requireAdmin() {
     const session = await auth();

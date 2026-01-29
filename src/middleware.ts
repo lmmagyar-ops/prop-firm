@@ -2,11 +2,16 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 // Simple in-memory rate limiter (resets on deploy)
+// Note: Ineffective in serverless - each instance has its own map
 // For production, use Redis-based rate limiting
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
 
 const RATE_LIMIT = 100; // requests per window
 const RATE_WINDOW = 60 * 1000; // 1 minute in ms
+const CLEANUP_INTERVAL = 5 * 60 * 1000; // Clean up every 5 minutes
+const MAX_ENTRIES = 10000; // Prevent unbounded growth
+
+let lastCleanup = Date.now();
 
 function getRateLimitKey(request: NextRequest): string {
     const forwarded = request.headers.get('x-forwarded-for');
@@ -14,7 +19,22 @@ function getRateLimitKey(request: NextRequest): string {
     return ip;
 }
 
+function cleanupExpiredEntries(): void {
+    const now = Date.now();
+    if (now - lastCleanup < CLEANUP_INTERVAL && rateLimitMap.size < MAX_ENTRIES) {
+        return;
+    }
+
+    for (const [key, record] of rateLimitMap.entries()) {
+        if (now > record.resetTime) {
+            rateLimitMap.delete(key);
+        }
+    }
+    lastCleanup = now;
+}
+
 function checkRateLimit(key: string): { allowed: boolean; remaining: number } {
+    cleanupExpiredEntries();
     const now = Date.now();
     const record = rateLimitMap.get(key);
 
