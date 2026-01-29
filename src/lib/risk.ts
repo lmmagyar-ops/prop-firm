@@ -65,8 +65,34 @@ export class RiskEngine {
                 const shares = parseFloat(pos.shares);
                 const direction = (pos.direction as 'YES' | 'NO') || 'YES';
                 const priceData = livePrices.get(pos.marketId);
-                const rawPrice = priceData ? parseFloat(priceData.price) : parseFloat(pos.entryPrice);
-                const effectivePrice = getDirectionAdjustedPrice(rawPrice, direction);
+                const entryPrice = parseFloat(pos.entryPrice);
+
+                // CRITICAL FIX: Handle price sources differently
+                // - Live prices from order book are RAW YES prices → need direction adjustment
+                // - Stored prices (entryPrice) are ALREADY direction-adjusted → use directly
+                let effectivePrice: number;
+
+                if (priceData) {
+                    const rawPrice = parseFloat(priceData.price);
+
+                    // SANITY CHECK: Validate price is in valid range for active markets
+                    if (rawPrice > 0.01 && rawPrice < 0.99 && !isNaN(rawPrice)) {
+                        // Live price is raw YES price - apply direction adjustment
+                        effectivePrice = getDirectionAdjustedPrice(rawPrice, direction);
+                    } else {
+                        // Invalid price - log and use entry as fallback
+                        console.warn("[RiskEngine] Invalid live price, using entry fallback:", {
+                            marketId: pos.marketId.slice(0, 12),
+                            invalidPrice: priceData.price
+                        });
+                        effectivePrice = entryPrice;
+                    }
+                } else {
+                    // Fallback: Use stored entryPrice (ALREADY direction-adjusted in DB)
+                    // DO NOT apply direction adjustment again!
+                    effectivePrice = entryPrice;
+                }
+
                 totalPositionValue += shares * effectivePrice;
             }
         }
@@ -211,9 +237,11 @@ export class RiskEngine {
 
         if (tradeAmount > exposureLimit && exposureLimit > 0) {
             console.log(`  ❌ BLOCKED: Volume-Tiered Exposure Limit`);
+            // Calculate the percentage for clarity
+            const limitPercent = marketVolume >= 10_000_000 ? '5%' : marketVolume >= 1_000_000 ? '2.5%' : '2%';
             return {
                 allowed: false,
-                reason: `This market has limited liquidity. Max trade: $${exposureLimit.toFixed(0)}. Try a smaller amount or choose a higher-volume market.`
+                reason: `Max single trade: $${exposureLimit.toFixed(0)} (${limitPercent} per-trade limit for your account). Enter a smaller amount.`
             };
         }
         console.log(`  ✅ PASS`);

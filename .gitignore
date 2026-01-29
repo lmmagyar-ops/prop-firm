@@ -43,3 +43,5 @@ next-env.d.ts
 
 # local db
 postgres-data
+.env*.local
+Branding/_Archive/*

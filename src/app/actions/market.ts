@@ -1,10 +1,18 @@
 "use server";
 
-import Redis from "ioredis";
+import Redis, { RedisOptions } from "ioredis";
 
 import { unstable_noStore as noStore } from "next/cache";
 
-const getRedisConfig = () => {
+type RedisConfig = string | RedisOptions;
+
+// Priority: REDIS_URL (Railway) > REDIS_HOST/PASSWORD (legacy Upstash) > localhost
+const getRedisConfig = (): RedisConfig => {
+    // Priority 1: Use REDIS_URL if set (Railway or any standard Redis)
+    if (process.env.REDIS_URL) {
+        return process.env.REDIS_URL;
+    }
+    // Priority 2: Legacy Upstash with TLS (deprecated)
     if (process.env.REDIS_HOST && process.env.REDIS_PASSWORD) {
         return {
             host: process.env.REDIS_HOST,
@@ -13,10 +21,14 @@ const getRedisConfig = () => {
             tls: {} // Required for Upstash
         };
     }
-    return process.env.REDIS_URL || "redis://localhost:6380";
+    // Priority 3: Local development fallback
+    return "redis://localhost:6380";
 };
 
-const redis = new Redis(getRedisConfig() as any);
+const redisConfig = getRedisConfig();
+const redis = typeof redisConfig === 'string'
+    ? new Redis(redisConfig)
+    : new Redis(redisConfig);
 
 export interface MarketMetadata {
     id: string;
@@ -28,25 +40,7 @@ export interface MarketMetadata {
     end_date: string;
     categories?: string[]; // Array of categories (markets can be in multiple)
     currentPrice?: number; // Current YES probability (0-1)
-}
-
-/**
- * Extract current price from order book data
- * Uses best bid as the current price (most someone is willing to pay for YES)
- */
-function extractPriceFromBook(bookData: any): number | null {
-    try {
-        if (bookData?.bids && bookData.bids.length > 0) {
-            // Best bid is highest price someone will pay = current YES probability
-            const bids = bookData.bids.sort((a: any, b: any) =>
-                parseFloat(b.price) - parseFloat(a.price)
-            );
-            return parseFloat(bids[0].price);
-        }
-        return null;
-    } catch {
-        return null;
-    }
+    basePrice?: number; // Legacy field from ingestion, use currentPrice instead
 }
 
 export async function getActiveMarkets(): Promise<MarketMetadata[]> {
@@ -63,7 +57,7 @@ export async function getActiveMarkets(): Promise<MarketMetadata[]> {
         // Use basePrice as currentPrice if not already set.
         return markets.map(market => ({
             ...market,
-            currentPrice: market.currentPrice ?? (market as any).basePrice ?? 0.5
+            currentPrice: market.currentPrice ?? market.basePrice ?? 0.5
         }));
     } catch (e) {
         console.error("Failed to fetch active markets", e);
@@ -88,7 +82,7 @@ export async function getMarketById(marketId: string): Promise<MarketMetadata | 
             if (found) {
                 return {
                     ...found,
-                    currentPrice: found.currentPrice ?? (found as any).basePrice ?? 0.5
+                    currentPrice: found.currentPrice ?? found.basePrice ?? 0.5
                 };
             }
         }
@@ -304,10 +298,17 @@ export async function getActiveEvents(platform: Platform = "polymarket"): Promis
                     }
                 }
 
-                // DEFENSIVE FILTER: Skip markets with exactly 50% price (±0.5%) AND low volume
+                // DEFENSIVE FILTER 1: Skip markets with invalid prices (≤0.01 or ≥0.99)
+                // These indicate resolved, stale, or otherwise untradable markets
+                const price = market.price ?? 0;
+                if (price <= 0.01 || price >= 0.99) {
+                    return false;
+                }
+
+                // DEFENSIVE FILTER 2: Skip markets with exactly 50% price (±0.5%) AND low volume
                 // 50% + low volume = placeholder with no real trading
                 // 50% + high volume = legitimate contentious market, let it through
-                const isFiftyPercent = Math.abs(market.price - 0.5) < 0.005;
+                const isFiftyPercent = Math.abs(price - 0.5) < 0.005;
                 const isLowVolume = (market.volume || 0) < 50000; // Under $50k
                 if (isFiftyPercent && isLowVolume) {
                     return false;
@@ -345,9 +346,13 @@ export async function getActiveEvents(platform: Platform = "polymarket"): Promis
                             // Keep if has categories (especially Sports)
                             if (!m.categories || m.categories.length === 0) return false;
 
-                            // DEFENSIVE FILTER: Skip 50% price + low volume (placeholder data)
+                            // DEFENSIVE FILTER 1: Skip invalid prices (≤0.01 or ≥0.99)
+                            // These indicate resolved, stale, or otherwise untradable markets
+                            const price = m.currentPrice ?? m.basePrice ?? 0.5;
+                            if (price <= 0.01 || price >= 0.99) return false;
+
+                            // DEFENSIVE FILTER 2: Skip 50% price + low volume (placeholder data)
                             // High-volume 50% markets are legitimate and get through
-                            const price = m.currentPrice ?? (m as any).basePrice ?? 0.5;
                             const isFiftyPercent = Math.abs(price - 0.5) < 0.005;
                             const isLowVolume = (m.volume || 0) < 50000;
                             if (isFiftyPercent && isLowVolume) return false;
@@ -356,7 +361,7 @@ export async function getActiveEvents(platform: Platform = "polymarket"): Promis
                         })
                         .map(m => {
                             // Use basePrice (what ingestion writes) with proper fallback chain
-                            const price = m.currentPrice ?? (m as any).basePrice ?? 0.5;
+                            const price = m.currentPrice ?? m.basePrice ?? 0.5;
                             return {
                                 id: m.id,
                                 title: m.question,

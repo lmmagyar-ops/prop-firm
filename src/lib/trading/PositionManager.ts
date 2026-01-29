@@ -1,14 +1,16 @@
-import { db } from '@/db';
 import { positions } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import type { Position } from '@/types/trading';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type DbTransaction = any; // Drizzle transaction - generic for flexibility
 
 export class PositionManager {
     /**
      * Opens a new position
      */
     static async openPosition(
-        tx: any, // Drizzle transaction
+        tx: DbTransaction,
         challengeId: string,
         marketId: string,
         shares: number,
@@ -16,6 +18,11 @@ export class PositionManager {
         sizeAmount: number,
         direction: "YES" | "NO" = "YES"
     ): Promise<Position> {
+        // GUARD: Reject invalid entry prices to prevent corrupted positions
+        if (entryPrice <= 0.01 || entryPrice >= 0.99) {
+            throw new Error(`Invalid entry price: ${entryPrice}. Must be between 0.01 and 0.99.`);
+        }
+
         const [position] = await tx.insert(positions).values({
             challengeId,
             marketId,
@@ -34,7 +41,7 @@ export class PositionManager {
      * Adds to an existing position (averaging)
      */
     static async addToPosition(
-        tx: any,
+        tx: DbTransaction,
         positionId: string,
         additionalShares: number,
         additionalPrice: number,
@@ -66,7 +73,7 @@ export class PositionManager {
      * @param exitPrice Optional live exit price - if not provided, falls back to position.currentPrice
      */
     static async reducePosition(
-        tx: any,
+        tx: DbTransaction,
         positionId: string,
         sharesToSell: number,
         exitPrice?: number

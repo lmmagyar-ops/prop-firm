@@ -1,8 +1,18 @@
 import Redis from "ioredis";
 
-// Support both Upstash (REDIS_HOST/PASSWORD) and local (REDIS_URL) configs
+// Priority: REDIS_URL (Railway) > REDIS_HOST/PASSWORD (legacy Upstash) > localhost
 function createRedisClient(): Redis {
-    // Production: Use Upstash with TLS
+    // Priority 1: Use REDIS_URL if set (Railway or any standard Redis)
+    if (process.env.REDIS_URL) {
+        return new Redis(process.env.REDIS_URL, {
+            connectTimeout: 5000,
+            commandTimeout: 5000,
+            maxRetriesPerRequest: 1,
+            lazyConnect: true,
+        });
+    }
+
+    // Priority 2: Legacy Upstash with TLS (deprecated)
     if (process.env.REDIS_HOST && process.env.REDIS_PASSWORD) {
         return new Redis({
             host: process.env.REDIS_HOST,
@@ -16,8 +26,8 @@ function createRedisClient(): Redis {
         });
     }
 
-    // Local: Use REDIS_URL
-    return new Redis(process.env.REDIS_URL || "redis://localhost:6380", {
+    // Priority 3: Local development fallback
+    return new Redis("redis://localhost:6380", {
         connectTimeout: 5000,
         commandTimeout: 5000,
         maxRetriesPerRequest: 1,
@@ -231,7 +241,11 @@ export class MarketService {
                 if (book) {
                     // Use best bid (what you could sell at) for mark-to-market
                     const bestBid = book.bids?.[0]?.price;
-                    if (bestBid) {
+                    const bidPrice = parseFloat(bestBid || '0');
+
+                    // CRITICAL: Validate price is in valid range for active markets
+                    // Prices ≤0.01 or ≥0.99 indicate resolved/invalid data
+                    if (bidPrice > 0.01 && bidPrice < 0.99) {
                         results.set(marketId, {
                             price: bestBid,
                             asset_id: marketId,
@@ -239,6 +253,9 @@ export class MarketService {
                             source: 'live'
                         });
                         continue;
+                    } else if (bestBid) {
+                        // Log invalid prices for debugging
+                        console.warn(`[MarketService] Invalid order book price for ${marketId.slice(0, 12)}...: ${bestBid} (rejected, using fallback)`);
                     }
                 }
 
@@ -316,6 +333,7 @@ export class MarketService {
 
     /**
      * Look up price from event lists (kalshi:active_list or event:active_list)
+     * Falls back to market:active_list for binary markets not in featured events.
      * This allows us to get live prices for position P&L calculations
      */
     static async lookupPriceFromEvents(marketId: string): Promise<MarketPrice | null> {
@@ -329,28 +347,59 @@ export class MarketService {
                 for (const event of events) {
                     const market = event.markets?.find((m: any) => m.id === marketId);
                     if (market) {
-                        return {
-                            price: market.price.toString(),
-                            asset_id: marketId,
-                            timestamp: Date.now()
-                        };
+                        const price = parseFloat(market.price);
+                        // Skip invalid/stale prices that indicate resolved markets
+                        if (price > 0.01 && price < 0.99) {
+                            return {
+                                price: market.price.toString(),
+                                asset_id: marketId,
+                                timestamp: Date.now()
+                            };
+                        }
+                        // Invalid price - fall through to next lookup
                     }
                 }
             }
 
-            // Try Polymarket
+            // Try Polymarket featured events
             const polyData = await redis.get('event:active_list');
             if (polyData) {
                 const events = JSON.parse(polyData);
                 for (const event of events) {
                     const market = event.markets?.find((m: any) => m.id === marketId);
                     if (market) {
+                        const price = parseFloat(market.price);
+                        // Skip invalid/stale prices that indicate resolved markets
+                        if (price > 0.01 && price < 0.99) {
+                            return {
+                                price: market.price.toString(),
+                                asset_id: marketId,
+                                timestamp: Date.now()
+                            };
+                        }
+                        // Invalid price - fall through to next lookup
+                    }
+                }
+            }
+
+            // FALLBACK: Check market:active_list for binary markets not in featured events
+            // These are high-volume single-outcome markets displayed in the grid
+            const binaryData = await redis.get('market:active_list');
+            if (binaryData) {
+                const markets = JSON.parse(binaryData);
+                const market = markets.find((m: any) => m.id === marketId);
+                if (market) {
+                    const price = market.currentPrice ?? market.basePrice ?? 0.5;
+                    // Skip invalid/stale prices that indicate resolved markets
+                    if (price > 0.01 && price < 0.99) {
                         return {
-                            price: market.price.toString(),
+                            price: price.toString(),
                             asset_id: marketId,
-                            timestamp: Date.now()
+                            timestamp: Date.now(),
+                            source: 'event_list' as const
                         };
                     }
+                    // Invalid price - fall through to demo price
                 }
             }
 

@@ -4,12 +4,20 @@ let redisClient: Redis | null = null;
 
 /**
  * Get a singleton Redis client instance.
- * Supports both Upstash (REDIS_HOST/PASSWORD with TLS) and local (REDIS_URL).
+ * Priority: REDIS_URL (Railway) > REDIS_HOST/PASSWORD (legacy Upstash) > localhost
  */
 export function getRedisClient(): Redis {
     if (!redisClient) {
-        // Production: Use Upstash with TLS
-        if (process.env.REDIS_HOST && process.env.REDIS_PASSWORD) {
+        // Priority 1: Use REDIS_URL if set (Railway or any standard Redis)
+        if (process.env.REDIS_URL) {
+            redisClient = new Redis(process.env.REDIS_URL, {
+                connectTimeout: 5000,
+                commandTimeout: 5000,
+                maxRetriesPerRequest: 2,
+                lazyConnect: true,
+            });
+        } else if (process.env.REDIS_HOST && process.env.REDIS_PASSWORD) {
+            // Priority 2: Legacy Upstash with TLS (deprecated)
             redisClient = new Redis({
                 host: process.env.REDIS_HOST,
                 port: parseInt(process.env.REDIS_PORT || "6379"),
@@ -21,8 +29,8 @@ export function getRedisClient(): Redis {
                 lazyConnect: true,
             });
         } else {
-            // Local: Use REDIS_URL
-            redisClient = new Redis(process.env.REDIS_URL || "redis://localhost:6380", {
+            // Priority 3: Local development fallback
+            redisClient = new Redis("redis://localhost:6380", {
                 connectTimeout: 5000,
                 commandTimeout: 5000,
                 maxRetriesPerRequest: 2,

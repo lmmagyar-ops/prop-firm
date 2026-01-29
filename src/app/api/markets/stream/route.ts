@@ -8,8 +8,15 @@ import Redis from "ioredis";
  * Falls back gracefully if Redis is unavailable.
  */
 
-// Support both Upstash (REDIS_HOST/PASSWORD) and local (REDIS_URL) configs
+// Priority: REDIS_URL (Railway) > REDIS_HOST/PASSWORD (legacy Upstash) > localhost
 function createRedisClient(): Redis {
+    if (process.env.REDIS_URL) {
+        return new Redis(process.env.REDIS_URL, {
+            connectTimeout: 5000,
+            maxRetriesPerRequest: 1,
+            lazyConnect: true,
+        });
+    }
     if (process.env.REDIS_HOST && process.env.REDIS_PASSWORD) {
         return new Redis({
             host: process.env.REDIS_HOST,
@@ -21,7 +28,7 @@ function createRedisClient(): Redis {
             lazyConnect: true,
         });
     }
-    return new Redis(process.env.REDIS_URL || "redis://localhost:6380", {
+    return new Redis("redis://localhost:6380", {
         connectTimeout: 5000,
         maxRetriesPerRequest: 1,
         lazyConnect: true,

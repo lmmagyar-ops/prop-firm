@@ -55,7 +55,9 @@ export const MultiRunnerCard = memo(function MultiRunnerCard({ event, onTrade }:
         // Remove common parts that match the event title
         const titleWords = eventTitle.toLowerCase().split(/\s+/).filter(w => w.length > 3);
         for (const word of titleWords) {
-            cleaned = cleaned.replace(new RegExp(word, 'gi'), '');
+            // Escape regex special characters to prevent Invalid RegExp errors
+            const escapedWord = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            cleaned = cleaned.replace(new RegExp(escapedWord, 'gi'), '');
         }
 
         // Clean up common prefixes/suffixes

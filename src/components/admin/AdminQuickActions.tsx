@@ -246,8 +246,11 @@ export function AdminQuickActions() {
                         <Clock className="w-4 h-4" />
                         <span>Dev Tools</span>
                         {stats?.myActiveChallenge && (
-                            <span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full">
-                                Active: ${parseFloat(stats.myActiveChallenge.balance).toLocaleString()}
+                            <span className={`text-xs px-2 py-0.5 rounded-full ${stats.myActiveChallenge.status === 'funded'
+                                    ? 'bg-purple-500/20 text-purple-400'
+                                    : 'bg-green-500/20 text-green-400'
+                                }`}>
+                                {stats.myActiveChallenge.status.charAt(0).toUpperCase() + stats.myActiveChallenge.status.slice(1)}: ${parseFloat(stats.myActiveChallenge.balance).toLocaleString()}
                             </span>
                         )}
                     </div>

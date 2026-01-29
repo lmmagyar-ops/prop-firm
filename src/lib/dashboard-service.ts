@@ -165,8 +165,22 @@ export async function getDashboardData(userId: string) {
 
         if (livePrice) {
             // Live price from order book is raw YES price
-            rawPrice = parseFloat(livePrice.price);
-            needsDirectionAdjustment = true;
+            const parsedLivePrice = parseFloat(livePrice.price);
+
+            // SANITY CHECK: Validate price is in valid range for active markets
+            if (parsedLivePrice > 0.01 && parsedLivePrice < 0.99 && !isNaN(parsedLivePrice)) {
+                rawPrice = parsedLivePrice;
+                needsDirectionAdjustment = true;
+            } else {
+                // Invalid price - log and fall back to stored
+                console.warn("[DashboardService] Invalid live price detected, using stored fallback:", {
+                    marketId: pos.marketId.slice(0, 12),
+                    invalidPrice: livePrice.price,
+                    source: livePrice.source
+                });
+                rawPrice = parseFloat(pos.currentPrice || pos.entryPrice);
+                needsDirectionAdjustment = false;
+            }
         } else {
             // Fallback: Use stored price (already direction-adjusted in DB)
             rawPrice = parseFloat(pos.currentPrice || pos.entryPrice);
@@ -290,8 +304,9 @@ export async function getDashboardData(userId: string) {
             : 0;
         const daysUntilPayout = Math.max(0, cycleLength - daysSinceCycleStart);
 
-        // Net profit available for payout
-        const netProfit = Math.max(0, totalPnL);
+        // Net profit for display (can be negative to show true P&L)
+        // NOTE: Payout eligibility check is separate (PayoutService floors to 0)
+        const netProfit = totalPnL;
 
         // Eligibility check (simplified - full check in PayoutService)
         const hasMinTradingDays = activeTradingDays >= fundedRules.minTradingDays;

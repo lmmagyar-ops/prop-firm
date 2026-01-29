@@ -50,10 +50,26 @@ export async function GET(req: NextRequest) {
                 let positionValue = 0;
                 for (const pos of openPositions) {
                     const shares = parseFloat(pos.shares);
+                    const entryPrice = parseFloat(pos.entryPrice);
                     const livePrice = livePrices.get(pos.marketId);
-                    const rawPrice = livePrice
-                        ? parseFloat(livePrice.price)
-                        : parseFloat(pos.entryPrice);
+
+                    let rawPrice: number;
+                    if (livePrice) {
+                        const parsedLivePrice = parseFloat(livePrice.price);
+                        // SANITY CHECK: Validate price is in valid range
+                        if (parsedLivePrice > 0.01 && parsedLivePrice < 0.99 && !isNaN(parsedLivePrice)) {
+                            rawPrice = parsedLivePrice;
+                        } else {
+                            // Invalid price - use entry as fallback
+                            console.warn("[ChallengesAPI] Invalid price, using entry fallback:", {
+                                marketId: pos.marketId.slice(0, 12),
+                                invalidPrice: livePrice.price
+                            });
+                            rawPrice = entryPrice;
+                        }
+                    } else {
+                        rawPrice = entryPrice;
+                    }
 
                     // Use shared utility for direction adjustment
                     const adjustedPrice = getDirectionAdjustedPrice(rawPrice, pos.direction as 'YES' | 'NO');

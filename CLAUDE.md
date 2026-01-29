@@ -48,13 +48,12 @@ DATABASE_URL="..." npx tsx scripts/grant-admin.ts email@example.com
 │  │  - RiskMonitor (5s breach detection)                       │  │
 │  │  - Health server (:3001/health)                            │  │
 │  └───────────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────┘
-                              ↕
-┌─────────────────────────────────────────────────────────────────┐
-│                       UPSTASH REDIS                             │
-│  - Price cache: market:price:{id}, market:book:{id}            │
-│  - Event lists: event:active_list, kalshi:active_list          │
-│  - Leader election locks                                        │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │  Redis (Flat-rate $5/mo)                                   │  │
+│  │  - Price cache: market:price:{id}, market:book:{id}        │  │
+│  │  - Event lists: event:active_list, kalshi:active_list      │  │
+│  │  - Leader election locks                                    │  │
+│  └───────────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -66,7 +65,7 @@ DATABASE_URL="..." npx tsx scripts/grant-admin.ts email@example.com
 |-------|------------|
 | **Framework** | Next.js 16 (App Router), React 19 |
 | **Database** | Prisma Postgres (Vercel), Drizzle ORM |
-| **Cache** | Upstash Redis (TLS) |
+| **Cache** | Railway Redis (flat-rate, via REDIS_URL) |
 | **Auth** | NextAuth v5 (email/password + Google OAuth) |
 | **UI** | Tailwind v4, Shadcn/ui, Framer Motion |
 | **Real-time** | Redis pub/sub, WebSocket streams |
@@ -303,10 +302,10 @@ AUTH_GOOGLE_SECRET=...
 # Database
 DATABASE_URL=postgres://...@db.prisma.io:5432/postgres?sslmode=require
 
-# Redis (Upstash)
-REDIS_HOST=your-host.upstash.io
-REDIS_PASSWORD=...
-REDIS_PORT=6379
+# Redis (Railway - internal reference)
+REDIS_URL=${{Redis.REDIS_URL}}
+# Or use public proxy for external access:
+# REDIS_URL=redis://default:PASSWORD@HOST.proxy.rlwy.net:PORT
 ```
 
 ---
@@ -590,3 +589,28 @@ See `.agent/workflows/deploy.md` for detailed instructions.
 - `check-market-volumes.ts`, `generate-clob-keys.ts`, `investigate-pnl.ts`, `seed-check.ts`
 
 **Scripts Retained:** `grant-admin.ts`, `verify-admins.ts`, `update-position-prices.ts`, `llm-market-fixer.ts`, `refresh-kalshi.ts`, `refresh-markets.ts`, `verify-engine.ts`, `verify-prices.ts`
+
+### Infrastructure Migration (Jan 22)
+| Change | Details |
+|--------|---------|
+| **Redis Provider** | Migrated from Upstash to Railway Redis (flat-rate $5/mo) |
+| **Connection String** | Use `REDIS_URL` only (Railway internal reference: `${{Redis.REDIS_URL}}`) |
+| **Legacy Vars Removed** | Purged `REDIS_HOST`, `REDIS_PASSWORD` from Vercel |
+| **Ingestion Hardening** | Fixed multi-layer caching, source-branch mismatch, API type drift |
+| **Order Book Coverage** | Achieved 100% coverage (~2,000 active markets) |
+
+### Dashboard Fixes (Jan 23)
+| Fix | Details |
+|-----|---------|
+| **Incident 39** | Removed `Math.max(0, totalPnL)` floor in `dashboard-service.ts` that was showing phantom profit when underwater |
+| **PayoutProgressCard** | Now shows red text + TrendingDown icon when P&L is negative |
+| **Trade History UX** | Added `RecentTradesWidget` to dashboard + "Trade History" sidebar link |
+
+### Price Fallback Hardening (Jan 27)
+| Fix | Details |
+|-----|---------|
+| **Incident 40** | Added price validation to `lookupPriceFromEvents()` in `market.ts` - stale/resolved market prices (≤0.01 or ≥0.99) now fall through to demo price (0.55) instead of showing 0¢. Root cause: event lists stored snapshot prices at ingestion time, and near-resolved markets were cached with invalid prices. |
+
+> [!IMPORTANT]
+> The payout *calculation* still correctly floors to 0 (you can't withdraw negative). Only the *display* was fixed to show accurate P&L.
+

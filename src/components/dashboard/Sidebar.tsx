@@ -14,6 +14,7 @@ import {
     Trophy,
     MessageSquare,
     Clock,
+    History,
     TrendingUp,
     Lock
 } from "lucide-react";
@@ -35,6 +36,7 @@ function getActiveFromPath(pathname: string): string {
     if (pathname.includes("/dashboard/payouts")) return "Payouts";
     if (pathname.includes("/dashboard/faq")) return "FAQ";
     if (pathname.includes("/dashboard/leaderboard")) return "Leaderboard";
+    if (pathname.includes("/dashboard/history")) return "Trade History";
     if (pathname === "/dashboard") return "Dashboard";
     return "Dashboard";
 }
@@ -70,6 +72,7 @@ export function Sidebar({ active, hasActiveChallenge = false }: SidebarProps) {
             <nav className="flex-1 px-4 space-y-1">
                 {/* Primary Navigation - Dashboard & Trade at top */}
                 <NavItem icon={LayoutDashboard} label="Dashboard" href="/dashboard" isActive={activePage === "Dashboard"} />
+                <NavItem icon={History} label="Trade History" href="/dashboard/history" isActive={activePage === "Trade History"} />
                 {/* Trade - Locked when no active challenge */}
                 {hasActiveChallenge ? (
                     <NavItem

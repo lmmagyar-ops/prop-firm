@@ -5,6 +5,14 @@ import withPWA from "next-pwa";
 const nextConfig: NextConfig = {
   /* config options here */
   turbopack: {}, // Empty config to silence Turbopack warning with webpack-based next-pwa
+  // Exclude propshot-waitlist from build - it's a separate Next.js project
+  outputFileTracingExcludes: {
+    '*': ['./propshot-waitlist/**/*'],
+  },
+  // Exclude propshot-waitlist from TypeScript checking
+  typescript: {
+    ignoreBuildErrors: false,
+  },
 };
 
 export default withPWA({

@@ -116,8 +116,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // Log sign-outs
         async signOut(message) {
             try {
-                // message could be { session } or { token } depending on session strategy
-                const userId = (message as any)?.token?.id || (message as any)?.session?.user?.id;
+                // With JWT strategy, message contains { token }
+                const token = 'token' in message ? message.token : null;
+                const userId = token?.id as string | undefined;
                 if (userId) {
                     await db.insert(activityLogs).values({
                         userId,
@@ -139,20 +140,25 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         async jwt({ token, user }) {
             if (user) {
                 token.id = user.id;
-                token.role = (user as any).role || 'user';
+                token.role = user.role || 'user';
             }
             return token;
         },
         async session({ session, token }) {
             if (token && session.user) {
-                session.user.id = token.id as string;
-                (session.user as any).role = token.role as string;
+                session.user.id = token.id ?? '';
+                session.user.role = token.role ?? 'user';
             }
             return session;
         },
     },
     session: { strategy: "jwt" },
-    secret: process.env.AUTH_SECRET || "development-secret-key-change-in-production",
+    secret: (() => {
+        if (!process.env.AUTH_SECRET) {
+            throw new Error("AUTH_SECRET environment variable is required");
+        }
+        return process.env.AUTH_SECRET;
+    })(),
     trustHost: true,
 });
 

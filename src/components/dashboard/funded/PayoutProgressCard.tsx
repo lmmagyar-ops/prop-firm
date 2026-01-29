@@ -1,6 +1,6 @@
 "use client";
 
-import { DollarSign, Minus, TrendingUp, AlertCircle, ArrowRight } from "lucide-react";
+import { DollarSign, Minus, TrendingUp, TrendingDown, AlertCircle, ArrowRight } from "lucide-react";
 
 interface PayoutProgressCardProps {
     grossProfit: number;
@@ -17,7 +17,10 @@ export function PayoutProgressCard({
     payoutCap,
     platform,
 }: PayoutProgressCardProps) {
-    // Calculate adjusted profit after exclusions
+    // Check if underwater (negative P&L)
+    const isUnderwater = grossProfit < 0;
+
+    // Calculate adjusted profit after exclusions (floor to 0 for payout purposes)
     const adjustedProfit = Math.max(0, grossProfit - excludedPnl);
 
     // Apply payout cap
@@ -48,13 +51,17 @@ export function PayoutProgressCard({
             {/* Calculation Breakdown */}
             <div className="space-y-3">
                 {/* Gross Profit */}
-                <div className="flex items-center justify-between p-3 rounded-lg bg-zinc-900/50 border border-white/5">
+                <div className={`flex items-center justify-between p-3 rounded-lg ${isUnderwater ? 'bg-red-500/5 border-red-500/20' : 'bg-zinc-900/50 border-white/5'} border`}>
                     <div className="flex items-center gap-2">
-                        <TrendingUp className="w-4 h-4 text-green-500" />
+                        {isUnderwater ? (
+                            <TrendingDown className="w-4 h-4 text-red-500" />
+                        ) : (
+                            <TrendingUp className="w-4 h-4 text-green-500" />
+                        )}
                         <span className="text-sm text-zinc-400">Gross Profit</span>
                     </div>
-                    <span className="font-mono font-bold text-green-500">
-                        +${grossProfit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    <span className={`font-mono font-bold ${isUnderwater ? 'text-red-500' : 'text-green-500'}`}>
+                        {isUnderwater ? '-' : '+'}${Math.abs(grossProfit).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                 </div>
 

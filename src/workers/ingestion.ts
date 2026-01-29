@@ -36,9 +36,94 @@ import { startHealthServer } from "./health-server";
 
 dotenv.config();
 
+// ═══════════════════════════════════════════════════════════════════════════
+// EXTERNAL API TYPES - Loose interfaces for Polymarket Gamma API responses
+// These allow extra fields to handle API changes gracefully
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Market data from Polymarket Gamma API (both standalone and within events) */
+interface PolymarketMarket {
+    id?: string;
+    question: string;
+    slug?: string;
+    volume?: string;
+    volume24hr?: number;
+    outcomePrices?: string; // JSON string array
+    clobTokenIds?: string;  // JSON string array
+    outcomes?: string;      // JSON string array
+    closed?: boolean;
+    archived?: boolean;
+    category?: string;
+    tags?: string[];
+    image?: string;
+    accepting_orders?: boolean;
+    [key: string]: unknown; // Allow extra fields
+}
+
+/** Event data from Polymarket Gamma API */
+interface PolymarketEvent {
+    id?: string;
+    slug: string;
+    title?: string;
+    markets?: PolymarketMarket[];
+    volume24hr?: number;
+    createdAt?: string;
+    tags?: string[];
+    image?: string;
+    [key: string]: unknown; // Allow extra fields
+}
+
+/** Processed sub-market for internal use */
+interface ProcessedSubMarket {
+    id: string;
+    question: string;
+    outcomes: string[];
+    price: number;
+    volume: number;
+}
+
+/** Processed event for Redis storage */
+interface ProcessedEvent {
+    id: string;
+    title: string;
+    slug: string;
+    image: string;
+    volume: number;
+    categories: string[];
+    markets: ProcessedSubMarket[];
+    source: string;
+}
+
+/** WebSocket price message from Polymarket CLOB */
+interface WebSocketPriceMessage {
+    asset_id?: string;
+    price?: string;
+    [key: string]: unknown;
+}
+
+/** Binary market format for Redis storage (market:active_list) */
+interface StoredBinaryMarket {
+    id: string;
+    question: string;
+    description?: string;
+    image?: string;
+    volume: number;
+    outcomes: string[];
+    end_date?: string;
+    categories: string[];
+    basePrice: number;
+    closed?: boolean;
+    accepting_orders?: boolean;
+}
+
+/** Order book data from Polymarket CLOB API */
+interface OrderBook {
+    bids?: Array<{ price: string; size: string }>;
+    asks?: Array<{ price: string; size: string }>;
+    [key: string]: unknown;
+}
+
 const CLOB_WS_URL = "wss://ws-live-data.polymarket.com";
-// Gamma API Base: We append filters dynamically in fetchActiveMarkets
-const GAMMA_API_URL = "https://gamma-api.polymarket.com/markets?limit=250&active=true&closed=false&order=volume&descending=true";
 
 // Force-include keywords: Events matching these will ALWAYS be fetched regardless of volume ranking
 const FORCE_INCLUDE_KEYWORDS = [
@@ -59,7 +144,6 @@ const FORCE_INCLUDE_KEYWORDS = [
     "china",
     "taiwan"
 ];
-const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6380";
 
 class IngestionWorker {
     private ws: WebSocket | null = null;
@@ -276,7 +360,6 @@ class IngestionWorker {
      * Enter standby mode - poll for leader failure
      */
     private enterStandbyMode(): void {
-        const currentLeader = this.leaderElection.getCurrentLeader();
         console.log(`[Ingestion] 🟡 Entering STANDBY mode (waiting for leader to fail)...`);
 
         const standbyInterval = setInterval(async () => {
@@ -318,7 +401,7 @@ class IngestionWorker {
     ): string[] {
         const categories: string[] = [];
         const q = question.toLowerCase();
-        const tagsLower = (tags || []).map(t => t.toLowerCase());
+        const tagsLower = (tags || []).filter(t => typeof t === 'string').map(t => t.toLowerCase());
         const imageLower = (imageUrl || '').toLowerCase();
 
         // === BREAKING DETECTION ===
@@ -525,6 +608,7 @@ class IngestionWorker {
     }
 
     private async init() {
+        console.log('[Ingestion] 🚀 CODE VERSION: 2026-01-22-v2 (merged token IDs fix)');
         await this.fetchFeaturedEvents(); // Fetch curated trending events first
         await this.fetchActiveMarkets(); // Then fetch remaining markets
         this.connectWS();
@@ -557,19 +641,19 @@ class IngestionWorker {
             const breakingEvents = await breakingRes.json();
 
             if (Array.isArray(breakingEvents)) {
-                const seenSlugs = new Set(events.map((e: any) => e.slug));
-                for (const be of breakingEvents) {
+                const seenSlugs = new Set(events.map((e: PolymarketEvent) => e.slug));
+                for (const be of breakingEvents as PolymarketEvent[]) {
                     if (!seenSlugs.has(be.slug)) {
                         events.push(be);
                     }
                 }
-                console.log(`[Ingestion] Added ${breakingEvents.filter((be: any) => !seenSlugs.has(be.slug)).length} breaking events.`);
+                console.log(`[Ingestion] Added ${(breakingEvents as PolymarketEvent[]).filter((be) => !seenSlugs.has(be.slug)).length} breaking events.`);
             }
 
             // Tertiary query: Force-include important events that may not be in top volume
             // This ensures events like Portugal election are always fetched
             console.log("[Ingestion] Fetching force-include events by keyword...");
-            const existingSlugs = new Set(events.map((e: any) => e.slug));
+            const existingSlugs = new Set(events.map((e: PolymarketEvent) => e.slug));
             let forceIncludedCount = 0;
 
             for (const keyword of FORCE_INCLUDE_KEYWORDS) {
@@ -588,13 +672,13 @@ class IngestionWorker {
                             }
                         }
                     }
-                } catch (err) {
+                } catch {
                     // Silent fail for individual keyword fetches
                 }
             }
             console.log(`[Ingestion] Force-included ${forceIncludedCount} additional events by keyword.`);
 
-            const processedEvents: any[] = [];
+            const processedEvents: ProcessedEvent[] = [];
             const allEventTokenIds: string[] = [];
             const seenEventTitles = new Set<string>(); // Event-level deduplication
 
@@ -602,13 +686,16 @@ class IngestionWorker {
                 try {
                     if (!event.markets || event.markets.length === 0) continue;
 
+                    // Guard against missing title
+                    if (!event.title) continue;
+
                     // Event-level deduplication by title (prevents duplicate "LeBron James" etc.)
                     const normalizedTitle = event.title.trim().toLowerCase();
                     if (seenEventTitles.has(normalizedTitle)) continue;
                     seenEventTitles.add(normalizedTitle);
 
                     // Process each market within the event
-                    const subMarkets: any[] = [];
+                    const subMarkets: ProcessedSubMarket[] = [];
                     const seenQuestions = new Set<string>();
                     for (const market of event.markets) {
                         if (market.closed || market.archived) continue;
@@ -634,11 +721,12 @@ class IngestionWorker {
 
                         // Deduplication: Don't show the same outcome twice (e.g. "Rick Rieder")
                         // Polymarket sometimes lists the same person twice with different IDs.
-                        // We use a normalized version of the question as the key.
-                        const normalizedQ = market.question.trim().toLowerCase();
+                        // Use CLEANED name for deduplication (not raw question) to catch
+                        // duplicates like "Will Khamenei..." vs "Khamenei will..."
+                        const cleanedName = this.cleanOutcomeName(market.question);
+                        const normalizedQ = cleanedName.toLowerCase();
                         if (seenQuestions.has(normalizedQ)) {
-                            // If we already have this question, maybe keep the one with higher volume? 
-                            // For now, simpler is creating less noise -> Skip duplicate.
+                            // If we already have this outcome name, skip the duplicate.
                             continue;
                         }
                         seenQuestions.add(normalizedQ);
@@ -646,9 +734,13 @@ class IngestionWorker {
                         const tokenId = clobTokens[0];
                         const yesPrice = parseFloat(prices[0] || "0");
 
-                        // Skip markets with truly 0% prices (exactly 0) - these are
-                        // delisted or inactive. Keep low-probability markets (0.1%+).
-                        if (yesPrice < 0.001) continue;
+                        // Skip markets with very low prices (≤1%) - these are either
+                        // delisted, inactive, or effectively untradable.
+                        // At 1%, the NO side is 99¢ which creates bad UX.
+                        if (yesPrice <= 0.01) continue;
+
+                        // Also skip markets with very high prices (≥99%) for same reason
+                        if (yesPrice >= 0.99) continue;
 
                         // Skip markets with exactly 50% price (±0.5%) - these are placeholder
                         // prices with no real trading activity (e.g., 2028 elections).
@@ -702,7 +794,8 @@ class IngestionWorker {
                         isMultiOutcome: subMarkets.length > 1,
                     });
                 } catch (e) {
-                    // Skip invalid event
+                    // Log errors for debugging instead of silently skipping
+                    console.error(`[Ingestion] Error processing event ${event?.title || event?.slug || 'unknown'}:`, e);
                 }
             }
 
@@ -724,10 +817,6 @@ class IngestionWorker {
         try {
             console.log("[Ingestion] Fetching Diverse Markets (Category-Balanced)...");
 
-            const thirtyDaysFromNow = new Date();
-            thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
-            const endDateMax = thirtyDaysFromNow.toISOString();
-
             // Fetch a large pool of active markets (high number to account for spam filtering)
             // Note: Removed end_date filter to get more variety
             const url = `https://gamma-api.polymarket.com/markets?limit=1000&active=true&closed=false`;
@@ -745,7 +834,7 @@ class IngestionWorker {
             const MIN_VOLUME = 50000; // $50k minimum
 
             const categoryCounts: Record<string, number> = {};
-            const allMarkets: any[] = [];
+            const allMarkets: StoredBinaryMarket[] = [];
             const seenIds = new Set<string>();
 
             for (const m of data) {
@@ -816,15 +905,22 @@ class IngestionWorker {
                             accepting_orders: m.accepting_orders
                         });
                     }
-                } catch (e) {
+                } catch {
                     // Skip invalid market
                 }
             }
 
-            // Store in Redis (with memory bounds)
-            this.activeTokenIds = allMarkets.slice(0, this.MAX_ACTIVE_TOKENS).map(m => m.id);
+            // Store in Redis
             await this.redis.set("market:active_list", JSON.stringify(allMarkets));
-            console.log(`[Ingestion] Stored ${allMarkets.length} diverse markets in Redis (tracking ${this.activeTokenIds.length} tokens).`);
+
+            // MERGE binary market IDs with existing event token IDs (don't overwrite!)
+            // This ensures order books are fetched for BOTH event markets AND binary markets
+            const binaryTokenIds = allMarkets.map(m => m.id);
+            const combined = [...new Set([...this.activeTokenIds, ...binaryTokenIds])]; // Dedupe
+            this.activeTokenIds = combined.slice(0, this.MAX_ACTIVE_TOKENS);
+
+            console.log(`[Ingestion] Stored ${allMarkets.length} diverse markets in Redis.`);
+            console.log(`[Ingestion] Tracking ${this.activeTokenIds.length} total tokens for order books (events + binary).`);
             console.log(`[Ingestion] Category breakdown:`, categoryCounts);
 
         } catch (err) {
@@ -909,12 +1005,12 @@ class IngestionWorker {
     }
 
     // Price update batching to reduce Redis commands
-    private priceBuffer: Map<string, any> = new Map();
+    private priceBuffer: Map<string, WebSocketPriceMessage> = new Map();
     private lastFlush: number = 0;
     // COST OPTIMIZATION: 60s interval = 1,440 flushes/day (vs 2,880 at 30s)
     private readonly FLUSH_INTERVAL_MS = 60000;
 
-    private async processMessage(message: any) {
+    private async processMessage(message: WebSocketPriceMessage | WebSocketPriceMessage[]) {
         const msgs = Array.isArray(message) ? message : [message];
 
         // Buffer all price updates
@@ -945,7 +1041,7 @@ class IngestionWorker {
         try {
             // COST OPTIMIZATION: Store ALL prices in SINGLE key instead of 322 individual keys
             // This reduces Redis commands from 323/flush to just 2/flush (SET + PUBLISH)
-            const allPrices: Record<string, any> = {};
+            const allPrices: Record<string, WebSocketPriceMessage> = {};
 
             // Convert Map entries to object
             const entries = Array.from(this.priceBuffer.entries());
@@ -983,7 +1079,7 @@ class IngestionWorker {
     private async fetchAllOrderBooks() {
         if (this.activeTokenIds.length === 0) return;
 
-        const books: Record<string, any> = {};
+        const books: Record<string, OrderBook> = {};
         const BATCH_SIZE = 10; // Parallel fetch limit to avoid rate limiting
 
         // Fetch in batches to avoid overwhelming Polymarket API

@@ -63,14 +63,26 @@ export class ChallengeEvaluator {
         let positionValue = 0;
         for (const pos of openPositions) {
             const livePrice = livePrices.get(pos.marketId);
-            // Market data returns YES price, so for NO positions we need (1 - yesPrice)
-            const yesPrice = livePrice
-                ? parseFloat(livePrice.price)
-                : (pos.currentPrice ? parseFloat(pos.currentPrice) : parseFloat(pos.entryPrice));
+            const shares = parseFloat(pos.shares);
 
-            // For NO positions, value = shares * (1 - yesPrice)
-            const effectivePrice = pos.direction === 'NO' ? (1 - yesPrice) : yesPrice;
-            positionValue += parseFloat(pos.shares) * effectivePrice;
+            // CRITICAL FIX: Handle price sources differently
+            // - Live prices from order book are RAW YES prices → need direction adjustment
+            // - Stored prices (currentPrice, entryPrice) are ALREADY direction-adjusted → use directly
+            let effectivePrice: number;
+
+            if (livePrice) {
+                // Live price is raw YES price - apply direction adjustment
+                const yesPrice = parseFloat(livePrice.price);
+                effectivePrice = pos.direction === 'NO' ? (1 - yesPrice) : yesPrice;
+            } else {
+                // Fallback: Use stored price (ALREADY direction-adjusted in DB)
+                // DO NOT apply direction adjustment again - that causes double-adjustment bug!
+                effectivePrice = pos.currentPrice
+                    ? parseFloat(pos.currentPrice)
+                    : parseFloat(pos.entryPrice);
+            }
+
+            positionValue += shares * effectivePrice;
         }
 
         const equity = currentBalance + positionValue;
@@ -122,7 +134,34 @@ export class ChallengeEvaluator {
         // === CHECK PROFIT TARGET (Challenge/Verification phase only) ===
         // Funded accounts do NOT have a profit target - they accumulate profit for payouts
         const profit = equity - startingBalance;
+
+        // FORENSIC LOGGING: Always log evaluation state for debugging
+        console.log(`[EVALUATOR_FORENSIC] ${JSON.stringify({
+            challengeId: challengeId.slice(0, 8),
+            phase: challenge.phase,
+            isFunded,
+            cashBalance: currentBalance.toFixed(2),
+            positionCount: openPositions.length,
+            positionValue: positionValue.toFixed(2),
+            equity: equity.toFixed(2),
+            startingBalance: startingBalance.toFixed(2),
+            profit: profit.toFixed(2),
+            profitTarget,
+            wouldTransition: !isFunded && profit >= profitTarget,
+        })}`);
+
         if (!isFunded && profit >= profitTarget) {
+            // FORENSIC: Log detailed transition info
+            console.log(`[EVALUATOR_FORENSIC] ⚠️ FUNDED TRANSITION TRIGGERED`, {
+                challengeId: challengeId.slice(0, 8),
+                positions: openPositions.map(p => ({
+                    marketId: p.marketId.slice(0, 12),
+                    shares: p.shares,
+                    direction: p.direction,
+                    entryPrice: p.entryPrice,
+                })),
+            });
+
             // Transition to funded phase
             console.log(`[Evaluator] 🎉 Challenge ${challengeId.slice(0, 8)} PASSED! Transitioning to FUNDED. Profit: $${profit.toFixed(2)}`);
 
