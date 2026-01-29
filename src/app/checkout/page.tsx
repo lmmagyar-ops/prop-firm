@@ -8,8 +8,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, MessageSquare, Check, ShieldCheck, Lock, CreditCard, Bitcoin, Copy, ExternalLink, ArrowRight, Tag } from "lucide-react";
+import { Loader2, Check, ShieldCheck, Lock, CreditCard, Bitcoin, ArrowRight, Tag } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useSession } from "next-auth/react";
 
@@ -53,10 +52,9 @@ function CheckoutContent() {
 
     // Payment Method State
     const [paymentMethod, setPaymentMethod] = useState<"card" | "crypto">("card");
-    const [invoiceUrl, setInvoiceUrl] = useState<string | null>(null);
 
-    // Platform Selection State
-    const [platform, setPlatform] = useState<"polymarket" | "kalshi" | null>(null);
+    // Platform Selection State - default to Polymarket (only available platform)
+    const [platform, setPlatform] = useState<"polymarket" | "kalshi">("polymarket");
 
     // Discount Code State
     const [discountCode, setDiscountCode] = useState("");
@@ -106,7 +104,7 @@ function CheckoutContent() {
             } else {
                 setDiscountError(data.error || "Invalid discount code");
             }
-        } catch (error) {
+        } catch {
             setDiscountError("Failed to validate discount code");
         } finally {
             setDiscountLoading(false);
@@ -227,7 +225,7 @@ function CheckoutContent() {
                                 <h2 className="text-lg font-bold">Trading Platform</h2>
                             </div>
                             <p className="text-sm text-zinc-400 mb-4">
-                                Choose which prediction market you want to trade on. You'll stay on this platform if funded.
+                                Choose which prediction market you want to trade on. You&apos;ll stay on this platform if funded.
                             </p>
 
                             <div className="grid grid-cols-2 gap-3">
