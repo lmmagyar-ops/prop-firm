@@ -85,13 +85,16 @@ interface ProcessedSubMarket {
 /** Processed event for Redis storage */
 interface ProcessedEvent {
     id: string;
-    title: string;
+    title?: string;
     slug: string;
-    image: string;
+    description?: string;
+    image?: string;
     volume: number;
+    volume24hr?: number;
+    createdAt?: string;
     categories: string[];
     markets: ProcessedSubMarket[];
-    source: string;
+    isMultiOutcome?: boolean;
 }
 
 /** WebSocket price message from Polymarket CLOB */
