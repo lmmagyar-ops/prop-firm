@@ -1,3 +1,7 @@
+// CRITICAL: ioredis uses Node.js TCP sockets, incompatible with Edge Runtime.
+// Must use Node.js runtime, otherwise middleware crashes with MIDDLEWARE_INVOCATION_FAILED.
+export const runtime = 'nodejs';
+
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import {
