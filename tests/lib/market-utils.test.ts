@@ -1,4 +1,4 @@
-import { getCleanOutcomeName } from './market-utils';
+import { getCleanOutcomeName } from '@/lib/market-utils';
 
 // Alias for backwards compatibility in tests
 const extractOutcomeLabel = getCleanOutcomeName;

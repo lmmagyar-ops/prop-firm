@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { ActivityTracker } from "./activity-tracker";
-import { CONSISTENCY_CONFIG } from "./funded-rules";
+import { ActivityTracker } from "@/lib/activity-tracker";
+import { CONSISTENCY_CONFIG } from "@/lib/funded-rules";
 
 // Mock dependencies
 vi.mock("@/db", () => ({

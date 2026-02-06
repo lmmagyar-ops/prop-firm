@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { PayoutService } from "./payout-service";
-import { FUNDED_RULES } from "./funded-rules";
+import { PayoutService } from "@/lib/payout-service";
+import { FUNDED_RULES } from "@/lib/funded-rules";
 
 // Mock dependencies
 vi.mock("@/db", () => ({
@@ -21,7 +21,7 @@ vi.mock("@/db", () => ({
     }
 }));
 
-vi.mock("./resolution-detector", () => ({
+vi.mock("@/lib/resolution-detector", () => ({
     ResolutionDetector: {
         getExcludedPnL: vi.fn()
     }
@@ -33,7 +33,7 @@ vi.mock("nanoid", () => ({
 
 // Import after mocking
 import { db } from "@/db";
-import { ResolutionDetector } from "./resolution-detector";
+import { ResolutionDetector } from "@/lib/resolution-detector";
 
 describe("PayoutService.checkEligibility", () => {
     beforeEach(() => {

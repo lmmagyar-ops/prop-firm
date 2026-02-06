@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { MarketService, OrderBook } from "./market";
+import { MarketService, OrderBook } from "@/lib/market";
 
 // Mock Data
 const mockBook: OrderBook = {

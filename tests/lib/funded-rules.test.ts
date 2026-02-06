@@ -6,7 +6,7 @@ import {
     getFundedRulesForTier,
     getExposureLimitByVolume,
     getVolumeTierLabel,
-} from "./funded-rules";
+} from "@/lib/funded-rules";
 
 describe("FUNDED_RULES Configuration", () => {
     describe("5k Tier", () => {

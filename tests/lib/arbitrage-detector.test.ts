@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { ArbitrageDetector } from "./arbitrage-detector";
+import { ArbitrageDetector } from "@/lib/arbitrage-detector";
 
 // Mock dependencies
 vi.mock("@/db", () => ({

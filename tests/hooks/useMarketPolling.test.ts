@@ -3,7 +3,7 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, waitFor, act } from "@testing-library/react";
-import { useMarketPolling } from "./useMarketPolling";
+import { useMarketPolling } from "@/hooks/useMarketPolling";
 
 // Mock fetch globally
 const mockFetch = vi.fn();

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { RiskEngine } from "./risk";
+import { RiskEngine } from "@/lib/risk";
 
 // Mock dependencies
 vi.mock("@/db", () => ({

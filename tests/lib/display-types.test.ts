@@ -7,7 +7,7 @@ import {
     type MarketQuestion,
     type EventTitle,
     type OutcomeLabel,
-} from './display-types';
+} from '@/lib/display-types';
 
 describe('display-types', () => {
     describe('Type Constructors', () => {

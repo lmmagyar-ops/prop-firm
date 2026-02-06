@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { ChallengeEvaluator } from "./evaluator";
+import { ChallengeEvaluator } from "@/lib/evaluator";
 import { db } from "@/db";
 
 // Mock dependencies
@@ -21,11 +21,11 @@ vi.mock("@/db", () => ({
     }
 }));
 
-vi.mock("./events", () => ({
+vi.mock("@/lib/events", () => ({
     publishAdminEvent: vi.fn()
 }));
 
-vi.mock("./market", () => ({
+vi.mock("@/lib/market", () => ({
     MarketService: {
         getLatestPrice: vi.fn(() => ({ price: "0.50" })),
         getBatchOrderBookPrices: vi.fn((marketIds: string[]) => {

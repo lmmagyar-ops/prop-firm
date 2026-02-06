@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { TradeExecutor } from "./trade";
-import { ChallengeManager } from "./challenges";
-import { MarketService } from "./market";
-import { RiskEngine } from "./risk";
+import { TradeExecutor } from "@/lib/trade";
+import { ChallengeManager } from "@/lib/challenges";
+import { MarketService } from "@/lib/market";
+import { RiskEngine } from "@/lib/risk";
 
 // Mock external dependencies
 vi.mock("@/db", () => ({
@@ -49,13 +49,13 @@ vi.mock("@/db", () => ({
 // Import after mocking
 import { db } from "@/db";
 
-vi.mock("./challenges", () => ({
+vi.mock("@/lib/challenges", () => ({
     ChallengeManager: {
         getActiveChallenge: vi.fn()
     }
 }));
 
-vi.mock("./market", () => ({
+vi.mock("@/lib/market", () => ({
     MarketService: {
         getLatestPrice: vi.fn(),
         isPriceFresh: vi.fn(() => true),
@@ -76,7 +76,7 @@ vi.mock("./market", () => ({
     }
 }));
 
-vi.mock("./risk", () => ({
+vi.mock("@/lib/risk", () => ({
     RiskEngine: {
         validateTrade: vi.fn()
     }

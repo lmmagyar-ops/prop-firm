@@ -15,8 +15,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { TradeExecutor } from "./trade";
-import { RiskEngine } from "./risk";
+import { TradeExecutor } from "@/lib/trade";
+import { RiskEngine } from "@/lib/risk";
 import { db } from "@/db";
 import { challenges, positions } from "@/db/schema";
 
@@ -71,7 +71,7 @@ vi.mock("@/db", () => ({
 }));
 
 // Mock market service
-vi.mock("./market", () => ({
+vi.mock("@/lib/market", () => ({
     MarketService: {
         getLatestPrice: vi.fn().mockResolvedValue({
             price: "0.50",
