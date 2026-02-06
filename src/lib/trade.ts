@@ -2,12 +2,12 @@
 import { db } from "@/db";
 import { trades, positions, challenges } from "@/db/schema";
 import { eq, and, sql } from "drizzle-orm";
-import { ChallengeManager } from "./challenges";
+
 import { MarketService } from "./market";
 import { RiskEngine } from "./risk";
 import { PositionManager } from "./trading/PositionManager";
 import { BalanceManager } from "./trading/BalanceManager";
-import { ChallengeEvaluator } from "./evaluator";
+
 import { TRADING_CONFIG } from "@/config/trading";
 import { createLogger } from "./logger";
 import {
@@ -43,6 +43,7 @@ export class TradeExecutor {
         options?: {
             maxSlippage?: number;  // Max acceptable slippage (e.g., 0.02 = 2%)
             shares?: number;       // For SELL: specify shares to close instead of dollar amount
+            isClosing?: boolean;   // When true, skip demo data rejection (closing a position)
         }
     ) {
         logger.info(`Requested ${side} $${amount} on ${marketId}`, { userId, challengeId, options });
@@ -69,7 +70,8 @@ export class TradeExecutor {
         if (!marketData) throw new MarketClosedError(marketId);
 
         // Reject trades on demo data (no real price available)
-        if (marketData.source === 'demo') {
+        // Exception: when closing a position, allow demo data so users can exit
+        if (marketData.source === 'demo' && !options?.isClosing) {
             console.log(`[Trade] ❌ No market data for ${marketId} - falling back to demo`);
             throw new TradingError(
                 'This market is currently unavailable. It may have been removed or is temporarily offline. Please refresh and try a different market.',

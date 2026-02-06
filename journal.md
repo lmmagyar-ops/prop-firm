@@ -952,3 +952,112 @@ Extracted exact DNS records from Resend via browser automation (including handli
 - Co-founder (Mat) to update records in Namecheap.
 - Verify propagation (~48h max, usually 1h).
 - Emails will self-verify and begin sending automatically.
+
+---
+
+### 3:30 PM - Phase 2: Codebase Stabilization & Refactor ✅
+
+**Context:** Cleaning up dead weight and reorganizing tests before engine hardening.
+
+#### 🗑️ Safe Deletions
+- Deleted `src/app/landing-v2/` (abandoned experimental prototype)
+- Deleted `src/app/dashboard/trade-test/page.tsx` (dev artifact)
+
+#### 📦 Test Migration & Top-Level Consolidation
+- Moved 12 test files from `src/lib/` and `src/hooks/` to top-level `tests/` directory
+- Updated all relative imports to absolute aliases (`@/lib`)
+- **Incident: The Relative Mock Trap** — `vi.mock("./module")` calls broke after migration. Fixed by standardizing on `vi.mock("@/lib/module")`.
+
+#### 📁 Script Organization
+- Maintained separation between root `/scripts/` (infrastructure) and `src/scripts/` (logic-heavy)
+- Consolidation attempt was reverted — `src/scripts` are tightly coupled to internal `src/` module structure
+
+**Commits:**
+- `3e70714` — `chore: codebase stabilization - delete dead weight, reorganize tests`
+
+**Verification:** Build ✅ | 500/500 tests ✅
+
+---
+
+### 4:00 PM - Phase 3: Core Engine PnL Integrity Audit 🔍
+
+**Context:** User reported "massive random PnL amounts" in the dashboard. Audited 12 core engine files.
+
+#### 🔴 Root Cause Found: Daily Drawdown Field Mismatch
+
+**The Bug:**
+`dashboard-service.ts` line 267 read `rules.maxDailyDrawdown` (expecting a dollar amount like `$500`) but the DB stores `rules.maxDailyDrawdownPercent` (a decimal like `0.04`).
+
+| What Happened | Expected | Actual |
+|---------------|----------|--------|
+| Daily drawdown limit | $400 (4% × $10,000) | $0.04 |
+| Drawdown bar on $3 loss | 0.75% | **7,500%** |
+
+**Fix:** Changed to `rules.maxDailyDrawdownPercent * startingBalance`, matching how `evaluator.ts` already calculates it.
+
+#### Additional Fixes
+
+| Fix | File | Commit |
+|-----|------|--------|
+| ~~pnl.ts~~ — Deleted dead `PnLCalculator` class (unused, divergent formula) | `src/lib/pnl.ts` | `1053b19` |
+| Clamped profit progress lower bound to 0% | `dashboard-service.ts` | `1053b19` |
+| Exit price invariant guard (0.01–0.99) | `PositionManager.ts` | `1053b19` |
+| Removed unused `DEFAULT_DAILY_DRAWDOWN` import | `dashboard-service.ts` | `1053b19` |
+
+#### Clean Bill of Health ✅
+
+| File | Assessment |
+|------|-----------|
+| `trade.ts` | Solid invariant guards, correct NO handling |
+| `evaluator.ts` | Correct drawdown formula |
+| `risk.ts` | Correct equity-based checks |
+| `LivePositions.tsx` | Correct SSE PnL recalculation |
+| `position-utils.ts` | Correct direction adjustment |
+| `safe-parse.ts` | Correct NaN guards |
+| `BalanceManager.ts` | Solid forensic logging |
+
+**Commits:**
+- `1053b19` — `fix(engine): PnL integrity fixes — root cause of massive random amounts`
+
+**Verification:** Build ✅ | 500/500 tests ✅
+
+---
+
+### 4:05 PM - Hotfix: Middleware Edge Runtime Crash 🔧
+
+**Incident:** Production returned `500: MIDDLEWARE_INVOCATION_FAILED` after deploy.
+
+**Root Cause:** Pre-existing bug. Middleware imports `ioredis` (for rate limiting), which uses Node.js TCP sockets — incompatible with Vercel's Edge Runtime (the default for middleware).
+
+**Fix:** Added `export const runtime = 'nodejs'` to `src/middleware.ts`.
+
+**Note:** Unrelated to PnL changes — our commit only touched `dashboard-service.ts`, `PositionManager.ts`, and `pnl.ts`.
+
+**Commits:**
+- `ba56735` — `fix(middleware): set Node.js runtime for ioredis compatibility`
+
+**Verification:** Build ✅ | Site back up ✅
+
+---
+
+### 4:15 PM - Live Trade Verification ✅
+
+**Context:** Opened YES and NO trades on production to verify PnL numbers display correctly.
+
+**Trades Executed:**
+| Market | Direction | Amount | Shares | Result |
+|--------|-----------|--------|--------|--------|
+| Gavin Newsom (Dem Nominee 2028) | NO | $100 | 136.99 | PnL: -$38.36 ✅ |
+| JD Vance (Pres Election 2028) | YES | $10 | 40 | To Win: $30 ✅ |
+| Kevin Warsh (Fed Chair) | NO | $10 | — | Executed ✅ |
+
+**Dashboard Verification:**
+| Metric | Value | Status |
+|--------|-------|--------|
+| Max Drawdown bar | 4.8% | ✅ (was 2500%+ before fix) |
+| Daily Loss Limit | 9.6% | ✅ reasonable |
+| Profit Progress | 0% (clamped) | ✅ fixed |
+| Massive random PnL | **None** | ✅ fixed |
+
+**Status:** All engine fixes verified in production. 🚀
+

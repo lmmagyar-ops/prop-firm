@@ -3,7 +3,7 @@ import { auth } from "@/auth";
 import { TradeExecutor } from "@/lib/trade";
 import { db } from "@/db";
 import { challenges, positions } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 export async function POST(req: NextRequest) {
     const session = await auth();
@@ -44,7 +44,6 @@ export async function POST(req: NextRequest) {
 
         // Close the position by selling all shares
         const shares = parseFloat(position.shares);
-        const entryPrice = parseFloat(position.entryPrice);
         const invested = parseFloat(position.sizeAmount || '0'); // Original investment
 
         // Get current market price to calculate sell amount
@@ -71,7 +70,7 @@ export async function POST(req: NextRequest) {
             "SELL",
             marketValue, // Approximate market value (amount is overridden by shares option)
             posDirection, // Pass direction to correctly identify which position to close
-            { shares } // Explicitly pass share count to sell
+            { shares, isClosing: true } // Explicitly pass share count to sell, allow demo data
         );
 
         // Fetch updated balance (challenge is updated by TradeExecutor)
@@ -96,10 +95,11 @@ export async function POST(req: NextRequest) {
             newBalance: updatedChallenge?.currentBalance || challenge.currentBalance
         });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
+        const errMsg = error instanceof Error ? error.message : "Failed to close position";
         console.error("Close position failed:", error);
         return NextResponse.json({
-            error: error.message || "Failed to close position"
+            error: errMsg
         }, { status: 500 });
     }
 }

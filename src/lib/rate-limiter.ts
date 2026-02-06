@@ -9,9 +9,10 @@ import { getRedisClient } from "./redis-client";
 
 // Rate limit tiers (requests per window)
 export const RATE_LIMITS = {
-    // Critical financial endpoints - very strict
-    TRADE: { limit: 10, windowSeconds: 60 },        // 10 trades/min
-    PAYOUT: { limit: 5, windowSeconds: 60 },        // 5 payout requests/min
+    // Critical financial endpoints - very strict (POST only)
+    TRADE_EXECUTE: { limit: 10, windowSeconds: 60 },  // 10 trade executions/min
+    TRADE_READ: { limit: 60, windowSeconds: 60 },     // 60 position/history reads/min
+    PAYOUT: { limit: 5, windowSeconds: 60 },           // 5 payout requests/min
 
     // Auth endpoints - prevent brute force
     AUTH_SIGNUP: { limit: 5, windowSeconds: 300 },  // 5 signups per 5 min
@@ -20,7 +21,7 @@ export const RATE_LIMITS = {
 
     // Read-heavy endpoints - more permissive
     MARKETS: { limit: 60, windowSeconds: 60 },      // 60 reads/min
-    DASHBOARD: { limit: 30, windowSeconds: 60 },    // 30 dashboard loads/min
+    DASHBOARD: { limit: 60, windowSeconds: 60 },    // 60 dashboard loads/min
 
     // Default for everything else
     DEFAULT: { limit: 100, windowSeconds: 60 },     // 100 req/min
@@ -39,9 +40,18 @@ export interface RateLimitResult {
  * Determine rate limit tier based on pathname
  */
 export function getTierForPath(pathname: string): RateLimitTier {
-    // Trade endpoints - most critical
+    // Trade endpoints - split by read vs write
     if (pathname.startsWith('/api/trade')) {
-        return 'TRADE';
+        // Read endpoints: positions, history, markets listing
+        if (
+            pathname.startsWith('/api/trade/positions') ||
+            pathname.startsWith('/api/trades/history') ||
+            pathname.startsWith('/api/trade/markets')
+        ) {
+            return 'TRADE_READ';
+        }
+        // Write endpoints: execute, close
+        return 'TRADE_EXECUTE';
     }
 
     // Payout endpoints
