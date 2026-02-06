@@ -1,57 +1,15 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import {
+    checkRateLimit,
+    getClientIdentifier,
+    getTierForPath,
+    RATE_LIMITS
+} from '@/lib/rate-limiter';
 
-// Simple in-memory rate limiter (resets on deploy)
-// Note: Ineffective in serverless - each instance has its own map
-// For production, use Redis-based rate limiting
-const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
-
-const RATE_LIMIT = 100; // requests per window
-const RATE_WINDOW = 60 * 1000; // 1 minute in ms
-const CLEANUP_INTERVAL = 5 * 60 * 1000; // Clean up every 5 minutes
-const MAX_ENTRIES = 10000; // Prevent unbounded growth
-
-let lastCleanup = Date.now();
-
-function getRateLimitKey(request: NextRequest): string {
-    const forwarded = request.headers.get('x-forwarded-for');
-    const ip = forwarded ? forwarded.split(',')[0].trim() : 'unknown';
-    return ip;
-}
-
-function cleanupExpiredEntries(): void {
-    const now = Date.now();
-    if (now - lastCleanup < CLEANUP_INTERVAL && rateLimitMap.size < MAX_ENTRIES) {
-        return;
-    }
-
-    for (const [key, record] of rateLimitMap.entries()) {
-        if (now > record.resetTime) {
-            rateLimitMap.delete(key);
-        }
-    }
-    lastCleanup = now;
-}
-
-function checkRateLimit(key: string): { allowed: boolean; remaining: number } {
-    cleanupExpiredEntries();
-    const now = Date.now();
-    const record = rateLimitMap.get(key);
-
-    if (!record || now > record.resetTime) {
-        rateLimitMap.set(key, { count: 1, resetTime: now + RATE_WINDOW });
-        return { allowed: true, remaining: RATE_LIMIT - 1 };
-    }
-
-    if (record.count >= RATE_LIMIT) {
-        return { allowed: false, remaining: 0 };
-    }
-
-    record.count++;
-    return { allowed: true, remaining: RATE_LIMIT - record.count };
-}
-
-// Security headers to add to all responses
+/**
+ * Security headers to add to all responses
+ */
 function addSecurityHeaders(response: NextResponse): NextResponse {
     // Prevent MIME type sniffing
     response.headers.set('X-Content-Type-Options', 'nosniff');
@@ -74,41 +32,53 @@ function addSecurityHeaders(response: NextResponse): NextResponse {
     return response;
 }
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
     // Only apply rate limiting to API routes
     if (pathname.startsWith('/api')) {
-        // Skip rate limiting for auth callbacks and webhooks
+        // Skip rate limiting for webhooks (external callbacks, need different protection)
+        // and cron jobs (internal, protected by Vercel headers)
         if (
-            pathname.startsWith('/api/auth') ||
-            pathname.startsWith('/api/webhooks')
+            pathname.startsWith('/api/webhooks') ||
+            pathname.startsWith('/api/cron')
         ) {
             const response = NextResponse.next();
             return addSecurityHeaders(response);
         }
 
-        const key = getRateLimitKey(request);
-        const { allowed, remaining } = checkRateLimit(key);
+        // Get client identifier and rate limit tier
+        const clientId = getClientIdentifier(request.headers);
+        const tier = getTierForPath(pathname);
+
+        // Check rate limit against Redis
+        const { allowed, remaining, resetInSeconds } = await checkRateLimit(clientId, tier);
+        const tierConfig = RATE_LIMITS[tier];
 
         if (!allowed) {
             return new NextResponse(
-                JSON.stringify({ error: 'Too many requests' }),
+                JSON.stringify({
+                    error: 'Too many requests',
+                    tier,
+                    retryAfter: resetInSeconds
+                }),
                 {
                     status: 429,
                     headers: {
                         'Content-Type': 'application/json',
-                        'Retry-After': '60',
-                        'X-RateLimit-Limit': RATE_LIMIT.toString(),
+                        'Retry-After': resetInSeconds.toString(),
+                        'X-RateLimit-Limit': tierConfig.limit.toString(),
                         'X-RateLimit-Remaining': '0',
+                        'X-RateLimit-Tier': tier,
                     },
                 }
             );
         }
 
         const response = NextResponse.next();
-        response.headers.set('X-RateLimit-Limit', RATE_LIMIT.toString());
+        response.headers.set('X-RateLimit-Limit', tierConfig.limit.toString());
         response.headers.set('X-RateLimit-Remaining', remaining.toString());
+        response.headers.set('X-RateLimit-Tier', tier);
         return addSecurityHeaders(response);
     }
 

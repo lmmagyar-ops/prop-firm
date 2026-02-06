@@ -124,7 +124,7 @@ function TestimonialCard({ testimonial }: { testimonial: Testimonial }) {
             {/* Header */}
             <div className="flex items-center gap-4 mb-6">
                 {/* Avatar */}
-                <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#2E81FF] to-purple-500 flex items-center justify-center text-white font-bold text-lg">
+                <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#29af73] to-purple-500 flex items-center justify-center text-white font-bold text-lg">
                     {testimonial.avatar}
                 </div>
 
@@ -238,7 +238,7 @@ export function Testimonials() {
                             key={index}
                             onClick={() => setCurrentIndex(index)}
                             className={`w-2 h-2 rounded-full transition-all ${index === currentIndex
-                                    ? "w-6 bg-[#2E81FF]"
+                                    ? "w-6 bg-[#29af73]"
                                     : "bg-zinc-700 hover:bg-zinc-600"
                                 }`}
                             role="tab"

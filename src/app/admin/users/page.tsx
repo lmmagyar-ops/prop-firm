@@ -169,12 +169,17 @@ export default function UsersPage() {
 
             if (res.ok) {
                 toast.success("Challenge reset successfully!");
-                // Refresh user data
-                await fetchUsers();
-                // Update selected user if still selected
-                if (selectedUser?.id === userId) {
-                    const updatedUser = users.find(u => u.id === userId);
-                    if (updatedUser) setSelectedUser(updatedUser);
+                // Fetch fresh user data and update both list and selected user
+                const usersRes = await fetch("/api/admin/users");
+                if (usersRes.ok) {
+                    const usersData = await usersRes.json();
+                    setUsers(usersData.users || []);
+                    setSummary(usersData.summary || null);
+                    // Update selected user with fresh data from new fetch
+                    if (selectedUser?.id === userId) {
+                        const freshUser = (usersData.users || []).find((u: UserData) => u.id === userId);
+                        if (freshUser) setSelectedUser(freshUser);
+                    }
                 }
             } else {
                 const data = await res.json();
@@ -187,6 +192,7 @@ export default function UsersPage() {
             setResettingChallengeId(null);
         }
     };
+
 
     const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
 

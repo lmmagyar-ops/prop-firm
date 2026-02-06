@@ -33,11 +33,16 @@ export async function POST(request: Request): Promise<NextResponse> {
             "INGESTION_STALE",
             "CHALLENGE_FAILED",
             "PAYOUT_REQUESTED",
+            // New critical alerts
+            "CRITICAL_ALERT",
+            "WARNING_ALERT",
+            "INFO_ALERT",
         ];
 
         if (!alertableEvents.includes(type)) {
             return NextResponse.json({ status: "ignored", type });
         }
+
 
         // Build Slack message
         const message = buildSlackMessage(type, data);
@@ -129,6 +134,53 @@ function buildSlackMessage(type: string, data: SlackWebhookPayload["data"]): Sla
                 text: `💰 Payout Requested: Review required`,
             };
 
+        case "CRITICAL_ALERT":
+            return {
+                text: `🚨 CRITICAL: ${(data as { title?: string }).title || 'Unknown Alert'}`,
+                blocks: [
+                    {
+                        type: "header",
+                        text: { type: "plain_text", text: `🚨 ${(data as { title?: string }).title || 'Critical Alert'}`, emoji: true },
+                    },
+                    {
+                        type: "section",
+                        text: {
+                            type: "mrkdwn",
+                            text: (data as { message?: string }).message || 'No details provided',
+                        },
+                    },
+                    {
+                        type: "context",
+                        elements: [
+                            { type: "mrkdwn", text: `Timestamp: ${data.timestamp || new Date().toISOString()}` },
+                        ],
+                    },
+                ],
+            };
+
+        case "WARNING_ALERT":
+            return {
+                text: `⚠️ WARNING: ${(data as { title?: string }).title || 'Unknown Warning'}`,
+                blocks: [
+                    {
+                        type: "header",
+                        text: { type: "plain_text", text: `⚠️ ${(data as { title?: string }).title || 'Warning'}`, emoji: true },
+                    },
+                    {
+                        type: "section",
+                        text: {
+                            type: "mrkdwn",
+                            text: (data as { message?: string }).message || 'No details provided',
+                        },
+                    },
+                ],
+            };
+
+        case "INFO_ALERT":
+            return {
+                text: `ℹ️ ${(data as { title?: string }).title || 'Info'}: ${(data as { message?: string }).message || ''}`,
+            };
+
         default:
             return {
                 text: `[Propshot Alert] ${type}: ${JSON.stringify(data)}`,
@@ -138,6 +190,7 @@ function buildSlackMessage(type: string, data: SlackWebhookPayload["data"]): Sla
 
 async function sendToSlack(webhookUrl: string, message: SlackMessage): Promise<void> {
     const response = await fetch(webhookUrl, {
+
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(message),

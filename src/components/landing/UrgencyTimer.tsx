@@ -89,13 +89,13 @@ export function UrgencyTimer({
                     ? "bg-zinc-800/50 border-zinc-700"
                     : isUrgent
                         ? "bg-red-500/10 border-red-500/30 animate-pulse"
-                        : "bg-[#2E81FF]/10 border-[#2E81FF]/30"
+                        : "bg-[#29af73]/10 border-[#29af73]/30"
                 }`}
         >
             {isUrgent ? (
                 <Flame className="w-4 h-4 text-red-400" />
             ) : (
-                <Clock className="w-4 h-4 text-[#2E81FF]" />
+                <Clock className="w-4 h-4 text-[#29af73]" />
             )}
 
             <span className={`text-sm font-medium ${isExpired ? "text-zinc-500" : isUrgent ? "text-red-400" : "text-zinc-300"
@@ -106,9 +106,9 @@ export function UrgencyTimer({
             {!isExpired && (
                 <div className="flex items-center gap-1 font-mono font-bold">
                     <TimeBlock value={formatNumber(timeLeft.hours)} label="h" urgent={isUrgent} />
-                    <span className={isUrgent ? "text-red-400" : "text-[#2E81FF]"}>:</span>
+                    <span className={isUrgent ? "text-red-400" : "text-[#29af73]"}>:</span>
                     <TimeBlock value={formatNumber(timeLeft.minutes)} label="m" urgent={isUrgent} />
-                    <span className={isUrgent ? "text-red-400" : "text-[#2E81FF]"}>:</span>
+                    <span className={isUrgent ? "text-red-400" : "text-[#29af73]"}>:</span>
                     <TimeBlock value={formatNumber(timeLeft.seconds)} label="s" urgent={isUrgent} />
                 </div>
             )}
@@ -134,12 +134,12 @@ function TimeBlock({
                     animate={{ y: 0, opacity: 1 }}
                     exit={{ y: 10, opacity: 0 }}
                     transition={{ duration: 0.15 }}
-                    className={`text-lg ${urgent ? "text-red-400" : "text-[#2E81FF]"}`}
+                    className={`text-lg ${urgent ? "text-red-400" : "text-[#29af73]"}`}
                 >
                     {value}
                 </motion.span>
             </AnimatePresence>
-            <span className={`text-xs ml-0.5 ${urgent ? "text-red-400/70" : "text-[#2E81FF]/70"}`}>
+            <span className={`text-xs ml-0.5 ${urgent ? "text-red-400/70" : "text-[#29af73]/70"}`}>
                 {label}
             </span>
         </div>

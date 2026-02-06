@@ -199,8 +199,8 @@ function CategorySection({ category, openQuestions, toggleQuestion }: {
     return (
         <div className="bg-[#1A232E] border border-[#2E3A52] rounded-xl p-6">
             <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 bg-[#2E81FF]/20 rounded-lg flex items-center justify-center">
-                    <Icon className="w-5 h-5 text-[#2E81FF]" />
+                <div className="w-10 h-10 bg-[#29af73]/20 rounded-lg flex items-center justify-center">
+                    <Icon className="w-5 h-5 text-[#29af73]" />
                 </div>
                 <h2 className="text-lg font-semibold text-white">{category.title}</h2>
             </div>
@@ -267,7 +267,7 @@ export default function FAQPage() {
                     placeholder="Search questions..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full bg-[#1A232E] border border-[#2E3A52] rounded-xl px-4 py-3 pl-12 text-white placeholder-zinc-500 focus:outline-none focus:border-[#2E81FF] transition-colors"
+                    className="w-full bg-[#1A232E] border border-[#2E3A52] rounded-xl px-4 py-3 pl-12 text-white placeholder-zinc-500 focus:outline-none focus:border-[#29af73] transition-colors"
                 />
                 <HelpCircle className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-500" />
             </div>
@@ -275,7 +275,7 @@ export default function FAQPage() {
             {/* Quick Stats */}
             <div className="grid grid-cols-3 gap-4">
                 <div className="bg-[#1A232E] border border-[#2E3A52] rounded-xl p-4 text-center">
-                    <div className="text-2xl font-bold text-[#2E81FF]">80-90%</div>
+                    <div className="text-2xl font-bold text-[#29af73]">80-90%</div>
                     <div className="text-sm text-zinc-400">Profit Split</div>
                 </div>
                 <div className="bg-[#1A232E] border border-[#2E3A52] rounded-xl p-4 text-center">
@@ -301,13 +301,13 @@ export default function FAQPage() {
             </div>
 
             {/* Still have questions? */}
-            <div className="bg-gradient-to-br from-[#2E81FF]/20 to-purple-500/20 border border-[#2E81FF]/30 rounded-xl p-6 text-center">
-                <MessageCircle className="w-10 h-10 text-[#2E81FF] mx-auto mb-3" />
+            <div className="bg-gradient-to-br from-[#29af73]/20 to-purple-500/20 border border-[#29af73]/30 rounded-xl p-6 text-center">
+                <MessageCircle className="w-10 h-10 text-[#29af73] mx-auto mb-3" />
                 <h3 className="text-lg font-semibold text-white mb-2">Still have questions?</h3>
                 <p className="text-zinc-400 mb-4">Our support team is here to help 24/7</p>
                 <a
                     href="mailto:support@propshot.com"
-                    className="inline-flex items-center gap-2 px-6 py-2 bg-[#2E81FF] hover:bg-[#2E81FF]/80 text-white font-medium rounded-lg transition-colors"
+                    className="inline-flex items-center gap-2 px-6 py-2 bg-[#29af73] hover:bg-[#29af73]/80 text-white font-medium rounded-lg transition-colors"
                 >
                     <Zap className="w-4 h-4" />
                     Contact Support

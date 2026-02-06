@@ -1,18 +1,21 @@
 /**
  * Resolution Detector
  * 
- * Detects market resolution events (large price moves >60% in 24h).
+ * Detects market resolution events via Polymarket Oracle API.
  * Used to exclude P&L from resolution events in funded account payouts.
  * 
  * This ensures fairness:
  * - Traders aren't rewarded for lucky gambling on binary outcomes
  * - Traders aren't punished for unlucky resolution losses
+ * 
+ * v2.0: Now uses PolymarketOracle for authoritative resolution status
+ *       instead of price-move heuristics.
  */
 
 import { db } from "@/db";
 import { positions, trades } from "@/db/schema";
 import { eq, and, gte } from "drizzle-orm";
-import { MarketService } from "./market";
+import { PolymarketOracle } from "./polymarket-oracle";
 import { RESOLUTION_CONFIG } from "./funded-rules";
 
 export interface ResolutionEvent {
@@ -20,6 +23,8 @@ export interface ResolutionEvent {
     priceChange: number;
     isResolution: boolean;
     detectedAt: Date;
+    source?: 'oracle' | 'heuristic';
+    winningOutcome?: string;
 }
 
 export interface ExcludedPnLResult {
@@ -35,39 +40,65 @@ export interface ExcludedPnLResult {
 export class ResolutionDetector {
 
     /**
-     * Check if a market has experienced a resolution event.
-     * Definition: >60% price change in 24 hours
+     * Check if a market has been officially resolved.
+     * Uses PolymarketOracle for authoritative status from Gamma API.
+     * Falls back to price-move heuristic if Oracle unavailable.
      */
     static async isResolutionEvent(marketId: string): Promise<ResolutionEvent> {
         try {
-            // Get current price
-            const currentPrice = await MarketService.getLatestPrice(marketId);
-            if (!currentPrice) {
-                return { marketId, priceChange: 0, isResolution: false, detectedAt: new Date() };
+            // Primary: Use PolymarketOracle for authoritative status
+            const oracleStatus = await PolymarketOracle.getResolutionStatus(marketId);
+
+            if (oracleStatus.source !== 'fallback') {
+                // Oracle returned authoritative data
+                return {
+                    marketId,
+                    priceChange: oracleStatus.resolutionPrice !== undefined
+                        ? Math.abs(oracleStatus.resolutionPrice - 0.5) * 2
+                        : 0,
+                    isResolution: oracleStatus.isResolved,
+                    detectedAt: oracleStatus.checkedAt,
+                    source: 'oracle',
+                    winningOutcome: oracleStatus.winningOutcome
+                };
             }
 
-            // Get price from 24h ago (if available in market data)
-            // For now, we check if the current price is very close to 0 or 1 (binary resolution)
-            const price = parseFloat(currentPrice.price);
+            // Fallback: Use legacy price-move heuristic
+            console.log(`[ResolutionDetector] Oracle unavailable for ${marketId.slice(0, 12)}, using heuristic`);
+            return this.legacyPriceHeuristic(marketId);
 
-            // A resolved binary market will have price at 0 (did not happen) or ~1 (happened)
-            // We consider it a resolution if price is <0.05 or >0.95
-            const isResolved = price < 0.05 || price > 0.95;
-
-            // Calculate theoretical max price change (from 0.5 midpoint)
-            const maxChange = Math.abs(price - 0.5) * 2;
-
-            return {
-                marketId,
-                priceChange: maxChange,
-                isResolution: isResolved || maxChange >= RESOLUTION_CONFIG.maxMovePercent,
-                detectedAt: new Date()
-            };
         } catch (error) {
             console.error(`[ResolutionDetector] Error checking market ${marketId}:`, error);
-            return { marketId, priceChange: 0, isResolution: false, detectedAt: new Date() };
+            return { marketId, priceChange: 0, isResolution: false, detectedAt: new Date(), source: 'heuristic' };
         }
     }
+
+    /**
+     * Legacy price-move heuristic (fallback when Oracle unavailable).
+     * Detects resolution via price extremes (<5% or >95%).
+     */
+    private static async legacyPriceHeuristic(marketId: string): Promise<ResolutionEvent> {
+        // Import dynamically to avoid circular dependency
+        const { MarketService } = await import("./market");
+
+        const currentPrice = await MarketService.getLatestPrice(marketId);
+        if (!currentPrice) {
+            return { marketId, priceChange: 0, isResolution: false, detectedAt: new Date(), source: 'heuristic' };
+        }
+
+        const price = parseFloat(currentPrice.price);
+        const isResolved = price < 0.05 || price > 0.95;
+        const maxChange = Math.abs(price - 0.5) * 2;
+
+        return {
+            marketId,
+            priceChange: maxChange,
+            isResolution: isResolved || maxChange >= RESOLUTION_CONFIG.maxMovePercent,
+            detectedAt: new Date(),
+            source: 'heuristic'
+        };
+    }
+
 
     /**
      * Calculate total P&L to exclude from payout due to resolution events.

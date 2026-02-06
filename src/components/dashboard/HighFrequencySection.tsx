@@ -55,7 +55,7 @@ const TerminalDisplay = ({ state }: { state: TerminalState }) => {
                         >
                             <div className="mb-6">
                                 <div className="text-xs text-zinc-500 mb-1">$ polymarket --status</div>
-                                <div className="text-sm text-[#2E81FF] font-bold">POLYMARKET NETWORK: CONNECTED</div>
+                                <div className="text-sm text-[#29af73] font-bold">POLYMARKET NETWORK: CONNECTED</div>
                             </div>
                             <div className="space-y-2">
                                 <div className="flex justify-between items-center bg-white/5 p-2 rounded">
@@ -202,7 +202,7 @@ export function HighFrequencySection() {
                     {/* Left: Content & Interactive List */}
                     <div className="flex-1 space-y-8 text-center lg:text-left">
                         <h2 className="text-4xl md:text-5xl font-black text-white tracking-tighter leading-tight">
-                            Built for <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#2E81FF] to-cyan-400">High Frequency</span> <br />
+                            Built for <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#29af73] to-cyan-400">High Frequency</span> <br />
                             Prediction Markets.
                         </h2>
 
@@ -235,7 +235,7 @@ export function HighFrequencySection() {
                                     {activeState === feat.id && (
                                         <motion.div
                                             layoutId="active-line"
-                                            className="absolute left-0 top-4 bottom-4 w-1 bg-[#2E81FF] rounded-r-full"
+                                            className="absolute left-0 top-4 bottom-4 w-1 bg-[#29af73] rounded-r-full"
                                         />
                                     )}
                                 </div>

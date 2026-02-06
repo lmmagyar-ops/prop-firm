@@ -27,7 +27,7 @@ export default function AboutPage() {
             <section className="relative py-24 px-6">
                 <div className="max-w-4xl mx-auto text-center">
                     <h1 className="text-4xl md:text-6xl font-black mb-6">
-                        The Future of <span className="text-[#2E81FF]">Prop Trading</span>
+                        The Future of <span className="text-[#29af73]">Prop Trading</span>
                     </h1>
                     <p className="text-xl text-zinc-400 max-w-2xl mx-auto">
                         We're building the first prop firm dedicated to prediction markets.
@@ -92,7 +92,7 @@ export default function AboutPage() {
                     </p>
                     <Link
                         href="/signup"
-                        className="inline-flex items-center gap-2 px-8 py-4 bg-[#2E81FF] text-white font-semibold rounded-full hover:bg-[#2E81FF]/90 transition-colors"
+                        className="inline-flex items-center gap-2 px-8 py-4 bg-[#29af73] text-white font-semibold rounded-full hover:bg-[#29af73]/90 transition-colors"
                     >
                         Start Your Challenge
                         <ArrowRight className="w-5 h-5" />
@@ -124,7 +124,7 @@ function ValueCard({
 }) {
     return (
         <div className="p-6 rounded-xl border border-zinc-800 bg-zinc-900/50">
-            <Icon className="w-8 h-8 text-[#2E81FF] mb-4" />
+            <Icon className="w-8 h-8 text-[#29af73] mb-4" />
             <h3 className="text-lg font-semibold mb-2">{title}</h3>
             <p className="text-zinc-400 text-sm">{description}</p>
         </div>

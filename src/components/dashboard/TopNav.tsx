@@ -22,9 +22,7 @@ export function TopNav({ userId }: TopNavProps) {
                     {/* Left: Mobile Logo & Navigation */}
                     <div className="flex items-center gap-4">
                         <Link href="/dashboard/trade" className="flex items-center gap-2 md:hidden">
-                            <div className="w-8 h-8 bg-[#2E81FF] rounded-lg flex items-center justify-center text-white font-bold">
-                                X
-                            </div>
+                            <img src="/icon.png" alt="Funded Prediction" className="w-8 h-8 rounded-lg" />
                         </Link>
 
                         {/* Primary Navigation Links */}
@@ -59,7 +57,7 @@ export function TopNav({ userId }: TopNavProps) {
 
                         {/* New Evaluation Button */}
                         <Link href="/buy-evaluation">
-                            <Button className="bg-[#2E81FF] hover:bg-[#256ACC] text-white font-bold h-9 px-4 shadow-lg shadow-blue-900/20">
+                            <Button className="bg-[#29af73] hover:bg-[#1e8a5a] text-white font-bold h-9 px-4 shadow-lg shadow-green-900/20">
                                 New Evaluation
                             </Button>
                         </Link>

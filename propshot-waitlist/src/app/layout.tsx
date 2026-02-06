@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 
@@ -9,13 +9,19 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Propshot - The World's First Prediction Market Prop Firm",
+  title: "Predictions Firm - The World's First Prediction Market Prop Firm",
   description: "A skill-based evaluation platform for prediction market traders. Demonstrate your abilities, access funded trading opportunities.",
   openGraph: {
-    title: "Propshot - The World's First Prediction Market Prop Firm",
+    title: "Predictions Firm - The World's First Prediction Market Prop Firm",
     description: "A skill-based evaluation platform for prediction market traders seeking funded opportunities.",
     type: "website",
   },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#0a0a0a",
 };
 
 export default function RootLayout({

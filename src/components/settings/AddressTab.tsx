@@ -74,7 +74,7 @@ export function AddressTab({ user }: { user: any }) {
                             id="street"
                             value={formData.addressStreet}
                             onChange={(e) => setFormData({ ...formData, addressStreet: e.target.value })}
-                            className="mt-2 bg-[#0E1217] border-[#2E3A52] text-white focus:border-[#2E81FF]/50"
+                            className="mt-2 bg-[#0E1217] border-[#2E3A52] text-white focus:border-[#29af73]/50"
                             placeholder="123 Main St"
                         />
                     </div>
@@ -86,7 +86,7 @@ export function AddressTab({ user }: { user: any }) {
                             id="apartment"
                             value={formData.addressApartment}
                             onChange={(e) => setFormData({ ...formData, addressApartment: e.target.value })}
-                            className="mt-2 bg-[#0E1217] border-[#2E3A52] text-white focus:border-[#2E81FF]/50"
+                            className="mt-2 bg-[#0E1217] border-[#2E3A52] text-white focus:border-[#29af73]/50"
                             placeholder="Apt 4B"
                         />
                     </div>
@@ -99,7 +99,7 @@ export function AddressTab({ user }: { user: any }) {
                                 id="city"
                                 value={formData.addressCity}
                                 onChange={(e) => setFormData({ ...formData, addressCity: e.target.value })}
-                                className="mt-2 bg-[#0E1217] border-[#2E3A52] text-white focus:border-[#2E81FF]/50"
+                                className="mt-2 bg-[#0E1217] border-[#2E3A52] text-white focus:border-[#29af73]/50"
                             />
                         </div>
                         <div>
@@ -108,7 +108,7 @@ export function AddressTab({ user }: { user: any }) {
                                 id="state"
                                 value={formData.addressState}
                                 onChange={(e) => setFormData({ ...formData, addressState: e.target.value })}
-                                className="mt-2 bg-[#0E1217] border-[#2E3A52] text-white focus:border-[#2E81FF]/50"
+                                className="mt-2 bg-[#0E1217] border-[#2E3A52] text-white focus:border-[#29af73]/50"
                             />
                         </div>
                     </div>
@@ -121,7 +121,7 @@ export function AddressTab({ user }: { user: any }) {
                                 id="zip"
                                 value={formData.addressZip}
                                 onChange={(e) => setFormData({ ...formData, addressZip: e.target.value })}
-                                className="mt-2 bg-[#0E1217] border-[#2E3A52] text-white focus:border-[#2E81FF]/50"
+                                className="mt-2 bg-[#0E1217] border-[#2E3A52] text-white focus:border-[#29af73]/50"
                             />
                         </div>
                         <div>
@@ -135,7 +135,7 @@ export function AddressTab({ user }: { user: any }) {
                                 </SelectTrigger>
                                 <SelectContent className="bg-[#1A232E] border-[#2E3A52] text-white max-h-[200px]">
                                     {COUNTRIES.map((country) => (
-                                        <SelectItem key={country} value={country} className="focus:bg-[#2E81FF]/20 focus:text-white cursor-pointer">
+                                        <SelectItem key={country} value={country} className="focus:bg-[#29af73]/20 focus:text-white cursor-pointer">
                                             {country}
                                         </SelectItem>
                                     ))}

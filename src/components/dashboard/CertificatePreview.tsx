@@ -136,7 +136,7 @@ export function CertificatePreview({
                     Download PDF
                 </Button>
                 <Button
-                    className="bg-[#2E81FF] hover:bg-[#2E81FF]/90 text-white shadow-lg shadow-blue-500/20"
+                    className="bg-[#29af73] hover:bg-[#29af73]/90 text-white shadow-lg shadow-blue-500/20"
                     onClick={() => setIsShareModalOpen(true)}
                 >
                     <Share2 className="w-4 h-4 mr-2" />

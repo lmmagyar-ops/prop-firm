@@ -90,6 +90,17 @@ export class TradeExecutor {
 
         const currentPrice = parseFloat(marketData.price);
 
+        // EXTREME PRICE GUARD: Block trades on resolved/near-resolved markets
+        // Prices ≤0.01 or ≥0.99 indicate the market has effectively resolved
+        if (currentPrice <= 0.01 || currentPrice >= 0.99) {
+            logger.warn(`EXTREME PRICE BLOCKED: ${currentPrice.toFixed(4)} for ${marketId.slice(0, 12)}`);
+            throw new TradingError(
+                'This market has effectively resolved and is no longer tradable. Please choose a different market.',
+                'MARKET_RESOLVED',
+                400
+            );
+        }
+
         // 3. Risk Check
         if (side === "BUY") {
             if (parseFloat(challenge.currentBalance) < amount) {
@@ -126,16 +137,27 @@ export class TradeExecutor {
             throw new TradingError('Order book unavailable - liquidity feed down. Try again shortly.', 'NO_ORDER_BOOK', 503);
         }
 
-        const simulation = MarketService.calculateImpact(book, side, amount);
+        // AUDIT FIX: Log synthetic order book usage for operational visibility
+        // Synthetic books are built from event list prices - acceptable for B-Book model
+        if (book.source === 'synthetic') {
+            logger.warn(`SYNTHETIC ORDERBOOK USED for trade on ${marketId.slice(0, 12)}`, {
+                userId,
+                side,
+                amount,
+            });
+        }
 
-        // DEBUG: Log simulation results
-        logger.info(`SIMULATION DEBUG`, {
-            executedPrice: simulation.executedPrice.toFixed(4),
-            totalShares: simulation.totalShares.toFixed(2),
-            slippage: (simulation.slippagePercent * 100).toFixed(2) + '%',
-            filled: simulation.filled,
-            reason: simulation.reason,
-        });
+        // For NO direction trades, flip the order book side to match correct counterparty:
+        //   - BUY NO: Match against YES BIDS (YES buyers implicitly sell NO at 1-bid)
+        //   - SELL NO: Match against YES ASKS (YES sellers implicitly buy NO at 1-ask)
+        // This is because prediction markets only have one order book (YES), and NO
+        // is the complement. When you buy NO at 32¢, you're matching with someone
+        // willing to buy YES at 68¢ (their bid).
+        const effectiveSide = direction === "NO"
+            ? (side === "BUY" ? "SELL" : "BUY")
+            : side;
+
+        const simulation = MarketService.calculateImpact(book, effectiveSide, amount);
 
         // PRICE INTEGRITY CHECK: Compare execution price to event list display price
         // If they differ by more than 50%, fall back to synthetic order book
@@ -152,7 +174,7 @@ export class TradeExecutor {
 
                 // Recalculate with synthetic book built from event list price
                 const syntheticBook = MarketService.buildSyntheticOrderBookPublic(displayPrice);
-                const correctedSimulation = MarketService.calculateImpact(syntheticBook, side, amount);
+                const correctedSimulation = MarketService.calculateImpact(syntheticBook, effectiveSide, amount);
 
                 if (correctedSimulation.filled) {
                     logger.info(`Using synthetic book instead. correctedPrice=${correctedSimulation.executedPrice.toFixed(4)}`);
@@ -215,7 +237,60 @@ export class TradeExecutor {
             slippage: `${slippage}%`
         });
 
+        // ================================================
+        // INVARIANT ASSERTIONS - Catch impossible states
+        // These guards ensure no corrupted data enters the DB
+        // ================================================
+
+        // Shares must be positive and finite
+        if (!Number.isFinite(shares) || shares <= 0) {
+            logger.error('INVARIANT VIOLATION: Invalid shares', { shares, amount, executionPrice });
+            throw new TradingError(
+                'Trade calculation error: invalid share count',
+                'INVARIANT_VIOLATION',
+                500
+            );
+        }
+
+        // Execution price must be valid (between 0 and 1 for prediction markets)
+        if (!Number.isFinite(executionPrice) || executionPrice <= 0 || executionPrice >= 1) {
+            logger.error('INVARIANT VIOLATION: Invalid execution price', { executionPrice });
+            throw new TradingError(
+                'Trade calculation error: invalid execution price',
+                'INVARIANT_VIOLATION',
+                500
+            );
+        }
+
+        // Amount must be positive and finite
+        if (!Number.isFinite(finalAmount) || finalAmount <= 0) {
+            logger.error('INVARIANT VIOLATION: Invalid amount', { finalAmount });
+            throw new TradingError(
+                'Trade calculation error: invalid trade amount',
+                'INVARIANT_VIOLATION',
+                500
+            );
+        }
+
+        // For BUY: ensure we won't create negative balance
+        if (side === 'BUY') {
+            const preTradeBalance = parseFloat(challenge.currentBalance);
+            if (!Number.isFinite(preTradeBalance) || preTradeBalance < finalAmount) {
+                logger.error('INVARIANT VIOLATION: Would create negative balance', {
+                    preTradeBalance,
+                    finalAmount,
+                    difference: preTradeBalance - finalAmount,
+                });
+                throw new TradingError(
+                    'Trade would result in negative balance',
+                    'INVARIANT_VIOLATION',
+                    500
+                );
+            }
+        }
+
         // 5. DB Transaction (with Row Lock for Race Condition Prevention)
+
         const tradeResult = await db.transaction(async (tx) => {
             // A. Lock the challenge row to prevent concurrent trades
             // This serializes trades per challenge, preventing exposure limit bypass

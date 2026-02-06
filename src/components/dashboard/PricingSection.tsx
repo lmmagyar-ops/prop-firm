@@ -21,7 +21,7 @@ function LearnHowTooltip() {
             <button
                 onMouseEnter={() => setIsOpen(true)}
                 onMouseLeave={() => setIsOpen(false)}
-                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#2E3A52]/30 hover:bg-[#2E3A52] border border-[#2E3A52] text-xs font-bold text-[#2E81FF] transition-all cursor-help"
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#2E3A52]/30 hover:bg-[#2E3A52] border border-[#2E3A52] text-xs font-bold text-[#29af73] transition-all cursor-help"
             >
                 <HelpCircle className="w-3 h-3" />
                 Learn How
@@ -37,13 +37,13 @@ function LearnHowTooltip() {
                         className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-72 p-5 bg-[#0F1218]/95 backdrop-blur-xl border border-[#2E3A52] rounded-2xl shadow-[0_20px_50px_-10px_rgba(0,0,0,0.8)] z-50 overflow-hidden"
                     >
                         {/* Gradient Border Top */}
-                        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#2E81FF] to-cyan-400" />
+                        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#29af73] to-cyan-400" />
 
                         <div className="space-y-4 relative z-10">
                             <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider">3 Steps to Funding</p>
                             {STEPS.map((step) => (
                                 <div key={step.number} className="flex items-center gap-3">
-                                    <div className="w-6 h-6 rounded-full bg-[#2E81FF]/20 text-[#2E81FF] text-xs font-bold flex items-center justify-center border border-[#2E81FF]/30">
+                                    <div className="w-6 h-6 rounded-full bg-[#29af73]/20 text-[#29af73] text-xs font-bold flex items-center justify-center border border-[#29af73]/30">
                                         {step.number}
                                     </div>
                                     <span className="text-sm text-zinc-200 font-medium">{step.text}</span>
@@ -81,7 +81,7 @@ export function PricingSection() {
             desc: "The standard for serious traders looking to scale up.",
             popular: true,
             gradient: "from-violet-500/20 to-fuchsia-500/5",
-            border: "border-[#2E81FF]/50"
+            border: "border-[#29af73]/50"
         },
         {
             key: "executive" as const,
@@ -99,7 +99,7 @@ export function PricingSection() {
         <section className="relative z-10 max-w-7xl mx-auto px-6 py-24 mb-20">
             <div className="text-center mb-16 space-y-4">
                 <h2 className="text-4xl md:text-5xl font-black text-white tracking-tighter">
-                    Our <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#2E81FF] to-cyan-400">Evaluations.</span>
+                    Our <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#29af73] to-cyan-400">Evaluations.</span>
                 </h2>
                 <p className="text-zinc-400 text-lg font-medium">
                     Choose your path to professional capital
@@ -124,7 +124,7 @@ export function PricingSection() {
                             <div className={`
                                 relative flex flex-col h-full rounded-[2.5rem] overflow-hidden transition-all duration-300
                                 bg-[#0F1218]/80 backdrop-blur-xl border border-[#2E3A52]
-                                ${isPopular ? 'shadow-[0_0_80px_-20px_rgba(46,129,255,0.3)] ring-1 ring-[#2E81FF]/50' : 'hover:border-zinc-600 hover:shadow-2xl'}
+                                ${isPopular ? 'shadow-[0_0_80px_-20px_rgba(46,129,255,0.3)] ring-1 ring-[#29af73]/50' : 'hover:border-zinc-600 hover:shadow-2xl'}
                             `}>
 
                                 {/* Inner Gradient */}
@@ -133,7 +133,7 @@ export function PricingSection() {
                                 {/* Popular Badge */}
                                 {isPopular && (
                                     <div className="absolute top-0 right-0 left-0 flex justify-center -mt-3">
-                                        <div className="px-4 py-1.5 rounded-full bg-[#2E81FF] text-white text-[11px] font-black uppercase tracking-widest shadow-lg shadow-blue-900/50 border border-white/10">
+                                        <div className="px-4 py-1.5 rounded-full bg-[#29af73] text-white text-[11px] font-black uppercase tracking-widest shadow-lg shadow-blue-900/50 border border-white/10">
                                             Most Popular
                                         </div>
                                     </div>
@@ -162,7 +162,7 @@ export function PricingSection() {
                                         <div className="flex items-start justify-between">
                                             <span className="text-zinc-400 text-sm font-medium">Profit Target</span>
                                             <span className="text-white font-bold text-sm text-right">
-                                                ${plan.profitTarget.toLocaleString()} <span className="text-[#2E81FF]">(10%)</span>
+                                                ${plan.profitTarget.toLocaleString()} <span className="text-[#29af73]">(10%)</span>
                                             </span>
                                         </div>
                                         <div className="flex items-start justify-between">
@@ -204,7 +204,7 @@ export function PricingSection() {
                                                 <Button
                                                     className={`w-full h-14 rounded-2xl text-base font-bold tracking-wide transition-all duration-300 border-none
                                                         ${isPopular
-                                                            ? 'bg-[#2E81FF] hover:bg-[#2563EB] text-white hover:scale-[1.02] shadow-lg shadow-blue-600/20'
+                                                            ? 'bg-[#29af73] hover:bg-[#2563EB] text-white hover:scale-[1.02] shadow-lg shadow-blue-600/20'
                                                             : 'bg-[#1A202C] hover:bg-white hover:text-black text-zinc-300'
                                                         }
                                                     `}

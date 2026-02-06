@@ -53,7 +53,7 @@ export function ChartsVsReality() {
     return (
         <section className="relative z-10 max-w-7xl mx-auto px-6 py-32 overflow-hidden">
             {/* Background Glow */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-[#2E81FF]/10 blur-[120px] rounded-full pointer-events-none" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-[#29af73]/10 blur-[120px] rounded-full pointer-events-none" />
 
             {/* Section Header */}
             <div className="relative text-center space-y-4 mb-16">
@@ -64,7 +64,7 @@ export function ChartsVsReality() {
                     transition={{ duration: 0.6 }}
                 >
                     <h2 className="text-4xl md:text-6xl font-black tracking-tighter text-white leading-tight">
-                        Trade <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#2E81FF] to-cyan-400">Events</span>, Not Noise.
+                        Trade <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#29af73] to-cyan-400">Events</span>, Not Noise.
                     </h2>
                     <p className="text-zinc-400 text-lg md:text-xl max-w-2xl mx-auto mt-6 leading-relaxed">
                         Drag to compare the chaos of technical analysis with the clarity of prediction markets.
@@ -87,9 +87,9 @@ export function ChartsVsReality() {
                 {/* 1. Underlying Layer (Prediction Market - The "New Way") */}
                 <div className="absolute inset-0 bg-[#0B0E14] flex flex-col items-center justify-center p-8 select-none">
                     <div className="absolute inset-0 bg-gradient-to-br from-[#131722] to-[#050505]" />
-                    <div className="absolute top-10 right-10 flex items-center gap-2 px-4 py-2 bg-[#2E81FF]/20 border border-[#2E81FF]/30 rounded-full">
-                        <Zap className="w-4 h-4 text-[#2E81FF]" />
-                        <span className="text-[#2E81FF] font-bold text-sm tracking-widest uppercase">The New Way</span>
+                    <div className="absolute top-10 right-10 flex items-center gap-2 px-4 py-2 bg-[#29af73]/20 border border-[#29af73]/30 rounded-full">
+                        <Zap className="w-4 h-4 text-[#29af73]" />
+                        <span className="text-[#29af73] font-bold text-sm tracking-widest uppercase">The New Way</span>
                     </div>
 
                     {/* Clean UI Content */}

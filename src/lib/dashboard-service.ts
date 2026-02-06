@@ -3,6 +3,7 @@ import { challenges, positions, users } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { FUNDED_RULES, type FundedTier } from "@/lib/funded-rules";
 import { calculatePositionMetrics, DEFAULT_MAX_DRAWDOWN, DEFAULT_DAILY_DRAWDOWN } from "@/lib/position-utils";
+import { safeParseFloat } from "./safe-parse";
 
 export async function getDashboardData(userId: string) {
     // MOCK DATA BYPASS - REMOVED (Now using real DB for everyone)
@@ -34,7 +35,7 @@ export async function getDashboardData(userId: string) {
     const totalProfitEarned = allChallenges
         .filter(c => c.status === 'passed')
         .reduce((sum, c) => {
-            const profit = parseFloat(c.currentBalance) - parseFloat(c.startingBalance);
+            const profit = safeParseFloat(c.currentBalance) - safeParseFloat(c.startingBalance);
             return sum + Math.max(0, profit);
         }, 0);
 
@@ -54,10 +55,10 @@ export async function getDashboardData(userId: string) {
         return challengesList.map((c, idx) => ({
             id: c.id,
             accountNumber: `CH-${c.startedAt ? new Date(c.startedAt).getFullYear() : 'XXXX'}-${String(idx + 1).padStart(3, '0')}`,
-            challengeType: `$${parseFloat(c.startingBalance).toLocaleString()} Challenge`,
+            challengeType: `$${safeParseFloat(c.startingBalance).toLocaleString()} Challenge`,
             phase: c.phase,
             status: c.status,
-            finalPnL: c.status !== 'active' ? parseFloat(c.currentBalance) - parseFloat(c.startingBalance) : null,
+            finalPnL: c.status !== 'active' ? safeParseFloat(c.currentBalance) - safeParseFloat(c.startingBalance) : null,
             startedAt: c.startedAt,
             completedAt: c.status !== 'active' ? c.endsAt : null,
             platform: c.platform || "polymarket",
@@ -142,8 +143,8 @@ export async function getDashboardData(userId: string) {
 
     // Calculate position values with live prices and direction handling
     const positionsWithPnL = openPositions.map(pos => {
-        const entry = parseFloat(pos.entryPrice);
-        const shares = parseFloat(pos.shares);
+        const entry = safeParseFloat(pos.entryPrice);
+        const shares = safeParseFloat(pos.shares);
 
         // Guard against NaN from invalid database values
         if (isNaN(entry) || isNaN(shares) || shares <= 0) {
@@ -165,7 +166,7 @@ export async function getDashboardData(userId: string) {
 
         if (livePrice) {
             // Live price from order book is raw YES price
-            const parsedLivePrice = parseFloat(livePrice.price);
+            const parsedLivePrice = safeParseFloat(livePrice.price);
 
             // SANITY CHECK: Validate price is in valid range for active markets
             if (parsedLivePrice > 0.01 && parsedLivePrice < 0.99 && !isNaN(parsedLivePrice)) {
@@ -178,12 +179,12 @@ export async function getDashboardData(userId: string) {
                     invalidPrice: livePrice.price,
                     source: livePrice.source
                 });
-                rawPrice = parseFloat(pos.currentPrice || pos.entryPrice);
+                rawPrice = safeParseFloat(pos.currentPrice || pos.entryPrice);
                 needsDirectionAdjustment = false;
             }
         } else {
             // Fallback: Use stored price (already direction-adjusted in DB)
-            rawPrice = parseFloat(pos.currentPrice || pos.entryPrice);
+            rawPrice = safeParseFloat(pos.currentPrice || pos.entryPrice);
             needsDirectionAdjustment = false;
         }
 
@@ -227,7 +228,7 @@ export async function getDashboardData(userId: string) {
             marketId: pos.marketId,
             marketTitle: marketTitles.get(pos.marketId) || `Market ${pos.marketId.slice(0, 8)}...`,
             direction: pos.direction as 'YES' | 'NO',
-            sizeAmount: parseFloat(pos.sizeAmount) || 0,
+            sizeAmount: safeParseFloat(pos.sizeAmount),
             shares,
             entryPrice: entry,
             currentPrice: effectiveCurrentPrice,
@@ -240,8 +241,8 @@ export async function getDashboardData(userId: string) {
 
 
     // 6. Calculate TRUE EQUITY (cash + position value)
-    const cashBalance = parseFloat(activeChallenge.currentBalance);
-    const startingBalance = parseFloat(activeChallenge.startingBalance);
+    const cashBalance = safeParseFloat(activeChallenge.currentBalance);
+    const startingBalance = safeParseFloat(activeChallenge.startingBalance);
 
     // CRITICAL: Defensive fallback for rulesConfig to prevent server crash on malformed data
     const rawRules = activeChallenge.rulesConfig as Record<string, unknown> | null;
@@ -250,9 +251,9 @@ export async function getDashboardData(userId: string) {
     const profitTarget = (rules.profitTarget as number) ?? defaultProfitTarget;
 
     // Safe fallbacks: ensure HWM and SOD are valid (not 0 or missing)
-    const hwmParsed = parseFloat(activeChallenge.highWaterMark || "0");
+    const hwmParsed = safeParseFloat(activeChallenge.highWaterMark);
     const highWaterMark = hwmParsed > 0 ? hwmParsed : startingBalance;
-    const sodParsed = parseFloat(activeChallenge.startOfDayBalance || "0");
+    const sodParsed = safeParseFloat(activeChallenge.startOfDayBalance);
     const startOfDayBalance = sodParsed > 0 ? sodParsed : startingBalance;
 
     const totalPositionValue = positionsWithPnL.reduce((sum, p) => sum + p.positionValue, 0);
@@ -290,8 +291,8 @@ export async function getDashboardData(userId: string) {
         }
 
         const fundedRules = FUNDED_RULES[tier];
-        const profitSplit = parseFloat(activeChallenge.profitSplit || "0.80");
-        const payoutCap = parseFloat(activeChallenge.payoutCap || fundedRules.payoutCap.toString());
+        const profitSplit = safeParseFloat(activeChallenge.profitSplit, 0.80);
+        const payoutCap = safeParseFloat(activeChallenge.payoutCap, fundedRules.payoutCap);
         const activeTradingDays = activeChallenge.activeTradingDays || 0;
         const consistencyFlagged = activeChallenge.consistencyFlagged || false;
         const lastActivityAt = activeChallenge.lastActivityAt;

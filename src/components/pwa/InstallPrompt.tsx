@@ -61,7 +61,7 @@ export function InstallPrompt() {
                 >
                     <div className="bg-[#1A232E]/95 backdrop-blur-xl border border-[#2E3A52] rounded-2xl p-4 shadow-[0_0_60px_-15px_rgba(0,0,0,0.5)] ring-1 ring-[#2E3A52]">
                         <div className="flex items-start gap-3">
-                            <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-[#2E81FF] to-cyan-500 rounded-xl flex items-center justify-center">
+                            <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-[#29af73] to-cyan-500 rounded-xl flex items-center justify-center">
                                 <Download className="w-6 h-6 text-white" />
                             </div>
 
@@ -75,7 +75,7 @@ export function InstallPrompt() {
 
                                 <button
                                     onClick={handleInstall}
-                                    className="mt-3 w-full bg-[#2E81FF] hover:bg-[#1a5acc] text-white font-bold py-2.5 px-4 rounded-lg transition-all duration-200 hover:shadow-[0_0_20px_-5px_rgba(46,129,255,0.6)]"
+                                    className="mt-3 w-full bg-[#29af73] hover:bg-[#1a5acc] text-white font-bold py-2.5 px-4 rounded-lg transition-all duration-200 hover:shadow-[0_0_20px_-5px_rgba(46,129,255,0.6)]"
                                 >
                                     {isIOS ? "View Instructions" : "Install Now"}
                                 </button>
@@ -101,7 +101,7 @@ export function InstallPrompt() {
                 >
                     <div className="bg-[#1A232E]/95 backdrop-blur-xl border border-[#2E3A52] rounded-2xl p-4 shadow-[0_0_60px_-15px_rgba(0,0,0,0.5)] ring-1 ring-[#2E3A52]">
                         <div className="flex items-start gap-3">
-                            <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-[#2E81FF] to-cyan-500 rounded-xl flex items-center justify-center">
+                            <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-[#29af73] to-cyan-500 rounded-xl flex items-center justify-center">
                                 <Share className="w-6 h-6 text-white" />
                             </div>
 
@@ -111,15 +111,15 @@ export function InstallPrompt() {
                                 </h3>
                                 <ol className="text-zinc-400 text-sm space-y-1.5 leading-relaxed">
                                     <li className="flex items-start gap-2">
-                                        <span className="text-[#2E81FF] font-bold">1.</span>
+                                        <span className="text-[#29af73] font-bold">1.</span>
                                         <span>Tap the <Share className="w-4 h-4 inline mx-1" /> share button</span>
                                     </li>
                                     <li className="flex items-start gap-2">
-                                        <span className="text-[#2E81FF] font-bold">2.</span>
+                                        <span className="text-[#29af73] font-bold">2.</span>
                                         <span>Scroll and tap "Add to Home Screen"</span>
                                     </li>
                                     <li className="flex items-start gap-2">
-                                        <span className="text-[#2E81FF] font-bold">3.</span>
+                                        <span className="text-[#29af73] font-bold">3.</span>
                                         <span>Tap "Add" in the top right</span>
                                     </li>
                                 </ol>

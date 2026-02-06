@@ -228,7 +228,7 @@ export function MobileTradeSheet({
                                             className={cn(
                                                 "px-4 py-3 rounded-xl text-sm font-bold transition-all flex-1 min-w-[60px]",
                                                 amount === val
-                                                    ? "bg-[#2E81FF] text-white"
+                                                    ? "bg-[#29af73] text-white"
                                                     : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
                                             )}
                                         >
@@ -240,7 +240,7 @@ export function MobileTradeSheet({
                                         className={cn(
                                             "px-4 py-3 rounded-xl text-sm font-bold transition-all flex-1 min-w-[60px]",
                                             amount === Math.floor(balance)
-                                                ? "bg-[#2E81FF] text-white"
+                                                ? "bg-[#29af73] text-white"
                                                 : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
                                         )}
                                     >

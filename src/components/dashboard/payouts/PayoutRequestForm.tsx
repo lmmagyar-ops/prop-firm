@@ -75,9 +75,9 @@ export function PayoutRequestForm({ availableBalance }: { availableBalance: numb
                     <p className="text-sm text-zinc-500">Trading Withdrawal</p>
                     <p className="text-2xl font-bold font-mono text-zinc-600">$0.00</p>
                 </div>
-                <div className="flex-1 p-4 bg-[#2E81FF]/10 border border-[#2E81FF]/30 rounded-xl text-center cursor-pointer relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-4 h-4 bg-[#2E81FF] rounded-bl-lg" />
-                    <p className="text-sm text-[#2E81FF] font-bold">Propshot Payout</p>
+                <div className="flex-1 p-4 bg-[#29af73]/10 border border-[#29af73]/30 rounded-xl text-center cursor-pointer relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-4 h-4 bg-[#29af73] rounded-bl-lg" />
+                    <p className="text-sm text-[#29af73] font-bold">Propshot Payout</p>
                     <p className="text-2xl font-bold font-mono text-white">$300.00</p>
                 </div>
             </div>
@@ -91,7 +91,7 @@ export function PayoutRequestForm({ availableBalance }: { availableBalance: numb
                     value={payoutData.amount}
                     onChange={(e) => setPayoutData({ ...payoutData, amount: e.target.value })}
                     placeholder="$0.00"
-                    className="mt-2 bg-[#0E1217] border-[#2E3A52] text-white font-mono text-lg focus:border-[#2E81FF]/50"
+                    className="mt-2 bg-[#0E1217] border-[#2E3A52] text-white font-mono text-lg focus:border-[#29af73]/50"
                 />
                 <p className="text-xs text-zinc-500 mt-1">Minimum payout: $100.00</p>
             </div>
@@ -123,7 +123,7 @@ export function PayoutRequestForm({ availableBalance }: { availableBalance: numb
                             value={payoutData.walletAddress}
                             onChange={(e) => setPayoutData({ ...payoutData, walletAddress: e.target.value })}
                             placeholder="Paste Wallet Address"
-                            className="mt-2 bg-[#0E1217] border-[#2E3A52] text-white font-mono text-sm focus:border-[#2E81FF]/50"
+                            className="mt-2 bg-[#0E1217] border-[#2E3A52] text-white font-mono text-sm focus:border-[#29af73]/50"
                         />
                     </div>
 
@@ -134,7 +134,7 @@ export function PayoutRequestForm({ availableBalance }: { availableBalance: numb
                             value={payoutData.walletAddressConfirm}
                             onChange={(e) => setPayoutData({ ...payoutData, walletAddressConfirm: e.target.value })}
                             placeholder="Confirm Wallet Address"
-                            className="mt-2 bg-[#0E1217] border-[#2E3A52] text-white font-mono text-sm focus:border-[#2E81FF]/50"
+                            className="mt-2 bg-[#0E1217] border-[#2E3A52] text-white font-mono text-sm focus:border-[#29af73]/50"
                         />
                     </div>
                 </div>

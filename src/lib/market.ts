@@ -90,16 +90,17 @@ export class MarketService {
     }
 
     private static getDemoOrderBook(): OrderBook {
+        // PARITY FIX (Jan 2026): Reduced from 50K to 5K shares for realistic depth
         return {
             bids: [
-                { price: "0.55", size: "50000" },
-                { price: "0.54", size: "50000" },
-                { price: "0.53", size: "50000" }
+                { price: "0.55", size: "5000" },
+                { price: "0.53", size: "5000" },
+                { price: "0.51", size: "5000" }
             ],
             asks: [
-                { price: "0.56", size: "50000" },
-                { price: "0.57", size: "50000" },
-                { price: "0.58", size: "50000" }
+                { price: "0.57", size: "5000" },
+                { price: "0.59", size: "5000" },
+                { price: "0.61", size: "5000" }
             ]
         };
     }
@@ -453,22 +454,28 @@ export class MarketService {
 
     /**
      * Build a synthetic order book from a known price.
-     * Simulates deep liquidity around the current price.
+     * Simulates REALISTIC liquidity around the current price.
      * Public for use by TradeExecutor price integrity checks.
+     * 
+     * PARITY FIX (Jan 2026): Reduced from 50K to 5K shares per level
+     * and widened spread from 1¢ to 2¢ to match typical Polymarket depth.
      */
     static buildSyntheticOrderBookPublic(price: number): OrderBook {
-        // Create bids slightly below and asks slightly above the current price
-        const spread = 0.01; // 1 cent spread
+        // PARITY: Real Polymarket spreads are 0.5%-10%, we use 2¢
+        const spread = 0.02; // 2 cent spread (was 1¢)
+        // PARITY: Real Polymarket depth is ~1K-10K per level
+        const depthPerLevel = "5000"; // (was 50000)
+
         return {
             bids: [
-                { price: Math.max(0.01, price - spread).toFixed(2), size: "50000" },
-                { price: Math.max(0.01, price - spread * 2).toFixed(2), size: "50000" },
-                { price: Math.max(0.01, price - spread * 3).toFixed(2), size: "50000" }
+                { price: Math.max(0.01, price - spread).toFixed(2), size: depthPerLevel },
+                { price: Math.max(0.01, price - spread * 2).toFixed(2), size: depthPerLevel },
+                { price: Math.max(0.01, price - spread * 3).toFixed(2), size: depthPerLevel }
             ],
             asks: [
-                { price: Math.min(0.99, price + spread).toFixed(2), size: "50000" },
-                { price: Math.min(0.99, price + spread * 2).toFixed(2), size: "50000" },
-                { price: Math.min(0.99, price + spread * 3).toFixed(2), size: "50000" }
+                { price: Math.min(0.99, price + spread).toFixed(2), size: depthPerLevel },
+                { price: Math.min(0.99, price + spread * 2).toFixed(2), size: depthPerLevel },
+                { price: Math.min(0.99, price + spread * 3).toFixed(2), size: depthPerLevel }
             ]
         };
     }

@@ -803,7 +803,7 @@ class IngestionWorker {
             }
 
             // Store events in Redis
-            await this.redis.set("event:active_list", JSON.stringify(processedEvents));
+            await this.redis.set("event:active_list", JSON.stringify(processedEvents), 'EX', 600);
             console.log(`[Ingestion] Stored ${processedEvents.length} featured events (${allEventTokenIds.length} total markets).`);
 
             // Add event token IDs to active polling (with memory bounds)
@@ -914,7 +914,7 @@ class IngestionWorker {
             }
 
             // Store in Redis
-            await this.redis.set("market:active_list", JSON.stringify(allMarkets));
+            await this.redis.set("market:active_list", JSON.stringify(allMarkets), 'EX', 600);
 
             // MERGE binary market IDs with existing event token IDs (don't overwrite!)
             // This ensures order books are fetched for BOTH event markets AND binary markets
@@ -1054,7 +1054,7 @@ class IngestionWorker {
             }
 
             // Single SET with all prices (1 command instead of 322!)
-            await this.redis.set('market:prices:all', JSON.stringify(allPrices));
+            await this.redis.set('market:prices:all', JSON.stringify(allPrices), 'EX', 600);
 
             // Single publish for real-time UI updates
             await this.redis.publish('market:prices', JSON.stringify(allPrices));
@@ -1107,7 +1107,7 @@ class IngestionWorker {
         // Store ALL order books in SINGLE Redis key (1 call instead of 318)
         if (Object.keys(books).length > 0) {
             try {
-                await this.redis.set('market:orderbooks', JSON.stringify(books));
+                await this.redis.set('market:orderbooks', JSON.stringify(books), 'EX', 600);
                 console.log(`[Ingestion] Updated ${Object.keys(books).length} order books (single key).`);
             } catch (err) {
                 console.error("[Ingestion] Book write error:", err);

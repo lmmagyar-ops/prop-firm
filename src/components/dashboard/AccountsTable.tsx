@@ -50,7 +50,7 @@ export function AccountsTable({
 
     const getStatusColor = (status: string) => {
         switch (status.toLowerCase()) {
-            case 'active': return 'bg-[#2E81FF]/10 text-[#2E81FF] border-[#2E81FF]/20 shadow-[0_0_10px_rgba(46,129,255,0.15)]';
+            case 'active': return 'bg-[#29af73]/10 text-[#29af73] border-[#29af73]/20 shadow-[0_0_10px_rgba(46,129,255,0.15)]';
             case 'passed': return 'bg-[#10B981]/10 text-[#10B981] border-[#10B981]/20 shadow-[0_0_10px_rgba(16,185,129,0.15)]';
             case 'failed': return 'bg-red-500/10 text-red-500 border-red-500/20';
             default: return 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20';

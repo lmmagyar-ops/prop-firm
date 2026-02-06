@@ -1,12 +1,12 @@
 {
-    "name": "Project X Trading",
-    "short_name": "Project X",
+    "name": "Funded Prediction",
+    "short_name": "Funded Prediction",
     "description": "Trade Polymarket with our capital. Zero personal liability.",
     "start_url": "/",
     "display": "standalone",
     "orientation": "portrait",
     "background_color": "#050505",
-    "theme_color": "#2E81FF",
+    "theme_color": "#29af73",
     "categories": [
         "finance",
         "trading",

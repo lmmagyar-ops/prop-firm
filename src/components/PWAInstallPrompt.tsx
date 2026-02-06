@@ -107,8 +107,8 @@ export function PWAInstallPrompt() {
                         </button>
 
                         <div className="flex items-start gap-3">
-                            <div className="flex-shrink-0 w-12 h-12 bg-[#2E81FF]/20 rounded-xl flex items-center justify-center">
-                                <Smartphone className="w-6 h-6 text-[#2E81FF]" />
+                            <div className="flex-shrink-0 w-12 h-12 bg-[#29af73]/20 rounded-xl flex items-center justify-center">
+                                <Smartphone className="w-6 h-6 text-[#29af73]" />
                             </div>
                             <div className="flex-1 min-w-0">
                                 <h3 className="text-sm font-bold text-white mb-1">
@@ -124,7 +124,7 @@ export function PWAInstallPrompt() {
                                 {!isIOS && deferredPrompt && (
                                     <button
                                         onClick={handleInstall}
-                                        className="flex items-center gap-2 px-4 py-2 bg-[#2E81FF] text-white text-sm font-semibold rounded-lg hover:bg-[#2E81FF]/90 transition-colors"
+                                        className="flex items-center gap-2 px-4 py-2 bg-[#29af73] text-white text-sm font-semibold rounded-lg hover:bg-[#29af73]/90 transition-colors"
                                     >
                                         <Download className="w-4 h-4" />
                                         Install App

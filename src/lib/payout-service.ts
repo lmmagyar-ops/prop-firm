@@ -11,6 +11,7 @@ import { eq, and } from "drizzle-orm";
 import { ResolutionDetector } from "./resolution-detector";
 import { FUNDED_RULES, CONSISTENCY_CONFIG } from "./funded-rules";
 import { nanoid } from "nanoid";
+import { safeParseFloat } from "./safe-parse";
 
 // Types
 export interface PayoutEligibility {
@@ -75,8 +76,8 @@ export class PayoutService {
         }
 
         // Check 3: Calculate net profit
-        const currentBalance = parseFloat(challenge.currentBalance);
-        const startingBalance = parseFloat(challenge.startingBalance);
+        const currentBalance = safeParseFloat(challenge.currentBalance);
+        const startingBalance = safeParseFloat(challenge.startingBalance);
         const netProfit = currentBalance - startingBalance;
 
         if (netProfit <= 0) {
@@ -120,8 +121,8 @@ export class PayoutService {
             throw new Error("Challenge not found");
         }
 
-        const currentBalance = parseFloat(challenge.currentBalance);
-        const startingBalance = parseFloat(challenge.startingBalance);
+        const currentBalance = safeParseFloat(challenge.currentBalance);
+        const startingBalance = safeParseFloat(challenge.startingBalance);
 
         // 1. Gross profit
         const grossProfit = Math.max(0, currentBalance - startingBalance);
@@ -137,11 +138,11 @@ export class PayoutService {
         const adjustedProfit = Math.max(0, grossProfit - excludedPnl);
 
         // 4. Apply payout cap (max = starting balance or stored cap)
-        const payoutCap = parseFloat(challenge.payoutCap || challenge.startingBalance);
+        const payoutCap = safeParseFloat(challenge.payoutCap || challenge.startingBalance);
         const cappedProfit = Math.min(adjustedProfit, payoutCap);
 
         // 5. Apply profit split
-        const profitSplit = parseFloat(challenge.profitSplit || "0.80");
+        const profitSplit = safeParseFloat(challenge.profitSplit, 0.80);
         const netPayout = cappedProfit * profitSplit;
         const firmShare = cappedProfit - netPayout;
 
@@ -276,7 +277,7 @@ export class PayoutService {
             // Update challenge total paid out
             const [challenge] = await db.select().from(challenges).where(eq(challenges.id, payout.challengeId!));
             if (challenge) {
-                const totalPaid = parseFloat(challenge.totalPaidOut || "0") + parseFloat(payout.amount);
+                const totalPaid = safeParseFloat(challenge.totalPaidOut) + safeParseFloat(payout.amount);
                 await db.update(challenges)
                     .set({ totalPaidOut: totalPaid.toFixed(2) })
                     .where(eq(challenges.id, payout.challengeId!));

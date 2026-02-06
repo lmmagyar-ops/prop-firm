@@ -34,19 +34,19 @@ export default async function SettingsPage() {
                 <TabsList className="grid w-full max-w-lg grid-cols-3 mb-8 bg-[#1A232E] border border-[#2E3A52] p-1 rounded-xl">
                     <TabsTrigger
                         value="user-info"
-                        className="data-[state=active]:bg-[#2E81FF] data-[state=active]:text-white text-zinc-400 rounded-lg transition-all"
+                        className="data-[state=active]:bg-[#29af73] data-[state=active]:text-white text-zinc-400 rounded-lg transition-all"
                     >
                         User Info
                     </TabsTrigger>
                     <TabsTrigger
                         value="kyc"
-                        className="data-[state=active]:bg-[#2E81FF] data-[state=active]:text-white text-zinc-400 rounded-lg transition-all"
+                        className="data-[state=active]:bg-[#29af73] data-[state=active]:text-white text-zinc-400 rounded-lg transition-all"
                     >
                         KYC
                     </TabsTrigger>
                     <TabsTrigger
                         value="address"
-                        className="data-[state=active]:bg-[#2E81FF] data-[state=active]:text-white text-zinc-400 rounded-lg transition-all"
+                        className="data-[state=active]:bg-[#29af73] data-[state=active]:text-white text-zinc-400 rounded-lg transition-all"
                     >
                         Address
                     </TabsTrigger>

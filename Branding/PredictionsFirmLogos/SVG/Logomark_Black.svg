@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_2" data-name="Layer 2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1408.54 332.27">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #29af73;
+      }
+
+      .cls-2 {
+        fill: #295353;
+      }
+
+      .cls-3 {
+        font-family: Urbane-Medium, Urbane;
+        font-size: 164.29px;
+        font-weight: 500;
+      }
+
+      .cls-4 {
+        fill: #9e0028;
+      }
+
+      .cls-5 {
+        letter-spacing: -.02em;
+      }
+
+      .cls-6 {
+        fill: #ad2a3d;
+      }
+
+      .cls-7 {
+        letter-spacing: .02em;
+      }
+
+      .cls-8 {
+        letter-spacing: .02em;
+      }
+
+      .cls-9 {
+        letter-spacing: 0em;
+      }
+    </style>
+  </defs>
+  <g id="Layer_1-2" data-name="Layer 1">
+    <g>
+      <g>
+        <text class="cls-3" transform="translate(434.65 141.62)"><tspan class="cls-7" x="0" y="0">P</tspan><tspan class="cls-5" x="108.92" y="0">r</tspan><tspan class="cls-7" x="168.56" y="0">edi</tspan><tspan class="cls-9" x="439.14" y="0">c</tspan><tspan class="cls-8" x="544.61" y="0">tions</tspan><tspan class="cls-7"><tspan x="0" y="140.71">Firm</tspan></tspan></text>
+        <g>
+          <path class="cls-4" d="M185.51,44.7h-.16c.05,0,.11,0,.16,0Z"/>
+          <path class="cls-2" d="M185.51,44.7h.37c-.12,0-.24,0-.37,0Z"/>
+        </g>
+      </g>
+      <g>
+        <path class="cls-1" d="M164.48,112.77c-11.21-.07-14.81-15.13-4.84-20.26l79.64-47.8H11.47c-6.34,0-11.47,5.14-11.47,11.47v197.64c0,6.34,5.14,11.47,11.47,11.47h84.77l102.75-152.32-34.52-.21Z"/>
+        <path class="cls-6" d="M392.53,44.71h-107.73l-17.25,124.92c-1.62,11.1-17.04,12.57-20.74,1.99l-11.38-32.59-84.14,126.28h241.24c6.34,0,11.47-5.14,11.47-11.47V56.19c0-6.34-5.14-11.47-11.47-11.47Z"/>
+      </g>
+    </g>
+  </g>
+</svg>

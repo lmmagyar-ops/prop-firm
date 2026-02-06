@@ -204,7 +204,7 @@ export function DashboardView({ initialBalance = null, demoMode = false, userId 
             <div className="lg:hidden fixed bottom-20 left-4 right-4 z-40">
                 <button
                     onClick={() => router.push('/dashboard/trade')}
-                    className="w-full bg-[#2E81FF] text-white font-black uppercase py-4 rounded-xl shadow-2xl shadow-blue-900/50 border border-blue-500/50 flex items-center justify-center gap-2"
+                    className="w-full bg-[#29af73] text-white font-black uppercase py-4 rounded-xl shadow-2xl shadow-blue-900/50 border border-blue-500/50 flex items-center justify-center gap-2"
                 >
                     Trade Now • {(price * 100).toFixed(1)}¢
                 </button>

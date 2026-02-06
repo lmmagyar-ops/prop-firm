@@ -12,6 +12,7 @@ import { challenges, trades, positions } from "@/db/schema";
 import { eq, and, gte, sql, lt } from "drizzle-orm";
 import { CONSISTENCY_CONFIG } from "./funded-rules";
 import { subDays, startOfDay, endOfDay, isSameDay } from "date-fns";
+import { safeParseFloat } from "./safe-parse";
 
 export interface ActivityCheckResult {
     activeTradingDays: number;
@@ -72,8 +73,8 @@ export class ActivityTracker {
             return { flagged: false };
         }
 
-        const currentBalance = parseFloat(challenge.currentBalance);
-        const startingBalance = parseFloat(challenge.startingBalance);
+        const currentBalance = safeParseFloat(challenge.currentBalance);
+        const startingBalance = safeParseFloat(challenge.startingBalance);
         const cycleStart = challenge.payoutCycleStart || challenge.startedAt;
 
         if (!cycleStart) {
@@ -112,7 +113,7 @@ export class ActivityTracker {
         });
 
         const todaysProfit = todaysClosedPositions.reduce((sum, pos) => {
-            return sum + parseFloat(pos.pnl || "0");
+            return sum + safeParseFloat(pos.pnl);
         }, 0);
 
         // Check if today's profit is >50% of total

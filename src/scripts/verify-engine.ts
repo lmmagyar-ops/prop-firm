@@ -1,4 +1,5 @@
-import 'dotenv/config'; // Load env vars
+import dotenv from 'dotenv';
+dotenv.config({ path: '.env.local' }); // Load env vars from .env.local
 import { db } from '@/db';
 import { users, challenges, positions } from '@/db/schema';
 import { eq } from 'drizzle-orm';
@@ -13,21 +14,48 @@ const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
 async function runVerification() {
     console.log('\n🧪 STARTING ENGINE VERIFICATION (GOLDEN PATH)...\n');
 
-    // 0. SEED MARKET DATA (Redis)
+    // 0. SEED MARKET DATA (Redis) - using the correct key formats
     const MARKET_ID = '21742633140121905979720502385255162663563053022834833784511119623297328612769';
     const TEST_PRICE = "0.50";
 
     logger.info('Seeding Redis with mock market data...', { marketId: MARKET_ID });
-    await redis.set(`market:price:${MARKET_ID}`, JSON.stringify({
-        asset_id: MARKET_ID,
+
+    // MarketService reads from 'market:prices:all' (consolidated prices)
+    const existingPrices = await redis.get('market:prices:all');
+    const pricesMap = existingPrices ? JSON.parse(existingPrices) : {};
+    pricesMap[MARKET_ID] = {
         price: TEST_PRICE,
         timestamp: Date.now()
-    }));
+    };
+    await redis.set('market:prices:all', JSON.stringify(pricesMap));
 
-    await redis.set(`market:book:${MARKET_ID}`, JSON.stringify({
+    // MarketService reads from 'market:orderbooks' (consolidated order books)
+    const existingBooks = await redis.get('market:orderbooks');
+    const booksMap = existingBooks ? JSON.parse(existingBooks) : {};
+    booksMap[MARKET_ID] = {
         bids: [{ price: "0.49", size: "10000" }, { price: "0.48", size: "5000" }],
         asks: [{ price: "0.51", size: "10000" }, { price: "0.52", size: "5000" }]
-    }));
+    };
+    await redis.set('market:orderbooks', JSON.stringify(booksMap));
+
+    // RiskEngine uses getMarketById() which reads from 'market:active_list'
+    const existingMarkets = await redis.get('market:active_list');
+    const marketsList = existingMarkets ? JSON.parse(existingMarkets) : [];
+    // Add our test market if not already present
+    if (!marketsList.find((m: any) => m.id === MARKET_ID)) {
+        marketsList.push({
+            id: MARKET_ID,
+            question: 'Test Market for Engine Verification',
+            description: 'Mock market used for trading engine testing',
+            image: '',
+            basePrice: parseFloat(TEST_PRICE),
+            currentPrice: parseFloat(TEST_PRICE),
+            volume: 15000000, // $15M volume - high enough to pass volume rules
+            category: 'politics',
+            platform: 'polymarket'
+        });
+        await redis.set('market:active_list', JSON.stringify(marketsList));
+    }
 
     // 1. SETUP: Ensure User & Active Challenge Exists
     const TEST_USER_ID = 'verify-bot-' + Date.now();

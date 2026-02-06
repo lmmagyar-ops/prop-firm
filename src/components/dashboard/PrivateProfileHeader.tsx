@@ -15,13 +15,13 @@ export function PrivateProfileHeader({ user }: PrivateProfileHeaderProps) {
             {/* Background Pattern: Cyber Grid */}
             <div className="absolute inset-0 opacity-[0.03]"
                 style={{
-                    backgroundImage: `linear-gradient(#2E81FF 1px, transparent 1px), linear-gradient(90deg, #2E81FF 1px, transparent 1px)`,
+                    backgroundImage: `linear-gradient(#29af73 1px, transparent 1px), linear-gradient(90deg, #29af73 1px, transparent 1px)`,
                     backgroundSize: '24px 24px'
                 }}
             />
 
             {/* Ambient Glow */}
-            <div className="absolute -top-24 -right-24 w-64 h-64 bg-[#2E81FF]/10 rounded-full blur-[100px] pointer-events-none group-hover:bg-[#2E81FF]/20 transition-all duration-700" />
+            <div className="absolute -top-24 -right-24 w-64 h-64 bg-[#29af73]/10 rounded-full blur-[100px] pointer-events-none group-hover:bg-[#29af73]/20 transition-all duration-700" />
 
             <div className="relative flex items-center gap-8">
                 {/* Avatar with Pulse */}

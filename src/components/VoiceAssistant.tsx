@@ -130,7 +130,7 @@ export function VoiceAssistant() {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: 20 }}
-                        className="fixed bottom-28 right-6 z-50 bg-[#2E81FF] text-white px-6 py-3 rounded-2xl shadow-2xl max-w-xs"
+                        className="fixed bottom-28 right-6 z-50 bg-[#29af73] text-white px-6 py-3 rounded-2xl shadow-2xl max-w-xs"
                     >
                         <button
                             onClick={() => {
@@ -154,7 +154,7 @@ export function VoiceAssistant() {
                 onClick={isSessionActive ? handleStop : handleStart}
                 className={`fixed bottom-6 right-6 z-50 w-16 h-16 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 ${isSessionActive
                     ? 'bg-red-500 hover:bg-red-600'
-                    : 'bg-[#2E81FF] hover:bg-[#2563EB]'
+                    : 'bg-[#29af73] hover:bg-[#2563EB]'
                     }`}
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}

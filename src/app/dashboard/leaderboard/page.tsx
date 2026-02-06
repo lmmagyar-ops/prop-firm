@@ -135,9 +135,9 @@ export default function LeaderboardPage() {
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent className="bg-[#1A232E] border-[#2E3A52] text-white">
-                            <SelectItem value="season-12-dec" className="focus:bg-[#2E81FF]/20 cursor-pointer">Season 12: December</SelectItem>
-                            <SelectItem value="season-11-nov" className="focus:bg-[#2E81FF]/20 cursor-pointer">Season 11: November</SelectItem>
-                            <SelectItem value="season-10-oct" className="focus:bg-[#2E81FF]/20 cursor-pointer">Season 10: October</SelectItem>
+                            <SelectItem value="season-12-dec" className="focus:bg-[#29af73]/20 cursor-pointer">Season 12: December</SelectItem>
+                            <SelectItem value="season-11-nov" className="focus:bg-[#29af73]/20 cursor-pointer">Season 11: November</SelectItem>
+                            <SelectItem value="season-10-oct" className="focus:bg-[#29af73]/20 cursor-pointer">Season 10: October</SelectItem>
                         </SelectContent>
                     </Select>
 
@@ -195,8 +195,8 @@ export default function LeaderboardPage() {
                         <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="bg-[#1A232E] border-[#2E3A52] text-white">
-                        <SelectItem value="profit" className="focus:bg-[#2E81FF]/20">Sort by Profit</SelectItem>
-                        <SelectItem value="volume" className="focus:bg-[#2E81FF]/20">Sort by Volume</SelectItem>
+                        <SelectItem value="profit" className="focus:bg-[#29af73]/20">Sort by Profit</SelectItem>
+                        <SelectItem value="volume" className="focus:bg-[#29af73]/20">Sort by Volume</SelectItem>
                     </SelectContent>
                 </Select>
             </div>
@@ -227,7 +227,7 @@ export default function LeaderboardPage() {
                         paginatedData.map((entry) => (
                             <div
                                 key={entry.userId}
-                                className="px-6 py-4 hover:bg-[#2E81FF]/5 transition-colors group"
+                                className="px-6 py-4 hover:bg-[#29af73]/5 transition-colors group"
                             >
                                 <div className="grid grid-cols-[60px_50px_1fr_150px_150px_120px_120px_120px] gap-4 items-center">
                                     {/* Rank */}

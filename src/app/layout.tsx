@@ -30,8 +30,8 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   // Primary Meta
   title: {
-    default: "Propshot - World's First Prediction Market Prop Firm",
-    template: "%s | Propshot",
+    default: "Funded Prediction - World's First Prediction Market Prop Firm",
+    template: "%s | Funded Prediction",
   },
   description: "Trade prediction markets with our capital. Pass a simple evaluation, get funded up to $25K, and keep up to 90% of profits. Bi-weekly USDC payouts.",
   keywords: [
@@ -44,12 +44,12 @@ export const metadata: Metadata = {
     "trading evaluation",
     "crypto payouts",
   ],
-  authors: [{ name: "Propshot" }],
-  creator: "Propshot",
-  publisher: "Propshot",
+  authors: [{ name: "Funded Prediction" }],
+  creator: "Funded Prediction",
+  publisher: "Funded Prediction",
 
   // Canonical
-  metadataBase: new URL(process.env.NEXTAUTH_URL || "https://propshot.io"),
+  metadataBase: new URL(process.env.NEXTAUTH_URL || "https://predictionsfirm.com"),
   alternates: {
     canonical: "/",
   },
@@ -59,15 +59,15 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_US",
     url: "/",
-    siteName: "Propshot",
-    title: "Propshot - World's First Prediction Market Prop Firm",
+    siteName: "Funded Prediction",
+    title: "Funded Prediction - World's First Prediction Market Prop Firm",
     description: "Trade prediction markets with our capital. Pass a simple evaluation, get funded up to $25K, keep up to 90% of profits.",
     images: [
       {
         url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: "Propshot - Prediction Market Prop Firm",
+        alt: "Funded Prediction - Prediction Market Prop Firm",
       },
     ],
   },
@@ -75,10 +75,10 @@ export const metadata: Metadata = {
   // Twitter Card
   twitter: {
     card: "summary_large_image",
-    title: "Propshot - World's First Prediction Market Prop Firm",
+    title: "Funded Prediction - World's First Prediction Market Prop Firm",
     description: "Trade prediction markets with our capital. Get funded up to $25K, keep 90% of profits.",
     images: ["/og-image.png"],
-    creator: "@propshot_io",
+    creator: "@propfirmpm",
   },
 
   // Robots
@@ -102,7 +102,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'Propshot',
+    title: 'Funded Prediction',
   },
   other: {
     'mobile-web-app-capable': 'yes',

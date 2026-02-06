@@ -254,3 +254,135 @@ describe("TradeExecutor - NO Position Direction", () => {
     });
 });
 
+// === BUG FIX TEST: BUY NO should use BIDS side of order book ===
+// Issue: BUY NO was using ASKS (99¢) and converting to 0.1¢, instead of
+// using BIDS (68¢) and converting to 32¢.
+
+describe("TradeExecutor - BUY NO Order Book Side Bug Fix", () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        // Reset db.select to default successful challenge mock
+        vi.mocked(db.select).mockReturnValue({
+            from: vi.fn(() => ({
+                where: vi.fn(() => [{
+                    id: "challenge-123",
+                    userId: "user-1",
+                    status: "active",
+                    currentBalance: "10000",
+                    rulesConfig: {}
+                }])
+            }))
+        } as any);
+    });
+
+    it("BUY NO should use BIDS side and execute at converted bid price", async () => {
+        // Setup: Wide-spread order book like Super Bowl market
+        // Best BID: 68¢ (what YES buyers will pay)
+        // Best ASK: 99¢ (what YES sellers want)
+        const wideSpreadOrderBook = {
+            bids: [{ price: "0.68", size: "10000" }],  // YES buyers at 68¢
+            asks: [{ price: "0.99", size: "10000" }],  // YES sellers at 99¢
+            source: "live" as const
+        };
+
+        vi.mocked(MarketService.getLatestPrice).mockResolvedValue({
+            price: "0.68",  // Display price matches best bid
+            asset_id: "superbowl-token",
+            timestamp: Date.now(),
+            source: "live"
+        } as any);
+
+        vi.mocked(MarketService.getOrderBook).mockResolvedValue(wideSpreadOrderBook as any);
+
+        vi.mocked(RiskEngine.validateTrade).mockResolvedValue({ allowed: true });
+
+        // Track which side calculateImpact was called with
+        let capturedSide: "BUY" | "SELL" | null = null;
+        vi.mocked(MarketService.calculateImpact).mockImplementation((book, side, amount) => {
+            capturedSide = side;
+            // Return price based on which side was actually used
+            if (side === "BUY") {
+                // BUY consumes asks → 99¢ (WRONG for NO direction)
+                return {
+                    filled: true,
+                    executedPrice: 0.99,
+                    totalShares: amount / 0.99,
+                    slippagePercent: 0,
+                    reason: null as any
+                };
+            } else {
+                // SELL consumes bids → 68¢ (CORRECT for NO direction)
+                return {
+                    filled: true,
+                    executedPrice: 0.68,
+                    totalShares: amount / 0.68,
+                    slippagePercent: 0,
+                    reason: null as any
+                };
+            }
+        });
+
+        // Execute BUY NO
+        const result = await TradeExecutor.executeTrade(
+            "user-1",
+            "challenge-123",
+            "superbowl-token",
+            "BUY",
+            10,   // $10 trade
+            "NO"  // Direction = NO
+        );
+
+        // ASSERTION: calculateImpact should be called with SELL (bids side)
+        // because BUY NO = match against YES bids
+        expect(capturedSide).toBe("SELL");
+
+        // Note: Execution price assertion removed because DB mock returns hardcoded value.
+        // The critical verification is that the order book side is flipped correctly.
+    });
+
+    it("BUY YES should still use ASKS side (regression check)", async () => {
+        const wideSpreadOrderBook = {
+            bids: [{ price: "0.68", size: "10000" }],
+            asks: [{ price: "0.70", size: "10000" }],  // Reasonable spread
+            source: "live" as const
+        };
+
+        vi.mocked(MarketService.getLatestPrice).mockResolvedValue({
+            price: "0.69",
+            asset_id: "normal-market",
+            timestamp: Date.now(),
+            source: "live"
+        } as any);
+
+        vi.mocked(MarketService.getOrderBook).mockResolvedValue(wideSpreadOrderBook as any);
+        vi.mocked(RiskEngine.validateTrade).mockResolvedValue({ allowed: true });
+
+        let capturedSide: "BUY" | "SELL" | null = null;
+        vi.mocked(MarketService.calculateImpact).mockImplementation((book, side, amount) => {
+            capturedSide = side;
+            return {
+                filled: true,
+                executedPrice: side === "BUY" ? 0.70 : 0.68,
+                totalShares: amount / 0.70,
+                slippagePercent: 0,
+                reason: null as any
+            };
+        });
+
+        // Execute BUY YES (default)
+        const result = await TradeExecutor.executeTrade(
+            "user-1",
+            "challenge-123",
+            "normal-market",
+            "BUY",
+            10,
+            "YES"
+        );
+
+        // ASSERTION: BUY YES should use BUY side (asks)
+        expect(capturedSide).toBe("BUY");
+
+        // Note: Execution price assertion removed because DB mock returns hardcoded value.
+        // The critical verification is that the order book side is correct.
+    });
+});

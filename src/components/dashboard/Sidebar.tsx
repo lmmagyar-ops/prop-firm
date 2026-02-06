@@ -139,8 +139,8 @@ function NavItem({ icon: Icon, label, isActive, highlight, href = "#", className
             onClick={onClick}
             className={`
                 relative flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all
-                ${isActive ? "bg-[#2E81FF]/10 text-[#2E81FF] border-l-2 border-[#2E81FF]" : "text-[#94A3B8] hover:text-white hover:bg-[#1A232E]"}
-                ${highlight && !isActive ? "bg-[#2E81FF]/10 text-[#2E81FF] hover:bg-[#2E81FF]/20 border border-[#2E81FF]/20" : ""}
+                ${isActive ? "bg-[#29af73]/10 text-[#29af73] border-l-2 border-[#29af73]" : "text-[#94A3B8] hover:text-white hover:bg-[#1A232E]"}
+                ${highlight && !isActive ? "bg-[#29af73]/10 text-[#29af73] hover:bg-[#29af73]/20 border border-[#29af73]/20" : ""}
                 ${glow ? "animate-pulse bg-gradient-to-r from-green-500/20 to-blue-500/20 border border-green-500/50 shadow-[0_0_20px_rgba(34,197,94,0.3)]" : ""}
                 ${className || ""}
             `}

@@ -12,7 +12,7 @@ const NEWS_ITEMS = [
 
 export function NewsTickerBar() {
     return (
-        <div className="relative z-[60] bg-[#2E81FF] text-white text-[10px] md:text-xs font-bold py-1.5 overflow-hidden border-b border-[#2E81FF]/20">
+        <div className="relative z-[60] bg-[#29af73] text-white text-[10px] md:text-xs font-bold py-1.5 overflow-hidden border-b border-[#29af73]/20">
             <div className="flex whitespace-nowrap">
                 <motion.div
                     animate={{ x: [0, -1000] }}

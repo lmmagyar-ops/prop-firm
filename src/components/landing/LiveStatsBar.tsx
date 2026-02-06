@@ -79,10 +79,10 @@ function StatCard({
         >
             <div className="space-y-1">
                 <div className="flex items-center gap-2 text-zinc-500 text-xs font-bold uppercase tracking-wider">
-                    <Icon className="w-4 h-4 text-[#2E81FF]" aria-hidden="true" />
+                    <Icon className="w-4 h-4 text-[#29af73]" aria-hidden="true" />
                     {label}
                 </div>
-                <div className="text-2xl md:text-3xl font-black text-white group-hover:text-[#2E81FF] transition-colors">
+                <div className="text-2xl md:text-3xl font-black text-white group-hover:text-[#29af73] transition-colors">
                     {loading ? (
                         <Loader2 className="w-6 h-6 animate-spin text-zinc-500" />
                     ) : (

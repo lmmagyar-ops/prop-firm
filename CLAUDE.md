@@ -1,14 +1,18 @@
-# CLAUDE.md - Prediction Market Prop Firm
+# CLAUDE.md - Funded Prediction
 
-> **World's first Prediction Market Prop Firm** - A simulated trading platform where users trade on Polymarket/Kalshi data with firm capital.
+> **Funded Prediction** - A simulated trading platform where users trade on Polymarket/Kalshi data with firm capital.
 
 ## Quick Start
 
 ```bash
-# Development
+# Main App (Dashboard)
 npm run dev          # Start dev server (localhost:3000)
 npm run build        # Production build
 npm run lint         # ESLint check
+
+# Landing Page (Waitlist)
+cd propshot-waitlist && npm run dev -- -p 3002
+# Accessible at http://localhost:3002
 
 # Database
 npm run db:push      # Push Drizzle schema to PostgreSQL
@@ -33,13 +37,21 @@ DATABASE_URL="..." npx tsx scripts/grant-admin.ts email@example.com
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                         VERCEL                                  │
-│  ┌───────────────┐  ┌───────────────┐  ┌───────────────────┐   │
-│  │   Next.js     │  │   API Routes  │  │  Prisma Postgres  │   │
-│  │   Frontend    │  │   66 endpoints│  │    (Database)     │   │
-│  └───────────────┘  └───────────────┘  └───────────────────┘   │
+│                     VERCEL (Two Projects)                       │
+│                                                                 │
+│  ┌─────────────────────────┐     ┌───────────────────────────┐  │
+│  │   Funded Prediction     │     │   Landing Page (Waitlist) │  │
+│  │   (Main App / Dashboard)│     │   (propshot-waitlist)     │  │
+│  │   Next.js 16            │     │   Next.js                 │  │
+│  │   :3000                 │     │   :3002                   │  │
+│  └─────────────┬───────────┘     └───────────────────────────┘  │
+│                │                                                │
+│  ┌─────────────┴─┐  ┌───────────────┐  ┌───────────────────┐    │
+│  │   API Routes  │  │  Prisma Pg    │  │   Railway Redis   │    │
+│  │   (Logic)     │  │  (Database)   │  │   (Cache/Queue)   │    │
+│  └───────────────┘  └───────────────┘  └───────────────────┘    │
 └─────────────────────────────────────────────────────────────────┘
-                              ↕
+                               ↕
 ┌─────────────────────────────────────────────────────────────────┐
 │                         RAILWAY                                  │
 │  ┌───────────────────────────────────────────────────────────┐  │
@@ -47,12 +59,6 @@ DATABASE_URL="..." npx tsx scripts/grant-admin.ts email@example.com
 │  │  - Polymarket WebSocket (live prices)                      │  │
 │  │  - RiskMonitor (5s breach detection)                       │  │
 │  │  - Health server (:3001/health)                            │  │
-│  └───────────────────────────────────────────────────────────┘  │
-│  ┌───────────────────────────────────────────────────────────┐  │
-│  │  Redis (Flat-rate $5/mo)                                   │  │
-│  │  - Price cache: market:price:{id}, market:book:{id}        │  │
-│  │  - Event lists: event:active_list, kalshi:active_list      │  │
-│  │  - Leader election locks                                    │  │
 │  └───────────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -77,7 +83,7 @@ DATABASE_URL="..." npx tsx scripts/grant-admin.ts email@example.com
 
 ```
 src/
-├── app/                    # Next.js App Router
+├── app/                    # Next.js App Router (Main App)
 │   ├── admin/              # Admin dashboard (protected by role)
 │   ├── api/                # 70+ API routes
 │   ├── dashboard/          # Trader dashboard
@@ -106,6 +112,11 @@ src/
 │   └── health-server.ts    # HTTP health endpoint for Railway
 └── scripts/
     └── grant-admin.ts      # Grant admin role to users
+
+propshot-waitlist/          # Landing Page / Waitlist App (Standalone)
+├── src/app/                # Landing page Next.js App Router
+├── public/                 # Marketing assets (Logo.svg, etc.)
+└── package.json            # Separate dependencies
 ```
 
 ---
@@ -181,6 +192,19 @@ Trade Request → RiskEngine.validate() → MarketService.calculateImpact()
 - `src/lib/trade.ts` - TradeExecutor
 - `src/lib/trading/PositionManager.ts`
 - `src/lib/trading/BalanceManager.ts`
+
+**⚠️ NO Direction Order Book Selection (CRITICAL):**
+
+Prediction markets have only ONE order book (YES). NO trades must consume the opposite side:
+
+| Trade | Order Book Side | Why |
+|-------|-----------------|-----|
+| BUY YES | ASKS | Buy from YES sellers |
+| SELL YES | BIDS | Sell to YES buyers |
+| **BUY NO** | **BIDS** | YES buyers implicitly sell NO at (1 - bid) |
+| **SELL NO** | **ASKS** | YES sellers implicitly buy NO at (1 - ask) |
+
+This is handled by `effectiveSide` in `trade.ts` (line ~153).
 
 ### 2. Risk Monitoring (Real-time)
 
@@ -277,6 +301,23 @@ Real-time admin dashboard at `/admin/*` with the following features:
 
 **Mobile responsive:** Hamburger menu with slide-out drawer for mobile screens.
 
+### 5. Waitlist System
+
+The "Waitlist" is a standalone Next.js application (`propshot-waitlist/`) deployed separately to Vercel.
+
+**Architecture:**
+- **Repo:** Monorepo subdirectory `propshot-waitlist/`
+- **Domain:** `predictionsfirm.com` (Production), `propshot-waitlist.vercel.app` (Fallback)
+- **Deployment:** Vercel Project `propshot-waitlist` (Root Directory set to `propshot-waitlist/`)
+
+**Email Integration (Resend):**
+Uses Resend for transactional "Welcome" emails and audience collection.
+- **Workflow:** `POST /api/subscribe` -> Add Contact -> Send Welcome Email
+- **Critical Keys:**
+  - `RESEND_API_KEY`: Production key (starts with `re_...`)
+  - `RESEND_AUDIENCE_ID`: UUID for the specific audience list
+- **DNS:** Requires separate verification records (MX, SPF, DKIM) on `predictionsfirm.com` since the domain is shared between Vercel (Web) and Resend (Email).
+
 ---
 
 ## Environment Variables
@@ -294,6 +335,14 @@ DATABASE_URL=postgres://...
 # Google OAuth (optional)
 AUTH_GOOGLE_ID=...
 AUTH_GOOGLE_SECRET=...
+```
+
+### Waitlist App (Vercel)
+
+```env
+# Resend Integration
+RESEND_API_KEY=re_...
+RESEND_AUDIENCE_ID=...
 ```
 
 ### Railway (Ingestion Worker)
@@ -613,4 +662,157 @@ See `.agent/workflows/deploy.md` for detailed instructions.
 
 > [!IMPORTANT]
 > The payout *calculation* still correctly floors to 0 (you can't withdraw negative). Only the *display* was fixed to show accurate P&L.
+
+### Market Engine Parity Audit (Jan 29)
+| Change | Details |
+|--------|---------|
+| **PolymarketOracle** | NEW `src/lib/polymarket-oracle.ts` - Queries Gamma API for authoritative market resolution status, replaces price-move heuristic. 5-minute Redis caching. |
+| **Synthetic Order Book Depth** | Reduced from 50K to 5K shares per level in `buildSyntheticOrderBookPublic()` to match real Polymarket liquidity (~1K-10K per level). |
+| **Order Book Spread** | Widened from 1¢ to 2¢ in `buildSyntheticOrderBookPublic()` to match real market spreads (0.5%-10%). |
+| **Demo Fallback Updated** | `getDemoOrderBook()` also updated to 5K shares for consistency. |
+
+**Key Files:**
+- `src/lib/polymarket-oracle.ts` - Resolution detection via Gamma API
+- `src/lib/market.ts` - Synthetic order book generation (lines 92-105, 454-474)
+- `src/lib/resolution-detector.ts` - Integrates PolymarketOracle
+
+**Trade Execution Verification:**
+- BUY/SELL execution ✅
+- Slippage calculation ~2.86% ✅
+- P&L math verified ✅
+- Double-click prevention (already exists in `useTradeExecution` hook) ✅
+
+### Ghost Numbers Audit Fixes (Jan 29, 8:00 PM)
+
+| Fix | Details |
+|-----|---------|
+| **Extreme Price Guard** | Trades now blocked when `currentPrice ≤ 0.01` or `currentPrice ≥ 0.99`. Error: `MARKET_RESOLVED`. Prevents trading on effectively resolved markets. |
+| **Synthetic Order Book Logging** | Warning logged when trades execute against synthetic order books: `SYNTHETIC ORDERBOOK USED for trade on {marketId}`. Provides operational visibility for B-Book model. |
+
+**Key Files:**
+- `src/lib/trade.ts` - Lines 93-102 (extreme price guard), Lines 139-147 (synthetic logging)
+
+### P0 Critical Debt Fixes (Jan 29, 8:10 PM)
+
+| Fix | Details |
+|-----|---------|
+| **Redis TTL** | All 4 Redis writes in `ingestion.ts` now use `EX 600` (10-min TTL). If ingestion fails, stale data auto-expires instead of persisting forever. |
+| **NaN Guards** | Created `src/lib/safe-parse.ts` with `safeParseFloat()` utility. Updated `payout-service.ts`, `dashboard-service.ts`, `activity-tracker.ts` (21 total call sites). |
+
+**Key Files:**
+- `src/lib/safe-parse.ts` (NEW) - Safe parsing utilities
+- `src/workers/ingestion.ts` - Redis TTLs
+- `src/lib/payout-service.ts` - safeParseFloat
+- `src/lib/dashboard-service.ts` - safeParseFloat
+- `src/lib/activity-tracker.ts` - safeParseFloat
+
+**All Ghost Numbers Audit Debt: RESOLVED** ✅
+
+---
+
+## Trading Engine Number Discrepancy Audit
+
+> **MANDATORY PROCESS**: When ANY number appears wrong in the UI or trading calculations, follow this process systematically. Do NOT skip steps.
+
+### Step 1: Reproduce & Isolate (30 min)
+
+**Goal: Determine if the bug is in UI, API, or core logic.**
+
+```
+1. Open DevTools Network tab
+2. Make a trade or trigger the issue
+3. Capture and compare:
+   - What the API returns
+   - What the UI displays
+   - What the database stores
+```
+
+| If mismatch is here... | The bug is in... |
+|------------------------|------------------|
+| API response ≠ UI display | Frontend parsing/display code |
+| Database value ≠ API response | API calculation logic |
+| Trade input ≠ Database stored | TradeExecutor/core engine |
+
+### Step 2: Data Flow Trace (1 hour)
+
+**Goal: Follow one trade through the entire system with logging.**
+
+Add temporary trace logging at each layer:
+
+```typescript
+[TradeAPI]       → Received: $100 YES on market X
+[TradeExecutor]  → Calculated: 172.4 shares @ $0.58
+[PositionUpdate] → New position: 172.4 shares, entry $0.58
+[BalanceUpdate]  → New balance: $14,900
+[API Response]   → Sent: { shares: 172.4, price: 0.58 }
+[Frontend]       → Displayed: ???
+```
+
+### Step 3: Symptom-Specific Audits
+
+| Symptom | Audit Focus | Key Files |
+|---------|-------------|-----------|
+| Wrong P&L | `(currentPrice - entryPrice) * shares` calculation | `position-utils.ts`, `dashboard-service.ts` |
+| Wrong balance | Race conditions in balance updates | `trade.ts`, `evaluator.ts` |
+| Wrong entry price | Order book simulation vs display price | `trade.ts`, `market.ts` |
+| Numbers flickering | WebSocket vs REST race conditions | `useTradeExecution.ts` |
+| Stale prices | Redis TTLs, cache invalidation | `ingestion.ts`, `market.ts` |
+| NaN/Infinity | `parseFloat` on null/undefined | Use `safeParseFloat()` from `safe-parse.ts` |
+
+### Step 4: Run Reconciliation Script
+
+```bash
+# Validate all positions against trade history
+npx tsx scripts/reconcile-positions.ts
+
+# Check for orphaned/inconsistent data
+npx tsx scripts/data-integrity-check.ts
+```
+
+These scripts will report:
+- Positions with shares ≠ sum of trades
+- Entry prices that don't match weighted average
+- Orphaned positions (no user, no challenge)
+- Trades referencing deleted positions
+
+### Step 5: Add Invariant Assertions
+
+If root cause found, add runtime guards to prevent recurrence:
+
+```typescript
+// In TradeExecutor
+assert(newBalance >= 0, 'Balance cannot go negative');
+assert(Number.isFinite(newBalance), 'Balance must be finite');
+assert(shares > 0, 'Shares must be positive');
+assert(entryPrice > 0 && entryPrice < 1, 'Entry price must be valid');
+```
+
+### Step 6: Document in Journal
+
+After fixing, add an entry to `journal.md`:
+- What was wrong
+- Root cause
+- Fix applied
+- Files modified
+
+---
+
+## Reconciliation Scripts
+
+### `scripts/reconcile-positions.ts`
+
+Validates all open positions against their trade history:
+- Sum of trade shares should equal position shares
+- Weighted average of trade prices should equal entry price
+- Reports any mismatches with position IDs
+
+### `scripts/data-integrity-check.ts`
+
+Checks for orphaned and inconsistent data:
+- Positions without valid users
+- Positions without valid challenges
+- Trades referencing deleted positions
+- Challenges in impossible states
+
+---
 

@@ -151,7 +151,7 @@ export function ExitIntentModal({
                         </button>
 
                         {/* Icon */}
-                        <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-gradient-to-br from-[#2E81FF] to-purple-500 flex items-center justify-center">
+                        <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-gradient-to-br from-[#29af73] to-purple-500 flex items-center justify-center">
                             <Gift className="w-8 h-8 text-white" />
                         </div>
 
@@ -169,8 +169,8 @@ export function ExitIntentModal({
 
                         {/* Discount code */}
                         <div className="relative mb-6">
-                            <div className="flex items-center justify-center gap-3 py-4 px-6 bg-zinc-800/50 border border-dashed border-[#2E81FF]/50 rounded-lg">
-                                <span className="text-2xl font-mono font-bold text-[#2E81FF] tracking-wider">
+                            <div className="flex items-center justify-center gap-3 py-4 px-6 bg-zinc-800/50 border border-dashed border-[#29af73]/50 rounded-lg">
+                                <span className="text-2xl font-mono font-bold text-[#29af73] tracking-wider">
                                     {discountCode}
                                 </span>
                                 <button
@@ -199,7 +199,7 @@ export function ExitIntentModal({
                         {/* CTA */}
                         <button
                             onClick={handleContinue}
-                            className="w-full flex items-center justify-center gap-2 py-4 bg-[#2E81FF] text-white font-semibold rounded-full hover:bg-[#2E81FF]/90 transition-colors"
+                            className="w-full flex items-center justify-center gap-2 py-4 bg-[#29af73] text-white font-semibold rounded-full hover:bg-[#29af73]/90 transition-colors"
                         >
                             Claim My Discount
                             <ArrowRight className="w-5 h-5" />

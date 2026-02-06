@@ -194,7 +194,7 @@ export function MiniAcademy() {
 
                                         <button
                                             onClick={handleNext}
-                                            className="w-full mt-6 bg-[#2E81FF] hover:bg-[#2E81FF]/90 text-white font-bold py-4 rounded-xl transition-all duration-300 hover:scale-105 active:scale-95"
+                                            className="w-full mt-6 bg-[#29af73] hover:bg-[#29af73]/90 text-white font-bold py-4 rounded-xl transition-all duration-300 hover:scale-105 active:scale-95"
                                         >
                                             {currentScenario < SCENARIOS.length - 1 ? 'Next Question' : 'Try Again'}
                                         </button>

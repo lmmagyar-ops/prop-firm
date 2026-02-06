@@ -42,7 +42,7 @@ export function ScalingLadder() {
     return (
         <section className="relative z-10 max-w-7xl mx-auto px-6 py-32 overflow-hidden">
             {/* Background Glow */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[500px] bg-[#2E81FF]/5 blur-[120px] rounded-full pointer-events-none" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[500px] bg-[#29af73]/5 blur-[120px] rounded-full pointer-events-none" />
 
             {/* Header */}
             <div className="relative text-center space-y-4 mb-20">
@@ -55,7 +55,7 @@ export function ScalingLadder() {
                     <h2 className="text-4xl md:text-5xl font-black tracking-tighter text-white leading-tight">
                         Scale Your Capital.
                         <br />
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#2E81FF] to-cyan-400">
+                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#29af73] to-cyan-400">
                             Prove Your Edge.
                         </span>
                     </h2>
@@ -68,7 +68,7 @@ export function ScalingLadder() {
             {/* Ladder Visual */}
             <div className="relative grid grid-cols-1 md:grid-cols-4 gap-6">
                 {/* Connecting Line (Desktop) */}
-                <div className="hidden md:block absolute top-1/2 left-0 w-full h-1 bg-gradient-to-r from-zinc-800 via-[#2E81FF]/50 to-amber-500/50 -translate-y-1/2 -z-10" />
+                <div className="hidden md:block absolute top-1/2 left-0 w-full h-1 bg-gradient-to-r from-zinc-800 via-[#29af73]/50 to-amber-500/50 -translate-y-1/2 -z-10" />
 
                 {LEVELS.map((level, index) => (
                     <motion.div
@@ -81,7 +81,7 @@ export function ScalingLadder() {
                         className="relative group"
                     >
                         {/* Card */}
-                        <div className="h-full bg-[#131722]/80 backdrop-blur-sm border border-[#2E3A52] rounded-2xl p-6 hover:border-[#2E81FF]/50 transition-colors duration-300 flex flex-col items-center text-center">
+                        <div className="h-full bg-[#131722]/80 backdrop-blur-sm border border-[#2E3A52] rounded-2xl p-6 hover:border-[#29af73]/50 transition-colors duration-300 flex flex-col items-center text-center">
 
                             {/* Icon Badge */}
                             <div className={`w-12 h-12 rounded-full bg-gradient-to-br ${level.color} flex items-center justify-center mb-6 shadow-lg shadow-black/50 group-hover:scale-110 transition-transform duration-300`}>
@@ -92,7 +92,7 @@ export function ScalingLadder() {
                             <h3 className="text-2xl font-black text-white mb-1">
                                 {level.amount}
                             </h3>
-                            <p className="text-[#2E81FF] font-bold text-sm uppercase tracking-wider mb-6">
+                            <p className="text-[#29af73] font-bold text-sm uppercase tracking-wider mb-6">
                                 {level.label}
                             </p>
 
@@ -106,7 +106,7 @@ export function ScalingLadder() {
                                 <ul className="space-y-2 text-left mt-4">
                                     {level.features.map(feature => (
                                         <li key={feature} className="text-xs text-zinc-400 flex items-center gap-2">
-                                            <div className="w-1 h-1 rounded-full bg-[#2E81FF]" />
+                                            <div className="w-1 h-1 rounded-full bg-[#29af73]" />
                                             {feature}
                                         </li>
                                     ))}

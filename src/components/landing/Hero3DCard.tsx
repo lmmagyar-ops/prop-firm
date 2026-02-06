@@ -40,7 +40,7 @@ export function Hero3DCard() {
             onMouseLeave={handleMouseLeave}
         >
             {/* Background Atmosphere */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[#2E81FF]/10 blur-[120px] rounded-full pointer-events-none" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[#29af73]/10 blur-[120px] rounded-full pointer-events-none" />
 
             {/* Main Rotatable Container */}
             <motion.div
@@ -60,29 +60,29 @@ export function Hero3DCard() {
                     {/* Header */}
                     <div className="flex items-start justify-between mb-8 relative z-10">
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#2E81FF] to-blue-600 flex items-center justify-center shadow-[0_0_20px_rgba(46,129,255,0.4)]">
+                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#29af73] to-blue-600 flex items-center justify-center shadow-[0_0_20px_rgba(46,129,255,0.4)]">
                                 <Activity className="w-5 h-5 text-white" />
                             </div>
                             <div>
-                                <p className="text-[10px] font-bold text-[#2E81FF] uppercase tracking-widest mb-0.5">Prediction Engine</p>
+                                <p className="text-[10px] font-bold text-[#29af73] uppercase tracking-widest mb-0.5">Prediction Engine</p>
                                 <h3 className="text-white font-bold text-xl leading-tight">Fed Rate Cut <br /> in March?</h3>
                             </div>
                         </div>
-                        <div className="flex items-center gap-1.5 bg-[#2E81FF]/10 border border-[#2E81FF]/20 text-[#2E81FF] text-[10px] font-black px-2 py-1 rounded uppercase tracking-wider animate-pulse">
-                            <div className="w-1.5 h-1.5 rounded-full bg-[#2E81FF]" /> Live
+                        <div className="flex items-center gap-1.5 bg-[#29af73]/10 border border-[#29af73]/20 text-[#29af73] text-[10px] font-black px-2 py-1 rounded uppercase tracking-wider animate-pulse">
+                            <div className="w-1.5 h-1.5 rounded-full bg-[#29af73]" /> Live
                         </div>
                     </div>
 
                     {/* The Chart Visual */}
-                    <div className="relative h-40 w-full mb-6 rounded-xl border border-[#2E81FF]/20 overflow-hidden bg-[url('/grid-pattern.svg')]">
-                        <div className="absolute inset-0 bg-gradient-to-b from-[#2E81FF]/5 to-transparent" />
+                    <div className="relative h-40 w-full mb-6 rounded-xl border border-[#29af73]/20 overflow-hidden bg-[url('/grid-pattern.svg')]">
+                        <div className="absolute inset-0 bg-gradient-to-b from-[#29af73]/5 to-transparent" />
 
                         {/* Animated Line */}
                         <svg className="absolute inset-0 w-full h-full overflow-visible">
                             <motion.path
                                 d="M0,100 C80,100 120,60 200,50 C280,40 320,20 420,10"
                                 fill="none"
-                                stroke="#2E81FF"
+                                stroke="#29af73"
                                 strokeWidth="3"
                                 className="drop-shadow-[0_0_10px_rgba(46,129,255,0.5)]"
                                 initial={{ pathLength: 0 }}
@@ -99,7 +99,7 @@ export function Hero3DCard() {
                         </svg>
 
                         {/* Probability Badge */}
-                        <div className="absolute top-4 right-4 bg-[#2E81FF] text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-lg shadow-blue-500/20 tabular-nums">
+                        <div className="absolute top-4 right-4 bg-[#29af73] text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-lg shadow-blue-500/20 tabular-nums">
                             92% PROBABILITY
                         </div>
                     </div>

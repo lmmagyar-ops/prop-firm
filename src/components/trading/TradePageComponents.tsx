@@ -112,7 +112,7 @@ export function MarketFilterStrip() {
                             className={cn(
                                 "px-3 py-1 rounded-md text-xs font-bold whitespace-nowrap transition-colors h-7 flex items-center",
                                 i === 0
-                                    ? "bg-[#2E81FF] text-white"
+                                    ? "bg-[#29af73] text-white"
                                     : "bg-[#242E42] text-zinc-400 hover:text-white hover:bg-[#2C3647]"
                             )}
                         >
