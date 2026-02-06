@@ -92,6 +92,14 @@ export class PositionManager {
         const remainingShares = currentShares - sharesToSell;
         // Use live exit price if provided, otherwise fall back to stored price
         const finalExitPrice = exitPrice ?? parseFloat(position.currentPrice || position.entryPrice);
+
+        // INVARIANT: Exit price must be in valid prediction market range
+        // Prevents corrupted proceeds from nonsensical prices (0, >1, NaN)
+        if (!Number.isFinite(finalExitPrice) || finalExitPrice <= 0.001 || finalExitPrice >= 0.999) {
+            console.error(`[PositionManager] INVARIANT: Invalid exit price ${finalExitPrice} for position ${positionId}`);
+            throw new Error(`Invalid exit price: ${finalExitPrice}. Must be between 0.01 and 0.99.`);
+        }
+
         const proceeds = sharesToSell * finalExitPrice;
 
         if (remainingShares <= 0.0001) {

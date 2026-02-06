@@ -2,7 +2,7 @@ import { db } from "@/db";
 import { challenges, positions, users } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { FUNDED_RULES, type FundedTier } from "@/lib/funded-rules";
-import { calculatePositionMetrics, DEFAULT_MAX_DRAWDOWN, DEFAULT_DAILY_DRAWDOWN } from "@/lib/position-utils";
+import { calculatePositionMetrics, DEFAULT_MAX_DRAWDOWN } from "@/lib/position-utils";
 import { safeParseFloat } from "./safe-parse";
 
 export async function getDashboardData(userId: string) {
@@ -264,7 +264,11 @@ export async function getDashboardData(userId: string) {
     const dailyPnL = equity - startOfDayBalance;
 
     const maxDrawdownLimit = (rules.maxDrawdown as number) || DEFAULT_MAX_DRAWDOWN;
-    const dailyDrawdownLimit = (rules.maxDailyDrawdown as number) || DEFAULT_DAILY_DRAWDOWN;
+    // CRITICAL FIX: DB stores maxDailyDrawdownPercent (e.g. 0.04), NOT absolute dollars.
+    // Previously read `maxDailyDrawdown` which would be 0.04 instead of $400,
+    // causing drawdown bar to show 2500%+ usage on any small loss.
+    const dailyDrawdownPercent = (rules.maxDailyDrawdownPercent as number) || 0.04;
+    const dailyDrawdownLimit = dailyDrawdownPercent * startingBalance;
 
     // Drawdown = distance from peak (high water mark) to current equity
     const drawdownAmount = Math.max(0, highWaterMark - equity);
@@ -273,7 +277,7 @@ export async function getDashboardData(userId: string) {
     const drawdownUsage = (drawdownAmount / maxDrawdownLimit) * 100;
     const dailyDrawdownUsage = (dailyDrawdownAmount / dailyDrawdownLimit) * 100;
 
-    const profitProgress = Math.min(100, (totalPnL / profitTarget) * 100);
+    const profitProgress = Math.max(0, Math.min(100, (totalPnL / profitTarget) * 100));
 
     // 7. Funded-specific data
     const isFunded = activeChallenge.phase === 'funded';
