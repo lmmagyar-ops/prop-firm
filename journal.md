@@ -4,6 +4,32 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ---
 
+## 2026-02-06
+
+### 11:45 PM - Round-Trip Trade Verification Complete ✅
+
+**Full Lifecycle Test:** Executed a complete open → close cycle across both YES and NO positions.
+
+**Fixes Required:**
+- **Rate Limiter Split:** `TRADE` tier (10 req/60s) was hitting all `/api/trade/*` including position reads, causing 429s. Split into `TRADE_EXECUTE` (10/min) for writes and `TRADE_READ` (60/min) for reads.
+- **Close Position Demo Guard:** `TradeExecutor.executeTrade()` rejected demo data even when closing. Added `isClosing` option to bypass this — users must always be able to exit positions.
+
+**Trade Flow:**
+| Action | Market | Amount | PnL | Balance |
+|--------|--------|--------|-----|---------|
+| **Start** | — | — | — | $9,962 |
+| Close Initial | Newsom NO | $100 | -$6.85 | $9,993.15 |
+| Open YES | Newsom YES | $50 | — | $9,943.15 |
+| Open NO | Warsh NO | $75 | — | $9,868.15 |
+| Close YES | Newsom YES | — | -$48.44 | $9,869.71 |
+| Close NO | Warsh NO | — | -$73.75 | **$9,870.96** |
+
+**Math Check:** UI shows **$9,871** — matches calculation ✅  
+**Trade History:** 6 trades (3 BUY + 3 SELL) verified in history page ✅  
+**Commit:** `670f88c` — `fix(trade): split rate limiter tiers, allow closing positions with stale data`
+
+---
+
 ## 2026-02-03
 
 ### 2:50 PM - Rebrand to 'Funded Prediction' due to SEO 🏷️

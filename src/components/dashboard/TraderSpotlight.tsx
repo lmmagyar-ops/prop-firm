@@ -1,6 +1,6 @@
 "use client";
 
-import { TrendingUp, Target, Flame, Star, Trophy, Calendar } from "lucide-react";
+import { TrendingUp, Target, Flame, Star, Trophy } from "lucide-react";
 import { Card } from "@/components/ui/card";
 
 interface TraderSpotlightProps {
@@ -9,7 +9,6 @@ interface TraderSpotlightProps {
     currentStreak: number;
     daysActive: number;
     profitProgress: number;
-    totalProfit: number;
 }
 
 export function TraderSpotlight({
@@ -18,9 +17,7 @@ export function TraderSpotlight({
     currentStreak,
     daysActive,
     profitProgress,
-    totalProfit,
 }: TraderSpotlightProps) {
-    // Determine spotlight message based on performance
     const getSpotlightMessage = () => {
         if (totalTrades === 0) {
             return {
@@ -67,6 +64,17 @@ export function TraderSpotlight({
                 icon: TrendingUp,
                 title: "Building Progress",
                 message: "Every trade counts. Stay consistent and focused.",
+                color: "text-blue-400",
+                bgColor: "bg-blue-500/10",
+            };
+        }
+
+        // User has trades but is in a loss — encourage them
+        if (totalTrades > 0) {
+            return {
+                icon: TrendingUp,
+                title: "Stay Disciplined",
+                message: "Markets are volatile. Stick to your strategy and manage risk.",
                 color: "text-blue-400",
                 bgColor: "bg-blue-500/10",
             };

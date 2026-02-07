@@ -1,5 +1,4 @@
-import { redirect } from "next/navigation";
-import { TrendingUp, XCircle, Trophy } from "lucide-react";
+import { XCircle, Trophy } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 import { auth } from "@/auth";
@@ -12,8 +11,7 @@ import { ProfitProgress } from "@/components/dashboard/ProfitProgress";
 import { RiskMeters } from "@/components/dashboard/RiskMeters";
 import { LivePositions } from "@/components/dashboard/LivePositions";
 import { RecentTradesWidget } from "@/components/dashboard/RecentTradesWidget";
-import { Button } from "@/components/ui/button";
-import Link from "next/link";
+
 import { getDashboardData } from "@/lib/dashboard-service";
 
 import { BuyEvaluationButton } from "@/components/dashboard/BuyEvaluationButton";
@@ -62,7 +60,7 @@ export default async function DashboardPage() {
         );
     }
 
-    const { user, lifetimeStats, hasActiveChallenge, activeChallenge, positions, stats, challengeHistory, isFunded, fundedStats } = data;
+    const { lifetimeStats, hasActiveChallenge, activeChallenge, positions, stats, challengeHistory, isFunded, fundedStats } = data;
 
     // Helper for Locked State Logic
     const latestChallenge = challengeHistory && challengeHistory.length > 0 ? challengeHistory[0] : null;
@@ -77,8 +75,7 @@ export default async function DashboardPage() {
         : 0;
 
     // Logic for Verification Status (Winner-Only Flow)
-    const isKycVerified = (user as any).kycVerified === true;
-    const hasPassedChallenge = challengeHistory.some(c => c.status === "passed");
+    // Reserved for future KYC and passed challenge checks
 
     // Calculate true equity = Cash + Position Value
     const positionValue = positions?.reduce((sum, pos) => sum + (pos.shares * pos.currentPrice), 0) ?? 0;
@@ -101,12 +98,11 @@ export default async function DashboardPage() {
             {/* Trader Spotlight Card - ONLY if hasActiveChallenge */}
             {hasActiveChallenge && activeChallenge && stats && (
                 <TraderSpotlight
-                    totalTrades={lifetimeStats.totalChallengesStarted}
-                    winRate={lifetimeStats.successRate}
+                    totalTrades={lifetimeStats.totalTradeCount}
+                    winRate={lifetimeStats.tradeWinRate}
                     currentStreak={lifetimeStats.currentWinStreak || 0}
                     daysActive={computedDaysActive}
                     profitProgress={stats.profitProgress}
-                    totalProfit={stats.totalPnL}
                 />
             )}
 
@@ -191,8 +187,8 @@ export default async function DashboardPage() {
                         /* CHALLENGE/VERIFICATION PHASE UI */
                         <>
                             <ChallengeHeader
-                                phase={activeChallenge.phase as any}
-                                status={activeChallenge.status as any}
+                                phase={activeChallenge.phase as "challenge" | "verification" | "funded"}
+                                status={activeChallenge.status as "active" | "failed" | "passed"}
                                 startingBalance={typeof activeChallenge.startingBalance === 'string' ? parseFloat(activeChallenge.startingBalance) : activeChallenge.startingBalance}
                                 daysRemaining={computedDaysRemaining}
                             />
@@ -276,10 +272,10 @@ export default async function DashboardPage() {
                                         <div className="text-2xl">🚀</div>
                                     </div>
                                     <h2 className="text-2xl font-bold text-white mb-3">
-                                        You're Almost There
+                                        You&apos;re Almost There
                                     </h2>
                                     <p className="text-zinc-400 mb-8 leading-relaxed">
-                                        Your evaluation is ready. Once you click "Start", your 30-day trading period begins immediately.
+                                        Your evaluation is ready. Once you click &quot;Start&quot;, your 30-day trading period begins immediately.
                                     </p>
                                     <div className="space-y-4">
                                         <StartChallengeButton />
@@ -355,7 +351,17 @@ export default async function DashboardPage() {
 
             {/* Challenge History Table - ALWAYS VISIBLE */}
             <div className="border-t border-white/5 pt-6 mt-8">
-                <ChallengeHistoryTable challenges={challengeHistory as any[]} />
+                <ChallengeHistoryTable challenges={challengeHistory as Array<{
+                    id: string;
+                    accountNumber: string;
+                    challengeType: string;
+                    phase: string;
+                    status: 'active' | 'passed' | 'failed';
+                    finalPnL: number | null;
+                    startedAt: Date;
+                    completedAt?: Date | null;
+                    platform?: "polymarket" | "kalshi";
+                }>} />
             </div>
 
             <DevTools userId={userId} />

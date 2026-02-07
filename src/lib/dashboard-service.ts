@@ -1,6 +1,6 @@
 import { db } from "@/db";
-import { challenges, positions, users } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { challenges, positions, trades, users } from "@/db/schema";
+import { eq, and, desc } from "drizzle-orm";
 import { FUNDED_RULES, type FundedTier } from "@/lib/funded-rules";
 import { calculatePositionMetrics, DEFAULT_MAX_DRAWDOWN } from "@/lib/position-utils";
 import { safeParseFloat } from "./safe-parse";
@@ -39,15 +39,63 @@ export async function getDashboardData(userId: string) {
             return sum + Math.max(0, profit);
         }, 0);
 
+    // 2b. Calculate REAL trade-level stats from trades table
+    // Get all challenge IDs for this user
+    const challengeIds = allChallenges.map(c => c.id);
+    type TradeRow = { id: string; type: string; realizedPnL: string | null; executedAt: Date | null };
+    const allTradesResult: TradeRow[] = [];
+
+    if (challengeIds.length > 0) {
+        // Query trades for all user challenges, ordered by most recent first
+        for (const cId of challengeIds) {
+            const chTrades = await db.query.trades.findMany({
+                where: eq(trades.challengeId, cId),
+                columns: { id: true, type: true, realizedPnL: true, executedAt: true },
+                orderBy: [desc(trades.executedAt)],
+            });
+            allTradesResult.push(...(chTrades as TradeRow[]));
+        }
+        // Sort all trades by executedAt descending
+        allTradesResult.sort((a, b) => {
+            const ta = a.executedAt ? new Date(a.executedAt).getTime() : 0;
+            const tb = b.executedAt ? new Date(b.executedAt).getTime() : 0;
+            return tb - ta;
+        });
+    }
+
+    const totalTradeCount = allTradesResult.length;
+    const sellTrades = allTradesResult.filter((t: TradeRow) => t.type === 'SELL');
+    const winningTrades = sellTrades.filter((t: TradeRow) => safeParseFloat(t.realizedPnL) > 0);
+    const tradeWinRate = sellTrades.length > 0
+        ? (winningTrades.length / sellTrades.length) * 100
+        : 0;
+
+    // Calculate current win streak (consecutive profitable SELL trades, most recent first)
+    let currentWinStreak = 0;
+    for (const t of sellTrades) {
+        if (safeParseFloat(t.realizedPnL) > 0) {
+            currentWinStreak++;
+        } else {
+            break;
+        }
+    }
+
+    // Sum realized PnL from all SELL trades
+    const totalRealizedPnL = sellTrades.reduce((sum: number, t: TradeRow) => sum + safeParseFloat(t.realizedPnL), 0);
+
     const lifetimeStats = {
         totalChallengesStarted,
         challengesCompleted,
         challengesFailed,
         successRate,
-        totalProfitEarned,
-        bestMarketCategory: null, // Will implement when trade history exists
-        currentWinStreak: null, // Calculate streak
-        avgTradeWinRate: null, // Calculate from trades
+        totalProfitEarned: totalProfitEarned > 0 ? totalProfitEarned : Math.max(0, totalRealizedPnL),
+        bestMarketCategory: null as string | null, // TODO: implement category analysis
+        currentWinStreak,
+        avgTradeWinRate: tradeWinRate,
+        // NEW: trade-level stats
+        totalTradeCount,
+        tradeWinRate,
+        totalRealizedPnL,
     };
 
     // Helper to map challenge history with safe dates
