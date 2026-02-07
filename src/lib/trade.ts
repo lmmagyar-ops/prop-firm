@@ -84,9 +84,8 @@ export class TradeExecutor {
         if (TRADING_CONFIG.risk.enableStalenessCheck) {
             const freshAge = TRADING_CONFIG.risk.priceFreshnessMs;
             if (!MarketService.isPriceFresh(marketData, freshAge)) {
-                // Determine age for error report (mock logic as isPriceFresh boolean doesn't return age)
-                // In production, isPriceFresh would return reason/age.
-                throw new PriceStaleError(marketId, 9999);
+                const dataAge = marketData.timestamp ? Date.now() - marketData.timestamp : freshAge;
+                throw new PriceStaleError(marketId, dataAge);
             }
         }
 

@@ -6,6 +6,20 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ## 2026-02-06
 
+### 12:05 AM - Dashboard Stats Fix: Real Trade Data ✅
+
+**Root Cause:** `lifetimeStats` only queried the `challenges` table — "Total Trades" showed challenge count (1) instead of actual trade count (6), "Win Rate" showed challenge pass rate (0%) instead of trade win rate, "Getting Started" card appeared for anyone with ≤0 PnL.
+
+**Fixes:**
+- **`dashboard-service.ts`:** Added query to `trades` table computing `totalTradeCount`, `tradeWinRate`, `currentWinStreak`, `totalRealizedPnL`
+- **`page.tsx`:** Passed `totalTradeCount` / `tradeWinRate` to `TraderSpotlight` instead of challenge counts
+- **`TraderSpotlight.tsx`:** Added "Stay Disciplined" fallback for users with trades but negative PnL — "Getting Started" now only shows for 0 trades
+- **Bonus:** Fixed 14 pre-existing lint warnings (unused imports, `as any` casts, unescaped entities)
+
+**Commit:** `3e2641f` — `fix(dashboard): compute real trade stats from trades table, fix Getting Started logic`
+
+---
+
 ### 11:45 PM - Round-Trip Trade Verification Complete ✅
 
 **Full Lifecycle Test:** Executed a complete open → close cycle across both YES and NO positions.
