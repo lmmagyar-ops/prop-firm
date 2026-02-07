@@ -2,6 +2,23 @@
 
 > **Funded Prediction** - A simulated trading platform where users trade on Polymarket/Kalshi data with firm capital.
 
+## 🧠 New Agent? Start Here
+
+1. **Read this file** — it has the full architecture, every command, risk rules, and debugging protocols
+2. **Run `npm run test:engine`** — 32 assertions across 7 phases prove the trading engine works (BUY/SELL, PnL, risk rejections, balance invariants)
+3. **If debugging a bug**, follow the "Trading Engine Number Discrepancy Audit" section below — it has a step-by-step protocol with a symptom → cause lookup table
+4. **If data looks wrong**, run `npx tsx scripts/reconcile-positions.ts` to validate positions against trade history
+5. **For manual testing**, see `docs/SMOKE_TEST.md` — a 15-minute checklist for end-to-end verification
+6. **Quick symptom guide:**
+
+| Symptom | First Command | Then Check |
+|---------|---------------|------------|
+| Balance wrong | `npm run test:engine` | `scripts/reconcile-positions.ts` |
+| PnL shows $0 | Check `trades.positionId` linkage | `admin/activity` route |
+| Trade rejected | Check risk engine logs | `src/lib/risk.ts` rules table |
+| Prices stale | `GET /api/cron/heartbeat-check` | Railway worker logs |
+| NaN in UI | Search for `parseFloat` without `safeParseFloat` | `src/lib/safe-parse.ts` |
+
 ## Quick Start
 
 ```bash
@@ -394,7 +411,7 @@ DATABASE_URL="..." npm run db:push
 | **Discount Security** | `tests/discount-security.test.ts` | 47 tests: validation, calculation, fraud prevention |
 | **Payout Logic** | `tests/payout-logic.test.ts` | Profit split calculations, payout eligibility |
 | **Achievements** | `tests/achievements.test.ts` | Trading achievement unlock logic |
-| **Trade Engine** | `npm run test:engine` | Full trade execution verification |
+| **Trade Engine** | `npm run test:engine` | 32-assertion round-trip verification (7 phases) |
 
 ### Running Tests
 
@@ -794,6 +811,35 @@ After fixing, add an entry to `journal.md`:
 - Root cause
 - Fix applied
 - Files modified
+
+---
+
+## Schema Management
+
+### Migration Strategy: `drizzle-kit push`
+
+This project uses `drizzle-kit push` (not `drizzle-kit migrate`) for schema changes:
+
+```bash
+npm run db:push    # Diffs schema.ts against live DB, applies changes directly
+```
+
+- No migration files needed for deployment
+- Historical migration SQL files exist in `./drizzle/` but are not used day-to-day
+- Always review the diff output before confirming destructive changes (table drops)
+
+### Schema Audit (Feb 6, 2026)
+
+Completed a full column-by-column audit of core trading tables. Findings:
+
+| Fix | Column | Issue | Resolution |
+|-----|--------|-------|------------|
+| ✅ | `positions.pnl` | Never written | Populated on close in `PositionManager.ts` |
+| ✅ | `trades.positionId` | FK never populated | Linked in all 3 trade branches in `trade.ts` |
+| ✅ | `positions.closedPrice` | Written, never read | Kept (low cost, useful for future analytics) |
+| ✅ | `marketPrices` table | Entirely dead | Removed from schema + dropped via `db:push` |
+
+**Admin route fix:** `admin/activity` and `admin/traders/[id]` now read `trades.realizedPnL` instead of `positions.pnl` for PnL display.
 
 ---
 

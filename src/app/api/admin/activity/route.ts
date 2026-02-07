@@ -22,7 +22,7 @@ export async function GET() {
                 // trades table doesn't have PnL. We can show position PnL or null. 
                 // For a feed of *executions*, PnL isn't always relevant (e.g. opening trade).
                 // We'll return null for now to avoid misleading "0" PnL.
-                pnl: positions.pnl,
+                pnl: trades.realizedPnL,
                 timestamp: trades.executedAt,
                 phase: challenges.phase
             })

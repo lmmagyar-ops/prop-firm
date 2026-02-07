@@ -95,12 +95,17 @@ export class PositionManager {
         const proceeds = sharesToSell * finalExitPrice;
 
         if (remainingShares <= 0.0001) {
+            // Calculate realized PnL for the position record
+            const entryPrice = parseFloat(position.entryPrice);
+            const positionPnL = sharesToSell * (finalExitPrice - entryPrice);
+
             await tx.update(positions)
                 .set({
                     status: 'CLOSED',
                     shares: '0',
                     closedAt: new Date(),
-                    closedPrice: finalExitPrice.toString()  // Record actual close price
+                    closedPrice: finalExitPrice.toString(),
+                    pnl: positionPnL.toFixed(2)
                 })
                 .where(eq(positions.id, positionId));
         } else {

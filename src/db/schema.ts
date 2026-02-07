@@ -11,7 +11,6 @@ import {
     uuid,
 } from "drizzle-orm/pg-core";
 import type { AdapterAccount } from "next-auth/adapters";
-import { sql } from "drizzle-orm"; // For defaultRandom if needed or just use built-in function
 
 // --- NextAuth Tables ---
 export const users = pgTable("users", {
@@ -213,18 +212,7 @@ export const trades = pgTable("trades", {
     executedAt: timestamp("executed_at").defaultNow(),
 });
 
-export const marketPrices = pgTable("market_prices", {
-    id: uuid("id").defaultRandom().primaryKey(),
-    marketId: text("market_id").notNull(),
-    platform: varchar("platform", { length: 50 }).notNull(), // 'polymarket', 'kalshi'
 
-    priceYes: decimal("price_yes", { precision: 10, scale: 4 }),
-    priceNo: decimal("price_no", { precision: 10, scale: 4 }),
-
-    liquidity: decimal("liquidity", { precision: 15, scale: 2 }),
-
-    timestamp: timestamp("timestamp").defaultNow(),
-});
 
 export const businessRules = pgTable("business_rules", {
     id: uuid("id").defaultRandom().primaryKey(),

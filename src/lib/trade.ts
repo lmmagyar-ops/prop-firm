@@ -2,12 +2,10 @@
 import { db } from "@/db";
 import { trades, positions, challenges } from "@/db/schema";
 import { eq, and, sql } from "drizzle-orm";
-import { ChallengeManager } from "./challenges";
 import { MarketService } from "./market";
 import { RiskEngine } from "./risk";
 import { PositionManager } from "./trading/PositionManager";
 import { BalanceManager } from "./trading/BalanceManager";
-import { ChallengeEvaluator } from "./evaluator";
 import { TRADING_CONFIG } from "@/config/trading";
 import { createLogger } from "./logger";
 import {
@@ -342,7 +340,17 @@ export class TradeExecutor {
                     );
                     // CRITICAL: Also deduct balance when adding to position!
                     await BalanceManager.deductCost(tx, challenge.id, amount);
+
+                    // Link trade → position
+                    await tx.update(trades)
+                        .set({ positionId: existingPos.id })
+                        .where(eq(trades.id, newTrade.id));
                 } else {
+                    // Calculate realized PnL BEFORE reducing position
+                    // PnL = proceeds - cost = (shares * exitPrice) - (shares * entryPrice)
+                    const entryPrice = parseFloat(existingPos.entryPrice);
+                    const realizedPnL = shares * (executionPrice - entryPrice);
+
                     const { proceeds } = await PositionManager.reducePosition(
                         tx,
                         existingPos.id,
@@ -350,11 +358,25 @@ export class TradeExecutor {
                         executionPrice  // Use live price from order book walk
                     );
                     await BalanceManager.creditProceeds(tx, challenge.id, proceeds);
+
+                    // Store realized PnL and link trade → position
+                    await tx.update(trades)
+                        .set({
+                            realizedPnL: realizedPnL.toFixed(2),
+                            positionId: existingPos.id
+                        })
+                        .where(eq(trades.id, newTrade.id));
+
+                    logger.info(`Realized PnL: $${realizedPnL.toFixed(2)}`, {
+                        shares,
+                        entryPrice: entryPrice.toFixed(4),
+                        exitPrice: executionPrice.toFixed(4),
+                    });
                 }
             } else {
                 if (side === "SELL") throw new PositionNotFoundError(`No open position for ${marketId}`);
 
-                await PositionManager.openPosition(
+                const newPos = await PositionManager.openPosition(
                     tx,
                     challenge.id,
                     marketId,
@@ -364,6 +386,11 @@ export class TradeExecutor {
                     direction  // Pass direction to position
                 );
                 await BalanceManager.deductCost(tx, challenge.id, amount);
+
+                // Link trade → position
+                await tx.update(trades)
+                    .set({ positionId: newPos.id })
+                    .where(eq(trades.id, newTrade.id));
             }
 
             return newTrade;

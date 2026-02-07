@@ -48,7 +48,8 @@ export async function GET(
                 type: trades.type,
                 amount: trades.amount,
                 price: trades.price,
-                pnl: positions.pnl,
+                pnl: trades.realizedPnL,
+                closedPrice: positions.closedPrice,
                 createdAt: trades.executedAt,
             })
             .from(trades)
@@ -60,11 +61,9 @@ export async function GET(
         // In a real app, you'd have a 'daily_snapshots' table. 
         // Here we'll simulate it by aggregating trades by day.
         const timelineData = [];
-        const runningBalance = Number(challenge.currentBalance); // This is current, so working backwards might be hard without logic.
         // Simpler approach for MVP: Start from 'startingBalance' and apply trades.
-
-
-        const startingBalance = Number((challenge.rulesConfig as any).startingBalance || 10000);
+        const rulesConfig = challenge.rulesConfig as Record<string, unknown> | null;
+        const startingBalance = Number(rulesConfig?.startingBalance || 10000);
         let simBalance = startingBalance;
         const tradesAsc = [...tradeHistory].reverse();
 
@@ -94,14 +93,14 @@ export async function GET(
         }
 
         // 4. Calculate Stats
-        const totalTrades = tradeHistory.length;
-        const winningTrades = tradeHistory.filter(t => Number(t.pnl) > 0).length;
-        const winRate = totalTrades > 0 ? (winningTrades / totalTrades) * 100 : 0;
+        const sellTrades = tradeHistory.filter(t => t.type === 'SELL');
+        const winningTrades = sellTrades.filter(t => Number(t.pnl) > 0).length;
+        const winRate = sellTrades.length > 0 ? (winningTrades / sellTrades.length) * 100 : 0;
 
         return NextResponse.json({
             challenge,
             stats: {
-                totalTrades,
+                totalTrades: tradeHistory.length,
                 winRate,
                 avgWin: 0, // Todo
                 avgLoss: 0 // Todo
