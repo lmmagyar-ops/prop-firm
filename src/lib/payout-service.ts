@@ -7,9 +7,9 @@
 
 import { db } from "@/db";
 import { challenges, payouts } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { ResolutionDetector } from "./resolution-detector";
-import { FUNDED_RULES, CONSISTENCY_CONFIG } from "./funded-rules";
+import { FUNDED_RULES, FundedTier } from "./funded-rules";
 import { nanoid } from "nanoid";
 import { safeParseFloat } from "./safe-parse";
 
@@ -84,12 +84,23 @@ export class PayoutService {
             reasons.push(`No net profit (balance: $${currentBalance.toFixed(2)}, starting: $${startingBalance.toFixed(2)})`);
         }
 
-        // Check 4: Minimum trading days
+        // Check 4: Minimum trading days (use actual tier, not hard-coded)
         const activeTradingDays = challenge.activeTradingDays || 0;
-        const minDays = FUNDED_RULES["10k"].minTradingDays; // Default to 5
+        const tier = this.getFundedTier(startingBalance);
+        const minDays = FUNDED_RULES[tier].minTradingDays;
 
         if (activeTradingDays < minDays) {
             reasons.push(`Insufficient trading days (${activeTradingDays}/${minDays} required)`);
+        }
+
+        // Check 6: No pending/in-progress payout already exists
+        const existingPayouts = await db.select().from(payouts)
+            .where(and(
+                eq(payouts.challengeId, challengeId),
+                inArray(payouts.status, ['pending', 'approved', 'processing'])
+            ));
+        if (existingPayouts.length > 0) {
+            reasons.push(`Existing payout already in progress (status: ${existingPayouts[0].status})`);
         }
 
         // Check 5: Consistency flag (soft - doesn't block, but noted)
@@ -220,15 +231,9 @@ export class PayoutService {
             profitSplit: calculation.profitSplit.toFixed(2),
         });
 
-        // Reset cycle tracking on the challenge
-        await db.update(challenges)
-            .set({
-                lastPayoutAt: now,
-                payoutCycleStart: now,
-                activeTradingDays: 0,
-                consistencyFlagged: false,
-            })
-            .where(eq(challenges.id, challengeId));
+        // NOTE: Cycle reset moved to completePayout() — only reset after
+        // payout is actually completed, not just requested. This prevents
+        // losing trading day progress if payout is rejected.
 
         console.log(`[PayoutService] Payout requested: ${payoutId} for $${calculation.netPayout.toFixed(2)}`);
 
@@ -245,12 +250,26 @@ export class PayoutService {
      * Admin approves a pending payout.
      */
     static async approvePayout(payoutId: string, adminId: string): Promise<void> {
+        // Pre-check: payout must exist and be in 'pending' status
+        const [existing] = await db.select().from(payouts)
+            .where(eq(payouts.id, payoutId));
+
+        if (!existing) {
+            throw new Error(`Payout ${payoutId} not found`);
+        }
+        if (existing.status !== 'pending') {
+            throw new Error(`Cannot approve payout ${payoutId}: status is '${existing.status}', expected 'pending'`);
+        }
+
         await db.update(payouts)
             .set({
                 status: "approved",
                 approvedBy: adminId,
             })
-            .where(eq(payouts.id, payoutId));
+            .where(and(
+                eq(payouts.id, payoutId),
+                eq(payouts.status, "pending")
+            ));
 
         console.log(`[PayoutService] Payout ${payoutId} approved by ${adminId}`);
     }
@@ -259,9 +278,25 @@ export class PayoutService {
      * Mark payout as processing (crypto transaction initiated).
      */
     static async markProcessing(payoutId: string): Promise<void> {
+        // Pre-check: payout must exist and be in 'approved' status
+        const [existing] = await db.select().from(payouts)
+            .where(eq(payouts.id, payoutId));
+
+        if (!existing) {
+            throw new Error(`Payout ${payoutId} not found`);
+        }
+        if (existing.status !== 'approved') {
+            throw new Error(`Cannot process payout ${payoutId}: status is '${existing.status}', expected 'approved'`);
+        }
+
         await db.update(payouts)
             .set({ status: "processing" })
-            .where(eq(payouts.id, payoutId));
+            .where(and(
+                eq(payouts.id, payoutId),
+                eq(payouts.status, "approved")
+            ));
+
+        console.log(`[PayoutService] Payout ${payoutId} marked as processing`);
     }
 
     /**
@@ -271,17 +306,31 @@ export class PayoutService {
         const now = new Date();
 
         // Get payout to update challenge totals
-        const [payout] = await db.select().from(payouts).where(eq(payouts.id, payoutId));
+        const [payout] = await db.select().from(payouts)
+            .where(and(
+                eq(payouts.id, payoutId),
+                eq(payouts.status, "processing")  // Guard: only complete processing payouts
+            ));
 
-        if (payout) {
-            // Update challenge total paid out
-            const [challenge] = await db.select().from(challenges).where(eq(challenges.id, payout.challengeId!));
-            if (challenge) {
-                const totalPaid = safeParseFloat(challenge.totalPaidOut) + safeParseFloat(payout.amount);
-                await db.update(challenges)
-                    .set({ totalPaidOut: totalPaid.toFixed(2) })
-                    .where(eq(challenges.id, payout.challengeId!));
-            }
+        if (!payout) {
+            throw new Error(`Payout ${payoutId} not found or not in 'processing' status`);
+        }
+
+        // Update challenge total paid out + reset payout cycle
+        const [challenge] = await db.select().from(challenges).where(eq(challenges.id, payout.challengeId!));
+        if (challenge) {
+            const totalPaid = safeParseFloat(challenge.totalPaidOut) + safeParseFloat(payout.amount);
+            await db.update(challenges)
+                .set({
+                    totalPaidOut: totalPaid.toFixed(2),
+                    // CYCLE RESET: Only reset after payout is actually completed
+                    // This was previously done in requestPayout, which lost progress on rejection
+                    lastPayoutAt: now,
+                    payoutCycleStart: now,
+                    activeTradingDays: 0,
+                    consistencyFlagged: false,
+                })
+                .where(eq(challenges.id, payout.challengeId!));
         }
 
         await db.update(payouts)
@@ -299,13 +348,36 @@ export class PayoutService {
      * Mark payout as failed.
      */
     static async failPayout(payoutId: string, reason: string): Promise<void> {
+        // Pre-check: payout must exist and be in a non-terminal status
+        const [existing] = await db.select().from(payouts)
+            .where(eq(payouts.id, payoutId));
+
+        if (!existing) {
+            throw new Error(`Payout ${payoutId} not found`);
+        }
+        if (existing.status === 'completed' || existing.status === 'failed') {
+            throw new Error(`Cannot fail payout ${payoutId}: status is '${existing.status}' (already terminal)`);
+        }
+
         await db.update(payouts)
             .set({
                 status: "failed",
                 failureReason: reason,
             })
-            .where(eq(payouts.id, payoutId));
+            .where(and(
+                eq(payouts.id, payoutId),
+                inArray(payouts.status, ['pending', 'approved', 'processing'])
+            ));
 
         console.log(`[PayoutService] Payout ${payoutId} failed: ${reason}`);
+    }
+
+    /**
+     * Determine the funded tier based on starting balance.
+     */
+    private static getFundedTier(startingBalance: number): FundedTier {
+        if (startingBalance >= 25000) return '25k';
+        if (startingBalance >= 10000) return '10k';
+        return '5k';
     }
 }

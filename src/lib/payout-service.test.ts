@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { PayoutService } from "./payout-service";
-import { FUNDED_RULES } from "./funded-rules";
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 // Mock dependencies
 vi.mock("@/db", () => ({
@@ -51,9 +52,12 @@ describe("PayoutService.checkEligibility", () => {
             consistencyFlagged: false
         };
 
+        // First call returns challenge, second call returns empty payouts (no pending)
         vi.mocked(db.select).mockReturnValue({
             from: vi.fn().mockReturnValue({
-                where: vi.fn().mockResolvedValue([mockChallenge])
+                where: vi.fn()
+                    .mockResolvedValueOnce([mockChallenge])  // checkEligibility: challenge lookup
+                    .mockResolvedValueOnce([])               // checkEligibility: pending payout check
             })
         } as any);
 
@@ -143,9 +147,12 @@ describe("PayoutService.checkEligibility", () => {
             consistencyFlagged: true      // Flagged but NOT blocking
         };
 
+        // First call returns challenge, second call returns empty payouts (no pending)
         vi.mocked(db.select).mockReturnValue({
             from: vi.fn().mockReturnValue({
-                where: vi.fn().mockResolvedValue([mockChallenge])
+                where: vi.fn()
+                    .mockResolvedValueOnce([mockChallenge])  // checkEligibility: challenge lookup
+                    .mockResolvedValueOnce([])               // checkEligibility: pending payout check
             })
         } as any);
 
@@ -388,22 +395,60 @@ describe("PayoutService State Transitions", () => {
     });
 
     it("approvePayout sets status to approved", async () => {
+        // Mock the pre-check SELECT (returns pending payout)
+        vi.mocked(db.select).mockReturnValue({
+            from: vi.fn().mockReturnValue({
+                where: vi.fn().mockResolvedValue([{ id: "payout-123", status: "pending" }])
+            })
+        } as any);
+
         await PayoutService.approvePayout("payout-123", "admin-1");
 
         expect(db.update).toHaveBeenCalled();
     });
 
+    it("approvePayout throws if payout is not pending", async () => {
+        // Mock the pre-check SELECT (returns already approved payout)
+        vi.mocked(db.select).mockReturnValue({
+            from: vi.fn().mockReturnValue({
+                where: vi.fn().mockResolvedValue([{ id: "payout-123", status: "completed" }])
+            })
+        } as any);
+
+        await expect(PayoutService.approvePayout("payout-123", "admin-1"))
+            .rejects.toThrow("Cannot approve");
+    });
+
     it("markProcessing sets status to processing", async () => {
+        // Mock the pre-check SELECT (returns approved payout)
+        vi.mocked(db.select).mockReturnValue({
+            from: vi.fn().mockReturnValue({
+                where: vi.fn().mockResolvedValue([{ id: "payout-123", status: "approved" }])
+            })
+        } as any);
+
         await PayoutService.markProcessing("payout-123");
 
         expect(db.update).toHaveBeenCalled();
+    });
+
+    it("markProcessing throws if payout is not approved", async () => {
+        vi.mocked(db.select).mockReturnValue({
+            from: vi.fn().mockReturnValue({
+                where: vi.fn().mockResolvedValue([{ id: "payout-123", status: "pending" }])
+            })
+        } as any);
+
+        await expect(PayoutService.markProcessing("payout-123"))
+            .rejects.toThrow("Cannot process");
     });
 
     it("completePayout updates balance and records transaction", async () => {
         const mockPayout = {
             id: "payout-123",
             challengeId: "challenge-1",
-            amount: "800"
+            amount: "800",
+            status: "processing"
         };
 
         const mockChallenge = {
@@ -411,6 +456,7 @@ describe("PayoutService State Transitions", () => {
             totalPaidOut: "0"
         };
 
+        // First select returns payout (with status guard), second returns challenge
         vi.mocked(db.select).mockReturnValue({
             from: vi.fn().mockReturnValue({
                 where: vi.fn()
@@ -425,9 +471,39 @@ describe("PayoutService State Transitions", () => {
         expect(db.update).toHaveBeenCalled();
     });
 
+    it("completePayout throws if payout is not processing", async () => {
+        vi.mocked(db.select).mockReturnValue({
+            from: vi.fn().mockReturnValue({
+                where: vi.fn().mockResolvedValue([])  // No match = wrong status
+            })
+        } as any);
+
+        await expect(PayoutService.completePayout("payout-123", "0xhash"))
+            .rejects.toThrow("not found or not in 'processing'");
+    });
+
     it("failPayout records failure reason", async () => {
+        // Mock the pre-check SELECT (returns pending payout)
+        vi.mocked(db.select).mockReturnValue({
+            from: vi.fn().mockReturnValue({
+                where: vi.fn().mockResolvedValue([{ id: "payout-123", status: "pending" }])
+            })
+        } as any);
+
         await PayoutService.failPayout("payout-123", "Transaction rejected");
 
         expect(db.update).toHaveBeenCalled();
     });
+
+    it("failPayout throws if payout is already completed", async () => {
+        vi.mocked(db.select).mockReturnValue({
+            from: vi.fn().mockReturnValue({
+                where: vi.fn().mockResolvedValue([{ id: "payout-123", status: "completed" }])
+            })
+        } as any);
+
+        await expect(PayoutService.failPayout("payout-123", "Too late"))
+            .rejects.toThrow("already terminal");
+    });
 });
+
