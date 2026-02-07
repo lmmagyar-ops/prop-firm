@@ -10,7 +10,16 @@ description: Staging-first deployment workflow for safe production releases
 
 ## Workflow Steps
 
-### 1. Make Changes on Develop
+### 1. Pre-Deploy Verification
+```bash
+# Run the trade engine integration test BEFORE deploying
+# This verifies the full BUY → SELL → PnL → Balance pipeline
+# If this fails, DO NOT deploy — fix the issue first
+npm run test:engine
+```
+// turbo
+
+### 2. Make Changes on Develop
 ```bash
 # Ensure you're on develop
 git checkout develop
@@ -23,12 +32,12 @@ git commit -m "feat: your change description"
 git push origin develop
 ```
 
-### 2. Test on Staging
+### 3. Test on Staging
 - Vercel auto-generates a preview URL for the `develop` branch
 - Preview URL: `https://prop-firmx-git-develop-oversightresearch-4292s-projects.vercel.app`
 - Also visible in Vercel dashboard under Deployments
 
-### 3. Promote to Production
+### 4. Promote to Production
 ```bash
 # After testing on staging, merge to main
 git checkout main
@@ -36,7 +45,7 @@ git merge develop
 git push origin main
 ```
 
-### 4. Verify Production
+### 5. Verify Production
 - Check https://prop-firmx.vercel.app
 - Monitor Vercel deployment status
 

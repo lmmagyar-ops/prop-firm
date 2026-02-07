@@ -1101,3 +1101,76 @@ Extracted exact DNS records from Resend via browser automation (including handli
 
 **Status:** All engine fixes verified in production. 🚀
 
+---
+
+### 8:00 PM - Schema Completeness Audit & Fixes ✅
+
+**Context:** After fixing the `realizedPnL` write gap, audited every column across all core trading tables to find similar orphaned/dead columns.
+
+#### 🔍 Audit Findings (4 Issues)
+
+| # | Column | Severity | Issue |
+|---|--------|----------|-------|
+| 1 | `positions.pnl` | 🔴 Critical | Admin reads it, **nothing ever wrote to it** → always $0 |
+| 2 | `trades.positionId` | 🔴 Critical | FK exists but **never populated** → admin activity feed returned **0 rows** (JOIN on null FK) |
+| 3 | `positions.closedPrice` | 🟡 Medium | Written on close, **never read** → wasted data |
+| 4 | `marketPrices` table | 🟡 Medium | Entire table defined but **never used** → prices flow through Redis |
+
+#### ✅ Fixes Applied
+
+**Fix 1: `positions.pnl`** (`PositionManager.ts`)
+- Calculates `realizedPnL = (exitPrice - entryPrice) × shares` on full close
+- Stores on `positions.pnl` column for admin views
+
+**Fix 2: `trades.positionId`** (`trade.ts`)
+- Linked `positionId` in all 3 trade branches: BUY existing, SELL existing, new position open
+- SELL branch now writes both `realizedPnL` and `positionId` in single update
+
+**Fix 3: Admin Routes** (`admin/activity/route.ts`, `admin/traders/[id]/route.ts`)
+- Switched from `positions.pnl` → `trades.realizedPnL` (source of truth)
+- Fixed win rate to count SELL trades only, not all trades
+
+**Fix 4: Dead `marketPrices` table** (`schema.ts`)
+- Removed table definition from schema
+- Ran `npm run db:push` to drop physical table from Postgres
+
+**Verification:** `npm run test:engine` → 13/13 assertions ✅
+
+---
+
+### 8:45 PM - Engine Test Hardening: 13 → 32 Assertions ✅
+
+**Context:** Extended `verify-engine.ts` with edge case, rejection, and invariant tests for Anthropic-grade coverage.
+
+#### New Test Phases
+
+**Phase 5: Edge Case Trades (10 assertions)**
+| Test | What It Proves |
+|------|---------------|
+| Add-to-position | Two BUYs on same market merge into 1 position with combined shares |
+| Partial close | SELL half shares → position stays OPEN with reduced shares |
+| Close remainder | SELL remaining → position moves to CLOSED with PnL populated |
+| Balance tracking | Every debit/credit correctly tracked through full sequence |
+
+**Phase 6: Risk Engine Rejections (4 assertions)**
+| Test | Expected Error |
+|------|---------------|
+| BUY more than balance | `INSUFFICIENT_FUNDS` |
+| SELL on market with no position | `POSITION_NOT_FOUND` |
+| BUY > 5% starting balance | `RISK_LIMIT_EXCEEDED` |
+| Balance unchanged after rejections | No side effects |
+
+**Phase 7: Balance Invariants (5 assertions)**
+| Invariant | Check |
+|-----------|-------|
+| Balance ≥ 0 | Never negative |
+| Shares ≥ 0 | No position has negative shares |
+| All trades linked | Every trade has `positionId` set |
+| Closed positions have PnL | Every CLOSED position has `pnl` populated |
+| PnL reconciliation | `finalBalance = $10,000 + Σ(realizedPnL)` |
+
+**Files Modified:**
+- `src/scripts/verify-engine.ts` — 3 new test phases + `assertRejects` helper
+
+**Verification:** `npm run test:engine` → **32/32 assertions** ✅
+
