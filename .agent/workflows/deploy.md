@@ -36,12 +36,19 @@ git commit -m "feat: your change description"
 git push origin develop
 ```
 
-### 3. Test on Staging
-- Vercel auto-generates a preview URL for the `develop` branch
+### 3. Run E2E Smoke Tests Against Staging
+```bash
+# Wait ~2 min for Vercel build, then run browser smoke tests
+PLAYWRIGHT_BASE_URL=https://prop-firmx-git-develop-oversightresearch-4292s-projects.vercel.app \
+  npm run test:e2e
+```
+// turbo
+
+### 4. Manual Verification on Staging
 - Preview URL: `https://prop-firmx-git-develop-oversightresearch-4292s-projects.vercel.app`
 - Also visible in Vercel dashboard under Deployments
 
-### 4. Promote to Production
+### 5. Promote to Production
 ```bash
 # After testing on staging, merge to main
 git checkout main
@@ -49,7 +56,7 @@ git merge develop
 git push origin main
 ```
 
-### 5. Verify Production
+### 6. Verify Production
 - Check https://prop-firmx.vercel.app
 - Monitor Vercel deployment status
 

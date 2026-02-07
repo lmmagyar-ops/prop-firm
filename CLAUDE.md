@@ -413,11 +413,12 @@ DATABASE_URL="..." npm run db:push
 | **Payout Logic** | `tests/payout-logic.test.ts` | Profit split calculations, payout eligibility |
 | **Achievements** | `tests/achievements.test.ts` | Trading achievement unlock logic |
 | **Trade Engine** | `npm run test:engine` | 32-assertion round-trip verification (7 phases) |
+| **E2E Smoke** | `npm run test:e2e` | 10 Playwright browser tests targeting UI/UX regressions |
 
 ### Running Tests
 
 ```bash
-# All tests
+# All unit/integration tests
 npm run test
 
 # Specific suite
@@ -428,6 +429,15 @@ npm run test -- --watch
 
 # Coverage
 npm run test -- --coverage
+
+# E2E smoke tests (Chromium-only, against localhost or staging)
+npm run test:e2e
+
+# E2E against staging URL
+PLAYWRIGHT_BASE_URL=https://staging-url npm run test:e2e
+
+# Full E2E suite (all browsers)
+PLAYWRIGHT_ALL_BROWSERS=true npm run test:e2e:all
 ```
 
 ### CI Test Tiering (Anthropic Pattern)
@@ -437,6 +447,7 @@ Tests are **tiered by execution time** to keep CI fast:
 | Tier | Tests | When Run | Max Time |
 |------|-------|----------|----------|
 | **Unit/Integration** | Business logic, API mocks | Every push | ~2 min |
+| **E2E Smoke** | Playwright browser tests (Chromium) | Pre-deploy (against staging) | ~30s |
 | **Simulation** | Monte Carlo, stress tests | Nightly (6 AM UTC) | 2h |
 
 **How it works:**

@@ -13,6 +13,8 @@
     "db:push": "drizzle-kit push",
     "test:engine": "node --env-file=.env.local --import=tsx src/scripts/verify-engine.ts",
     "test:markets": "node --env-file=.env.local --import=tsx src/scripts/verify-markets.ts",
+    "test:e2e": "npx playwright test e2e/smoke.spec.ts",
+    "test:e2e:all": "npx playwright test",
     "prepare": "husky"
   },
   "dependencies": {

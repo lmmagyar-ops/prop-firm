@@ -2,7 +2,11 @@ import { defineConfig, devices } from '@playwright/test';
 
 /**
  * Playwright E2E test configuration for PropFirm.
- * See https://playwright.dev/docs/test-configuration
+ * 
+ * Usage:
+ *   npm run test:e2e              # Smoke tests only (Chromium, ~30s)
+ *   npm run test:e2e:all          # Full suite, all browsers
+ *   PLAYWRIGHT_BASE_URL=https://staging.example.com npm run test:e2e
  */
 export default defineConfig({
     testDir: './e2e',
@@ -24,7 +28,7 @@ export default defineConfig({
 
     /* Shared settings for all the projects below */
     use: {
-        /* Base URL to use in actions like `await page.goto('/')` */
+        /* Base URL — defaults to staging, override with PLAYWRIGHT_BASE_URL */
         baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000',
 
         /* Collect trace when retrying the failed test */
@@ -34,37 +38,28 @@ export default defineConfig({
         screenshot: 'only-on-failure',
     },
 
-    /* Configure projects for major browsers */
-    projects: [
-        {
-            name: 'chromium',
-            use: { ...devices['Desktop Chrome'] },
-        },
-        {
-            name: 'firefox',
-            use: { ...devices['Desktop Firefox'] },
-        },
-        {
-            name: 'webkit',
-            use: { ...devices['Desktop Safari'] },
-        },
+    /* Default: Chromium-only for fast CI. Set PLAYWRIGHT_ALL_BROWSERS=true for full matrix. */
+    projects: process.env.PLAYWRIGHT_ALL_BROWSERS
+        ? [
+            { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+            { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
+            { name: 'webkit', use: { ...devices['Desktop Safari'] } },
+            { name: 'Mobile Chrome', use: { ...devices['Pixel 5'] } },
+            { name: 'Mobile Safari', use: { ...devices['iPhone 12'] } },
+        ]
+        : [
+            { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+        ],
 
-        /* Test against mobile viewports */
-        {
-            name: 'Mobile Chrome',
-            use: { ...devices['Pixel 5'] },
-        },
-        {
-            name: 'Mobile Safari',
-            use: { ...devices['iPhone 12'] },
-        },
-    ],
-
-    /* Run your local dev server before starting the tests */
-    webServer: {
-        command: 'npm run dev',
-        url: 'http://localhost:3000',
-        reuseExistingServer: !process.env.CI,
-        timeout: 120 * 1000, // 2 minutes to start
-    },
+    /* Run local dev server if no PLAYWRIGHT_BASE_URL is set */
+    ...(process.env.PLAYWRIGHT_BASE_URL
+        ? {}
+        : {
+            webServer: {
+                command: 'npm run dev',
+                url: 'http://localhost:3000',
+                reuseExistingServer: true,
+                timeout: 120 * 1000,
+            },
+        }),
 });

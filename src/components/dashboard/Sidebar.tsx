@@ -69,7 +69,7 @@ export function Sidebar({ active, hasActiveChallenge = false }: SidebarProps) {
                 <Link href="/dashboard" className="font-serif font-bold text-2xl tracking-tight text-white/90">Propshot</Link>
             </div>
 
-            <nav className="flex-1 px-4 space-y-1">
+            <nav className="flex-1 px-4 space-y-1" data-testid="sidebar-nav">
                 {/* Primary Navigation - Dashboard & Trade at top */}
                 <NavItem icon={LayoutDashboard} label="Dashboard" href="/dashboard" isActive={activePage === "Dashboard"} />
                 {/* Trade - Locked when no active challenge */}
@@ -97,7 +97,7 @@ export function Sidebar({ active, hasActiveChallenge = false }: SidebarProps) {
                 </div>
 
                 {/* Settings & Support */}
-                <div className="pt-3">
+                <div className="pt-3" data-testid="sidebar-settings">
                     <NavItem icon={History} label="Trade History" href="/dashboard/history" isActive={activePage === "Trade History"} />
                     <NavItem icon={Settings} label="Settings" href="/dashboard/settings" isActive={activePage === "Settings"} />
                     <NavItem icon={Wallet} label="Payouts" href="/dashboard/payouts" isActive={activePage === "Payouts"} />
