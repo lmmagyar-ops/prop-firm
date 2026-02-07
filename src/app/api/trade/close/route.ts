@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
             "SELL",
             marketValue, // Approximate market value (amount is overridden by shares option)
             posDirection, // Pass direction to correctly identify which position to close
-            { shares, isClosing: true } // Explicitly pass share count to sell, allow demo data
+            { shares } // Explicitly pass share count to sell
         );
 
         // Fetch updated balance (challenge is updated by TradeExecutor)
