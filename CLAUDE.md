@@ -37,7 +37,8 @@ npm run db:generate  # Generate migrations
 
 # Testing
 npm run test                                    # All Vitest unit tests
-npm run test:engine                             # Trading engine verification
+npm run test:engine                             # Trading engine verification (32 assertions)
+npm run test:markets                            # Market data quality audit (22 assertions)
 npm run test -- tests/discount-security.test.ts # Discount security (47 tests)
 npm run test -- tests/payout-logic.test.ts      # Payout flow tests
 

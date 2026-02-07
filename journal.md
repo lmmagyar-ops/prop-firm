@@ -4,6 +4,75 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ---
 
+## 2026-02-07
+
+### 12:00 AM - Market Grouping: Sub-Markets Showing as Separate Cards ✅
+
+**Symptom:** Individual market options (e.g. "Will Josh Shapiro win the 2028 Democratic presidential nomination?") appeared as separate binary cards instead of being grouped under their parent event ("Democratic Presidential Nominee 2028").
+
+**Root Cause:** `getActiveEvents()` in `market.ts` merged binary markets from `market:active_list` into featured events from `event:active_list`, but only deduplicated by checking if a binary market's question matched an **event title**. Sub-market questions (e.g. "Will Josh Shapiro win...") never match parent event titles (e.g. "Democratic Presidential Nominee 2028"), so they passed through as separate cards.
+
+**Fix:** Extended dedup in `getActiveEvents()` to also check binary market questions and token IDs against **sub-market questions** within featured events — not just event titles.
+
+**Files Modified:** `src/app/actions/market.ts`
+**Verification:** Engine tests 32/32 ✅ | Deployed to production ✅
+**Commit:** `f467d7f` (develop) → `4a17012` (main)
+
+---
+
+### 12:08 AM - Market Data Quality Audit Script (`test:markets`) ✅
+
+**Problem:** The sub-market duplication bug above was never caught because all existing tests (`test:engine`, unit tests, `SMOKE_TEST.md`) only test trade execution — none exercised the data pipeline (`fetchFeaturedEvents()` → `fetchActiveMarkets()` → `getActiveEvents()` merge).
+
+**Solution:** Created `src/scripts/verify-markets.ts` — a market data quality audit that runs against **live Redis data** with 7 audit checks (22 assertions):
+
+1. **Duplicate Detection** — binary markets duplicating featured event sub-markets
+2. **Price Sanity** — stale (0/NaN), extreme (≤1%/≥99%), placeholder (50%) prices
+3. **Encoding/Mojibake** — character corruption like "Supá Bowl"
+4. **Structural Integrity** — empty events, flag mismatches, missing titles, token ID conflicts
+5. **Count Reasonableness** — market counts outside expected range
+6. **Category Coverage** — key categories (Politics, Sports, Crypto, Business) have markets
+7. **Merged Output Simulation** — replays `getActiveEvents()` merge logic, checks for duplicates in final output
+
+**Files Modified:**
+- `src/scripts/verify-markets.ts` — [NEW] Market quality audit script
+- `package.json` — Added `test:markets` npm script
+- `CLAUDE.md` — Added to testing commands  
+- `.agent/workflows/deploy.md` — Added `test:markets` to pre-deploy verification
+
+**Verification:** 22 passed, 0 failed, 4 advisory warnings ✅
+**Commit:** `0bf1841` → `03539e6` (develop)
+
+---
+
+### 12:21 AM - Category Misclassification: Sports in Geopolitics ⏳
+
+**Symptom:** Sports markets ("VfL Wolfsburg vs. BV Borussia", "Warriors vs. Lakers", "Will Cooper Flagg win...") appearing in the Geopolitics tab.
+
+**Root Cause:** `getCategories()` in `ingestion.ts` used `q.includes()` for substring matching on short/ambiguous keywords, causing false positives:
+
+| Market | Keyword Matched | Why It's Wrong |
+|--------|----------------|----------------|
+| Warriors vs. Lakers | `war` | "**War**riors" |
+| VfL Wolfsburg vs. BV Borussia | `russia` | "Bo**russia**" |
+| Will the US confirm aliens exist | `xi` | "e**xi**st" |
+| Senator Eichorn guilty | `nato` | "se**nato**r" |
+| Kevin Warsh nominated | `war` | "**War**sh" |
+| OpenAI launch hardware | `war` | "hard**war**e" |
+| Russia x Ukraine ceasefire | `ai` | "cease**f**ire" → Tech! |
+
+**Fix:** Added `wordMatch()` helper using `\b` word-boundary regex. Applied to 7 keywords:
+- **Geopolitics:** `war`, `russia`, `nato`, `iran`, `china` → `wordMatch()`
+- **Geopolitics:** `xi` → changed to `xi jinping` (full name)
+- **Tech:** `ai`, `meta` → `wordMatch()`
+
+**Files Modified:** `src/workers/ingestion.ts`
+**Status:** Code saved, needs commit + deploy (terminal zombie blocked deployment)
+
+---
+
+---
+
 ## 2026-02-06
 
 ### 10:40 PM - Supá Bowl Encoding Fix ✅

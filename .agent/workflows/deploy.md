@@ -16,6 +16,10 @@ description: Staging-first deployment workflow for safe production releases
 # This verifies the full BUY → SELL → PnL → Balance pipeline
 # If this fails, DO NOT deploy — fix the issue first
 npm run test:engine
+
+# Run the market data quality audit
+# Checks for duplicates, stale prices, encoding corruption, structural issues
+npm run test:markets
 ```
 // turbo
 
