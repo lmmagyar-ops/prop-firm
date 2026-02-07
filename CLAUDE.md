@@ -460,13 +460,30 @@ Tests are **tiered by execution time** to keep CI fast:
 | Tier | Tests | When Run | Max Time |
 |------|-------|----------|----------|
 | **Unit/Integration** | Business logic, API mocks | Every push | ~2 min |
-| **E2E Smoke** | Playwright browser tests (Chromium) | Pre-deploy (against staging) | ~30s |
+| **E2E Smoke** | Playwright browser tests (Chromium) | Every push (after build) | ~30s |
 | **Simulation** | Monte Carlo, stress tests | Nightly (6 AM UTC) | 2h |
 
 **How it works:**
 - `vitest.config.ts` detects `CI=true` and excludes `tests/simulation/**`
 - GitHub Actions workflow has separate `simulation` job on schedule
+- E2E job runs after build, reads secrets for staging URL + test credentials
+- On failure, Playwright report is uploaded as GitHub artifact
 - Manual trigger: **Actions → CI → Run workflow → ✓ Run simulations**
+
+### GitHub Repository Setup (Required)
+
+**Secrets** (Settings → Secrets and variables → Actions):
+- `E2E_STAGING_URL` — Vercel staging preview URL
+- `E2E_USER_EMAIL` — `e2e-test@propshot.io`
+- `E2E_USER_PASSWORD` — Test account password
+
+**Branch Protection** (Settings → Branches → Add rule):
+- Branch: `main`
+  - ✅ Require status checks to pass (quality, test, build, e2e)
+  - ✅ Require branches to be up to date
+  - ✅ Do not allow bypassing
+- Branch: `develop`
+  - ✅ Require status checks to pass (quality, test)
 
 ### Discount Security Tests (Critical)
 

@@ -126,3 +126,44 @@ jobs:
           DATABASE_URL: postgres://dummy:dummy@localhost:5432/dummy
           AUTH_SECRET: dummy-secret-for-ci-build
           NEXTAUTH_URL: http://localhost:3000
+
+  # E2E smoke tests — run against the built app
+  e2e:
+    name: E2E Smoke Tests
+    runs-on: ubuntu-latest
+    needs: [build]
+    if: github.event_name != 'schedule'
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+
+      - name: Run E2E smoke tests
+        run: npm run test:e2e
+        env:
+          CI: true
+          PLAYWRIGHT_BASE_URL: ${{ secrets.E2E_STAGING_URL }}
+          E2E_USER_EMAIL: ${{ secrets.E2E_USER_EMAIL }}
+          E2E_USER_PASSWORD: ${{ secrets.E2E_USER_PASSWORD }}
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
