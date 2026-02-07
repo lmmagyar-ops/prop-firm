@@ -100,7 +100,7 @@ export function PWAInstallPrompt() {
                     exit={{ y: 100, opacity: 0 }}
                     className="fixed bottom-4 left-4 right-4 z-50 md:left-auto md:right-4 md:w-80"
                 >
-                    <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 shadow-xl">
+                    <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 shadow-xl" data-testid="pwa-install-prompt">
                         <button
                             onClick={handleDismiss}
                             className="absolute top-3 right-3 p-1 text-zinc-500 hover:text-white"

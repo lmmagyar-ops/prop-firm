@@ -413,11 +413,12 @@ DATABASE_URL="..." npm run db:push
 | **Payout Logic** | `tests/payout-logic.test.ts` | Profit split calculations, payout eligibility |
 | **Achievements** | `tests/achievements.test.ts` | Trading achievement unlock logic |
 | **Trade Engine** | `npm run test:engine` | 32-assertion round-trip verification (7 phases) |
+| **E2E Smoke** | `npm run test:e2e` | 10 Playwright browser tests targeting UI/UX regressions |
 
 ### Running Tests
 
 ```bash
-# All tests
+# All unit/integration tests
 npm run test
 
 # Specific suite
@@ -428,7 +429,29 @@ npm run test -- --watch
 
 # Coverage
 npm run test -- --coverage
+
+# E2E smoke tests (Chromium-only, against localhost or staging)
+npm run test:e2e
+
+# E2E against staging URL
+PLAYWRIGHT_BASE_URL=https://staging-url npm run test:e2e
+
+# Full E2E suite (all browsers)
+PLAYWRIGHT_ALL_BROWSERS=true npm run test:e2e:all
+
+# E2E with authentication (unlocks all 11 tests)
+E2E_USER_EMAIL=e2e-test@propshot.io E2E_USER_PASSWORD="TestBot2026!" npm run test:e2e
 ```
+
+### E2E Auth Setup
+
+Playwright uses **session storage** for authenticated tests:
+
+- **Auth setup**: `e2e/auth.setup.ts` runs first, logs in, saves session to `.auth/user.json`
+- **Test account**: `e2e-test@propshot.io` / `TestBot2026!` (pre-verified, role: user)
+- **Env vars**: `E2E_USER_EMAIL` and `E2E_USER_PASSWORD` in `.env.local`
+- **Re-create account**: `node --env-file=.env.local --import=tsx src/scripts/create-e2e-account.ts`
+- **Without credentials**: Auth-gated tests skip gracefully, public tests still run
 
 ### CI Test Tiering (Anthropic Pattern)
 
@@ -437,12 +460,30 @@ Tests are **tiered by execution time** to keep CI fast:
 | Tier | Tests | When Run | Max Time |
 |------|-------|----------|----------|
 | **Unit/Integration** | Business logic, API mocks | Every push | ~2 min |
+| **E2E Smoke** | Playwright browser tests (Chromium) | Every push (after build) | ~30s |
 | **Simulation** | Monte Carlo, stress tests | Nightly (6 AM UTC) | 2h |
 
 **How it works:**
 - `vitest.config.ts` detects `CI=true` and excludes `tests/simulation/**`
 - GitHub Actions workflow has separate `simulation` job on schedule
+- E2E job runs after build, reads secrets for staging URL + test credentials
+- On failure, Playwright report is uploaded as GitHub artifact
 - Manual trigger: **Actions → CI → Run workflow → ✓ Run simulations**
+
+### GitHub Repository Setup (Required)
+
+**Secrets** (Settings → Secrets and variables → Actions):
+- `E2E_STAGING_URL` — Vercel staging preview URL
+- `E2E_USER_EMAIL` — `e2e-test@propshot.io`
+- `E2E_USER_PASSWORD` — Test account password
+
+**Branch Protection** (Settings → Branches → Add rule):
+- Branch: `main`
+  - ✅ Require status checks to pass (quality, test, build, e2e)
+  - ✅ Require branches to be up to date
+  - ✅ Do not allow bypassing
+- Branch: `develop`
+  - ✅ Require status checks to pass (quality, test)
 
 ### Discount Security Tests (Critical)
 

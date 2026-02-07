@@ -20,7 +20,7 @@ export default function BuyEvaluationClient({ hasActiveChallenge }: BuyEvaluatio
     const plans = Object.values(PLANS);
 
     return (
-        <div className="min-h-screen bg-background flex text-foreground font-sans">
+        <div className="min-h-screen bg-background flex text-foreground font-sans" data-testid="buy-eval-page">
             <Sidebar active="Buy Evaluation" hasActiveChallenge={hasActiveChallenge} />
 
             <main className="flex-1 p-8 ml-64 space-y-8">

@@ -130,7 +130,7 @@ export function ChallengeSelector({ challenges, selectedChallengeId, onSelect }:
                     >
                         <span className="text-sm">{getPlatformIcon(selectedChallenge.platform)}</span>
                         <Briefcase className="w-4 h-4 text-blue-500" />
-                        <span className="font-medium text-white">
+                        <span className="font-medium text-white" data-testid="account-balance">
                             ${parseFloat(selectedChallenge.equity || selectedChallenge.currentBalance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
                         <span className="text-zinc-600 font-mono text-xs">
@@ -256,7 +256,7 @@ export function ChallengeSelector({ challenges, selectedChallengeId, onSelect }:
                         className="flex items-center gap-2 px-3 py-2 bg-zinc-900/50 border border-zinc-800 rounded-lg text-sm"
                     >
                         <Briefcase className="w-4 h-4 text-blue-500" />
-                        <span className="font-medium text-white text-xs">
+                        <span className="font-medium text-white text-xs" data-testid="account-balance-mobile">
                             ${parseFloat(selectedChallenge.equity || selectedChallenge.currentBalance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
                     </button>

@@ -63,20 +63,45 @@ export async function createChallengeAction(tierId: string = "10k_challenge") {
             status: "active",
             startingBalance: "10000.00",
             currentBalance: "10000.00",
+            highWaterMark: "10000.00",
             startOfDayBalance: "10000.00",
             rulesConfig: {
-                profitTarget: 1000,   // 10% Target
-                maxDrawdown: 500      // 5% Drawdown
+                tier: "10k",
+                startingBalance: 10000,
+
+                // CRITICAL: These are ABSOLUTE DOLLAR VALUES
+                profitTarget: 1000,               // 10% of $10k = $1,000
+                maxDrawdown: 800,                  // 8% of $10k = $800
+
+                // Percentage-based (used by risk engine)
+                maxTotalDrawdownPercent: 0.08,      // 8%
+                maxDailyDrawdownPercent: 0.04,      // 4%
+
+                // Position Sizing
+                maxPositionSizePercent: 0.05,       // 5% per market
+                maxCategoryExposurePercent: 0.10,    // 10% per category
+
+                // Liquidity
+                maxVolumeImpactPercent: 0.10,        // 10% of 24h volume
+                minMarketVolume: 100_000,            // $100k
+
+                // Legacy (backwards compatibility)
+                maxDrawdownPercent: 0.08,
+                dailyLossPercent: 0.04,
+                profitTargetPercent: 0.10,
+                durationDays: 60,
+                profitSplit: 0.7,                    // 70% to trader
             },
             startedAt: new Date(),
-            // Set end date to 30 days from now
-            endsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+            // Set end date to 60 days from now (matches canonical rules)
+            endsAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000)
         }).returning();
 
         revalidatePath("/dashboard");
         return { success: true, challengeId: newChallenge.id };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Failed to create challenge:", error);
-        return { success: false, error: error.message || "Database Error" };
+        const message = error instanceof Error ? error.message : "Database Error";
+        return { success: false, error: message };
     }
 }
