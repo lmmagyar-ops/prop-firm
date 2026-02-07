@@ -4,18 +4,29 @@ import { challenges, positions } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { MarketService } from "@/lib/market";
 import { getDirectionAdjustedPrice } from "@/lib/position-utils";
+import { auth } from "@/auth";
 
 // Force dynamic - never cache this endpoint
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export async function GET(req: NextRequest) {
+    const session = await auth();
+    if (!session?.user?.id) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     try {
         const { searchParams } = new URL(req.url);
         const userId = searchParams.get("userId");
 
         if (!userId) {
             return NextResponse.json({ error: "userId required" }, { status: 400 });
+        }
+
+        // Ownership check
+        if (userId !== session.user.id) {
+            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }
 
         // Fetch all challenges for this user (active and completed)

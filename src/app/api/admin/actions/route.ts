@@ -2,8 +2,12 @@ import { db } from "@/db";
 import { challenges } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/admin-auth";
 
 export async function POST(req: Request) {
+    const { isAuthorized, response } = await requireAdmin();
+    if (!isAuthorized) return response;
+
     try {
         const { challengeId, action } = await req.json();
 

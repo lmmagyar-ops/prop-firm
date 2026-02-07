@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { sql } from "drizzle-orm";
+import { requireAdmin } from "@/lib/admin-auth";
 
 export async function GET() {
+    const { isAuthorized, response } = await requireAdmin();
+    if (!isAuthorized) return response;
+
     try {
         // Create all tables using raw SQL
         await db.execute(sql`
@@ -94,12 +98,14 @@ export async function GET() {
             success: true,
             message: "Database schema created successfully!"
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Schema creation error:", error);
+        const message = error instanceof Error ? error.message : String(error);
+        const stack = error instanceof Error ? error.stack : undefined;
         return NextResponse.json({
             success: false,
-            error: error.message,
-            stack: error.stack
+            error: message,
+            stack,
         }, { status: 500 });
     }
 }

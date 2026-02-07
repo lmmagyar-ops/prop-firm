@@ -15,7 +15,9 @@ import { test, expect } from '@playwright/test';
 /** Navigate to a page and wait for it to stabilize */
 async function navigateAndWait(page: import('@playwright/test').Page, path: string) {
     await page.goto(path);
-    await page.waitForLoadState('networkidle');
+    // Using 'domcontentloaded' instead of 'networkidle' — SSE market streams
+    // keep the network permanently active, causing 'networkidle' to hang.
+    await page.waitForLoadState('domcontentloaded');
 }
 
 // ─── 1. Public Page Loads ───────────────────────────────────────────────────

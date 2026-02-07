@@ -2,8 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { challenges, positions } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
+import { auth } from "@/auth";
 
 export async function GET(req: NextRequest) {
+    const session = await auth();
+    if (!session?.user?.id) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const searchParams = req.nextUrl.searchParams;
     const userId = searchParams.get("userId");
     const marketId = searchParams.get("marketId");
@@ -11,6 +17,11 @@ export async function GET(req: NextRequest) {
 
     if (!userId || !marketId) {
         return NextResponse.json({ error: "Missing required params" }, { status: 400 });
+    }
+
+    // Ownership check
+    if (userId !== session.user.id) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     try {
