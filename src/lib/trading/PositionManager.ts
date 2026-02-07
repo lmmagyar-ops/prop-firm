@@ -18,10 +18,11 @@ export class PositionManager {
         sizeAmount: number,
         direction: "YES" | "NO" = "YES"
     ): Promise<Position> {
-        // GUARD: Reject invalid entry prices to prevent corrupted positions
-        if (entryPrice <= 0.01 || entryPrice >= 0.99) {
-            throw new Error(`Invalid entry price: ${entryPrice}. Must be between 0.01 and 0.99.`);
-        }
+        // GUARD: Clamp extreme entry prices to prevent corrupted positions
+        // Markets near resolution can legitimately hit 0.999... or 0.001...
+        // Instead of rejecting, clamp to safe range (the invariant check in trade.ts catches truly invalid prices)
+        if (entryPrice <= 0.01) entryPrice = 0.01;
+        if (entryPrice >= 0.99) entryPrice = 0.99;
 
         const [position] = await tx.insert(positions).values({
             challengeId,

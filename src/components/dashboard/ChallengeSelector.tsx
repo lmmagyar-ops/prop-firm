@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Check, ChevronDown, Briefcase } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -131,10 +131,7 @@ export function ChallengeSelector({ challenges, selectedChallengeId, onSelect }:
                         <span className="text-sm">{getPlatformIcon(selectedChallenge.platform)}</span>
                         <Briefcase className="w-4 h-4 text-blue-500" />
                         <span className="font-medium text-white">
-                            ${parseFloat(selectedChallenge.equity || selectedChallenge.currentBalance).toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                        </span>
-                        <span className="text-zinc-500 text-xs">
-                            ({parseInt(selectedChallenge.startingBalance) >= 25000 ? '25k' : parseInt(selectedChallenge.startingBalance) >= 10000 ? '10k' : '5k'})
+                            ${parseFloat(selectedChallenge.equity || selectedChallenge.currentBalance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
                         <span className="text-zinc-600 font-mono text-xs">
                             #{selectedChallenge.accountNumber || selectedChallenge.id.slice(0, 8).toUpperCase()}
@@ -260,10 +257,7 @@ export function ChallengeSelector({ challenges, selectedChallengeId, onSelect }:
                     >
                         <Briefcase className="w-4 h-4 text-blue-500" />
                         <span className="font-medium text-white text-xs">
-                            ${parseFloat(selectedChallenge.equity || selectedChallenge.currentBalance).toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                        </span>
-                        <span className="text-zinc-500 text-[10px]">
-                            ({parseInt(selectedChallenge.startingBalance) >= 25000 ? '25k' : parseInt(selectedChallenge.startingBalance) >= 10000 ? '10k' : '5k'})
+                            ${parseFloat(selectedChallenge.equity || selectedChallenge.currentBalance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
                     </button>
 
