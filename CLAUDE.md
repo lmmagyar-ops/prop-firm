@@ -353,6 +353,10 @@ DATABASE_URL=postgres://...
 # Google OAuth (optional)
 AUTH_GOOGLE_ID=...
 AUTH_GOOGLE_SECRET=...
+
+# Error Monitoring (Sentry)
+SENTRY_DSN=https://...@....ingest.us.sentry.io/...
+NEXT_PUBLIC_SENTRY_DSN=https://...@....ingest.us.sentry.io/...
 ```
 
 ### Waitlist App (Vercel)
@@ -476,6 +480,7 @@ Tests are **tiered by execution time** to keep CI fast:
 - `E2E_STAGING_URL` — Vercel staging preview URL
 - `E2E_USER_EMAIL` — `e2e-test@propshot.io`
 - `E2E_USER_PASSWORD` — Test account password
+- `VERCEL_AUTOMATION_BYPASS_SECRET` — Bypasses Vercel deployment protection for E2E
 
 **Branch Protection** (Settings → Branches → Add rule):
 - Branch: `main`
@@ -869,6 +874,42 @@ After fixing, add an entry to `journal.md`:
 - Root cause
 - Fix applied
 - Files modified
+
+---
+
+## Security Hardening (Feb 7, 2026)
+
+### Content-Security-Policy (CSP)
+
+Strict CSP header set in `src/middleware.ts` via `addSecurityHeaders()`:
+
+```
+default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';
+img-src 'self' data: blob: https:; font-src 'self' data:;
+connect-src 'self' https://accounts.google.com https://oauth2.googleapis.com;
+frame-ancestors 'none'; object-src 'none'; base-uri 'self';
+form-action 'self'; upgrade-insecure-requests
+```
+
+**Also includes:** HSTS preload (`max-age=31536000; includeSubDomains; preload`).
+
+### Admin Audit Logging
+
+All admin mutations write to `audit_logs` table (immutable):
+
+| Action | Route | Logged Fields |
+|--------|-------|---------------|
+| Pass/Fail Challenge | `/api/admin/actions` | adminId, previousStatus, newStatus, challengeUserId |
+| Update Business Rules | `/api/admin/rules` | adminId, oldValue, newValue, version |
+
+### Error Monitoring (Sentry)
+
+Sentry is configured across all runtimes:
+- `sentry.client.config.ts` — Session replay with privacy masking
+- `sentry.server.config.ts` — Server-side error capture
+- `sentry.edge.config.ts` — Edge function errors
+- **DSN:** Set via `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN` in Vercel
+- **Org:** `prop-firm-org` on sentry.io
 
 ---
 
