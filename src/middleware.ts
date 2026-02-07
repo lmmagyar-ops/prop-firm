@@ -12,13 +12,39 @@ import {
 } from '@/lib/rate-limiter';
 
 /**
+ * Content Security Policy — prevents XSS script injection.
+ * 
+ * On a financial platform, CSP is critical: it stops injected scripts
+ * from stealing session tokens or manipulating trade actions.
+ * 
+ * 'unsafe-inline' for style-src is required by Next.js (styled-jsx).
+ * connect-src allows Google OAuth and same-origin API/SSE calls.
+ */
+const CSP_DIRECTIVES = [
+    "default-src 'self'",
+    "script-src 'self'",
+    "style-src 'self' 'unsafe-inline'",         // Next.js styled-jsx requires inline
+    "img-src 'self' data: blob:",
+    "font-src 'self'",
+    "connect-src 'self' https://accounts.google.com https://oauth2.googleapis.com",
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "object-src 'none'",
+    "upgrade-insecure-requests",
+].join('; ');
+
+/**
  * Security headers to add to all responses
  */
 function addSecurityHeaders(response: NextResponse): NextResponse {
+    // Content Security Policy
+    response.headers.set('Content-Security-Policy', CSP_DIRECTIVES);
+
     // Prevent MIME type sniffing
     response.headers.set('X-Content-Type-Options', 'nosniff');
 
-    // Prevent clickjacking
+    // Prevent clickjacking (redundant with CSP frame-ancestors, but belt-and-suspenders)
     response.headers.set('X-Frame-Options', 'DENY');
 
     // XSS protection (legacy but still useful)
@@ -26,6 +52,12 @@ function addSecurityHeaders(response: NextResponse): NextResponse {
 
     // Referrer policy
     response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+
+    // HSTS — force HTTPS for 1 year, include subdomains
+    response.headers.set(
+        'Strict-Transport-Security',
+        'max-age=31536000; includeSubDomains; preload'
+    );
 
     // Permissions policy
     response.headers.set(
