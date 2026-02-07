@@ -8,6 +8,13 @@ import { eq } from "drizzle-orm";
  * This sets the baseline for the "5% Daily Drawdown" rule.
  */
 async function runDailyReset() {
+    // AUDIT FIX: Only run at midnight UTC (0:00-0:59 window)
+    // Prevents incorrect SOD snapshots after mid-day deploys
+    const currentHour = new Date().getUTCHours();
+    if (currentHour !== 0) {
+        return; // Not midnight UTC, skip
+    }
+
     console.log("[DailyReset] 🌅 Starting Daily Snapshot...");
 
     // Get today's date in UTC (YYYY-MM-DD)
