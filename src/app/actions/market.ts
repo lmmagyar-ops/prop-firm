@@ -337,12 +337,30 @@ export async function getActiveEvents(platform: Platform = "polymarket"): Promis
                         filteredEvents.map(e => e.title.toLowerCase().trim())
                     );
 
+                    // Also collect ALL sub-market questions and IDs from featured events.
+                    // This prevents individual binary markets (e.g. "Will Josh Shapiro win...")
+                    // from appearing as separate cards when they're already sub-markets
+                    // within a grouped event (e.g. "Democratic Presidential Nominee 2028").
+                    const existingSubMarketQuestions = new Set<string>();
+                    const existingSubMarketIds = new Set<string>();
+                    for (const event of filteredEvents) {
+                        for (const market of event.markets) {
+                            existingSubMarketQuestions.add(market.question.toLowerCase().trim());
+                            existingSubMarketIds.add(market.id);
+                        }
+                    }
+
                     // Convert binary markets to EventMetadata format
                     // Focus on Sports and other high-volume markets not already in featured events
                     const convertedEvents: EventMetadata[] = binaryMarkets
                         .filter(m => {
-                            // Skip if already in featured events
+                            // Skip if title matches an existing event title
                             if (existingTitles.has(m.question.toLowerCase().trim())) return false;
+                            // Skip if this market's question matches a sub-market in a featured event
+                            // (e.g. "Will Josh Shapiro win..." already inside "Dem Nominee 2028")
+                            if (existingSubMarketQuestions.has(m.question.toLowerCase().trim())) return false;
+                            // Skip if same token ID already exists in a featured event
+                            if (existingSubMarketIds.has(m.id)) return false;
                             // Keep if has categories (especially Sports)
                             if (!m.categories || m.categories.length === 0) return false;
 
