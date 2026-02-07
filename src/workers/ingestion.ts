@@ -756,6 +756,13 @@ class IngestionWorker {
                     for (const market of event.markets) {
                         if (market.closed || market.archived) continue;
 
+                        /* eslint-disable @typescript-eslint/no-explicit-any */
+                        if ((market as Record<string, any>).endDate) {
+                            const endDate = new Date((market as Record<string, any>).endDate);
+                            if (endDate.getTime() < Date.now()) continue;
+                        }
+                        /* eslint-enable @typescript-eslint/no-explicit-any */
+
                         // Filter out spam sub-markets (e.g., "Super Bowl cancelled")
                         if (this.isSpamMarket(market.question)) continue;
 
@@ -897,6 +904,12 @@ class IngestionWorker {
                 try {
                     if (m.closed === true || m.archived === true) continue;
 
+                    // STALE MARKET PRUNING: Skip markets whose end_date has passed
+                    if (m.endDate) {
+                        const endDate = new Date(m.endDate);
+                        if (endDate.getTime() < Date.now()) continue;
+                    }
+
                     // Filter out spam markets (5-minute crypto bets)
                     if (this.isSpamMarket(m.question)) continue;
 
@@ -945,6 +958,12 @@ class IngestionWorker {
                             }
 
                             basePrice = Math.max(yesPrice, 0.01);
+
+                            // NEAR-RESOLVED FILTER: Skip markets where outcome is effectively decided
+                            // YES >= 95% or YES <= 5% means the market is too close to resolution
+                            if (yesPrice >= 0.95 || yesPrice <= 0.05) {
+                                continue;
+                            }
                         } catch { }
 
                         allMarkets.push({

@@ -6,6 +6,37 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ## 2026-02-07
 
+### 9:30 AM - Bug Fix Sprint: All 9 Google Doc Items ✅ (Pending Deploy)
+
+**Context:** Mat filed 9 bugs in the "bugs, feedback etc" Google Doc. Sprint resolved all of them.
+
+**Status:** All fixes verified via browser testing on localhost. **Awaiting deployment** — terminal zombie process blocking `git push`.
+
+| # | Bug | Fix | File(s) | Verified |
+|---|-----|-----|---------|----------|
+| 1 | Category crossover (Sports in Geopolitics) | `wordMatch()` regex for ambiguous keywords | `ingestion.ts` | ✅ Deployed `c9fd3a1` |
+| 2 | PWA popup appearing on desktop | Added `window.innerWidth < 768` check | `PWAInstallPrompt.tsx` | ✅ Browser |
+| 3 | Balance shows "(10k)", no decimals | Removed label, added `.toFixed(2)` | `ChallengeSelector.tsx` | ✅ Browser: `$9,868.97` |
+| 4 | Trade History too prominent | Moved from primary nav to Settings section | `Sidebar.tsx` | ✅ Browser |
+| 5 | Eval locking (Trade locked on buy-eval page) | Split into server + client component; server fetches `hasActiveChallenge` | `buy-evaluation/page.tsx`, `BuyEvaluationClient.tsx` | ✅ Browser |
+| 6 | Entry price 0.999 error | Clamp to 0.01–0.99 instead of throwing | `PositionManager.ts` | ✅ Code review |
+| 7 | Admin tab names wrong | Verified already correct (Overview, Risk Desk, Users, etc.) | `AdminSidebar.tsx` | ✅ Browser |
+| 8 | Stale Polymarket data | Added `end_date` pruning + near-resolved filter (≥95%/≤5%) | `ingestion.ts` | ✅ Code review |
+| 9 | Settings page Kraken ID | Already hidden behind comment | `UserInformationTab.tsx` | ✅ Browser |
+
+**Key Technical Details:**
+
+**Stale Market Fix (#8):** The ingestion worker filtered `closed=false` from Polymarket API but never checked if `end_date` had passed. Markets can be `active=true, closed=false` after their end date (resolution delay). Added:
+1. `end_date` check — skip if past
+2. Near-resolved filter — skip YES ≥ 95% or ≤ 5% in `fetchActiveMarkets`
+3. Applied to both `fetchFeaturedEvents` and `fetchActiveMarkets`
+
+**Eval Locking Fix (#5):** `buy-evaluation/page.tsx` was a client component rendering `<Sidebar>` without `hasActiveChallenge`. Split into server component (DB query) + client component (receives prop). Trade tab now stays unlocked.
+
+**Blocker:** Terminal zombie process (`cd "/Users/lesmagyar/Desludes..."` running 9+ hours) prevents all terminal commands. Need to kill it before deploying.
+
+---
+
 ### 12:00 AM - Market Grouping: Sub-Markets Showing as Separate Cards ✅
 
 **Symptom:** Individual market options (e.g. "Will Josh Shapiro win the 2028 Democratic presidential nomination?") appeared as separate binary cards instead of being grouped under their parent event ("Democratic Presidential Nominee 2028").
