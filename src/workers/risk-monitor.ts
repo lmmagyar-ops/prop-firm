@@ -12,22 +12,14 @@ import Redis from "ioredis";
 import { db } from "../db";
 import { challenges, positions, auditLogs } from "../db/schema";
 import { eq, and } from "drizzle-orm";
+import { FUNDED_RULES } from "../lib/funded-rules";
 
-interface ChallengeRiskState {
-    challengeId: string;
-    userId: string;
-    currentBalance: number;
-    startingBalance: number;
-    startOfDayBalance: number;
-    maxDrawdownPercent: number;
-    maxDailyDrawdownPercent: number;
-    openPositions: Array<{
-        marketId: string;
-        direction: 'YES' | 'NO';
-        shares: number;
-        entryPrice: number;
-    }>;
-}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ChallengeRecord = Record<string, any>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type PositionRecord = Record<string, any>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type RulesConfig = Record<string, any>;
 
 export class RiskMonitor {
     private redis: Redis;
@@ -46,7 +38,7 @@ export class RiskMonitor {
     start(): void {
         if (this.isRunning) return;
 
-        console.log('[RiskMonitor] 🛡️ Starting real-time breach monitoring (5s interval)...');
+        console.log('[RiskMonitor] 🛡️ Starting real-time breach monitoring (30s interval)...');
         this.isRunning = true;
 
         // Initial check
@@ -84,7 +76,7 @@ export class RiskMonitor {
 
             // Batch fetch all prices we need
             const allMarketIds = new Set<string>();
-            const challengePositions = new Map<string, any[]>();
+            const challengePositions = new Map<string, PositionRecord[]>();
 
             for (const challenge of activeChallenges) {
                 const openPositions = await db.query.positions.findMany({
@@ -107,8 +99,8 @@ export class RiskMonitor {
                 await this.checkChallenge(challenge, openPositions, livePrices);
             }
 
-        } catch (error: any) {
-            console.error('[RiskMonitor] Check error:', error.message);
+        } catch (error: unknown) {
+            console.error('[RiskMonitor] Check error:', error instanceof Error ? error.message : error);
         }
     }
 
@@ -116,14 +108,14 @@ export class RiskMonitor {
      * Check a single challenge for breaches
      */
     private async checkChallenge(
-        challenge: any,
-        openPositions: any[],
+        challenge: ChallengeRecord,
+        openPositions: PositionRecord[],
         livePrices: Map<string, number>
     ): Promise<void> {
         const startingBalance = parseFloat(challenge.startingBalance);
         const currentBalance = parseFloat(challenge.currentBalance);
         const startOfDayBalance = parseFloat(challenge.startOfDayBalance);
-        const rules = challenge.rulesConfig as any;
+        const rules = challenge.rulesConfig as RulesConfig;
 
         // Calculate unrealized P&L from open positions
         let unrealizedPnL = 0;
@@ -149,25 +141,37 @@ export class RiskMonitor {
         // Calculate equity (current balance + unrealized P&L)
         const equity = currentBalance + unrealizedPnL;
 
+        // AUDIT FIX: rules.maxDrawdown is stored as ABSOLUTE DOLLAR value (e.g., 800)
+        // NOT a whole-number percentage. Fallback to percentage-based calc if missing.
+        const maxDrawdown = (rules.maxDrawdown as number)
+            || ((rules.maxTotalDrawdownPercent as number) || 0.08) * startingBalance;
+        const maxDrawdownLimit = startingBalance - maxDrawdown;
+
         // Check Max Drawdown (HARD BREACH)
-        const maxDrawdownLimit = startingBalance * (1 - (rules.maxDrawdown / 100));
         if (equity < maxDrawdownLimit) {
             console.log(`[RiskMonitor] 🔴 HARD BREACH: Challenge ${challenge.id} equity $${equity.toFixed(2)} < limit $${maxDrawdownLimit.toFixed(2)}`);
             await this.triggerBreach(challenge, 'max_drawdown', equity, maxDrawdownLimit);
             return;
         }
 
+        // AUDIT FIX: Use percentage-based daily drawdown (matches risk.ts)
+        const maxDailyDrawdown = ((rules.maxDailyDrawdownPercent as number) || 0.04) * startingBalance;
+        const dailyDrawdownLimit = startOfDayBalance - maxDailyDrawdown;
+
         // Check Daily Drawdown (HARD BREACH - per cofounder request)
-        const dailyDrawdownLimit = startOfDayBalance * (1 - (rules.maxDailyDrawdown / 100));
         if (equity < dailyDrawdownLimit) {
             console.log(`[RiskMonitor] 🔴 DAILY BREACH: Challenge ${challenge.id} equity $${equity.toFixed(2)} < daily limit $${dailyDrawdownLimit.toFixed(2)}`);
             await this.triggerBreach(challenge, 'daily_drawdown', equity, dailyDrawdownLimit);
             return;
         }
 
-        // Check Profit Target (PASS condition)
-        const targetBalance = startingBalance * (1 + (rules.profitTarget / 100));
-        if (equity >= targetBalance) {
+        // AUDIT FIX: rules.profitTarget is ABSOLUTE dollars (e.g., 1000), not percentage
+        const profitTarget = (rules.profitTarget as number) || startingBalance * 0.10;
+        const targetBalance = startingBalance + profitTarget;
+
+        // Check Profit Target (PASS condition) — only for non-funded phases
+        const isFunded = challenge.phase === 'funded';
+        if (!isFunded && equity >= targetBalance) {
             console.log(`[RiskMonitor] 🟢 TARGET HIT: Challenge ${challenge.id} equity $${equity.toFixed(2)} >= target $${targetBalance.toFixed(2)}`);
             await this.triggerPass(challenge, equity, targetBalance);
         }
@@ -177,19 +181,28 @@ export class RiskMonitor {
      * Trigger a breach (fail the challenge)
      */
     private async triggerBreach(
-        challenge: any,
+        challenge: ChallengeRecord,
         breachType: 'max_drawdown' | 'daily_drawdown',
         equity: number,
         limit: number
     ): Promise<void> {
         try {
-            // Update challenge status to failed
-            await db.update(challenges)
+            // AUDIT FIX: Status guard prevents double-firing on already-failed challenges
+            const result = await db.update(challenges)
                 .set({
                     status: 'failed',
                     currentBalance: equity.toString() // Store final equity
                 })
-                .where(eq(challenges.id, challenge.id));
+                .where(and(
+                    eq(challenges.id, challenge.id),
+                    eq(challenges.status, 'active')
+                ));
+
+            // If no rows updated, challenge was already failed/passed
+            if (!result.rowCount || result.rowCount === 0) {
+                console.log(`[RiskMonitor] Challenge ${challenge.id} already transitioned, skipping breach`);
+                return;
+            }
 
             // Log to audit
             await db.insert(auditLogs).values({
@@ -207,8 +220,8 @@ export class RiskMonitor {
 
             console.log(`[RiskMonitor] ❌ Challenge ${challenge.id} FAILED (${breachType})`);
 
-        } catch (error: any) {
-            console.error(`[RiskMonitor] Failed to trigger breach:`, error.message);
+        } catch (error: unknown) {
+            console.error(`[RiskMonitor] Failed to trigger breach:`, error instanceof Error ? error.message : error);
         }
     }
 
@@ -216,7 +229,7 @@ export class RiskMonitor {
      * Trigger a pass (advance to next phase)
      */
     private async triggerPass(
-        challenge: any,
+        challenge: ChallengeRecord,
         equity: number,
         target: number
     ): Promise<void> {
@@ -234,13 +247,45 @@ export class RiskMonitor {
                 newStatus = 'active';
             }
 
-            await db.update(challenges)
-                .set({
-                    status: newStatus,
-                    phase: newPhase,
-                    currentBalance: equity.toString()
-                })
-                .where(eq(challenges.id, challenge.id));
+            // Build update payload
+            const startingBalance = parseFloat(challenge.startingBalance);
+            const updatePayload: Record<string, unknown> = {
+                status: newStatus,
+                phase: newPhase,
+                currentBalance: equity.toString(),
+            };
+
+            // AUDIT FIX: If transitioning TO funded, do full reset (match evaluator.ts)
+            if (newPhase === 'funded') {
+                const tier = startingBalance >= 25000 ? '25k' as const
+                    : startingBalance >= 10000 ? '10k' as const
+                        : '5k' as const;
+                const tierRules = FUNDED_RULES[tier];
+                Object.assign(updatePayload, {
+                    currentBalance: startingBalance.toString(),
+                    highWaterMark: startingBalance.toString(),
+                    profitSplit: tierRules.profitSplit.toString(),
+                    payoutCap: tierRules.payoutCap.toString(),
+                    payoutCycleStart: new Date(),
+                    activeTradingDays: 0,
+                    lastActivityAt: new Date(),
+                    endsAt: null,
+                });
+            }
+
+            // AUDIT FIX: Status guard prevents race with evaluator
+            const result = await db.update(challenges)
+                .set(updatePayload)
+                .where(and(
+                    eq(challenges.id, challenge.id),
+                    eq(challenges.status, 'active')
+                ));
+
+            // If no rows updated, challenge was already transitioned
+            if (!result.rowCount || result.rowCount === 0) {
+                console.log(`[RiskMonitor] Challenge ${challenge.id} already transitioned, skipping pass`);
+                return;
+            }
 
             // Log to audit
             await db.insert(auditLogs).values({
@@ -258,8 +303,8 @@ export class RiskMonitor {
 
             console.log(`[RiskMonitor] ✅ Challenge ${challenge.id} PASSED (${currentPhase} → ${newPhase})`);
 
-        } catch (error: any) {
-            console.error(`[RiskMonitor] Failed to trigger pass:`, error.message);
+        } catch (error: unknown) {
+            console.error(`[RiskMonitor] Failed to trigger pass:`, error instanceof Error ? error.message : error);
         }
     }
 
@@ -283,8 +328,8 @@ export class RiskMonitor {
                     prices.set(id, parseFloat(parsed.price || parsed.mid || '0'));
                 }
             }
-        } catch (error: any) {
-            console.error('[RiskMonitor] Price fetch error:', error.message);
+        } catch (error: unknown) {
+            console.error('[RiskMonitor] Price fetch error:', error instanceof Error ? error.message : error);
         }
 
         return prices;

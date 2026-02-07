@@ -254,23 +254,6 @@ export async function getDashboardData(userId: string) {
             unrealizedPnL = (effectiveCurrentPrice - entry) * shares;
         }
 
-        // DEBUG: Log P&L calculation details for NO positions
-        if (pos.direction === 'NO') {
-            console.log(`[PNL DEBUG] ${pos.marketId.slice(0, 12)}...`, {
-                direction: pos.direction,
-                shares,
-                storedEntry: pos.entryPrice,
-                storedCurrent: pos.currentPrice,
-                livePriceRaw: livePrice?.price,
-                livePriceSource: livePrice?.source,
-                needsAdjust: needsDirectionAdjustment,
-                rawPriceUsed: rawPrice,
-                effectiveEntry: entry,
-                effectiveCurrentPrice,
-                pnlCalc: `(${effectiveCurrentPrice.toFixed(4)} - ${entry.toFixed(4)}) * ${shares.toFixed(2)} = ${unrealizedPnL.toFixed(2)}`
-            });
-        }
-
         return {
             id: pos.id,
             marketId: pos.marketId,
