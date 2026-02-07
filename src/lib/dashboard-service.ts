@@ -9,20 +9,20 @@ export async function getDashboardData(userId: string) {
     // MOCK DATA BYPASS - REMOVED (Now using real DB for everyone)
     // if (userId.startsWith("demo-user")) { ... }
 
-    // 1. Get user info
-    const user = await db.query.users.findFirst({
-        where: eq(users.id, userId),
-        columns: { displayName: true, email: true }
-    });
+    // 1. Get user info + all challenges in parallel (no dependency between them)
+    const [user, allChallenges] = await Promise.all([
+        db.query.users.findFirst({
+            where: eq(users.id, userId),
+            columns: { displayName: true, email: true }
+        }),
+        db.query.challenges.findMany({
+            where: eq(challenges.userId, userId),
+        }),
+    ]);
 
     if (!user) {
         return null;
     }
-
-    // 2. Calculate lifetime stats
-    const allChallenges = await db.query.challenges.findMany({
-        where: eq(challenges.userId, userId),
-    });
 
     const totalChallengesStarted = allChallenges.length;
     const challengesCompleted = allChallenges.filter(c => c.status === 'passed').length;
@@ -76,7 +76,9 @@ export async function getDashboardData(userId: string) {
     const selectedChallengeId = cookieStore.get("selectedChallengeId")?.value;
 
     // If user has selected a specific challenge, try to find that one
-    let activeChallenge = null;
+    let activeChallenge: Awaited<ReturnType<typeof db.query.challenges.findFirst>> = undefined;
+    let pendingChallenge: Awaited<ReturnType<typeof db.query.challenges.findFirst>> = undefined;
+
     if (selectedChallengeId) {
         activeChallenge = await db.query.challenges.findFirst({
             where: and(
@@ -89,24 +91,35 @@ export async function getDashboardData(userId: string) {
 
     // Fallback to any active challenge if selected one not found
     if (!activeChallenge) {
-        activeChallenge = await db.query.challenges.findFirst({
+        // PERF: Parallelize fallback active + pending queries (independent)
+        const [fallbackActive, pendingResult] = await Promise.all([
+            db.query.challenges.findFirst({
+                where: and(
+                    eq(challenges.userId, userId),
+                    eq(challenges.status, "active")
+                ),
+            }),
+            db.query.challenges.findFirst({
+                where: and(
+                    eq(challenges.userId, userId),
+                    eq(challenges.status, "pending")
+                ),
+            }),
+        ]);
+        activeChallenge = fallbackActive;
+        pendingChallenge = pendingResult;
+    } else {
+        // Still need to fetch pending challenge
+        pendingChallenge = await db.query.challenges.findFirst({
             where: and(
                 eq(challenges.userId, userId),
-                eq(challenges.status, "active")
+                eq(challenges.status, "pending")
             ),
         });
     }
 
     // Common history data
     const challengeHistory = mapChallengeHistory(allChallenges);
-
-    // 3b. Find PENDING challenge (if no active one, or maybe even if there is one? Usually only one allowed)
-    const pendingChallenge = await db.query.challenges.findFirst({
-        where: and(
-            eq(challenges.userId, userId),
-            eq(challenges.status, "pending")
-        ),
-    });
 
     if (!activeChallenge) {
         return {
@@ -138,8 +151,11 @@ export async function getDashboardData(userId: string) {
     // Import MarketService early for position valuation
     const { MarketService } = await import("./market");
     const marketIds = openPositions.map(p => p.marketId);
-    const livePrices = marketIds.length > 0 ? await MarketService.getBatchOrderBookPrices(marketIds) : new Map();
-    const marketTitles = await MarketService.getBatchTitles(marketIds);
+    // PERF: Parallelize order book prices + titles (independent Redis calls)
+    const [livePrices, marketTitles] = await Promise.all([
+        marketIds.length > 0 ? MarketService.getBatchOrderBookPrices(marketIds) : Promise.resolve(new Map()),
+        MarketService.getBatchTitles(marketIds),
+    ]);
 
     // Calculate position values with live prices and direction handling
     const positionsWithPnL = openPositions.map(pos => {

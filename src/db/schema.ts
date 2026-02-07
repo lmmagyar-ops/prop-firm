@@ -9,6 +9,7 @@ import {
     varchar,
     primaryKey,
     uuid,
+    index,
 } from "drizzle-orm/pg-core";
 import type { AdapterAccount } from "next-auth/adapters";
 
@@ -172,7 +173,10 @@ export const challenges = pgTable("challenges", {
     consistencyFlagged: boolean("consistency_flagged").default(false), // Soft flag for >50% single-day profit
     lastActivityAt: timestamp("last_activity_at"), // For inactivity detection (30-day termination)
     payoutCycleStart: timestamp("payout_cycle_start"), // Start of current payout period
-});
+}, (table) => ({
+    // Dashboard queries: WHERE userId = ? AND status = ?
+    challengeUserStatusIdx: index("challenges_user_status_idx").on(table.userId, table.status),
+}));
 
 export const positions = pgTable("positions", {
     id: uuid("id").defaultRandom().primaryKey(),
@@ -195,7 +199,10 @@ export const positions = pgTable("positions", {
     openedAt: timestamp("opened_at").defaultNow(),
     closedAt: timestamp("closed_at"),
     closedPrice: decimal("closed_price", { precision: 10, scale: 4 }), // Price at which position was closed
-});
+}, (table) => ({
+    // Dashboard + trade queries: WHERE challengeId = ? AND status = 'OPEN'
+    positionChallengeStatusIdx: index("positions_challenge_status_idx").on(table.challengeId, table.status),
+}));
 
 export const trades = pgTable("trades", {
     id: uuid("id").defaultRandom().primaryKey(),
@@ -210,7 +217,10 @@ export const trades = pgTable("trades", {
     realizedPnL: decimal("realized_pnl", { precision: 12, scale: 2 }), // P&L for SELL trades
 
     executedAt: timestamp("executed_at").defaultNow(),
-});
+}, (table) => ({
+    // Trade history: WHERE challengeId = ?
+    tradeChallengeIdx: index("trades_challenge_idx").on(table.challengeId),
+}));
 
 
 
@@ -231,7 +241,10 @@ export const auditLogs = pgTable("audit_logs", {
     details: jsonb("details").notNull(), // Before/After snapshot or other metadata
     ipAddress: varchar("ip_address", { length: 45 }),
     createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => ({
+    // Admin queries: WHERE adminId = ?
+    auditAdminIdx: index("audit_logs_admin_idx").on(table.adminId),
+}));
 
 export const certificates = pgTable("certificates", {
     id: text("id").primaryKey(),
