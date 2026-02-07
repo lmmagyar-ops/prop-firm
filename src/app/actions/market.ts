@@ -395,6 +395,38 @@ export async function getActiveEvents(platform: Platform = "polymarket"): Promis
 
         console.log(`[getActiveEvents] Returning ${filteredEvents.length} total events`);
 
+        // PARITY FIX: Overlay live WebSocket prices onto all market cards.
+        // Without this, cards show ingestion-time prices (could be hours stale).
+        // The WS price stream writes to market:prices:all every 5 seconds.
+        try {
+            const livePriceData = await redis.get("market:prices:all");
+            if (livePriceData) {
+                const livePrices = JSON.parse(livePriceData) as Record<string, { price?: string }>;
+                let updatedCount = 0;
+
+                for (const event of filteredEvents) {
+                    for (const market of event.markets) {
+                        const liveEntry = livePrices[market.id];
+                        if (liveEntry?.price) {
+                            const livePrice = parseFloat(liveEntry.price);
+                            // Sanity check: only use live price if it's in tradable range
+                            if (livePrice > 0.01 && livePrice < 0.99) {
+                                market.price = livePrice;
+                                updatedCount++;
+                            }
+                        }
+                    }
+                }
+
+                if (updatedCount > 0) {
+                    console.log(`[getActiveEvents] Overlaid ${updatedCount} live WS prices onto market cards`);
+                }
+            }
+        } catch (err) {
+            // Non-fatal: if live prices unavailable, cards still show ingestion prices
+            console.error("[getActiveEvents] Failed to overlay live prices:", err);
+        }
+
         return filteredEvents;
     } catch (e) {
         console.error(`Failed to fetch active events for ${platform}`, e);

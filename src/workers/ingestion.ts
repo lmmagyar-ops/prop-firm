@@ -611,11 +611,29 @@ class IngestionWorker {
     }
 
     private async init() {
-        console.log('[Ingestion] 🚀 CODE VERSION: 2026-01-22-v2 (merged token IDs fix)');
+        console.log('[Ingestion] 🚀 CODE VERSION: 2026-02-06-v3 (market parity fixes)');
         await this.fetchFeaturedEvents(); // Fetch curated trending events first
         await this.fetchActiveMarkets(); // Then fetch remaining markets
         this.connectWS();
         this.startBookPolling();
+
+        // PARITY FIX: Re-fetch market lists every 5 minutes
+        // Without this, new markets never appear and resolved ones linger until worker restart.
+        // Both Redis keys have 600s TTL, so 5-min re-fetch keeps them alive.
+        const MARKET_REFRESH_INTERVAL = 300000; // 5 minutes
+        setInterval(async () => {
+            try {
+                console.log('[Ingestion] 🔄 Periodic market refresh...');
+                await this.fetchFeaturedEvents();
+                await this.fetchActiveMarkets();
+                // Re-subscribe WebSocket to include any new token IDs
+                if (this.ws?.readyState === WebSocket.OPEN) {
+                    this.subscribeWS();
+                }
+            } catch (err) {
+                console.error('[Ingestion] Periodic refresh failed:', err);
+            }
+        }, MARKET_REFRESH_INTERVAL);
     }
 
     /**
@@ -1010,8 +1028,9 @@ class IngestionWorker {
     // Price update batching to reduce Redis commands
     private priceBuffer: Map<string, WebSocketPriceMessage> = new Map();
     private lastFlush: number = 0;
-    // COST OPTIMIZATION: 60s interval = 1,440 flushes/day (vs 2,880 at 30s)
-    private readonly FLUSH_INTERVAL_MS = 60000;
+    // PARITY FIX: 5s interval for near-real-time price display
+    // ~17,280 flushes/day — each flush is 2 Redis commands (SET + PUBLISH), well within limits
+    private readonly FLUSH_INTERVAL_MS = 5000;
 
     private async processMessage(message: WebSocketPriceMessage | WebSocketPriceMessage[]) {
         const msgs = Array.isArray(message) ? message : [message];
