@@ -610,8 +610,32 @@ class IngestionWorker {
         return cleaned;
     }
 
+    /**
+     * Fix known Polymarket API encoding issues (Mojibake).
+     * The Polymarket Gamma API sometimes returns corrupted text,
+     * e.g. "Supá Bowl" instead of "Super Bowl".
+     * This sanitizer fixes known patterns.
+     */
+    private sanitizeText(text: string): string {
+        if (!text) return text;
+
+        // Known Polymarket encoding corruptions
+        const ENCODING_FIXES: Record<string, string> = {
+            'Supá': 'Super',
+            'supá': 'super',
+            'SUPÁ': 'SUPER',
+        };
+
+        let sanitized = text;
+        for (const [corrupted, correct] of Object.entries(ENCODING_FIXES)) {
+            sanitized = sanitized.replaceAll(corrupted, correct);
+        }
+
+        return sanitized;
+    }
+
     private async init() {
-        console.log('[Ingestion] 🚀 CODE VERSION: 2026-02-06-v3 (market parity fixes)');
+        console.log('[Ingestion] 🚀 CODE VERSION: 2026-02-06-v4 (supá bowl encoding fix)');
         await this.fetchFeaturedEvents(); // Fetch curated trending events first
         await this.fetchActiveMarkets(); // Then fetch remaining markets
         this.connectWS();
@@ -744,7 +768,7 @@ class IngestionWorker {
                         // Polymarket sometimes lists the same person twice with different IDs.
                         // Use CLEANED name for deduplication (not raw question) to catch
                         // duplicates like "Will Khamenei..." vs "Khamenei will..."
-                        const cleanedName = this.cleanOutcomeName(market.question);
+                        const cleanedName = this.cleanOutcomeName(this.sanitizeText(market.question));
                         const normalizedQ = cleanedName.toLowerCase();
                         if (seenQuestions.has(normalizedQ)) {
                             // If we already have this outcome name, skip the duplicate.
@@ -772,7 +796,7 @@ class IngestionWorker {
 
                         subMarkets.push({
                             id: tokenId,
-                            question: this.cleanOutcomeName(market.question),
+                            question: this.cleanOutcomeName(this.sanitizeText(market.question)),
                             outcomes: outcomes,
                             price: Math.max(yesPrice, 0.01),
                             volume: parseFloat(market.volume || "0"),
@@ -803,7 +827,7 @@ class IngestionWorker {
 
                     processedEvents.push({
                         id: event.id || event.slug,
-                        title: event.title,
+                        title: this.sanitizeText(event.title),
                         slug: event.slug,
                         description: event.description,
                         image: event.image,
