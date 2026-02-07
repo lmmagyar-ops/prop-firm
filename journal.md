@@ -6,6 +6,35 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ## 2026-02-06
 
+### 10:40 PM - Supá Bowl Encoding Fix ✅
+
+**Symptom:** All Super Bowl market titles displayed as "Supá Bowl" on the trade page (card headers, search results, sub-markets).
+
+**Investigation:**
+1. Searched codebase for "Supá" — no hardcoded strings found
+2. Checked `cleanOutcomeName()`, `display-types.ts`, CSS transforms — no text transformations
+3. Queried Polymarket Gamma API directly — **API itself returns "Supá Bowl"**
+
+**Root Cause:** Polymarket's Gamma API returns Mojibake (corrupted UTF-8) for Super Bowl events. Confirmed via:
+```
+curl "https://gamma-api.polymarket.com/events?active=true&closed=false&limit=200"
+→ 'Supá Bowl Champion 2026', 'Supá Bowl - Winning Conference', etc.
+```
+
+**Fix:** Added `sanitizeText()` method to `IngestionWorker` in `ingestion.ts`:
+- Maps known corruptions: `Supá` → `Super` (case variants)
+- Applied to 3 call sites: event title, market question, dedup normalization
+- Extensible via `ENCODING_FIXES` map for future Polymarket data issues
+
+**Files Modified:**
+- `src/workers/ingestion.ts` — Added `sanitizeText()`, applied to 3 data paths
+- `CLAUDE.md` — Documented under "Polymarket Data Sanitization"
+
+**Verification:** Engine tests 32/32 passed ✅
+**Commit:** `95d783b` → `457dfd6` (main) — `fix: sanitize Polymarket API Mojibake (Supá Bowl → Super Bowl)`
+
+---
+
 ### 12:05 AM - Dashboard Stats Fix: Real Trade Data ✅
 
 **Root Cause:** `lifetimeStats` only queried the `challenges` table — "Total Trades" showed challenge count (1) instead of actual trade count (6), "Win Rate" showed challenge pass rate (0%) instead of trade win rate, "Getting Started" card appeared for anyone with ≤0 PnL.

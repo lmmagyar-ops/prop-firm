@@ -565,6 +565,22 @@ const FORCE_INCLUDE_KEYWORDS = [
 
 Add new keywords here when important events aren't appearing.
 
+### Polymarket Data Sanitization (IMPORTANT)
+
+The Polymarket Gamma API occasionally returns corrupted UTF-8 text (Mojibake). The `sanitizeText()` method in `ingestion.ts` fixes known patterns at the data boundary:
+
+```typescript
+// Known Polymarket encoding corruptions
+'Supá' → 'Super'   // e.g. "Supá Bowl Champion 2026" → "Super Bowl Champion 2026"
+```
+
+**Applied to 3 call sites:**
+1. Event title (card headers)
+2. Market question (sub-market display)
+3. Dedup normalization (prevents treating "Supá Bowl" and "Super Bowl" as separate)
+
+**When you see new corrupted text from Polymarket:** Add the pattern to `ENCODING_FIXES` in `sanitizeText()`.
+
 
 ## Git Workflow (Staging-First)
 
