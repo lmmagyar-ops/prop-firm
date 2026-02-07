@@ -407,6 +407,12 @@ class IngestionWorker {
         const tagsLower = (tags || []).filter(t => typeof t === 'string').map(t => t.toLowerCase());
         const imageLower = (imageUrl || '').toLowerCase();
 
+        // Word-boundary match helper — prevents false positives from substring matches
+        // e.g. 'war' in 'Warriors', 'russia' in 'Borussia', 'xi' in 'exist', 'nato' in 'senator'
+        const wordMatch = (text: string, word: string): boolean => {
+            return new RegExp(`\\b${word}\\b`).test(text);
+        };
+
         // === BREAKING DETECTION ===
         // Breaking = High 24h volume OR breaking news keywords
         const breakingKeywords = [
@@ -520,10 +526,13 @@ class IngestionWorker {
         }
 
         // Geopolitics (international)
-        if (q.includes('putin') || q.includes('ukraine') || q.includes('russia') ||
-            q.includes('zelensky') || q.includes('nato') || q.includes('israel') ||
-            q.includes('netanyahu') || q.includes('iran') || q.includes('china') ||
-            q.includes('xi') || q.includes('ceasefire') || q.includes('war') ||
+        // NOTE: Short/ambiguous keywords use wordMatch() to prevent false positives:
+        //   'war' in Warriors/Warsh/hardware, 'russia' in Borussia, 'xi' in exist,
+        //   'nato' in senator, 'china' in machinery
+        if (q.includes('putin') || q.includes('ukraine') || wordMatch(q, 'russia') ||
+            q.includes('zelensky') || wordMatch(q, 'nato') || q.includes('israel') ||
+            q.includes('netanyahu') || wordMatch(q, 'iran') || wordMatch(q, 'china') ||
+            q.includes('xi jinping') || q.includes('ceasefire') || wordMatch(q, 'war') ||
             q.includes('nuclear') || q.includes('maduro') || q.includes('venezuela') ||
             q.includes('kim jong') || q.includes('north korea') || q.includes('sanctions')) {
             if (!categories.includes('Geopolitics')) categories.push('Geopolitics');
@@ -545,10 +554,12 @@ class IngestionWorker {
         }
 
         // Tech
-        if (q.includes('ai') || q.includes('openai') || q.includes('chatgpt') ||
+        // NOTE: 'ai' uses wordMatch() to prevent 'ceasefire', 'Ukraine', 'certain' etc.
+        //   'meta' uses wordMatch() to prevent 'metadata', 'metaphor' etc.
+        if (wordMatch(q, 'ai') || q.includes('openai') || q.includes('chatgpt') ||
             q.includes('google') || q.includes('apple') || q.includes('microsoft') ||
             q.includes('spacex') || q.includes('nvidia') || q.includes('tesla') ||
-            q.includes('meta') || q.includes('amazon')) {
+            wordMatch(q, 'meta') || q.includes('amazon')) {
             if (!categories.includes('Tech')) categories.push('Tech');
         }
 
