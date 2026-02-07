@@ -159,4 +159,24 @@ export const alerts = {
         metadata: { userId, reason, challengeId },
         notifySlack: true,
     }),
+
+    /**
+     * Alert when a resolved market is pruned from Redis
+     */
+    resolvedMarketDetected: (marketId: string, title: string, price: number) => sendAlert({
+        severity: 'warning',
+        title: 'Resolved Market Pruned',
+        message: `Market "${title}" pruned (YES price: ${price.toFixed(2)})`,
+        metadata: { marketId, price },
+    }),
+
+    /**
+     * Alert when cached price diverges >5% from live Polymarket API
+     */
+    priceDrift: (marketId: string, title: string, cached: number, live: number) => sendAlert({
+        severity: 'warning',
+        title: 'Price Drift Detected',
+        message: `"${title}" drifted ${((Math.abs(cached - live)) * 100).toFixed(1)}%`,
+        metadata: { marketId, cached, live, deviation: Math.abs(cached - live) },
+    }),
 };
