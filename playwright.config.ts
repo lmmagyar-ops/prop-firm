@@ -7,7 +7,15 @@ import { defineConfig, devices } from '@playwright/test';
  *   npm run test:e2e              # Smoke tests only (Chromium, ~30s)
  *   npm run test:e2e:all          # Full suite, all browsers
  *   PLAYWRIGHT_BASE_URL=https://staging.example.com npm run test:e2e
+ * 
+ * Auth:
+ *   E2E_USER_EMAIL=...  E2E_USER_PASSWORD=... npm run test:e2e
+ *   If credentials are set, tests will run authenticated.
+ *   If not, auth-gated tests will skip gracefully.
  */
+
+const authFile = '.auth/user.json';
+
 export default defineConfig({
     testDir: './e2e',
 
@@ -28,7 +36,7 @@ export default defineConfig({
 
     /* Shared settings for all the projects below */
     use: {
-        /* Base URL — defaults to staging, override with PLAYWRIGHT_BASE_URL */
+        /* Base URL — defaults to localhost, override with PLAYWRIGHT_BASE_URL */
         baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000',
 
         /* Collect trace when retrying the failed test */
@@ -39,17 +47,50 @@ export default defineConfig({
     },
 
     /* Default: Chromium-only for fast CI. Set PLAYWRIGHT_ALL_BROWSERS=true for full matrix. */
-    projects: process.env.PLAYWRIGHT_ALL_BROWSERS
-        ? [
-            { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
-            { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
-            { name: 'webkit', use: { ...devices['Desktop Safari'] } },
-            { name: 'Mobile Chrome', use: { ...devices['Pixel 5'] } },
-            { name: 'Mobile Safari', use: { ...devices['iPhone 12'] } },
-        ]
-        : [
-            { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
-        ],
+    projects: [
+        // Auth setup — runs first, saves session for other projects
+        {
+            name: 'setup',
+            testMatch: /auth\.setup\.ts/,
+        },
+
+        // Default: Chromium-only
+        ...(process.env.PLAYWRIGHT_ALL_BROWSERS
+            ? [
+                {
+                    name: 'chromium',
+                    use: { ...devices['Desktop Chrome'], storageState: authFile },
+                    dependencies: ['setup'],
+                },
+                {
+                    name: 'firefox',
+                    use: { ...devices['Desktop Firefox'], storageState: authFile },
+                    dependencies: ['setup'],
+                },
+                {
+                    name: 'webkit',
+                    use: { ...devices['Desktop Safari'], storageState: authFile },
+                    dependencies: ['setup'],
+                },
+                {
+                    name: 'Mobile Chrome',
+                    use: { ...devices['Pixel 5'], storageState: authFile },
+                    dependencies: ['setup'],
+                },
+                {
+                    name: 'Mobile Safari',
+                    use: { ...devices['iPhone 12'], storageState: authFile },
+                    dependencies: ['setup'],
+                },
+            ]
+            : [
+                {
+                    name: 'chromium',
+                    use: { ...devices['Desktop Chrome'], storageState: authFile },
+                    dependencies: ['setup'],
+                },
+            ]),
+    ],
 
     /* Run local dev server if no PLAYWRIGHT_BASE_URL is set */
     ...(process.env.PLAYWRIGHT_BASE_URL
