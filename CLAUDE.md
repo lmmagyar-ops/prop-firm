@@ -438,7 +438,20 @@ PLAYWRIGHT_BASE_URL=https://staging-url npm run test:e2e
 
 # Full E2E suite (all browsers)
 PLAYWRIGHT_ALL_BROWSERS=true npm run test:e2e:all
+
+# E2E with authentication (unlocks all 11 tests)
+E2E_USER_EMAIL=e2e-test@propshot.io E2E_USER_PASSWORD="TestBot2026!" npm run test:e2e
 ```
+
+### E2E Auth Setup
+
+Playwright uses **session storage** for authenticated tests:
+
+- **Auth setup**: `e2e/auth.setup.ts` runs first, logs in, saves session to `.auth/user.json`
+- **Test account**: `e2e-test@propshot.io` / `TestBot2026!` (pre-verified, role: user)
+- **Env vars**: `E2E_USER_EMAIL` and `E2E_USER_PASSWORD` in `.env.local`
+- **Re-create account**: `node --env-file=.env.local --import=tsx src/scripts/create-e2e-account.ts`
+- **Without credentials**: Auth-gated tests skip gracefully, public tests still run
 
 ### CI Test Tiering (Anthropic Pattern)
 

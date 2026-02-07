@@ -6,6 +6,30 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ## 2026-02-07
 
+### 10:30 AM - E2E Testing Suite: Playwright Smoke Tests ✅
+
+**Context:** Implemented automated E2E browser testing to catch UI/UX regressions before deployment.
+
+**What was built:**
+
+| Component | File | Description |
+|-----------|------|-------------|
+| Smoke tests | `e2e/smoke.spec.ts` | 10 targeted tests covering balance format, sidebar layout, PWA, eval locking, stale markets, category crossover, admin naming |
+| Auth setup | `e2e/auth.setup.ts` | Login flow that saves session to `.auth/user.json`; skips gracefully without credentials |
+| Config | `playwright.config.ts` | Chromium-only for CI speed (~11s), multi-browser opt-in via `PLAYWRIGHT_ALL_BROWSERS` |
+| Test account | `src/scripts/create-e2e-account.ts` | Creates pre-verified `e2e-test@propshot.io` / `TestBot2026!` in DB |
+| CI integration | `.agent/workflows/deploy.md` | E2E smoke runs against staging before production merge |
+
+**Test Results (unauthenticated):** 4 passed, 8 skipped (auth-gated), 0 failed, 11.4s
+
+**Files Modified:** `playwright.config.ts`, `package.json` (added `test:e2e`, `test:e2e:all`), `CLAUDE.md`, `.gitignore`, `.agent/workflows/deploy.md`
+
+**data-testid anchors added:** `ChallengeSelector.tsx`, `Sidebar.tsx`, `PWAInstallPrompt.tsx`, `BuyEvaluationClient.tsx`
+
+**Commits:** `0d2455c` (smoke tests), `66f2d09` (auth sessions), `3a6cffa` (test account script)
+
+---
+
 ### 9:30 AM - Bug Fix Sprint: All 9 Google Doc Items ✅ (Pending Deploy)
 
 **Context:** Mat filed 9 bugs in the "bugs, feedback etc" Google Doc. Sprint resolved all of them.
