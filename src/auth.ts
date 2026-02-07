@@ -152,7 +152,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             return session;
         },
     },
-    session: { strategy: "jwt" },
+    session: {
+        strategy: "jwt",
+        maxAge: 60 * 60 * 24, // 24 hours (financial platform — tighter than 30d default)
+        updateAge: 60 * 60 * 8, // Refresh token every 8 hours
+    },
     secret: (() => {
         if (!process.env.AUTH_SECRET) {
             throw new Error("AUTH_SECRET environment variable is required");

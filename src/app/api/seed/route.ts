@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { businessRules } from "@/db/schema";
+import { requireAdmin } from "@/lib/admin-auth";
 
 export async function GET() {
+    const { isAuthorized, response } = await requireAdmin();
+    if (!isAuthorized) return response;
+
     try {
         // Seed challenge configuration
         await db.insert(businessRules).values({
@@ -37,11 +41,11 @@ export async function GET() {
             success: true,
             message: "Business rules seeded successfully"
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Seed error:", error);
         return NextResponse.json({
             success: false,
-            error: error.message
+            error: error instanceof Error ? error.message : String(error)
         }, { status: 500 });
     }
 }

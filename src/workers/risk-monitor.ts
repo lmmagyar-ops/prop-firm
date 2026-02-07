@@ -41,12 +41,16 @@ export class RiskMonitor {
         console.log('[RiskMonitor] 🛡️ Starting real-time breach monitoring (30s interval)...');
         this.isRunning = true;
 
-        // Initial check
-        this.checkAllChallenges();
+        // Initial check (catch to prevent unhandled rejection)
+        this.checkAllChallenges().catch(err => {
+            console.error('[RiskMonitor] ❌ CRITICAL: Initial check failed:', err instanceof Error ? err.message : err);
+        });
 
-        // Continuous monitoring
+        // Continuous monitoring (wrapped to prevent silent failures)
         this.checkInterval = setInterval(() => {
-            this.checkAllChallenges();
+            this.checkAllChallenges().catch(err => {
+                console.error('[RiskMonitor] ❌ CRITICAL: Monitoring cycle failed:', err instanceof Error ? err.message : err);
+            });
         }, this.CHECK_INTERVAL_MS);
     }
 
