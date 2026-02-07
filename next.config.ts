@@ -134,16 +134,25 @@ export default withPWA({
       },
     },
     {
-      urlPattern: /\/api\/.*$/i,
+      // PERF: Only cache non-critical API routes. Trade-critical endpoints
+      // (dashboard, trade, markets, orderbook, payout) MUST NOT be cached
+      // to prevent stale balance/position display on a trading platform.
+      urlPattern: ({ url }: { url: URL }) => {
+        if (!url.pathname.startsWith('/api/')) return false;
+        // Exclude trade-critical endpoints from caching
+        const noCachePrefixes = ['/api/dashboard', '/api/trade', '/api/markets', '/api/orderbook', '/api/payout', '/api/positions'];
+        if (noCachePrefixes.some(prefix => url.pathname.startsWith(prefix))) return false;
+        return true;
+      },
       handler: "NetworkFirst",
       method: "GET",
       options: {
         cacheName: "api-cache",
         expiration: {
           maxEntries: 16,
-          maxAgeSeconds: 60, // 1 minute - short cache for API data
+          maxAgeSeconds: 60, // 1 minute - short cache for non-critical API data
         },
-        networkTimeoutSeconds: 10, // Fall back to cache if network is slow
+        networkTimeoutSeconds: 10,
       },
     },
     {

@@ -76,6 +76,34 @@ export interface ExecutionSimulation {
     reason?: string;
 }
 
+// PERF: Short-lived in-memory cache for parsed event lists.
+// Avoids re-parsing ~500KB JSON blobs multiple times per request cycle.
+interface EventListCache {
+    kalshiEvents: any[];
+    polyEvents: any[];
+    timestamp: number;
+}
+let eventListCache: EventListCache | null = null;
+const EVENT_LIST_CACHE_TTL = 5000; // 5 seconds
+
+async function getParsedEventLists(): Promise<{ kalshiEvents: any[]; polyEvents: any[] }> {
+    if (eventListCache && Date.now() - eventListCache.timestamp < EVENT_LIST_CACHE_TTL) {
+        return eventListCache;
+    }
+
+    const redis = getRedis();
+    const [kalshiData, polyData] = await Promise.all([
+        redis.get('kalshi:active_list'),
+        redis.get('event:active_list'),
+    ]);
+
+    const kalshiEvents = kalshiData ? JSON.parse(kalshiData) : [];
+    const polyEvents = polyData ? JSON.parse(polyData) : [];
+
+    eventListCache = { kalshiEvents, polyEvents, timestamp: Date.now() };
+    return eventListCache;
+}
+
 export class MarketService {
 
     /**
@@ -153,33 +181,22 @@ export class MarketService {
         if (marketIds.length === 0) return results;
 
         try {
-            const redis = getRedis();
-
-            // Load event lists once (instead of per-market)
-            const [kalshiData, polyData] = await Promise.all([
-                redis.get('kalshi:active_list'),
-                redis.get('event:active_list')
-            ]);
+            // PERF: Use cached event lists instead of re-parsing per call
+            const { kalshiEvents, polyEvents } = await getParsedEventLists();
 
             // Build market lookup maps
             const kalshiMarkets = new Map<string, any>();
             const polyMarkets = new Map<string, any>();
 
-            if (kalshiData) {
-                const events = JSON.parse(kalshiData);
-                for (const event of events) {
-                    for (const market of event.markets || []) {
-                        kalshiMarkets.set(market.id, market);
-                    }
+            for (const event of kalshiEvents) {
+                for (const market of event.markets || []) {
+                    kalshiMarkets.set(market.id, market);
                 }
             }
 
-            if (polyData) {
-                const events = JSON.parse(polyData);
-                for (const event of events) {
-                    for (const market of event.markets || []) {
-                        polyMarkets.set(market.id, market);
-                    }
+            for (const event of polyEvents) {
+                for (const market of event.markets || []) {
+                    polyMarkets.set(market.id, market);
                 }
             }
 
@@ -295,33 +312,22 @@ export class MarketService {
         if (marketIds.length === 0) return results;
 
         try {
-            const redis = getRedis();
-
-            // Load event lists once
-            const [kalshiData, polyData] = await Promise.all([
-                redis.get('kalshi:active_list'),
-                redis.get('event:active_list')
-            ]);
+            // PERF: Use cached event lists instead of re-parsing per call
+            const { kalshiEvents, polyEvents } = await getParsedEventLists();
 
             // Build title lookup maps
-            if (kalshiData) {
-                const events = JSON.parse(kalshiData);
-                for (const event of events) {
-                    for (const market of event.markets || []) {
-                        if (marketIds.includes(market.id)) {
-                            results.set(market.id, market.title || event.title);
-                        }
+            for (const event of kalshiEvents) {
+                for (const market of event.markets || []) {
+                    if (marketIds.includes(market.id)) {
+                        results.set(market.id, market.title || event.title);
                     }
                 }
             }
 
-            if (polyData) {
-                const events = JSON.parse(polyData);
-                for (const event of events) {
-                    for (const market of event.markets || []) {
-                        if (marketIds.includes(market.id)) {
-                            results.set(market.id, market.title || event.title);
-                        }
+            for (const event of polyEvents) {
+                for (const market of event.markets || []) {
+                    if (marketIds.includes(market.id)) {
+                        results.set(market.id, market.title || event.title);
                     }
                 }
             }
@@ -339,52 +345,46 @@ export class MarketService {
      */
     static async lookupPriceFromEvents(marketId: string): Promise<MarketPrice | null> {
         try {
-            const redis = getRedis();
+            // PERF: Use cached event lists instead of re-parsing per call
+            const { kalshiEvents, polyEvents } = await getParsedEventLists();
 
             // Try Kalshi first (marketId might be a ticker like KXPREZ2028-28-JVAN)
-            const kalshiData = await redis.get('kalshi:active_list');
-            if (kalshiData) {
-                const events = JSON.parse(kalshiData);
-                for (const event of events) {
-                    const market = event.markets?.find((m: any) => m.id === marketId);
-                    if (market) {
-                        const price = parseFloat(market.price);
-                        // Skip invalid/stale prices that indicate resolved markets
-                        if (price > 0.01 && price < 0.99) {
-                            return {
-                                price: market.price.toString(),
-                                asset_id: marketId,
-                                timestamp: Date.now()
-                            };
-                        }
-                        // Invalid price - fall through to next lookup
+            for (const event of kalshiEvents) {
+                const market = event.markets?.find((m: any) => m.id === marketId);
+                if (market) {
+                    const price = parseFloat(market.price);
+                    // Skip invalid/stale prices that indicate resolved markets
+                    if (price > 0.01 && price < 0.99) {
+                        return {
+                            price: market.price.toString(),
+                            asset_id: marketId,
+                            timestamp: Date.now()
+                        };
                     }
+                    // Invalid price - fall through to next lookup
                 }
             }
 
             // Try Polymarket featured events
-            const polyData = await redis.get('event:active_list');
-            if (polyData) {
-                const events = JSON.parse(polyData);
-                for (const event of events) {
-                    const market = event.markets?.find((m: any) => m.id === marketId);
-                    if (market) {
-                        const price = parseFloat(market.price);
-                        // Skip invalid/stale prices that indicate resolved markets
-                        if (price > 0.01 && price < 0.99) {
-                            return {
-                                price: market.price.toString(),
-                                asset_id: marketId,
-                                timestamp: Date.now()
-                            };
-                        }
-                        // Invalid price - fall through to next lookup
+            for (const event of polyEvents) {
+                const market = event.markets?.find((m: any) => m.id === marketId);
+                if (market) {
+                    const price = parseFloat(market.price);
+                    // Skip invalid/stale prices that indicate resolved markets
+                    if (price > 0.01 && price < 0.99) {
+                        return {
+                            price: market.price.toString(),
+                            asset_id: marketId,
+                            timestamp: Date.now()
+                        };
                     }
+                    // Invalid price - fall through to next lookup
                 }
             }
 
             // FALLBACK: Check market:active_list for binary markets not in featured events
             // These are high-volume single-outcome markets displayed in the grid
+            const redis = getRedis();
             const binaryData = await redis.get('market:active_list');
             if (binaryData) {
                 const markets = JSON.parse(binaryData);

@@ -6,6 +6,74 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ## 2026-02-07
 
+### 2:30 PM - Security Hardening Phase 2: Production-Grade Security ✅
+
+**Context:** Comprehensive security hardening following Anthropic's best practices for financial platforms. Session included fixing a broken staging environment, then layering production security controls.
+
+---
+
+#### 🐛 Phase 1: Staging Pipeline Fix (3 Stacked Bugs)
+
+| Bug | Root Cause | Fix |
+|:----|:-----------|:----|
+| MIDDLEWARE_INVOCATION_FAILED | `ioredis` needs Node.js APIs, Vercel runs middleware in Edge Runtime | `export const runtime = 'nodejs'` in `middleware.ts` |
+| E2E test hang | `waitForLoadState('networkidle')` never resolves with SSE market streams | Switched to `domcontentloaded` |
+| Vercel SSO wall | Deployment Protection returning 401 before app loads | Disabled SSO + wired cookie/param bypass |
+
+**Also fixed:** 6 unprotected API routes secured with `requireAdmin()` / `auth()` + ownership checks.
+
+---
+
+#### 🛡️ Phase 2: Production Security Controls
+
+**1. Content-Security-Policy (CSP)** — `src/middleware.ts`
+- Strict directives: `script-src 'self'`, `frame-ancestors 'none'`, `object-src 'none'`
+- HSTS preload: `max-age=31536000; includeSubDomains; preload`
+- Prevents XSS script injection on a financial platform
+
+**2. Admin Audit Logging** — `src/app/api/admin/actions/route.ts`
+- Pass/fail challenge actions now write immutable records to `audit_logs` table
+- Logged: adminId, action type, target challenge, previousStatus, newStatus, challengeUserId
+- Uses DB transaction for atomicity (can't update challenge without logging)
+
+**3. Next.js CVE Patch** — `package.json`
+- Upgraded `16.1.0 → 16.1.6`
+- Patched 1 critical (image optimizer path traversal) + 1 high (DoS via remotePatterns) vulnerability
+- 16 low-severity transitive dep vulns remain (no non-breaking fix available)
+
+**4. Sentry Error Monitoring** — Vercel env vars
+- Created Sentry org `prop-firm-org` and Next.js project
+- Set `SENTRY_DSN` + `NEXT_PUBLIC_SENTRY_DSN` in Vercel (all environments)
+- DSN: `https://74acd33a6df10bf9291803433f918d84@o4510846542348288.ingest.us.sentry.io/4510846543724544`
+- Session replay with privacy masking already configured in `sentry.client.config.ts`
+
+**5. CI Secrets** — GitHub Actions
+- `VERCEL_AUTOMATION_BYPASS_SECRET` added to repo secrets
+- `E2E_STAGING_URL`, `E2E_USER_EMAIL`, `E2E_USER_PASSWORD` confirmed present
+- CI workflow updated to pass bypass secret to Playwright
+
+**6. Vercel Deployment Protection**
+- Bypass mechanism wired in E2E tests + CI config
+- Can re-enable SSO in Vercel settings without breaking pipeline
+
+---
+
+#### 📎 Commits
+
+| Hash | Description |
+|:-----|:------------|
+| `90252df` | Security: 6 route fixes, session tightening, risk monitor handlers |
+| `104b819` | E2E: networkidle fix + Vercel bypass |
+| `cf50fc0` | Middleware: Node.js runtime for ioredis |
+| `e757a7c` | Phase 2: CSP, HSTS, audit logging, Next.js 16.1.6, CI secrets |
+| `ba5937c` | Trigger redeploy for Sentry DSN env vars |
+
+**Files Modified:** `src/middleware.ts`, `src/app/api/admin/actions/route.ts`, `package.json`, `package-lock.json`, `.github/workflows/ci.yml`
+
+**Verification:** All changes deployed to production (`7c867f6` on main). Sentry active across all environments.
+
+---
+
 ### 10:30 AM - E2E Testing Suite: Playwright Smoke Tests ✅
 
 **Context:** Implemented automated E2E browser testing to catch UI/UX regressions before deployment.

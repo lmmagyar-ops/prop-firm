@@ -1,46 +1,45 @@
-# CLAUDE.md - Funded Prediction
+# CLAUDE.md — Funded Prediction
 
-> **Funded Prediction** - A simulated trading platform where users trade on Polymarket/Kalshi data with firm capital.
+> **Funded Prediction** — A simulated trading platform where users trade on Polymarket/Kalshi data with firm capital.
 
 ## 🧠 New Agent? Start Here
 
-1. **Read this file** — it has the full architecture, every command, risk rules, and debugging protocols
-2. **Run `npm run test:engine`** — 32 assertions across 7 phases prove the trading engine works (BUY/SELL, PnL, risk rejections, balance invariants)
-3. **If debugging a bug**, follow the "Trading Engine Number Discrepancy Audit" section below — it has a step-by-step protocol with a symptom → cause lookup table
+1. **Read this file** — full architecture, risk rules, debugging protocols
+2. **Run `npm run test:engine`** — 32 assertions across 7 phases prove the trading engine works
+3. **If debugging**, follow the "Number Discrepancy Audit" section — step-by-step protocol with symptom → cause lookup
 4. **If data looks wrong**, run `npx tsx scripts/reconcile-positions.ts` to validate positions against trade history
-5. **For manual testing**, see `docs/SMOKE_TEST.md` — a 15-minute checklist for end-to-end verification
-6. **Quick symptom guide:**
+5. **For manual testing**, see `docs/SMOKE_TEST.md` — 15-minute end-to-end checklist
+6. **For history**, see `journal.md` — daily changelog with root causes, commits, and verification results
 
-| Symptom | First Command | Then Check |
-|---------|---------------|------------|
+| Symptom | First Action | Key File |
+|---------|-------------|----------|
 | Balance wrong | `npm run test:engine` | `scripts/reconcile-positions.ts` |
 | PnL shows $0 | Check `trades.positionId` linkage | `admin/activity` route |
-| Trade rejected | Check risk engine logs | `src/lib/risk.ts` rules table |
+| Trade rejected | Check risk engine logs | `src/lib/risk.ts` |
 | Prices stale | `GET /api/cron/heartbeat-check` | Railway worker logs |
-| NaN in UI | Search for `parseFloat` without `safeParseFloat` | `src/lib/safe-parse.ts` |
+| NaN in UI | Search for `parseFloat` without guard | `src/lib/safe-parse.ts` |
+
+---
 
 ## Quick Start
 
 ```bash
 # Main App (Dashboard)
-npm run dev          # Start dev server (localhost:3000)
+npm run dev          # localhost:3000
 npm run build        # Production build
-npm run lint         # ESLint check
+npm run lint         # ESLint
 
-# Landing Page (Waitlist)
+# Landing Page (Waitlist) — separate Next.js app
 cd propshot-waitlist && npm run dev -- -p 3002
-# Accessible at http://localhost:3002
 
 # Database
-npm run db:push      # Push Drizzle schema to PostgreSQL
-npm run db:generate  # Generate migrations
+npm run db:push      # Push Drizzle schema to PostgreSQL (no migration files)
 
 # Testing
 npm run test                                    # All Vitest unit tests
 npm run test:engine                             # Trading engine verification (32 assertions)
 npm run test:markets                            # Market data quality audit (22 assertions)
-npm run test -- tests/discount-security.test.ts # Discount security (47 tests)
-npm run test -- tests/payout-logic.test.ts      # Payout flow tests
+npm run test:e2e                                # Playwright smoke tests (10 tests)
 
 # Workers (local)
 npx tsx src/workers/ingestion.ts  # Start price ingestion
@@ -51,7 +50,7 @@ DATABASE_URL="..." npx tsx scripts/grant-admin.ts email@example.com
 
 ---
 
-## Architecture Overview
+## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -81,10 +80,6 @@ DATABASE_URL="..." npx tsx scripts/grant-admin.ts email@example.com
 └─────────────────────────────────────────────────────────────────┘
 ```
 
----
-
-## Tech Stack
-
 | Layer | Technology |
 |-------|------------|
 | **Framework** | Next.js 16 (App Router), React 19 |
@@ -94,15 +89,14 @@ DATABASE_URL="..." npx tsx scripts/grant-admin.ts email@example.com
 | **UI** | Tailwind v4, Shadcn/ui, Framer Motion |
 | **Real-time** | Redis pub/sub, WebSocket streams |
 | **Markets** | Polymarket CLOB, Kalshi API |
+| **Monitoring** | Sentry (all runtimes), Winston structured logging |
 
----
-
-## Project Structure
+### Project Structure
 
 ```
 src/
-├── app/                    # Next.js App Router (Main App)
-│   ├── admin/              # Admin dashboard (protected by role)
+├── app/                    # Next.js App Router
+│   ├── admin/              # Admin dashboard (role-protected)
 │   ├── api/                # 70+ API routes
 │   ├── dashboard/          # Trader dashboard
 │   └── (auth)/             # Login, signup, password reset
@@ -111,30 +105,28 @@ src/
 │   ├── dashboard/          # Dashboard components
 │   ├── trading/            # OrderBook, TradeModal, MarketGrid
 │   └── ui/                 # Shadcn components
-├── config/
-│   └── plans.ts            # Pricing tiers & rules
-├── db/
-│   └── schema.ts           # Drizzle schema (20+ tables)
+├── config/plans.ts         # Pricing tiers & rules
+├── db/schema.ts            # Drizzle schema (20+ tables)
 ├── lib/
 │   ├── trade.ts            # Trade execution engine
-│   ├── risk.ts             # Pre-trade risk validation
+│   ├── risk.ts             # Pre-trade risk validation (9 rules)
 │   ├── evaluator.ts        # Post-trade challenge evaluation
+│   ├── market.ts           # MarketService (prices, order books)
 │   ├── dashboard-service.ts # Dashboard data aggregation
 │   ├── position-utils.ts   # Shared position calculations
-│   ├── market.ts           # MarketService (prices, order books)
-│   ├── admin-auth.ts       # requireAdmin() helper for API auth
-│   └── admin-utils.ts      # Shared admin constants (TIER_PRICES, etc.)
+│   ├── safe-parse.ts       # NaN-safe parseFloat utility
+│   ├── admin-auth.ts       # requireAdmin() helper
+│   └── alerts.ts           # Centralized alerting (Winston + Sentry + Slack)
 ├── workers/
-│   ├── ingestion.ts        # Polymarket WebSocket + RiskMonitor
-│   ├── risk-monitor.ts     # Real-time breach detection
+│   ├── ingestion.ts        # Polymarket WebSocket + data pipeline
+│   ├── risk-monitor.ts     # Real-time breach detection (5s loop)
 │   └── health-server.ts    # HTTP health endpoint for Railway
 └── scripts/
-    └── grant-admin.ts      # Grant admin role to users
+    ├── grant-admin.ts      # Grant admin role
+    ├── verify-engine.ts    # 32-assertion trade engine test
+    └── reconcile-positions.ts  # Position vs trade history audit
 
-propshot-waitlist/          # Landing Page / Waitlist App (Standalone)
-├── src/app/                # Landing page Next.js App Router
-├── public/                 # Marketing assets (Logo.svg, etc.)
-└── package.json            # Separate dependencies
+propshot-waitlist/          # Landing Page (Standalone Next.js)
 ```
 
 ---
@@ -149,22 +141,6 @@ propshot-waitlist/          # Landing Page / Waitlist App (Standalone)
 | Grinder | $10K | $149 | 10% ($1,000) | 10% |
 | Executive | $25K | $299 | 12% ($3,000) | 10% |
 
-### Discount Codes
-
-Discount codes can be applied at checkout (`/checkout`):
-
-| Type | Example | Behavior |
-|------|---------|----------|
-| `percentage` | 20% off | `finalPrice = originalPrice × (1 - value/100)` |
-| `fixed` | $25 off | `finalPrice = originalPrice - value` |
-
-**Validation:**
-- Codes are case-insensitive
-- Checked for: expiration, max uses, min purchase, tier restrictions
-- Redemptions tracked in `discountRedemptions` table
-
-**Admin management:** `/admin/discounts`
-
 ### Challenge Flow
 
 ```
@@ -174,25 +150,29 @@ Payment → Challenge Phase → Verification Phase → Funded Phase
         Don't breach DD      Prove consistency   Bi-weekly payouts
 ```
 
-### Equity Calculation (CRITICAL)
+### Discount Codes
 
-All stats use **true equity**, not just cash:
+Applied at `/checkout`. Types: `percentage` (20% off) and `fixed` ($25 off). Case-insensitive, validated for expiration/max uses/tier restrictions. Managed at `/admin/discounts`. Protected by 47 security tests in `tests/discount-security.test.ts`.
+
+> [!CAUTION]
+> Production blocks codes matching test patterns (`TEST*`, `DEMO*`, `DEV*`, etc.) — see `TEST_CODE_PATTERNS` in the discount validation logic.
+
+### Equity Calculation
+
+> [!IMPORTANT]
+> All stats use **true equity** (cash + position value), not just cash balance.
 
 ```typescript
 equity = cashBalance + totalPositionValue
-
-// Position value accounts for direction
 positionValue = shares × getDirectionAdjustedPrice(rawPrice, direction)
-
-// YES positions: value = rawPrice
-// NO positions:  value = 1 - rawPrice
+// YES: value = rawPrice  |  NO: value = 1 - rawPrice
 ```
 
 **Key file:** `src/lib/position-utils.ts`
 
 ---
 
-## Key Systems
+## Core Systems
 
 ### 1. Trade Execution (B-Book Model)
 
@@ -206,41 +186,28 @@ Trade Request → RiskEngine.validate() → MarketService.calculateImpact()
  ChallengeEvaluator.evaluate() [async]
 ```
 
-**Files:**
-- `src/lib/trade.ts` - TradeExecutor
-- `src/lib/trading/PositionManager.ts`
-- `src/lib/trading/BalanceManager.ts`
+**Files:** `src/lib/trade.ts` (TradeExecutor), `src/lib/trading/PositionManager.ts`, `src/lib/trading/BalanceManager.ts`
 
-**⚠️ NO Direction Order Book Selection (CRITICAL):**
+**Runtime invariants** (enforced in TradeExecutor):
+- `shares > 0`, `entryPrice ∈ (0.01, 0.99)`, `amount > 0`, `newBalance ≥ 0`
+- Trades blocked when `currentPrice ≤ 0.01` or `≥ 0.99` (market effectively resolved)
+- Warning logged when executing against synthetic order book
 
-Prediction markets have only ONE order book (YES). NO trades must consume the opposite side:
+> [!CAUTION]
+> **NO Direction Order Book Selection** — Prediction markets have only ONE order book (YES). NO trades must consume the opposite side:
+>
+> | Trade | Order Book Side | Why |
+> |-------|-----------------|-----|
+> | BUY YES | ASKS | Buy from YES sellers |
+> | SELL YES | BIDS | Sell to YES buyers |
+> | **BUY NO** | **BIDS** | YES buyers implicitly sell NO at (1 - bid) |
+> | **SELL NO** | **ASKS** | YES sellers implicitly buy NO at (1 - ask) |
+>
+> Handled by `effectiveSide` in `trade.ts` (~line 153). Getting this wrong makes entire markets untradeable.
 
-| Trade | Order Book Side | Why |
-|-------|-----------------|-----|
-| BUY YES | ASKS | Buy from YES sellers |
-| SELL YES | BIDS | Sell to YES buyers |
-| **BUY NO** | **BIDS** | YES buyers implicitly sell NO at (1 - bid) |
-| **SELL NO** | **ASKS** | YES sellers implicitly buy NO at (1 - ask) |
+### 2. Risk Engine (9-Layer Protocol)
 
-This is handled by `effectiveSide` in `trade.ts` (line ~153).
-
-### 2. Risk Monitoring (Real-time)
-
-The `RiskMonitor` runs every 5 seconds in the ingestion worker:
-
-1. Fetches all active challenges
-2. Gets live prices from Redis
-3. Calculates equity (cash + unrealized P&L)
-4. Checks for breaches:
-   - **Max Drawdown** → HARD FAIL
-   - **Daily Drawdown** → HARD FAIL
-   - **Profit Target** → PASS (advance phase)
-
-**File:** `src/workers/risk-monitor.ts`
-
-### Risk Rules Specification (9-Layer Protocol)
-
-Pre-trade validation in `RiskEngine.validateTrade()` enforces 9 rules:
+Pre-trade validation in `RiskEngine.validateTrade()`:
 
 | # | Rule | Limit | Notes |
 |---|------|-------|-------|
@@ -248,156 +215,156 @@ Pre-trade validation in `RiskEngine.validateTrade()` enforces 9 rules:
 | 2 | Daily Drawdown | 4-5% of SOD | Resets at midnight UTC |
 | 3 | Per-Event Exposure | 5% of start | **Sibling markets aggregated** |
 | 4 | Category Exposure | 10% per category | 8 categories tracked |
-| 5 | Volume-Tiered Exposure | Varies by volume tier | See table below |
+| 5 | Volume-Tiered Exposure | Varies | >$10M→5%, $1-10M→2.5%, $100k-1M→2% |
 | 6 | Liquidity Enforcement | 10% of 24h volume | Prevents market impact |
 | 7 | Minimum Volume Filter | $100k | Blocks illiquid markets |
 | 8 | Position Limits | Tier-based (10-50) | Prevents over-diversification |
 | 9 | Trade Frequency | 60/hour | Rate limiting |
 
-**Volume Tiers (RULE 5):**
-| Volume | Max Exposure |
-|--------|--------------|
-| >$10M | 5% of balance |
-| $1-10M | 2.5% of balance |
-| $100k-1M | 2% of balance |
-| <$100k | Blocked (RULE 7) |
+**Key files:** `src/lib/risk.ts`, `docs/RISK_RULES.md`, `src/lib/risk.test.ts` (13 tests), `src/lib/trade-flow.integration.test.ts` (6 tests)
 
-**Key Files:**
-- `src/lib/risk.ts` - RiskEngine implementation
-- `docs/RISK_RULES.md` - Formal specification
-- `src/lib/risk.test.ts` - 13 unit tests
-- `src/lib/trade-flow.integration.test.ts` - 6 integration tests
+**RULE 3 fail-safe:** When event lookup fails (market removed from Redis), trades exceeding per-market limit are blocked to prevent bypass.
 
-**RULE 3 Critical Note:** When event lookup fails (market removed from Redis), the fail-safe blocks trades exceeding the per-market limit to prevent bypass.
+### 3. Risk Monitor (Real-time)
 
-### 3. Admin Access Control
+Runs every 5 seconds in the ingestion worker:
+1. Fetches all active challenges
+2. Gets live prices from Redis
+3. Calculates equity (cash + unrealized P&L)
+4. **Max Drawdown breach** → HARD FAIL | **Daily Drawdown breach** → HARD FAIL | **Profit Target hit** → PASS
 
-Admin routes (`/admin/*`) are protected by role check:
+**File:** `src/workers/risk-monitor.ts`
 
-```typescript
-// src/app/admin/layout.tsx
-const user = await db.query.users.findFirst({
-    where: eq(users.id, session.user.id),
-    columns: { role: true }
-});
+### 4. Admin Access
 
-if (user?.role !== "admin") {
-    redirect("/dashboard");
-}
-```
+**Layout guard:** `src/app/admin/layout.tsx` — checks `user.role === "admin"`, redirects otherwise.
 
-**API endpoints** use `requireAdmin()` helper:
+**API guard:** `requireAdmin()` from `src/lib/admin-auth.ts` — every admin API route must call this.
 
-```typescript
-// src/lib/admin-auth.ts
-const { isAuthorized, response } = await requireAdmin();
-if (!isAuthorized) return response;
-```
+**Grant access:** `DATABASE_URL="..." npx tsx scripts/grant-admin.ts user@email.com`
 
-**Grant admin access:**
-```bash
-DATABASE_URL="..." npx tsx scripts/grant-admin.ts user@email.com
-```
+**Admin routes:** Overview, Risk Desk, Analytics, Growth, Discounts, Traders — all under `/admin/*`.
 
-### 4. Mission Control Dashboard (Admin Panel)
-
-Real-time admin dashboard at `/admin/*` with the following features:
-
-| Route | Purpose | Data Source |
-|-------|---------|-------------|
-| `/admin` | Overview + Quick Actions | `/api/admin/quick-stats` |
-| `/admin/risk` | Risk Desk (liability, VaR) | `/api/admin/risk/exposure` |
-| `/admin/analytics` | Cohort retention, LTV/CAC | `/api/admin/analytics/metrics` |
-| `/admin/growth` | Growth KPIs, discount perf | `/api/admin/growth/metrics` |
-| `/admin/discounts` | Discount code management | `/api/admin/discounts/*` |
-| `/admin/traders` | Trader DNA feed | `/api/admin/activity` |
-
-**Shared utilities:** `src/lib/admin-utils.ts`
-- `TIER_PRICES` - Maps starting balance to purchase price
-- `getTierPrice()` - Helper to get price for a tier
-- `EXPOSURE_CAP`, `VAR_MULTIPLIER`, `HEDGE_RATIO` - Risk constants
-
-**Mobile responsive:** Hamburger menu with slide-out drawer for mobile screens.
+**Shared utilities:** `src/lib/admin-utils.ts` — `TIER_PRICES`, `getTierPrice()`, `EXPOSURE_CAP`, `VAR_MULTIPLIER`, `HEDGE_RATIO`.
 
 ### 5. Waitlist System
 
-The "Waitlist" is a standalone Next.js application (`propshot-waitlist/`) deployed separately to Vercel.
+Standalone Next.js app in `propshot-waitlist/`. Deployed separately to Vercel.
 
-**Architecture:**
-- **Repo:** Monorepo subdirectory `propshot-waitlist/`
-- **Domain:** `predictionsfirm.com` (Production), `propshot-waitlist.vercel.app` (Fallback)
-- **Deployment:** Vercel Project `propshot-waitlist` (Root Directory set to `propshot-waitlist/`)
-
-**Email Integration (Resend):**
-Uses Resend for transactional "Welcome" emails and audience collection.
-- **Workflow:** `POST /api/subscribe` -> Add Contact -> Send Welcome Email
-- **Critical Keys:**
-  - `RESEND_API_KEY`: Production key (starts with `re_...`)
-  - `RESEND_AUDIENCE_ID`: UUID for the specific audience list
-- **DNS:** Requires separate verification records (MX, SPF, DKIM) on `predictionsfirm.com` since the domain is shared between Vercel (Web) and Resend (Email).
+- **Domain:** `predictionsfirm.com` (production)
+- **Email:** Resend integration — `POST /api/subscribe` → add contact → send welcome email
+- **Env vars:** `RESEND_API_KEY` (starts with `re_...`), `RESEND_AUDIENCE_ID` (UUID)
+- **DNS:** Requires separate MX, SPF, DKIM records on `predictionsfirm.com`
 
 ---
 
-## Environment Variables
+## Security
 
-### Vercel (Next.js App)
+### Content-Security-Policy (CSP)
 
+Strict CSP header set in `src/middleware.ts` via `addSecurityHeaders()`:
+
+```
+default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';
+img-src 'self' data: blob: https:; font-src 'self' data:;
+connect-src 'self' https://accounts.google.com https://oauth2.googleapis.com;
+frame-ancestors 'none'; object-src 'none'; base-uri 'self';
+form-action 'self'; upgrade-insecure-requests
+```
+
+**HSTS:** `max-age=31536000; includeSubDomains; preload`
+
+### Rate Limiting
+
+Redis-based tiered rate limiting in middleware (works across serverless instances):
+
+| Tier | Limit | Endpoints |
+|------|-------|-----------|
+| TRADE | 10/min | `/api/trade/*` |
+| PAYOUT | 5/min | `/api/payout/*` |
+| AUTH_SIGNUP | 5/5min | `/signup`, `/register` |
+| AUTH_LOGIN | 10/min | `/login`, `/nextauth` |
+| MARKETS | 60/min | `/api/markets/*` |
+| DEFAULT | 100/min | Everything else |
+
+**Fails open** on Redis errors — never blocks legitimate users.
+
+### Admin Audit Logging
+
+All admin mutations write immutable records to `audit_logs` table:
+
+| Action | Route | Logged Fields |
+|--------|-------|---------------|
+| Pass/Fail Challenge | `/api/admin/actions` | adminId, previousStatus, newStatus, challengeUserId |
+| Update Business Rules | `/api/admin/rules` | adminId, oldValue, newValue, version |
+
+### Error Monitoring (Sentry)
+
+Configured across all runtimes: `sentry.client.config.ts` (session replay + privacy masking), `sentry.server.config.ts`, `sentry.edge.config.ts`. DSN set via `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN` in Vercel. Org: `prop-firm-org`.
+
+### Alerting
+
+`src/lib/alerts.ts` provides centralized alerts: `alerts.tradeFailed()`, `alerts.ingestionStale()`, `alerts.redisConnectionLost()`, etc. Flow: Winston → Sentry → Slack (for critical).
+
+---
+
+## Environment & Deployment
+
+### Environment Variables
+
+**Vercel (Main App):**
 ```env
-# Auth
 AUTH_SECRET=...
 NEXTAUTH_URL=https://your-app.vercel.app
-
-# Database (auto-injected by Vercel Postgres)
 DATABASE_URL=postgres://...
-
-# Google OAuth (optional)
-AUTH_GOOGLE_ID=...
-AUTH_GOOGLE_SECRET=...
+AUTH_GOOGLE_ID=...                    # Optional
+AUTH_GOOGLE_SECRET=...                # Optional
+SENTRY_DSN=https://...@sentry.io/... 
+NEXT_PUBLIC_SENTRY_DSN=...           # Same value, client-side
 ```
 
-### Waitlist App (Vercel)
-
+**Railway (Ingestion Worker):**
 ```env
-# Resend Integration
-RESEND_API_KEY=re_...
-RESEND_AUDIENCE_ID=...
-```
-
-### Railway (Ingestion Worker)
-
-```env
-# Database
 DATABASE_URL=postgres://...@db.prisma.io:5432/postgres?sslmode=require
-
-# Redis (Railway - internal reference)
 REDIS_URL=${{Redis.REDIS_URL}}
-# Or use public proxy for external access:
-# REDIS_URL=redis://default:PASSWORD@HOST.proxy.rlwy.net:PORT
 ```
 
----
+**Waitlist App (Vercel):** `RESEND_API_KEY`, `RESEND_AUDIENCE_ID`
 
-## Deployment
+### Deployment
 
-### Vercel (Main App)
+| Component | Platform | Branch | Config |
+|-----------|----------|--------|--------|
+| Main App | Vercel | `main` (auto-deploy) | Prisma Postgres |
+| Staging | Vercel | `develop` (preview) | Same DB |
+| Worker | Railway | `main` | `railway.json`, health: `/health:3001` |
 
-- **URL:** Production domain
-- **Branch:** `main` (auto-deploy)
-- **Database:** Prisma Postgres (via Vercel Storage)
+### Schema Management
 
-### Railway (Worker)
-
-- **Service:** `ingestion-worker`
-- **Config:** `railway.json`
-- **Health check:** `/health` on port 3001
-- **Replicas:** 2 (with leader election)
-
-### Database Setup
+Uses `drizzle-kit push` (not migrate) — diffs `schema.ts` against live DB directly.
 
 ```bash
-# Push schema to production
-DATABASE_URL="..." npm run db:push
+npm run db:push    # Review diff output before confirming destructive changes
 ```
+
+### Git Workflow
+
+> [!CAUTION]
+> **NEVER push directly to `main`.** All changes go to `develop` first for staging validation.
+
+| Branch | Environment | URL |
+|--------|-------------|-----|
+| `develop` | Staging | Vercel preview URL |
+| `main` | Production | prop-firmx.vercel.app |
+
+```bash
+git checkout develop        # 1. Work on develop
+git push origin develop     # 2. Push to staging
+# 3. Verify on preview URL
+git checkout main && git merge develop && git push origin main  # 4. Promote (after approval)
+```
+
+See `.agent/workflows/deploy.md` for the full deployment workflow.
 
 ---
 
@@ -405,158 +372,73 @@ DATABASE_URL="..." npm run db:push
 
 ### Test Suites
 
-| Suite | File | Description |
-|-------|------|-------------|
-| **Risk Rules** | `src/lib/risk.test.ts` | 13 tests: drawdown, exposure, volume, positions |
-| **Trade Flow** | `src/lib/trade-flow.integration.test.ts` | 6 integration tests: full trade lifecycle |
-| **Discount Security** | `tests/discount-security.test.ts` | 47 tests: validation, calculation, fraud prevention |
-| **Payout Logic** | `tests/payout-logic.test.ts` | Profit split calculations, payout eligibility |
-| **Achievements** | `tests/achievements.test.ts` | Trading achievement unlock logic |
-| **Trade Engine** | `npm run test:engine` | 32-assertion round-trip verification (7 phases) |
-| **E2E Smoke** | `npm run test:e2e` | 10 Playwright browser tests targeting UI/UX regressions |
+| Suite | Command / File | Tests |
+|-------|---------------|-------|
+| **All Unit/Integration** | `npm run test` | Full Vitest suite |
+| **Risk Rules** | `src/lib/risk.test.ts` | 13 tests |
+| **Trade Flow** | `src/lib/trade-flow.integration.test.ts` | 6 integration tests |
+| **Discount Security** | `tests/discount-security.test.ts` | 47 tests |
+| **Payout Logic** | `tests/payout-logic.test.ts` | Profit splits, eligibility |
+| **Trade Engine** | `npm run test:engine` | 32 assertions, 7 phases |
+| **Market Quality** | `npm run test:markets` | 22 assertions vs live Redis |
+| **E2E Smoke** | `npm run test:e2e` | 10 Playwright browser tests |
 
-### Running Tests
+### E2E Setup
 
-```bash
-# All unit/integration tests
-npm run test
+- **Auth:** `e2e/auth.setup.ts` logs in, saves session to `.auth/user.json`
+- **Account:** `e2e-test@propshot.io` / `TestBot2026!` (pre-verified)
+- **Re-create:** `node --env-file=.env.local --import=tsx src/scripts/create-e2e-account.ts`
+- **Without creds:** Auth-gated tests skip, public tests still run
 
-# Specific suite
-npm run test -- tests/discount-security.test.ts
+### CI Tiering
 
-# Watch mode
-npm run test -- --watch
+| Tier | When | Max Time |
+|------|------|----------|
+| Unit/Integration | Every push | ~2 min |
+| E2E Smoke (Chromium) | Every push (after build) | ~30s |
+| Simulation (Monte Carlo) | Nightly 6 AM UTC | 2h |
 
-# Coverage
-npm run test -- --coverage
+**Manual trigger:** Actions → CI → Run workflow → ✓ Run simulations
 
-# E2E smoke tests (Chromium-only, against localhost or staging)
-npm run test:e2e
+### GitHub Repository Secrets
 
-# E2E against staging URL
-PLAYWRIGHT_BASE_URL=https://staging-url npm run test:e2e
+| Secret | Purpose |
+|--------|---------|
+| `E2E_STAGING_URL` | Vercel staging preview URL |
+| `E2E_USER_EMAIL` | `e2e-test@propshot.io` |
+| `E2E_USER_PASSWORD` | Test account password |
+| `VERCEL_AUTOMATION_BYPASS_SECRET` | Bypasses Vercel deployment protection for E2E |
 
-# Full E2E suite (all browsers)
-PLAYWRIGHT_ALL_BROWSERS=true npm run test:e2e:all
-
-# E2E with authentication (unlocks all 11 tests)
-E2E_USER_EMAIL=e2e-test@propshot.io E2E_USER_PASSWORD="TestBot2026!" npm run test:e2e
-```
-
-### E2E Auth Setup
-
-Playwright uses **session storage** for authenticated tests:
-
-- **Auth setup**: `e2e/auth.setup.ts` runs first, logs in, saves session to `.auth/user.json`
-- **Test account**: `e2e-test@propshot.io` / `TestBot2026!` (pre-verified, role: user)
-- **Env vars**: `E2E_USER_EMAIL` and `E2E_USER_PASSWORD` in `.env.local`
-- **Re-create account**: `node --env-file=.env.local --import=tsx src/scripts/create-e2e-account.ts`
-- **Without credentials**: Auth-gated tests skip gracefully, public tests still run
-
-### CI Test Tiering (Anthropic Pattern)
-
-Tests are **tiered by execution time** to keep CI fast:
-
-| Tier | Tests | When Run | Max Time |
-|------|-------|----------|----------|
-| **Unit/Integration** | Business logic, API mocks | Every push | ~2 min |
-| **E2E Smoke** | Playwright browser tests (Chromium) | Every push (after build) | ~30s |
-| **Simulation** | Monte Carlo, stress tests | Nightly (6 AM UTC) | 2h |
-
-**How it works:**
-- `vitest.config.ts` detects `CI=true` and excludes `tests/simulation/**`
-- GitHub Actions workflow has separate `simulation` job on schedule
-- E2E job runs after build, reads secrets for staging URL + test credentials
-- On failure, Playwright report is uploaded as GitHub artifact
-- Manual trigger: **Actions → CI → Run workflow → ✓ Run simulations**
-
-### GitHub Repository Setup (Required)
-
-**Secrets** (Settings → Secrets and variables → Actions):
-- `E2E_STAGING_URL` — Vercel staging preview URL
-- `E2E_USER_EMAIL` — `e2e-test@propshot.io`
-- `E2E_USER_PASSWORD` — Test account password
-
-**Branch Protection** (Settings → Branches → Add rule):
-- Branch: `main`
-  - ✅ Require status checks to pass (quality, test, build, e2e)
-  - ✅ Require branches to be up to date
-  - ✅ Do not allow bypassing
-- Branch: `develop`
-  - ✅ Require status checks to pass (quality, test)
-
-### Discount Security Tests (Critical)
-
-The discount system is protected by 47 tests covering:
-
-- **Validation**: Date ranges, usage limits, tier eligibility, new customer checks
-- **Calculation**: Percentage discounts, fixed amounts, rounding, edge cases
-- **Authentication**: Auth requirements for redemption vs. validation
-- **Authorization**: Admin-only operations (create, delete, view all)
-- **Fraud Prevention**: IP tracking, duplicate detection, price manipulation
-- **Test Code Detection**: Blocks `TEST*`, `DEMO*`, `DEV*` etc. in production
-
-**Production Protection**: Codes starting with test patterns are automatically blocked:
-```typescript
-const TEST_CODE_PATTERNS = [
-    /^TEST/i, /^DEMO/i, /^DEV/i, /^STAGING/i,
-    /^FAKE/i, /^DUMMY/i, /^SAMPLE/i, /^DEBUG/i
-];
-```
+**Branch protection:** `main` requires status checks (quality, test, build, e2e). `develop` requires (quality, test).
 
 ---
 
-## Common Tasks
+## Operations & Debugging
 
-### Grant Admin to User
+### Admin Endpoints
 
-```bash
-DATABASE_URL="postgres://..." npx tsx scripts/grant-admin.ts email@example.com
-```
+| Endpoint | Purpose |
+|----------|---------|
+| `/api/admin/refresh-market?query=X` | Check live Polymarket price |
+| `/api/admin/force-sync-market` | Force-update Redis (bypasses Railway) |
+| `/api/admin/reset-challenge` | Reset user's challenge (balance fix) |
+| `/api/admin/investigate?email=X` | Forensic audit for a user |
+| `/api/cron/balance-audit` | Balance integrity check (daily 2 AM UTC) |
 
-### Add New API Route
+### Stale Market Fix
 
-1. Create `src/app/api/[route]/route.ts`
-2. Export `GET`, `POST`, etc. handlers
-3. Add auth check if needed: `const session = await auth()`
+Run the `/stale-market` workflow, or:
 
-### Modify Risk Rules
+| Scope | Action |
+|-------|--------|
+| Single market | `POST /api/admin/force-sync-market` with `{"query": "market_name"}` |
+| All markets | `POST /api/admin/force-sync-market` with `{"syncAll": true}` |
+| Persistent | Restart Railway ingestion worker |
 
-1. **Pre-trade limits:** `src/lib/risk.ts`
-2. **Post-trade evaluation:** `src/lib/evaluator.ts`
-3. **Tier config:** `src/config/plans.ts`
-
-### Add New Market Platform
-
-1. Create `src/workers/[platform]-ingestion.ts`
-2. Add Redis key patterns to market.ts
-3. Update UI to handle platform selection
-
----
-
-## Debugging
-
-### Check Worker Logs
+### Debugging Price Issues
 
 ```bash
-# Railway dashboard → ingestion-worker → Logs
-# Look for:
-# [Ingestion] Updated 321 order books
-# [RiskMonitor] 🛡️ Starting real-time breach monitoring
-```
-
-### Database Queries
-
-```bash
-# Run grant-admin to verify connection
-DATABASE_URL="..." npx tsx scripts/grant-admin.ts test@test.com
-# Will show "User not found" if connected but user doesn't exist
-```
-
-### Price Data Issues
-
-```bash
-# Check Redis directly
+# Check Redis event count
 npx tsx -e "
 const Redis = require('ioredis');
 const r = new Redis(process.env.REDIS_URL);
@@ -564,40 +446,21 @@ r.get('event:active_list').then(d => console.log(JSON.parse(d).length + ' events
 "
 ```
 
-### Stale Market Fix (Run `/stale-market` workflow)
+### Data Integrity Scripts
 
-| Issue | Solution |
-|-------|----------|
-| Single market wrong | `POST /api/admin/force-sync-market` with `{"query": "market_name"}` |
-| All markets stale | `POST /api/admin/force-sync-market` with `{"syncAll": true}` |
-| Persistent staleness | Restart Railway ingestion worker |
+```bash
+npx tsx scripts/reconcile-positions.ts   # Validate positions vs trade history
+npx tsx scripts/data-integrity-check.ts  # Find orphaned/inconsistent data
+```
 
----
+### Polymarket Data Sanitization
 
-## Operational Tools
-
-### Admin Endpoints
-
-| Endpoint | Purpose |
-|----------|---------|
-| `/api/admin/refresh-market?query=X` | Check live Polymarket price for market X |
-| `/api/admin/force-sync-market` | Force-update Redis directly (bypasses Railway) |
-| `/api/admin/reset-challenge` | Reset a user's challenge (balance corruption fix) |
-| `/api/admin/investigate?email=X` | Forensic audit for a user |
-| `/api/cron/balance-audit` | Balance integrity check (runs daily 2AM UTC) |
-
-### Cron Jobs
-
-| Job | Schedule | File |
-|-----|----------|------|
-| Balance Audit | Daily 2 AM UTC | `src/app/api/cron/balance-audit/route.ts` |
+The Gamma API occasionally returns corrupted UTF-8 (Mojibake). `sanitizeText()` in `ingestion.ts` fixes known patterns (`Supá` → `Super`). Applied to event titles, market questions, and dedup normalization. Add new patterns to `ENCODING_FIXES` map.
 
 ### Force-Include Keywords
 
-The ingestion worker always fetches events matching these keywords, regardless of volume rank:
-
 ```typescript
-// src/workers/ingestion.ts, line ~45
+// src/workers/ingestion.ts
 const FORCE_INCLUDE_KEYWORDS = [
     "portugal", "presidential", "uk election", "germany", "france",
     "macron", "starmer", "bitcoin", "ethereum", "super bowl",
@@ -605,318 +468,64 @@ const FORCE_INCLUDE_KEYWORDS = [
 ];
 ```
 
-Add new keywords here when important events aren't appearing.
-
-### Polymarket Data Sanitization (IMPORTANT)
-
-The Polymarket Gamma API occasionally returns corrupted UTF-8 text (Mojibake). The `sanitizeText()` method in `ingestion.ts` fixes known patterns at the data boundary:
-
-```typescript
-// Known Polymarket encoding corruptions
-'Supá' → 'Super'   // e.g. "Supá Bowl Champion 2026" → "Super Bowl Champion 2026"
-```
-
-**Applied to 3 call sites:**
-1. Event title (card headers)
-2. Market question (sub-market display)
-3. Dedup normalization (prevents treating "Supá Bowl" and "Super Bowl" as separate)
-
-**When you see new corrupted text from Polymarket:** Add the pattern to `ENCODING_FIXES` in `sanitizeText()`.
-
-
-## Git Workflow (Staging-First)
-
-> [!CAUTION]
-> **NEVER push directly to `main` branch.** All changes MUST go to `develop` first for staging validation. This prevents production incidents.
-
-### Branch Strategy
-
-| Branch | Environment | URL |
-|--------|-------------|-----|
-| `develop` | Staging | Vercel preview URL |
-| `main` | Production | prop-firmx.vercel.app |
-
-### Standard Workflow
-
-```bash
-# 1. ALWAYS work on develop
-git checkout develop
-# ... make changes ...
-
-# 2. Push to staging ONLY
-git push origin develop
-
-# 3. Test on Vercel preview URL
-# Wait for user verification before promoting
-
-# 4. Promote to production (ONLY after staging verification)
-git checkout main && git merge develop && git push origin main
-```
-
-### Rules for Agents
-
-1. **Default branch is `develop`** - All code changes push here first
-2. **Never auto-push to `main`** - Requires explicit user approval
-3. **Run `/deploy` workflow** for production promotions
-
-See `.agent/workflows/deploy.md` for detailed instructions.
+Add keywords when important events aren't appearing in the market list.
 
 ---
 
-## Recent Component Additions (Jan 2026)
+## Number Discrepancy Audit Protocol
 
-### Trading UX Enhancements
-| Component | Purpose |
-|-----------|---------|
-| `OrderBook.tsx` | Enhanced with order clustering, spread indicator, depth bars |
-| `TradingPanel.tsx` | Added keyboard shortcuts (Y/N/B/1-4/?) |
-| `MobileTradeSheet.tsx` | Bottom sheet for mobile trading (drag-to-dismiss) |
-| `PWAInstallPrompt.tsx` | iOS/Android install prompt |
-
-### Landing Page
-| Component | Purpose |
-|-----------|---------|
-| `LiveStatsBar.tsx` | Animated platform stats (disabled for launch) |
-| `Testimonials.tsx` | Auto-rotate carousel (disabled for launch) |
-| `ExitIntentModal.tsx` | Exit-intent popup with discount code |
-| `UrgencyTimer.tsx` | Countdown timer for FOMO |
-
-### SEO
-| File | Purpose |
-|------|---------|
-| `sitemap.ts` | Dynamic sitemap generation |
-| `robots.ts` | Crawler rules |
-| `about/page.tsx` | SEO landing page |
-
-### Risk Rules Hardening (Jan 20)
-| Commit | Fix |
-|--------|-----|
-| `0e149a3` | RULE 3 bypass: fail-safe when event lookup fails |
-| `ac95df6` | Volume data type: store parsed number, not string |
-| `da9f0ad` | Market unavailable: improved error UX |
-| `7d49a6c` | Cleanup: removed 12 legacy debug scripts |
-| `9152655` | Testing: 6 new trade flow integration tests |
-| `9ea0f7d` | CI: fixed TypeScript errors and test timeouts |
-| `772ebaa` | Mobile UX: MobileTradeSheet quick trading |
-| `019a1e0` | Docs: fixed staging URL in deploy workflow |
-| `8d0c39b` | Maintenance: fixed duplicate import in verify-engine.ts |
-
-**MobileTradeSheet Integration:**
-- Mobile Yes/No buttons → open lightweight bottom sheet (not full modal)
-- Desktop Yes/No buttons → open full EventDetailModal (unchanged)
-- Uses `useMediaQuery("(max-width: 768px)")` for detection
-- Trade execution wired via `useTradeExecution` hook
-
-**Scripts Removed:**
-- `check-challenges.mjs`, `create-admin-cardman*.ts/mjs`, `investigate-users.ts`
-- `test-pub.ts`, `test-trade-api.ts`, `verify-trade.ts`
-- `check-market-volumes.ts`, `generate-clob-keys.ts`, `investigate-pnl.ts`, `seed-check.ts`
-
-**Scripts Retained:** `grant-admin.ts`, `verify-admins.ts`, `update-position-prices.ts`, `llm-market-fixer.ts`, `refresh-kalshi.ts`, `refresh-markets.ts`, `verify-engine.ts`, `verify-prices.ts`
-
-### Infrastructure Migration (Jan 22)
-| Change | Details |
-|--------|---------|
-| **Redis Provider** | Migrated from Upstash to Railway Redis (flat-rate $5/mo) |
-| **Connection String** | Use `REDIS_URL` only (Railway internal reference: `${{Redis.REDIS_URL}}`) |
-| **Legacy Vars Removed** | Purged `REDIS_HOST`, `REDIS_PASSWORD` from Vercel |
-| **Ingestion Hardening** | Fixed multi-layer caching, source-branch mismatch, API type drift |
-| **Order Book Coverage** | Achieved 100% coverage (~2,000 active markets) |
-
-### Dashboard Fixes (Jan 23)
-| Fix | Details |
-|-----|---------|
-| **Incident 39** | Removed `Math.max(0, totalPnL)` floor in `dashboard-service.ts` that was showing phantom profit when underwater |
-| **PayoutProgressCard** | Now shows red text + TrendingDown icon when P&L is negative |
-| **Trade History UX** | Added `RecentTradesWidget` to dashboard + "Trade History" sidebar link |
-
-### Price Fallback Hardening (Jan 27)
-| Fix | Details |
-|-----|---------|
-| **Incident 40** | Added price validation to `lookupPriceFromEvents()` in `market.ts` - stale/resolved market prices (≤0.01 or ≥0.99) now fall through to demo price (0.55) instead of showing 0¢. Root cause: event lists stored snapshot prices at ingestion time, and near-resolved markets were cached with invalid prices. |
-
-> [!IMPORTANT]
-> The payout *calculation* still correctly floors to 0 (you can't withdraw negative). Only the *display* was fixed to show accurate P&L.
-
-### Market Engine Parity Audit (Jan 29)
-| Change | Details |
-|--------|---------|
-| **PolymarketOracle** | NEW `src/lib/polymarket-oracle.ts` - Queries Gamma API for authoritative market resolution status, replaces price-move heuristic. 5-minute Redis caching. |
-| **Synthetic Order Book Depth** | Reduced from 50K to 5K shares per level in `buildSyntheticOrderBookPublic()` to match real Polymarket liquidity (~1K-10K per level). |
-| **Order Book Spread** | Widened from 1¢ to 2¢ in `buildSyntheticOrderBookPublic()` to match real market spreads (0.5%-10%). |
-| **Demo Fallback Updated** | `getDemoOrderBook()` also updated to 5K shares for consistency. |
-
-**Key Files:**
-- `src/lib/polymarket-oracle.ts` - Resolution detection via Gamma API
-- `src/lib/market.ts` - Synthetic order book generation (lines 92-105, 454-474)
-- `src/lib/resolution-detector.ts` - Integrates PolymarketOracle
-
-**Trade Execution Verification:**
-- BUY/SELL execution ✅
-- Slippage calculation ~2.86% ✅
-- P&L math verified ✅
-- Double-click prevention (already exists in `useTradeExecution` hook) ✅
-
-### Ghost Numbers Audit Fixes (Jan 29, 8:00 PM)
-
-| Fix | Details |
-|-----|---------|
-| **Extreme Price Guard** | Trades now blocked when `currentPrice ≤ 0.01` or `currentPrice ≥ 0.99`. Error: `MARKET_RESOLVED`. Prevents trading on effectively resolved markets. |
-| **Synthetic Order Book Logging** | Warning logged when trades execute against synthetic order books: `SYNTHETIC ORDERBOOK USED for trade on {marketId}`. Provides operational visibility for B-Book model. |
-
-**Key Files:**
-- `src/lib/trade.ts` - Lines 93-102 (extreme price guard), Lines 139-147 (synthetic logging)
-
-### P0 Critical Debt Fixes (Jan 29, 8:10 PM)
-
-| Fix | Details |
-|-----|---------|
-| **Redis TTL** | All 4 Redis writes in `ingestion.ts` now use `EX 600` (10-min TTL). If ingestion fails, stale data auto-expires instead of persisting forever. |
-| **NaN Guards** | Created `src/lib/safe-parse.ts` with `safeParseFloat()` utility. Updated `payout-service.ts`, `dashboard-service.ts`, `activity-tracker.ts` (21 total call sites). |
-
-**Key Files:**
-- `src/lib/safe-parse.ts` (NEW) - Safe parsing utilities
-- `src/workers/ingestion.ts` - Redis TTLs
-- `src/lib/payout-service.ts` - safeParseFloat
-- `src/lib/dashboard-service.ts` - safeParseFloat
-- `src/lib/activity-tracker.ts` - safeParseFloat
-
-**All Ghost Numbers Audit Debt: RESOLVED** ✅
-
----
-
-## Trading Engine Number Discrepancy Audit
-
-> **MANDATORY PROCESS**: When ANY number appears wrong in the UI or trading calculations, follow this process systematically. Do NOT skip steps.
+> **MANDATORY PROCESS**: When ANY number appears wrong in the UI or trading calculations, follow these steps. Do NOT skip steps.
 
 ### Step 1: Reproduce & Isolate (30 min)
 
-**Goal: Determine if the bug is in UI, API, or core logic.**
+Compare what the API returns, what the UI displays, and what the database stores.
+
+| Mismatch Location | Bug Is In |
+|--------------------|-----------|
+| API ≠ UI | Frontend parsing/display |
+| DB ≠ API | API calculation logic |
+| Trade input ≠ DB | TradeExecutor/core engine |
+
+### Step 2: Data Flow Trace
+
+Add temporary logging at each layer:
 
 ```
-1. Open DevTools Network tab
-2. Make a trade or trigger the issue
-3. Capture and compare:
-   - What the API returns
-   - What the UI displays
-   - What the database stores
-```
-
-| If mismatch is here... | The bug is in... |
-|------------------------|------------------|
-| API response ≠ UI display | Frontend parsing/display code |
-| Database value ≠ API response | API calculation logic |
-| Trade input ≠ Database stored | TradeExecutor/core engine |
-
-### Step 2: Data Flow Trace (1 hour)
-
-**Goal: Follow one trade through the entire system with logging.**
-
-Add temporary trace logging at each layer:
-
-```typescript
-[TradeAPI]       → Received: $100 YES on market X
-[TradeExecutor]  → Calculated: 172.4 shares @ $0.58
+[TradeAPI] → Received: $100 YES on market X
+[TradeExecutor] → Calculated: 172.4 shares @ $0.58
 [PositionUpdate] → New position: 172.4 shares, entry $0.58
-[BalanceUpdate]  → New balance: $14,900
-[API Response]   → Sent: { shares: 172.4, price: 0.58 }
-[Frontend]       → Displayed: ???
+[BalanceUpdate] → New balance: $14,900
+[API Response] → Sent: { shares: 172.4, price: 0.58 }
+[Frontend] → Displayed: ???
 ```
 
-### Step 3: Symptom-Specific Audits
+### Step 3: Symptom Lookup
 
 | Symptom | Audit Focus | Key Files |
 |---------|-------------|-----------|
-| Wrong P&L | `(currentPrice - entryPrice) * shares` calculation | `position-utils.ts`, `dashboard-service.ts` |
+| Wrong P&L | `(currentPrice - entryPrice) * shares` | `position-utils.ts`, `dashboard-service.ts` |
 | Wrong balance | Race conditions in balance updates | `trade.ts`, `evaluator.ts` |
-| Wrong entry price | Order book simulation vs display price | `trade.ts`, `market.ts` |
-| Numbers flickering | WebSocket vs REST race conditions | `useTradeExecution.ts` |
+| Wrong entry price | Order book simulation vs display | `trade.ts`, `market.ts` |
+| Numbers flickering | WebSocket vs REST race | `useTradeExecution.ts` |
 | Stale prices | Redis TTLs, cache invalidation | `ingestion.ts`, `market.ts` |
-| NaN/Infinity | `parseFloat` on null/undefined | Use `safeParseFloat()` from `safe-parse.ts` |
+| NaN/Infinity | `parseFloat` without guard | Use `safeParseFloat()` from `safe-parse.ts` |
 
-### Step 4: Run Reconciliation Script
+### Step 4: Run Reconciliation
 
 ```bash
-# Validate all positions against trade history
-npx tsx scripts/reconcile-positions.ts
-
-# Check for orphaned/inconsistent data
-npx tsx scripts/data-integrity-check.ts
+npx tsx scripts/reconcile-positions.ts   # Positions vs trade history
+npx tsx scripts/data-integrity-check.ts  # Orphaned/inconsistent data
 ```
-
-These scripts will report:
-- Positions with shares ≠ sum of trades
-- Entry prices that don't match weighted average
-- Orphaned positions (no user, no challenge)
-- Trades referencing deleted positions
 
 ### Step 5: Add Invariant Assertions
 
-If root cause found, add runtime guards to prevent recurrence:
-
 ```typescript
-// In TradeExecutor
 assert(newBalance >= 0, 'Balance cannot go negative');
 assert(Number.isFinite(newBalance), 'Balance must be finite');
 assert(shares > 0, 'Shares must be positive');
 assert(entryPrice > 0 && entryPrice < 1, 'Entry price must be valid');
 ```
 
-### Step 6: Document in Journal
+### Step 6: Document in `journal.md`
 
-After fixing, add an entry to `journal.md`:
-- What was wrong
-- Root cause
-- Fix applied
-- Files modified
-
----
-
-## Schema Management
-
-### Migration Strategy: `drizzle-kit push`
-
-This project uses `drizzle-kit push` (not `drizzle-kit migrate`) for schema changes:
-
-```bash
-npm run db:push    # Diffs schema.ts against live DB, applies changes directly
-```
-
-- No migration files needed for deployment
-- Historical migration SQL files exist in `./drizzle/` but are not used day-to-day
-- Always review the diff output before confirming destructive changes (table drops)
-
-### Schema Audit (Feb 6, 2026)
-
-Completed a full column-by-column audit of core trading tables. Findings:
-
-| Fix | Column | Issue | Resolution |
-|-----|--------|-------|------------|
-| ✅ | `positions.pnl` | Never written | Populated on close in `PositionManager.ts` |
-| ✅ | `trades.positionId` | FK never populated | Linked in all 3 trade branches in `trade.ts` |
-| ✅ | `positions.closedPrice` | Written, never read | Kept (low cost, useful for future analytics) |
-| ✅ | `marketPrices` table | Entirely dead | Removed from schema + dropped via `db:push` |
-
-**Admin route fix:** `admin/activity` and `admin/traders/[id]` now read `trades.realizedPnL` instead of `positions.pnl` for PnL display.
-
----
-
-## Reconciliation Scripts
-
-### `scripts/reconcile-positions.ts`
-
-Validates all open positions against their trade history:
-- Sum of trade shares should equal position shares
-- Weighted average of trade prices should equal entry price
-- Reports any mismatches with position IDs
-
-### `scripts/data-integrity-check.ts`
-
-Checks for orphaned and inconsistent data:
-- Positions without valid users
-- Positions without valid challenges
-- Trades referencing deleted positions
-- Challenges in impossible states
-
----
-
+Record: what was wrong, root cause, fix applied, files modified.

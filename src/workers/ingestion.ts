@@ -33,6 +33,7 @@ import Redis from "ioredis";
 import { LeaderElection } from "./leader-election";
 import { RiskMonitor } from "./risk-monitor";
 import { startHealthServer } from "./health-server";
+import { getCategories, sanitizeText, cleanOutcomeName, isSpamMarket } from "./market-classifier";
 
 dotenv.config();
 
@@ -385,266 +386,6 @@ class IngestionWorker {
         }, 10000); // Check every 10s
     }
 
-    /**
-     * Get all applicable categories for a market
-     * Returns array so markets can appear in multiple tabs (like Polymarket)
-     * 
-     * @param apiCategory - Legacy single category from API
-     * @param question - Event title or market question (for keyword matching)
-     * @param tags - Polymarket tags array (e.g., ['NFL', 'Bills vs Broncos'])
-     * @param imageUrl - Event image URL (often contains sport identifiers)
-     * @param options - Additional fields for Breaking/New detection
-     */
-    private getCategories(
-        apiCategory: string | null,
-        question: string,
-        tags?: string[],
-        imageUrl?: string,
-        options?: { createdAt?: string; volume24hr?: number; isHighVolume?: boolean }
-    ): string[] {
-        const categories: string[] = [];
-        const q = question.toLowerCase();
-        const tagsLower = (tags || []).filter(t => typeof t === 'string').map(t => t.toLowerCase());
-        const imageLower = (imageUrl || '').toLowerCase();
-
-        // Word-boundary match helper — prevents false positives from substring matches
-        // e.g. 'war' in 'Warriors', 'russia' in 'Borussia', 'xi' in 'exist', 'nato' in 'senator'
-        const wordMatch = (text: string, word: string): boolean => {
-            return new RegExp(`\\b${word}\\b`).test(text);
-        };
-
-        // === BREAKING DETECTION ===
-        // Breaking = High 24h volume OR breaking news keywords
-        const breakingKeywords = [
-            'just in', 'breaking', 'urgent', 'shock', 'announcement', 'declares',
-            'dies', 'assassination', 'attack', 'crash', 'collapse', 'emergency'
-        ];
-        const hasBreakingKeyword = breakingKeywords.some(kw => q.includes(kw));
-        const isBreaking = hasBreakingKeyword || options?.isHighVolume;
-
-        if (isBreaking) {
-            categories.push('Breaking');
-        }
-
-        // === NEW DETECTION ===
-        // New = Created within last 7 days
-        if (options?.createdAt) {
-            const createdDate = new Date(options.createdAt);
-            const sevenDaysAgo = new Date();
-            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-            if (createdDate > sevenDaysAgo) {
-                categories.push('New');
-            }
-        }
-
-        // Map Polymarket's native category first
-        const categoryMap: Record<string, string> = {
-            'US-current-affairs': 'Politics',
-            'Crypto': 'Crypto',
-            'Sports': 'Sports',
-            'NBA Playoffs': 'Sports',
-            'Olympics': 'Sports',
-            'Business': 'Business',
-            'Tech': 'Tech',
-            'Science': 'Science',
-            'Pop-Culture': 'Culture',
-            'Pop-Culture ': 'Culture',
-            'NFTs': 'Crypto',
-            'Coronavirus': 'World',
-        };
-
-        if (apiCategory && categoryMap[apiCategory]) {
-            categories.push(categoryMap[apiCategory]);
-        }
-
-        // SPORTS DETECTION - Check multiple sources
-        // First, check for economy/finance exclusion keywords to prevent false positives
-        const isEconomyMarket = (
-            q.includes('fed') || q.includes('gdp') || q.includes('inflation') ||
-            q.includes('rate cut') || q.includes('rate hike') || q.includes('recession') ||
-            q.includes('stock') || q.includes('s&p') || q.includes('nasdaq') ||
-            q.includes('bond') || q.includes('yield') || q.includes('cpi') ||
-            q.includes('tariff') || q.includes('trade war') || q.includes('economic')
-        );
-
-        // 1. Check tags for sports identifiers
-        const sportsTags = ['nfl', 'nba', 'nhl', 'mlb', 'ncaa', 'ufc', 'mma', 'soccer', 'football',
-            'basketball', 'hockey', 'tennis', 'golf', 'esports', 'epl', 'premier league',
-            'la liga', 'bundesliga', 'serie a', 'champions league', 'sports'];
-        const hasSportsTag = tagsLower.some(tag => sportsTags.some(st => tag.includes(st)));
-
-        // 2. Check image URL for sports identifiers (Polymarket uses /nfl.png, /nba.png, etc.)
-        const sportsImagePatterns = ['/nfl', '/nba', '/nhl', '/mlb', '/ufc', '/soccer', '/sports', '/epl', '/premier'];
-        const hasSportsImage = sportsImagePatterns.some(pattern => imageLower.includes(pattern));
-
-        // 3. Check title keywords (existing logic, expanded)
-        // Note: Removed ambiguous team names like 'nuggets', 'jazz', 'heat' that could match non-sports
-        const hasSportsKeyword = (
-            q.includes('nfl') || q.includes('nba') || q.includes('nhl') ||
-            q.includes('mlb') || q.includes('ncaa') || q.includes('cfb') ||
-            q.includes('cbb') || q.includes('ufc') || q.includes('mma') ||
-            q.includes('super bowl') || q.includes('world cup') || q.includes('playoffs') ||
-            q.includes('championship') || q.includes('world series') || q.includes('stanley cup') ||
-            q.includes('champions league') || q.includes('ucl') || q.includes('mvp') ||
-            q.includes('finals') || q.includes('tournament') ||
-            q.includes('premier league') || q.includes('epl') || q.includes('la liga') ||
-            q.includes('bundesliga') || q.includes('serie a') || q.includes('ligue 1') ||
-            q.includes('fifa') || q.includes('soccer') ||
-            // NFL Teams
-            q.includes('bills') || q.includes('dolphins') || q.includes('patriots') || q.includes('jets') ||
-            q.includes('ravens') || q.includes('bengals') || q.includes('browns') || q.includes('steelers') ||
-            q.includes('broncos') || q.includes('chiefs') || q.includes('raiders') || q.includes('chargers') ||
-            q.includes('cowboys') || q.includes('giants') || q.includes('eagles') || q.includes('commanders') ||
-            q.includes('packers') || q.includes('vikings') || q.includes('49ers') || q.includes('seahawks') ||
-            q.includes('texans') || q.includes('colts') || q.includes('titans') || q.includes('jaguars') ||
-            q.includes('falcons') || q.includes('panthers') || q.includes('saints') || q.includes('buccaneers') ||
-            q.includes('cardinals') || q.includes('rams') || q.includes('lions') || q.includes('bears') ||
-            // NBA Teams (excluding ambiguous: nuggets, jazz, heat, thunder, suns, rockets)
-            q.includes('lakers') || q.includes('celtics') || q.includes('warriors') || q.includes('knicks') ||
-            q.includes('mavericks') || q.includes('bucks') || q.includes('76ers') || q.includes('clippers') ||
-            q.includes('pelicans') || q.includes('spurs') ||
-            // Player names
-            q.includes('jokic') || q.includes('lebron') || q.includes('curry') || q.includes('mahomes') ||
-            q.includes('kelce') || q.includes('giannis') || q.includes('shai') || q.includes('tatum') ||
-            q.includes('patrick mahomes') || q.includes('josh allen') || q.includes('lamar jackson') ||
-            // Game patterns
-            (q.includes(' vs ') && (q.includes('win') || q.includes('beat') || q.includes('game')))
-        );
-
-        // Only add Sports category if it's not an economy market
-        if (!isEconomyMarket && (hasSportsTag || hasSportsImage || hasSportsKeyword)) {
-            if (!categories.includes('Sports')) categories.push('Sports');
-        }
-
-        // US Politics (domestic)
-        if (q.includes('trump') || q.includes('biden') || q.includes('election') ||
-            q.includes('president') || q.includes('congress') || q.includes('senate') ||
-            q.includes('democrat') || q.includes('republican') || q.includes('doge ') ||
-            q.includes('musk') || q.includes('elon') || q.includes('cabinet')) {
-            if (!categories.includes('Politics')) categories.push('Politics');
-        }
-
-        // Geopolitics (international)
-        // NOTE: Short/ambiguous keywords use wordMatch() to prevent false positives:
-        //   'war' in Warriors/Warsh/hardware, 'russia' in Borussia, 'xi' in exist,
-        //   'nato' in senator, 'china' in machinery
-        if (q.includes('putin') || q.includes('ukraine') || wordMatch(q, 'russia') ||
-            q.includes('zelensky') || wordMatch(q, 'nato') || q.includes('israel') ||
-            q.includes('netanyahu') || wordMatch(q, 'iran') || wordMatch(q, 'china') ||
-            q.includes('xi jinping') || q.includes('ceasefire') || wordMatch(q, 'war') ||
-            q.includes('nuclear') || q.includes('maduro') || q.includes('venezuela') ||
-            q.includes('kim jong') || q.includes('north korea') || q.includes('sanctions')) {
-            if (!categories.includes('Geopolitics')) categories.push('Geopolitics');
-        }
-
-        // Crypto
-        if (q.includes('bitcoin') || q.includes('btc') || q.includes('ethereum') ||
-            q.includes('eth') || q.includes('crypto') || q.includes('solana') ||
-            q.includes('xrp') || q.includes('tether') || q.includes('usdt')) {
-            if (!categories.includes('Crypto')) categories.push('Crypto');
-        }
-
-        // Business/Finance
-        if (q.includes('fed') || q.includes('recession') || q.includes('gdp') ||
-            q.includes('stock') || q.includes('ceo') || q.includes('market cap') ||
-            q.includes('ipo') || q.includes('earnings') || q.includes('s&p') ||
-            q.includes('nasdaq') || q.includes('dow')) {
-            if (!categories.includes('Business')) categories.push('Business');
-        }
-
-        // Tech
-        // NOTE: 'ai' uses wordMatch() to prevent 'ceasefire', 'Ukraine', 'certain' etc.
-        //   'meta' uses wordMatch() to prevent 'metadata', 'metaphor' etc.
-        if (wordMatch(q, 'ai') || q.includes('openai') || q.includes('chatgpt') ||
-            q.includes('google') || q.includes('apple') || q.includes('microsoft') ||
-            q.includes('spacex') || q.includes('nvidia') || q.includes('tesla') ||
-            wordMatch(q, 'meta') || q.includes('amazon')) {
-            if (!categories.includes('Tech')) categories.push('Tech');
-        }
-
-        // Culture (Entertainment, Pop Culture)
-        if (q.includes('movie') || q.includes('oscar') || q.includes('grammy') ||
-            q.includes('emmy') || q.includes('marvel') || q.includes('disney') ||
-            q.includes('netflix') || q.includes('stranger things') || q.includes('kardashian') ||
-            q.includes('celebrity') || q.includes('epstein') || q.includes('youtube') ||
-            q.includes('tiktok') || q.includes('logan paul') || q.includes('mr beast') ||
-            q.includes('avatar') || q.includes('star wars') || q.includes('album')) {
-            if (!categories.includes('Culture')) categories.push('Culture');
-        }
-
-        // Default to Other if no categories matched
-        if (categories.length === 0) {
-            categories.push('Other');
-        }
-
-        return categories;
-    }
-
-    /**
-     * Check if market is short-term spam (e.g., 5-minute crypto bets)
-     */
-    private isSpamMarket(question: string): boolean {
-        const q = question.toLowerCase();
-
-        // Specific Spam Checks
-        if (q.includes('super bowl') && q.includes('cancelled')) return true;
-
-        // Filter out "Up or Down" minute-by-minute markets
-        if (q.includes('up or down') && (q.includes('am') || q.includes('pm') || q.includes('et'))) {
-            return true;
-        }
-
-        // Generic "Cancelled" spam (often low quality)
-        if (q.endsWith('cancelled?') || q.startsWith('cancelled:')) return true;
-
-        return false;
-    }
-
-    /**
-     * Clean up outcome names from raw API data
-     * - Removes leading articles (the, a, an)
-     * - Capitalizes first letter
-     * - Trims whitespace
-     */
-    private cleanOutcomeName(name: string): string {
-        let cleaned = name.trim();
-
-        // Remove leading articles (case insensitive)
-        cleaned = cleaned.replace(/^(the|a|an)\s+/i, '');
-
-        // Capitalize first letter
-        if (cleaned.length > 0) {
-            cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
-        }
-
-        return cleaned;
-    }
-
-    /**
-     * Fix known Polymarket API encoding issues (Mojibake).
-     * The Polymarket Gamma API sometimes returns corrupted text,
-     * e.g. "Supá Bowl" instead of "Super Bowl".
-     * This sanitizer fixes known patterns.
-     */
-    private sanitizeText(text: string): string {
-        if (!text) return text;
-
-        // Known Polymarket encoding corruptions
-        const ENCODING_FIXES: Record<string, string> = {
-            'Supá': 'Super',
-            'supá': 'super',
-            'SUPÁ': 'SUPER',
-        };
-
-        let sanitized = text;
-        for (const [corrupted, correct] of Object.entries(ENCODING_FIXES)) {
-            sanitized = sanitized.replaceAll(corrupted, correct);
-        }
-
-        return sanitized;
-    }
-
     private async init() {
         console.log('[Ingestion] 🚀 CODE VERSION: 2026-02-06-v4 (supá bowl encoding fix)');
         await this.fetchFeaturedEvents(); // Fetch curated trending events first
@@ -764,7 +505,7 @@ class IngestionWorker {
                         /* eslint-enable @typescript-eslint/no-explicit-any */
 
                         // Filter out spam sub-markets (e.g., "Super Bowl cancelled")
-                        if (this.isSpamMarket(market.question)) continue;
+                        if (isSpamMarket(market.question)) continue;
 
                         const prices = JSON.parse(market.outcomePrices || '[]');
 
@@ -786,7 +527,7 @@ class IngestionWorker {
                         // Polymarket sometimes lists the same person twice with different IDs.
                         // Use CLEANED name for deduplication (not raw question) to catch
                         // duplicates like "Will Khamenei..." vs "Khamenei will..."
-                        const cleanedName = this.cleanOutcomeName(this.sanitizeText(market.question));
+                        const cleanedName = cleanOutcomeName(sanitizeText(market.question));
                         const normalizedQ = cleanedName.toLowerCase();
                         if (seenQuestions.has(normalizedQ)) {
                             // If we already have this outcome name, skip the duplicate.
@@ -814,7 +555,7 @@ class IngestionWorker {
 
                         subMarkets.push({
                             id: tokenId,
-                            question: this.cleanOutcomeName(this.sanitizeText(market.question)),
+                            question: cleanOutcomeName(sanitizeText(market.question)),
                             outcomes: outcomes,
                             price: Math.max(yesPrice, 0.01),
                             volume: parseFloat(market.volume || "0"),
@@ -831,7 +572,7 @@ class IngestionWorker {
                     const eventIndex = events.indexOf(event);
                     const isHighVolume = eventIndex < 15;
 
-                    const categories = this.getCategories(
+                    const categories = getCategories(
                         null,
                         event.title,
                         event.tags,
@@ -845,7 +586,7 @@ class IngestionWorker {
 
                     processedEvents.push({
                         id: event.id || event.slug,
-                        title: this.sanitizeText(event.title),
+                        title: sanitizeText(event.title),
                         slug: event.slug,
                         description: event.description,
                         image: event.image,
@@ -911,7 +652,7 @@ class IngestionWorker {
                     }
 
                     // Filter out spam markets (5-minute crypto bets)
-                    if (this.isSpamMarket(m.question)) continue;
+                    if (isSpamMarket(m.question)) continue;
 
                     // LIQUIDITY FILTER: Minimum volume to prevent manipulation
                     const volume = parseFloat(m.volume || "0");
@@ -933,7 +674,7 @@ class IngestionWorker {
                         const yesToken = clobTokens[0];
                         if (!yesToken || seenIds.has(yesToken)) continue;
 
-                        const categories = this.getCategories(m.category, m.question, m.tags, m.image);
+                        const categories = getCategories(m.category, m.question, m.tags, m.image);
 
                         for (const cat of categories) {
                             categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
@@ -968,7 +709,7 @@ class IngestionWorker {
 
                         allMarkets.push({
                             id: yesToken,
-                            question: this.cleanOutcomeName(m.question),
+                            question: cleanOutcomeName(m.question),
                             description: m.description,
                             image: m.image,
                             volume: volume, // Use already-parsed volume (line 759)
