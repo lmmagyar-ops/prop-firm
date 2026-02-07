@@ -44,6 +44,17 @@ export default defineConfig({
 
         /* Screenshot on failure */
         screenshot: 'only-on-failure',
+
+        /* Vercel Deployment Protection bypass — required for staging previews
+         * Set VERCEL_AUTOMATION_BYPASS_SECRET in Vercel Project Settings > Deployment Protection
+         * Then pass it as an env var when running tests */
+        ...(process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+            ? {
+                extraHTTPHeaders: {
+                    'x-vercel-protection-bypass': process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
+                },
+            }
+            : {}),
     },
 
     /* Default: Chromium-only for fast CI. Set PLAYWRIGHT_ALL_BROWSERS=true for full matrix. */
