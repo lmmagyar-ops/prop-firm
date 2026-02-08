@@ -6,6 +6,45 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ## 2026-02-07
 
+### 6:00 PM - Codebase Optimizations + Market Integrity Guards ✅
+
+**Context:** Performance optimizations and architectural improvements across 6 areas, followed by 3 runtime market integrity guards.
+
+---
+
+#### ⚡ Codebase Optimizations (6 of 8 implemented)
+
+| # | Optimization | Files | Impact |
+|---|-------------|-------|--------|
+| P0-1 | Dashboard query parallelization | `dashboard-service.ts` | ~50% latency reduction (6 sequential → 3 parallel batches) |
+| P0-2 | In-memory cache for parsed Redis event lists | `market.ts` | Eliminates ~4 redundant Redis GET + JSON.parse per request |
+| P0-3 | Exclude trade-critical APIs from PWA caching | `next.config.ts` | Prevents stale balance/trade data for up to 60s |
+| P1-4 | Extract demo auto-provisioning | `dev-helpers.ts` [NEW] | Cleaner trade route, dev-only logic isolated |
+| P1-6 | Extract category classifier from ingestion worker | `market-classifier.ts` [NEW] | `ingestion.ts` reduced 1194→934 lines |
+| P2-8 | Add composite DB indexes | `schema.ts` | Prevents full table scans on challenges, positions, trades, audit_logs |
+
+**Deferred:** P1-5 (depcheck unused deps), P2-7 (swap next-pwa for maintained fork) — require interactive package management.
+
+**Commit:** `423918c` — `perf: parallelize dashboard queries, add Redis cache, extract classifier, add DB indexes`
+
+---
+
+#### 🛡️ Market Integrity Guards (3 new runtime guards)
+
+| Guard | Module | What It Does |
+|-------|--------|-------------|
+| Resolved Market Pruning | `market-integrity.ts` [NEW] | Removes markets ≥95%/≤5% from Redis after each 5-min refresh |
+| Price Drift Detection | `market-integrity.ts` [NEW] | Samples 20 markets vs live Polymarket API every 5 min |
+| Alert Methods | `alerts.ts` | `resolvedMarketDetected()` + `priceDrift()` → Sentry warnings |
+
+**Pre-existing guards documented:** Trade engine blocks ≤0.01/≥0.99, ingestion skips closed/archived/expired/dead-price markets, spam filter, liquidity filter.
+
+**Commit:** `addb185` — `feat: add market integrity guards (resolved pruning, drift monitoring, alerting)`
+
+**Status:** Both commits pushed to `develop` (staging). Not yet promoted to `main` (production). Run: `git checkout main && git merge develop && git push origin main`
+
+---
+
 ### 2:30 PM - Security Hardening Phase 2: Production-Grade Security ✅
 
 **Context:** Comprehensive security hardening following Anthropic's best practices for financial platforms. Session included fixing a broken staging environment, then layering production security controls.

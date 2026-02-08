@@ -106,24 +106,29 @@ src/
 │   ├── trading/            # OrderBook, TradeModal, MarketGrid
 │   └── ui/                 # Shadcn components
 ├── config/plans.ts         # Pricing tiers & rules
-├── db/schema.ts            # Drizzle schema (20+ tables)
+├── db/schema.ts            # Drizzle schema (20+ tables, composite indexes)
 ├── lib/
 │   ├── trade.ts            # Trade execution engine
 │   ├── risk.ts             # Pre-trade risk validation (9 rules)
 │   ├── evaluator.ts        # Post-trade challenge evaluation
-│   ├── market.ts           # MarketService (prices, order books)
-│   ├── dashboard-service.ts # Dashboard data aggregation
+│   ├── market.ts           # MarketService (prices, order books, 5s event cache)
+│   ├── dashboard-service.ts # Dashboard data aggregation (parallelized queries)
 │   ├── position-utils.ts   # Shared position calculations
 │   ├── safe-parse.ts       # NaN-safe parseFloat utility
 │   ├── admin-auth.ts       # requireAdmin() helper
+│   ├── dev-helpers.ts      # Demo auto-provisioning (dev-only)
 │   └── alerts.ts           # Centralized alerting (Winston + Sentry + Slack)
 ├── workers/
 │   ├── ingestion.ts        # Polymarket WebSocket + data pipeline
+│   ├── market-classifier.ts # Category classification + spam filtering
+│   ├── market-integrity.ts # Resolved market pruning + price drift monitoring
 │   ├── risk-monitor.ts     # Real-time breach detection (5s loop)
 │   └── health-server.ts    # HTTP health endpoint for Railway
 └── scripts/
     ├── grant-admin.ts      # Grant admin role
     ├── verify-engine.ts    # 32-assertion trade engine test
+    ├── verify-markets.ts   # Market data quality audit (22 assertions)
+    ├── verify-prices.ts    # Live price drift audit (cached vs API)
     └── reconcile-positions.ts  # Position vs trade history audit
 
 propshot-waitlist/          # Landing Page (Standalone Next.js)
@@ -304,7 +309,18 @@ Configured across all runtimes: `sentry.client.config.ts` (session replay + priv
 
 ### Alerting
 
-`src/lib/alerts.ts` provides centralized alerts: `alerts.tradeFailed()`, `alerts.ingestionStale()`, `alerts.redisConnectionLost()`, etc. Flow: Winston → Sentry → Slack (for critical).
+`src/lib/alerts.ts` provides centralized alerts: `alerts.tradeFailed()`, `alerts.ingestionStale()`, `alerts.redisConnectionLost()`, `alerts.resolvedMarketDetected()`, `alerts.priceDrift()`, etc. Flow: Winston → Sentry → Slack (for critical).
+
+### Market Integrity Guards
+
+`src/workers/market-integrity.ts` provides runtime market data guards:
+
+| Guard | What It Does | Frequency |
+|-------|-------------|----------|
+| **Resolved Market Pruning** | Removes markets at ≥95%/≤5% from Redis | After every 5-min market refresh |
+| **Price Drift Detection** | Samples 20 markets, compares cached vs live Polymarket API | Every 5 min (2.5 min offset) |
+
+Both are wired into the ingestion worker's init cycle and fire Sentry warnings via `alerts.ts`.
 
 ---
 

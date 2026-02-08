@@ -34,6 +34,7 @@ import { LeaderElection } from "./leader-election";
 import { RiskMonitor } from "./risk-monitor";
 import { startHealthServer } from "./health-server";
 import { getCategories, sanitizeText, cleanOutcomeName, isSpamMarket } from "./market-classifier";
+import { pruneResolvedMarkets, checkPriceDrift } from "./market-integrity";
 
 dotenv.config();
 
@@ -390,6 +391,7 @@ class IngestionWorker {
         console.log('[Ingestion] 🚀 CODE VERSION: 2026-02-06-v4 (supá bowl encoding fix)');
         await this.fetchFeaturedEvents(); // Fetch curated trending events first
         await this.fetchActiveMarkets(); // Then fetch remaining markets
+        await pruneResolvedMarkets(this.redis); // Prune any resolved markets immediately
         this.connectWS();
         this.startBookPolling();
 
@@ -402,6 +404,7 @@ class IngestionWorker {
                 console.log('[Ingestion] 🔄 Periodic market refresh...');
                 await this.fetchFeaturedEvents();
                 await this.fetchActiveMarkets();
+                await pruneResolvedMarkets(this.redis); // Prune after every refresh
                 // Re-subscribe WebSocket to include any new token IDs
                 if (this.ws?.readyState === WebSocket.OPEN) {
                     this.subscribeWS();
@@ -410,6 +413,23 @@ class IngestionWorker {
                 console.error('[Ingestion] Periodic refresh failed:', err);
             }
         }, MARKET_REFRESH_INTERVAL);
+
+        // PRICE DRIFT CHECK: Spot-check cached vs live prices every 5 minutes
+        // Offset by 2.5 min from market refresh to avoid API contention
+        const DRIFT_CHECK_INTERVAL = 300000; // 5 minutes
+        const DRIFT_CHECK_OFFSET = 150000;   // 2.5 minute offset
+        setTimeout(() => {
+            // Run first check after offset
+            checkPriceDrift(this.redis);
+            // Then repeat on interval
+            setInterval(async () => {
+                try {
+                    await checkPriceDrift(this.redis);
+                } catch (err) {
+                    console.error('[Ingestion] Price drift check failed:', err);
+                }
+            }, DRIFT_CHECK_INTERVAL);
+        }, DRIFT_CHECK_OFFSET);
     }
 
     /**
