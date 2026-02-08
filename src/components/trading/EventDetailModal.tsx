@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { X, TrendingUp, Calendar, Loader2 } from "lucide-react";
@@ -13,6 +13,26 @@ import { getCleanOutcomeName } from "@/lib/market-utils";
 import { OrderBook } from "./OrderBook";
 import { RulesSummary } from "./RulesSummary";
 import { MarketTimeline } from "./MarketTimeline";
+import { RecentActivityFeed } from "./RecentActivityFeed";
+
+// Lazy-load chart — lightweight-charts is ~45kb gzipped, only needed when modal opens
+const ProbabilityChart = lazy(() =>
+    import("./ProbabilityChart").then(m => ({ default: m.ProbabilityChart }))
+);
+
+/** Skeleton placeholder while chart loads */
+function ChartSkeleton() {
+    return (
+        <div className="px-6 py-4 border-b border-white/5">
+            <div className="flex gap-2 mb-3">
+                {["1H", "1D", "1W", "1M", "ALL"].map(r => (
+                    <div key={r} className="w-10 h-6 rounded-lg bg-zinc-800/50 animate-pulse" />
+                ))}
+            </div>
+            <div className="w-full h-[300px] rounded-lg bg-zinc-800/30 animate-pulse" />
+        </div>
+    );
+}
 
 interface EventDetailModalProps {
     event: EventMetadata | null;
@@ -175,7 +195,18 @@ export function EventDetailModal({ event, open, onClose, onTrade, platform = "po
 
                 {/* Outcomes List */}
                 <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col">
-                    {/* Chart temporarily removed - will be re-added with TradingView API */}
+                    {/* Price History Chart — Polymarket only */}
+                    {!isKalshi && (
+                        <div className="px-6 py-4 border-b border-white/5">
+                            <Suspense fallback={<ChartSkeleton />}>
+                                <ProbabilityChart
+                                    key={selectedMarket.id}
+                                    currentPrice={selectedMarket.price}
+                                    outcome={selectedMarket.price >= 0.5 ? "YES" : "NO"}
+                                />
+                            </Suspense>
+                        </div>
+                    )}
 
                     <div className={cn(
                         "flex items-center justify-between px-6 py-2 text-[10px] font-bold uppercase tracking-wider border-b shrink-0 sticky top-0 z-20",
@@ -244,6 +275,13 @@ export function EventDetailModal({ event, open, onClose, onTrade, platform = "po
                     )}
 
                     {!isKalshi && <OrderBook tokenId={selectedMarket?.id} />}
+
+                    {/* Live Activity Feed — Polymarket only */}
+                    {!isKalshi && (
+                        <div className="border-t border-white/5">
+                            <RecentActivityFeed />
+                        </div>
+                    )}
                 </div>
             </div>
 
