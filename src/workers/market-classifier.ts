@@ -28,6 +28,10 @@ export function sanitizeText(text: string): string {
         sanitized = sanitized.replaceAll(corrupted, correct);
     }
 
+    // Fix encoding artifacts: double underscores attached to a word (e.g., "hit__")
+    // Preserves intentional fill-in-the-blank patterns like "above ___"
+    sanitized = sanitized.replace(/(\w)_{2,}(\s|$)/g, '$1 $2').replace(/(^|\s)_{2,}(\w)/g, '$1 $2');
+
     return sanitized;
 }
 
@@ -148,6 +152,13 @@ export function getCategories(
     }
 
     // SPORTS DETECTION
+    // Early-return: "Team vs. Team" pattern is ALWAYS Sports (prevents false positives
+    // like "Mavericks vs. Bucks" being classified as Politics due to keyword overlap)
+    const hasVsPattern = q.includes(' vs ') || q.includes(' vs. ');
+    if (hasVsPattern) {
+        if (!categories.includes('Sports')) categories.push('Sports');
+    }
+
     const isEconomyMarket = (
         q.includes('fed') || q.includes('gdp') || q.includes('inflation') ||
         q.includes('rate cut') || q.includes('rate hike') || q.includes('recession') ||
@@ -175,6 +186,10 @@ export function getCategories(
         q.includes('premier league') || q.includes('epl') || q.includes('la liga') ||
         q.includes('bundesliga') || q.includes('serie a') || q.includes('ligue 1') ||
         q.includes('fifa') || q.includes('soccer') ||
+        // "vs" with game context
+        hasVsPattern ||
+        // Over/Under patterns (common in sports betting)
+        q.includes('o/u') || q.includes('over/under') || q.includes('points o/u') ||
         // NFL Teams
         q.includes('bills') || q.includes('dolphins') || q.includes('patriots') || q.includes('jets') ||
         q.includes('ravens') || q.includes('bengals') || q.includes('browns') || q.includes('steelers') ||
@@ -191,9 +206,7 @@ export function getCategories(
         // Player names
         q.includes('jokic') || q.includes('lebron') || q.includes('curry') || q.includes('mahomes') ||
         q.includes('kelce') || q.includes('giannis') || q.includes('shai') || q.includes('tatum') ||
-        q.includes('patrick mahomes') || q.includes('josh allen') || q.includes('lamar jackson') ||
-        // Game patterns
-        (q.includes(' vs ') && (q.includes('win') || q.includes('beat') || q.includes('game')))
+        q.includes('patrick mahomes') || q.includes('josh allen') || q.includes('lamar jackson')
     );
 
     if (!isEconomyMarket && (hasSportsTag || hasSportsImage || hasSportsKeyword)) {
