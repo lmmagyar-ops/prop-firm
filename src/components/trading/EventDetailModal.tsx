@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, lazy, Suspense } from "react";
+import { useState, Component, type ReactNode } from "react";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { X, TrendingUp, Calendar, Loader2 } from "lucide-react";
@@ -14,24 +14,35 @@ import { OrderBook } from "./OrderBook";
 import { RulesSummary } from "./RulesSummary";
 import { MarketTimeline } from "./MarketTimeline";
 import { RecentActivityFeed } from "./RecentActivityFeed";
+import { ProbabilityChart } from "./ProbabilityChart";
 
-// Lazy-load chart — lightweight-charts is ~45kb gzipped, only needed when modal opens
-const ProbabilityChart = lazy(() =>
-    import("./ProbabilityChart").then(m => ({ default: m.ProbabilityChart }))
-);
+/**
+ * Lightweight Error Boundary — prevents a chart or feed crash
+ * from taking down the entire detail modal.
+ */
+class ChartErrorBoundary extends Component<
+    { children: ReactNode },
+    { hasError: boolean }
+> {
+    constructor(props: { children: ReactNode }) {
+        super(props);
+        this.state = { hasError: false };
+    }
 
-/** Skeleton placeholder while chart loads */
-function ChartSkeleton() {
-    return (
-        <div className="px-6 py-4 border-b border-white/5">
-            <div className="flex gap-2 mb-3">
-                {["1H", "1D", "1W", "1M", "ALL"].map(r => (
-                    <div key={r} className="w-10 h-6 rounded-lg bg-zinc-800/50 animate-pulse" />
-                ))}
-            </div>
-            <div className="w-full h-[300px] rounded-lg bg-zinc-800/30 animate-pulse" />
-        </div>
-    );
+    static getDerivedStateFromError() {
+        return { hasError: true };
+    }
+
+    render() {
+        if (this.state.hasError) {
+            return (
+                <div className="px-6 py-8 text-center text-sm text-zinc-500">
+                    Chart unavailable
+                </div>
+            );
+        }
+        return this.props.children;
+    }
 }
 
 interface EventDetailModalProps {
@@ -198,13 +209,13 @@ export function EventDetailModal({ event, open, onClose, onTrade, platform = "po
                     {/* Price History Chart — Polymarket only */}
                     {!isKalshi && (
                         <div className="px-6 py-4 border-b border-white/5">
-                            <Suspense fallback={<ChartSkeleton />}>
+                            <ChartErrorBoundary>
                                 <ProbabilityChart
                                     key={selectedMarket.id}
                                     currentPrice={selectedMarket.price}
                                     outcome={selectedMarket.price >= 0.5 ? "YES" : "NO"}
                                 />
-                            </Suspense>
+                            </ChartErrorBoundary>
                         </div>
                     )}
 
