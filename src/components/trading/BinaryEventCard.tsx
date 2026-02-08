@@ -2,6 +2,7 @@
 
 import { memo } from "react";
 import { cn } from "@/lib/utils";
+import Image from "next/image";
 import type { EventMetadata } from "@/app/actions/market";
 
 interface BinaryEventCardProps {
@@ -24,7 +25,6 @@ export const BinaryEventCard = memo(function BinaryEventCard({ event, onTrade }:
     const percentage = Math.round(yesPrice * 100);
     const yesCents = Math.round(yesPrice * 100);
     const noCents = Math.round(noPrice * 100);
-    const isUncertain = rawYesPrice < 0.01; // Mark as uncertain if original was ~0%
 
     const formatVolume = (volume: number) => {
         if (volume >= 1_000_000) return `$${(volume / 1_000_000).toFixed(1)}m`;
@@ -38,9 +38,11 @@ export const BinaryEventCard = memo(function BinaryEventCard({ event, onTrade }:
             <div className="flex items-start gap-3 mb-4">
                 {/* Small circular icon */}
                 {event.image && (
-                    <img
+                    <Image
                         src={event.image}
                         alt=""
+                        width={48}
+                        height={48}
                         className="w-12 h-12 rounded-full object-cover shrink-0"
                     />
                 )}
@@ -90,6 +92,12 @@ export const BinaryEventCard = memo(function BinaryEventCard({ event, onTrade }:
             {/* Footer Stats */}
             <div className="flex items-center justify-between text-xs text-zinc-500 mt-auto">
                 <span>{formatVolume(event.volume)} Vol.</span>
+                {event.volume > 0 && (
+                    <span className="flex items-center gap-1 text-red-500 font-medium">
+                        <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                        LIVE
+                    </span>
+                )}
             </div>
         </div>
     );

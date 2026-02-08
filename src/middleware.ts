@@ -130,6 +130,4 @@ export const config = {
     ],
 };
 
-// Force Node.js runtime — ioredis requires Node.js APIs (net, tls)
-// that don't exist in Vercel's Edge Runtime (V8 isolates)
-export const runtime = 'nodejs';
+

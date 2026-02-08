@@ -3,6 +3,7 @@
 import { memo } from "react";
 import { cn } from "@/lib/utils";
 import { TrendingUp, Users } from "lucide-react";
+import Image from "next/image";
 import type { EventMetadata, SubMarket } from "@/app/actions/market";
 
 interface MultiRunnerCardProps {
@@ -17,7 +18,6 @@ interface MultiRunnerCardProps {
 export const MultiRunnerCard = memo(function MultiRunnerCard({ event, onTrade }: MultiRunnerCardProps) {
     // Show only top 2 outcomes on card (Polymarket style)
     const topOutcomes = event.markets.slice(0, 2);
-    const remainingCount = event.markets.length - 2;
 
     const formatVolume = (volume: number) => {
         if (volume >= 1_000_000) return `$${(volume / 1_000_000).toFixed(1)}m`;
@@ -84,9 +84,11 @@ export const MultiRunnerCard = memo(function MultiRunnerCard({ event, onTrade }:
             <div className="p-4 border-b border-white/5">
                 <div className="flex items-start gap-3">
                     {event.image && (
-                        <img
+                        <Image
                             src={event.image}
                             alt=""
+                            width={40}
+                            height={40}
                             className="w-10 h-10 rounded-lg object-cover"
                         />
                     )}
@@ -120,9 +122,15 @@ export const MultiRunnerCard = memo(function MultiRunnerCard({ event, onTrade }:
                 ))}
             </div>
 
-            {/* Footer - Volume only (like Polymarket) */}
-            <div className="px-4 py-3 text-xs text-zinc-500 border-t border-white/5 mt-auto">
-                {formatVolume(event.volume)} Vol.
+            {/* Footer - Volume + LIVE badge */}
+            <div className="px-4 py-3 text-xs text-zinc-500 border-t border-white/5 mt-auto flex items-center justify-between">
+                <span>{formatVolume(event.volume)} Vol.</span>
+                {event.volume > 0 && (
+                    <span className="flex items-center gap-1 text-red-500 font-medium">
+                        <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                        LIVE
+                    </span>
+                )}
             </div>
         </div>
     );
@@ -136,8 +144,6 @@ interface OutcomeRowProps {
 
 const OutcomeRow = memo(function OutcomeRow({ market, label, onTrade }: OutcomeRowProps) {
     const percentage = Math.round(market.price * 100);
-    const yesPrice = Math.round(market.price * 100);
-    const noPrice = 100 - yesPrice;
 
     // Color based on probability
     const getColor = (price: number) => {

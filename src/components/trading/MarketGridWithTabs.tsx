@@ -38,11 +38,11 @@ const CATEGORIES = [
     { id: 'Other', label: 'World' },
 ];
 
-export function MarketGridWithTabs({ events = [], balance, userId, platform = "polymarket" }: CategoryTabsProps) {
+export function MarketGridWithTabs({ events = [], balance, platform = "polymarket" }: CategoryTabsProps) {
     const [activeTab, setActiveTab] = useState('trending');
     const [selectedEvent, setSelectedEvent] = useState<EventMetadata | null>(null);
     const [detailModalOpen, setDetailModalOpen] = useState(false);
-    const [isPending, startTransition] = useTransition();
+    const [, startTransition] = useTransition();
 
     // Mobile detection for MobileTradeSheet
     const isMobile = useMediaQuery("(max-width: 768px)");
@@ -73,19 +73,41 @@ export function MarketGridWithTabs({ events = [], balance, userId, platform = "p
     // Platform-aware text colors
     const isLightTheme = platform === "kalshi";
 
+    // Compute per-category event counts for tab badges
+    const categoryCounts = useMemo(() => {
+        const counts: Record<string, number> = {};
+        for (const e of events) {
+            const cats = e.categories || [];
+            for (const cat of cats) {
+                counts[cat] = (counts[cat] || 0) + 1;
+            }
+        }
+        counts['trending'] = events.length;
+        counts['all'] = events.length;
+        return counts;
+    }, [events]);
+
+    // Sort helper: volume descending, but $0 vol markets always sink to bottom
+    const sortByVolume = (a: EventMetadata, b: EventMetadata) => {
+        const aVol = a.volume || 0;
+        const bVol = b.volume || 0;
+        // Push $0 vol to the bottom
+        if (aVol > 0 && bVol === 0) return -1;
+        if (aVol === 0 && bVol > 0) return 1;
+        return bVol - aVol;
+    };
+
     // Filter events based on active tab
     const filteredEvents = useMemo(() => {
         if (activeTab === 'trending') {
-            // Show all featured events on trending, sorted by volume
-            return [...events].sort((a, b) => (b.volume || 0) - (a.volume || 0));
+            return [...events].sort(sortByVolume);
         } else if (activeTab === 'all') {
-            return [...events].sort((a, b) => (b.volume || 0) - (a.volume || 0));
+            return [...events].sort(sortByVolume);
         } else {
-            // Filter by category
             return events.filter(e => {
                 const cats = e.categories || [];
                 return cats.includes(activeTab);
-            }).sort((a, b) => (b.volume || 0) - (a.volume || 0));
+            }).sort(sortByVolume);
         }
     }, [events, activeTab]);
 
@@ -151,35 +173,50 @@ export function MarketGridWithTabs({ events = [], balance, userId, platform = "p
                 "flex items-center gap-1 overflow-x-auto scrollbar-hide pb-3 border-b",
                 isLightTheme ? "border-slate-200" : "border-white/5"
             )}>
-                {CATEGORIES.map((cat) => (
-                    <button
-                        key={cat.id}
-                        onClick={() => setActiveTab(cat.id)}
-                        className={cn(
-                            "relative flex items-center gap-2 px-4 py-2 text-sm font-semibold transition-colors whitespace-nowrap",
-                            activeTab === cat.id
-                                ? isLightTheme ? "text-slate-900" : "text-white"
-                                : isLightTheme ? "text-slate-500 hover:text-slate-700" : "text-zinc-500 hover:text-zinc-300"
-                        )}
-                    >
-                        {cat.icon && (
-                            <cat.icon className={cn(
-                                "w-4 h-4",
+                {CATEGORIES.map((cat) => {
+                    const count = categoryCounts[cat.id] || 0;
+                    return (
+                        <button
+                            key={cat.id}
+                            onClick={() => setActiveTab(cat.id)}
+                            className={cn(
+                                "relative flex items-center gap-2 px-4 py-2 text-sm font-semibold transition-colors whitespace-nowrap",
                                 activeTab === cat.id
-                                    ? isLightTheme ? "text-green-600" : "text-emerald-400"
-                                    : isLightTheme ? "text-slate-500" : "text-zinc-500"
-                            )} />
-                        )}
-                        {cat.label}
-                        {/* Active underline indicator */}
-                        {activeTab === cat.id && (
-                            <span className={cn(
-                                "absolute bottom-0 left-0 right-0 h-0.5 rounded-full",
-                                isLightTheme ? "bg-green-500" : "bg-white"
-                            )} />
-                        )}
-                    </button>
-                ))}
+                                    ? isLightTheme ? "text-slate-900" : "text-white"
+                                    : isLightTheme ? "text-slate-500 hover:text-slate-700" : "text-zinc-500 hover:text-zinc-300"
+                            )}
+                        >
+                            {cat.icon && (
+                                <cat.icon className={cn(
+                                    "w-4 h-4",
+                                    activeTab === cat.id
+                                        ? isLightTheme ? "text-green-600" : "text-emerald-400"
+                                        : isLightTheme ? "text-slate-500" : "text-zinc-500"
+                                )} />
+                            )}
+                            {cat.label}
+                            {/* Per-tab count badge */}
+                            {count > 0 && (
+                                <span className={cn(
+                                    "text-[10px] font-bold tabular-nums px-1.5 py-0.5 rounded-full",
+                                    activeTab === cat.id
+                                        ? isLightTheme ? "bg-green-100 text-green-700" : "bg-white/10 text-white"
+                                        : isLightTheme ? "bg-slate-100 text-slate-500" : "bg-white/5 text-zinc-500"
+                                )}
+                                >
+                                    {count}
+                                </span>
+                            )}
+                            {/* Active underline indicator */}
+                            {activeTab === cat.id && (
+                                <span className={cn(
+                                    "absolute bottom-0 left-0 right-0 h-0.5 rounded-full",
+                                    isLightTheme ? "bg-green-500" : "bg-white"
+                                )} />
+                            )}
+                        </button>
+                    );
+                })}
             </div>
 
             {/* Header with Search */}

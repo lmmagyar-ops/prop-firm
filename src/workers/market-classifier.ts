@@ -264,6 +264,25 @@ export function getCategories(
         if (!categories.includes('Culture')) categories.push('Culture');
     }
 
+    // === POST-PROCESSING: Sports wins over false-positive Politics/Business ===
+    // Polymarket sends 'US-current-affairs' as the API category for ALL markets,
+    // including sports. This maps to 'Politics' first, then sports keywords add 
+    // 'Sports' later, resulting in breadcrumbs like "POLITICS / SPORTS / MAVERICKS VS BUCKS".
+    // When sports is confidently detected, strip out the noise categories.
+    if (categories.includes('Sports')) {
+        const noiseForSports = ['Politics', 'Business', 'Other'];
+        for (const noise of noiseForSports) {
+            const idx = categories.indexOf(noise);
+            if (idx !== -1) categories.splice(idx, 1);
+        }
+        // Ensure Sports is always the first category
+        const sportsIdx = categories.indexOf('Sports');
+        if (sportsIdx > 0) {
+            categories.splice(sportsIdx, 1);
+            categories.unshift('Sports');
+        }
+    }
+
     // Default
     if (categories.length === 0) {
         categories.push('Other');
