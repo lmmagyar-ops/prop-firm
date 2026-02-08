@@ -41,7 +41,7 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 **Commit:** `addb185` — `feat: add market integrity guards (resolved pruning, drift monitoring, alerting)`
 
-**Status:** Both commits pushed to `develop` (staging). Not yet promoted to `main` (production). Run: `git checkout main && git merge develop && git push origin main`
+**Deployed to production:** `41dff99` — merged both commits to `main` and pushed. Vercel + Railway auto-deploying.
 
 ---
 
