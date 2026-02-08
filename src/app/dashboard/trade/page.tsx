@@ -75,7 +75,7 @@ export default async function TradePage() {
 
     return (
         <ThemedTradeLayout platform={platform}>
-            <div className="space-y-6 p-6">
+            <div className="space-y-6">
                 {!hasActiveChallenge ? (
                     // Empty State: No Active Evaluation
                     <div className="flex items-center justify-center min-h-[60vh]">

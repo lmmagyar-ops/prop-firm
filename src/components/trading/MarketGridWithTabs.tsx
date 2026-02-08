@@ -261,7 +261,7 @@ export function MarketGridWithTabs({ events = [], balance, platform = "polymarke
                     <p className="text-zinc-500">No markets in this category</p>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4">
                     {/* Render Featured Events - Platform-aware cards */}
                     {filteredEvents.map((event) => (
                         <div key={event.id} onClick={() => handleEventClick(event.id)} className="cursor-pointer h-full">

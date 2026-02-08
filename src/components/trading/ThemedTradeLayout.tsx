@@ -18,7 +18,7 @@ export function ThemedTradeLayout({ platform, children }: ThemedTradeLayoutProps
     return (
         <div
             className={cn(
-                "min-h-screen transition-colors duration-300",
+                "transition-colors duration-300 overflow-x-hidden",
                 theme.page.background,
                 theme.page.text,
                 // Custom scrollbar styling
