@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/compone
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { X, TrendingUp, Calendar, Loader2 } from "lucide-react";
 import Image from "next/image";
+import dynamic from "next/dynamic";
 import { cn } from "@/lib/utils";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useTradeExecution } from "@/hooks/useTradeExecution";
@@ -14,7 +15,25 @@ import { OrderBook } from "./OrderBook";
 import { RulesSummary } from "./RulesSummary";
 import { MarketTimeline } from "./MarketTimeline";
 import { RecentActivityFeed } from "./RecentActivityFeed";
-import { ProbabilityChart } from "./ProbabilityChart";
+
+// Dynamic import with ssr:false — lightweight-charts uses canvas/document APIs
+// that crash during server-side rendering, which silently breaks the entire page
+const ProbabilityChart = dynamic(
+    () => import("./ProbabilityChart").then(m => m.ProbabilityChart),
+    {
+        ssr: false,
+        loading: () => (
+            <div className="space-y-4">
+                <div className="flex gap-2">
+                    {["1H", "1D", "1W", "1M", "ALL"].map(r => (
+                        <div key={r} className="w-10 h-6 rounded-lg bg-zinc-800/50 animate-pulse" />
+                    ))}
+                </div>
+                <div className="w-full h-[300px] rounded-lg bg-zinc-800/30 animate-pulse" />
+            </div>
+        ),
+    }
+);
 
 /**
  * Lightweight Error Boundary — prevents a chart or feed crash
