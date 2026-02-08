@@ -6,6 +6,7 @@ import { auth } from "@/auth";
 import { LifetimeStatsGrid } from "@/components/dashboard/LifetimeStatsGrid";
 import { ChallengeHistoryTable } from "@/components/dashboard/ChallengeHistoryTable";
 import { ChallengeHeader } from "@/components/dashboard/ChallengeHeader";
+import { LiveEquityDisplay } from "@/components/dashboard/LiveEquityDisplay";
 import { EquityDisplay } from "@/components/dashboard/EquityDisplay";
 import { ProfitProgress } from "@/components/dashboard/ProfitProgress";
 import { RiskMeters } from "@/components/dashboard/RiskMeters";
@@ -132,9 +133,9 @@ export default async function DashboardPage() {
 
                             {/* Equity Display (same as challenge) */}
                             <div className="mt-6">
-                                <EquityDisplay
-                                    currentBalance={trueEquity}
-                                    dailyPnL={stats.dailyPnL}
+                                <LiveEquityDisplay
+                                    initialBalance={trueEquity}
+                                    initialDailyPnL={stats.dailyPnL}
                                 />
                             </div>
 
@@ -196,9 +197,9 @@ export default async function DashboardPage() {
                             {/* Equity + Profit Progress */}
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                                 <div className="lg:col-span-2">
-                                    <EquityDisplay
-                                        currentBalance={trueEquity}
-                                        dailyPnL={stats.dailyPnL}
+                                    <LiveEquityDisplay
+                                        initialBalance={trueEquity}
+                                        initialDailyPnL={stats.dailyPnL}
                                     />
                                 </div>
                                 <div>

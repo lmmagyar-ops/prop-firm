@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { challenges } from "@/db/schema";
+import { challenges, positions } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { cookies } from "next/headers";
 
@@ -42,9 +42,29 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ balance: 0, equity: 0 });
         }
 
+        // Compute true equity = cash + position value
+        const cash = parseFloat(activeChallenge.currentBalance);
+
+        const openPositions = await db.query.positions.findMany({
+            where: and(
+                eq(positions.challengeId, activeChallenge.id),
+                eq(positions.status, "OPEN")
+            ),
+        });
+
+        const positionValue = openPositions.reduce((sum, pos) => {
+            const current = parseFloat(pos.currentPrice || pos.entryPrice);
+            const shares = parseFloat(pos.shares);
+            return sum + (current * shares);
+        }, 0);
+
+        const equity = cash + positionValue;
+
         return NextResponse.json({
-            balance: parseFloat(activeChallenge.currentBalance),
-            equity: parseFloat(activeChallenge.currentBalance)
+            balance: cash,
+            equity,
+            positionValue,
+            positionCount: openPositions.length,
         });
 
     } catch (error) {
