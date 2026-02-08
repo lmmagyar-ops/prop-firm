@@ -566,10 +566,10 @@ class IngestionWorker {
                         // Also skip markets with very high prices (≥99%) for same reason
                         if (yesPrice >= 0.99) continue;
 
-                        // Skip markets with exactly 50% price (±0.5%) - these are placeholder
-                        // prices with no real trading activity (e.g., 2028 elections).
-                        // Real markets almost never land exactly at 50%.
-                        if (Math.abs(yesPrice - 0.5) < 0.005) continue;
+                        // NOTE: 50% filter removed here — the server action layer
+                        // (market.ts getActiveEvents) has a smarter volume-aware version
+                        // that checks 50% price + low volume together, which avoids
+                        // dropping legitimate new markets near 50%.
 
                         allEventTokenIds.push(tokenId);
 
@@ -584,8 +584,36 @@ class IngestionWorker {
 
                     if (subMarkets.length === 0) continue;
 
+                    // Filter out player prop sub-markets from "Team vs. Team" events
+                    // Polymarket sometimes bundles player props (e.g., "AJ Green: Points O/U 11.5")
+                    // under game events, which creates confusing mixed cards.
+                    const titleLower = (event.title || '').toLowerCase();
+                    const isVsEvent = titleLower.includes(' vs ') || titleLower.includes(' vs. ');
+                    let filteredSubMarkets = subMarkets;
+
+                    if (isVsEvent && subMarkets.length > 2) {
+                        const playerPropPatterns = [
+                            /points o\/u/i, /assists o\/u/i, /rebounds o\/u/i,
+                            /passing yards/i, /rushing yards/i, /receiving yards/i,
+                            /touchdowns/i, /three-pointers/i, /3-pointers/i,
+                            /strikeouts/i, /home runs/i, /hits o\/u/i,
+                            /saves o\/u/i, /shots on goal/i, /goals o\/u/i,
+                        ];
+
+                        const gameLevelMarkets = subMarkets.filter(m => {
+                            const q = m.question.toLowerCase();
+                            const isPlayerProp = playerPropPatterns.some(p => p.test(q));
+                            return !isPlayerProp;
+                        });
+
+                        // Only filter if we still have at least 2 game-level markets
+                        if (gameLevelMarkets.length >= 2) {
+                            filteredSubMarkets = gameLevelMarkets;
+                        }
+                    }
+
                     // Sort sub-markets by price descending (highest probability first)
-                    subMarkets.sort((a, b) => b.price - a.price);
+                    filteredSubMarkets.sort((a, b) => b.price - a.price);
 
                     // Determine if this is a "high volume" event (top 15 by 24h volume = Breaking)
                     // Events are already sorted by volume24hr descending, so index determines rank
@@ -614,8 +642,8 @@ class IngestionWorker {
                         volume24hr: event.volume24hr || 0,
                         createdAt: event.createdAt,
                         categories: categories,
-                        markets: subMarkets,
-                        isMultiOutcome: subMarkets.length > 1,
+                        markets: filteredSubMarkets,
+                        isMultiOutcome: filteredSubMarkets.length > 1,
                     });
                 } catch (e) {
                     // Log errors for debugging instead of silently skipping

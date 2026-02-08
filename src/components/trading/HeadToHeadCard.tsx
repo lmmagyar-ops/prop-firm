@@ -1,8 +1,8 @@
 "use client";
 
 import { memo } from "react";
-import { cn } from "@/lib/utils";
 import { TrendingUp, Clock } from "lucide-react";
+import Image from "next/image";
 import type { EventMetadata } from "@/app/actions/market";
 
 interface HeadToHeadCardProps {
@@ -44,9 +44,7 @@ export const HeadToHeadCard = memo(function HeadToHeadCard({ event, onTrade }: H
         return `$${volume.toFixed(0)}`;
     };
 
-    // Determine colors based on position (like Polymarket uses for sports)
-    const team1Color = "from-blue-500 to-blue-600";
-    const team2Color = "from-rose-500 to-rose-600";
+
 
     return (
         <div className="bg-zinc-900/50 border border-white/5 rounded-xl overflow-hidden hover:border-white/10 transition-all">
@@ -54,9 +52,11 @@ export const HeadToHeadCard = memo(function HeadToHeadCard({ event, onTrade }: H
             <div className="p-4 border-b border-white/5">
                 <div className="flex items-start gap-3">
                     {event.image && (
-                        <img
+                        <Image
                             src={event.image}
                             alt=""
+                            width={40}
+                            height={40}
                             className="w-10 h-10 rounded-lg object-cover"
                         />
                     )}
@@ -145,7 +145,14 @@ export function isSportsMatchup(event: EventMetadata): boolean {
     if (title.includes(" vs ") || title.includes(" vs. ")) return true;
 
     // Check for sports keywords with 2-3 markets
-    const sportsKeywords = ['nfl', 'nba', 'mlb', 'nhl', 'ufc', 'soccer', 'football', 'basketball', 'hockey', 'baseball', 'tennis', 'epl', 'premier league', 'matchup', 'game'];
+    const sportsKeywords = [
+        'nfl', 'nba', 'mlb', 'nhl', 'ufc', 'mma', 'ncaa', 'cfb', 'cbb',
+        'soccer', 'football', 'basketball', 'hockey', 'baseball', 'tennis', 'golf',
+        'epl', 'premier league', 'la liga', 'bundesliga', 'serie a', 'champions league',
+        'matchup', 'game', 'match', 'series', 'championship', 'playoffs', 'finals',
+        'super bowl', 'world cup', 'world series', 'stanley cup',
+        'o/u', 'over/under', 'spread', 'moneyline',
+    ];
     const hasSportsKeyword = sportsKeywords.some(k => title.includes(k));
 
     // Sports matchups typically have 2-3 markets (team1, team2, optionally draw)
