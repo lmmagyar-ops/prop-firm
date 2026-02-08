@@ -22,9 +22,12 @@ import {
  */
 const CSP_DIRECTIVES = [
     "default-src 'self'",
-    "script-src 'self'",
+    // Next.js requires 'unsafe-inline' — it injects inline <script> tags for
+    // hydration, __NEXT_DATA__, and chunk loading. Without this, React never
+    // hydrates and the page is completely non-interactive (zero event handlers).
+    "script-src 'self' 'unsafe-inline'",
     "style-src 'self' 'unsafe-inline'",         // Next.js styled-jsx requires inline
-    "img-src 'self' data: blob:",
+    "img-src 'self' data: blob: https://*.amazonaws.com https://*.polymarket.com",
     "font-src 'self'",
     "connect-src 'self' https://accounts.google.com https://oauth2.googleapis.com",
     "frame-ancestors 'none'",
