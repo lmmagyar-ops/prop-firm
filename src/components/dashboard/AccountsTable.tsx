@@ -136,7 +136,7 @@ export function AccountsTable({
                                                         onClick={() => onToggleVisibility?.(account.id, 'profile')}
                                                         className={cn(
                                                             "h-8 w-8 hover:bg-white/5",
-                                                            account.isPublic ? "text-blue-400" : "text-[#58687D]"
+                                                            account.isPublic ? "text-primary" : "text-[#58687D]"
                                                         )}
                                                     >
                                                         {account.isPublic ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
@@ -149,7 +149,7 @@ export function AccountsTable({
                                                         onClick={() => onToggleVisibility?.(account.id, 'dropdown')}
                                                         className={cn(
                                                             "h-8 w-8 hover:bg-white/5",
-                                                            account.showDropdown ? "text-blue-400" : "text-[#58687D]"
+                                                            account.showDropdown ? "text-primary" : "text-[#58687D]"
                                                         )}
                                                     >
                                                         {account.showDropdown ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}

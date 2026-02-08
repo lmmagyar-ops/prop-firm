@@ -53,7 +53,7 @@ export function SystemStatusHeader() {
             <div className="flex items-center gap-2">
                 <Server className="h-3 w-3 text-zinc-500" />
                 <span className="text-zinc-400">WS ACTIVE:</span>
-                <span className="text-blue-500">{wsConnections}</span>
+                <span className="text-primary">{wsConnections}</span>
             </div>
 
             <div className="flex items-center gap-2">

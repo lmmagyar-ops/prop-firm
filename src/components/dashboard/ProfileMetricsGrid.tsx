@@ -21,7 +21,7 @@ function MetricCard({ title, value, subValue, icon, delay = 0 }: MetricCardProps
             style={{ animationDelay: `${delay}ms` }}
         >
             <div className="flex items-start justify-between mb-4">
-                <div className="p-2 bg-blue-500/10 rounded-lg group-hover:bg-blue-500/20 transition-colors">
+                <div className="p-2 bg-primary/10 rounded-lg group-hover:bg-primary/20 transition-colors">
                     {icon}
                 </div>
                 {subValue && (
@@ -33,13 +33,13 @@ function MetricCard({ title, value, subValue, icon, delay = 0 }: MetricCardProps
 
             <div className="space-y-1">
                 <p className="text-xs uppercase tracking-wider text-zinc-500 font-medium">{title}</p>
-                <p className="text-2xl font-mono font-bold text-white group-hover:text-blue-400 transition-colors">
+                <p className="text-2xl font-mono font-bold text-white group-hover:text-primary transition-colors">
                     {value}
                 </p>
             </div>
 
             {/* Decorative gradient blob */}
-            <div className="absolute -right-10 -bottom-10 w-32 h-32 bg-blue-500/5 rounded-full blur-3xl group-hover:bg-blue-500/10 transition-colors" />
+            <div className="absolute -right-10 -bottom-10 w-32 h-32 bg-primary/5 rounded-full blur-3xl group-hover:bg-primary/10 transition-colors" />
         </div>
     );
 }
@@ -67,7 +67,7 @@ export function ProfileMetricsGrid({ metrics, isPublic = false }: ProfileMetrics
             <MetricCard
                 title="Lifetime Volume"
                 value={formatCurrency(metrics.lifetimeTradingVolume)}
-                icon={<TrendingUp className="w-5 h-5 text-blue-400" />}
+                icon={<TrendingUp className="w-5 h-5 text-primary" />}
                 delay={0}
             />
 

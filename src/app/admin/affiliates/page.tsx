@@ -125,7 +125,7 @@ export default function AffiliatesPage() {
 
     const getTierBadge = (tier: number) => {
         const configs = {
-            1: { label: "Tier 1", color: "text-blue-400 border-blue-500/20 bg-blue-500/10" },
+            1: { label: "Tier 1", color: "text-primary border-primary/20 bg-primary/10" },
             2: { label: "Tier 2", color: "text-purple-400 border-purple-500/20 bg-purple-500/10" },
             3: { label: "Tier 3", color: "text-amber-400 border-amber-500/20 bg-amber-500/10" },
         };

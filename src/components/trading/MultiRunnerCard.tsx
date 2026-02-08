@@ -30,7 +30,7 @@ export const MultiRunnerCard = memo(function MultiRunnerCard({ event, onTrade }:
         const question = market.question;
 
         // 1. Extract monetary thresholds like ">$2B", ">$1B"
-        const moneyMatch = question.match(/[>\<]=?\s*\$[\d.]+[BMKbmk]?/);
+        const moneyMatch = question.match(/[><]=?\s*\$[\d.]+[BMKbmk]?/);
         if (moneyMatch) return moneyMatch[0];
 
         // 2. Extract dates like "January 31, 2026" or "March 31"
@@ -79,7 +79,7 @@ export const MultiRunnerCard = memo(function MultiRunnerCard({ event, onTrade }:
     };
 
     return (
-        <div className="bg-zinc-900/50 border border-white/5 rounded-xl overflow-hidden hover:border-white/10 transition-colors min-h-[180px] h-full flex flex-col">
+        <div className="bg-zinc-900/50 border border-white/5 rounded-xl overflow-hidden hover:border-white/10 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/20 transition-all duration-200 min-h-[180px] h-full flex flex-col">
             {/* Event Header */}
             <div className="p-4 border-b border-white/5">
                 <div className="flex items-start gap-3">
@@ -122,15 +122,9 @@ export const MultiRunnerCard = memo(function MultiRunnerCard({ event, onTrade }:
                 ))}
             </div>
 
-            {/* Footer - Volume + LIVE badge */}
-            <div className="px-4 py-3 text-xs text-zinc-500 border-t border-white/5 mt-auto flex items-center justify-between">
+            {/* Footer - Volume */}
+            <div className="px-4 py-3 text-xs text-zinc-500 border-t border-white/5 mt-auto">
                 <span>{formatVolume(event.volume)} Vol.</span>
-                {event.volume > 0 && (
-                    <span className="flex items-center gap-1 text-red-500 font-medium">
-                        <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                        LIVE
-                    </span>
-                )}
             </div>
         </div>
     );
@@ -148,7 +142,7 @@ const OutcomeRow = memo(function OutcomeRow({ market, label, onTrade }: OutcomeR
     // Color based on probability
     const getColor = (price: number) => {
         if (price >= 0.7) return "text-emerald-400";
-        if (price >= 0.4) return "text-blue-400";
+        if (price >= 0.4) return "text-primary";
         if (price >= 0.15) return "text-white"; // Changed from amber to white for cleaner look
         return "text-zinc-500";
     };
@@ -157,7 +151,7 @@ const OutcomeRow = memo(function OutcomeRow({ market, label, onTrade }: OutcomeR
         <div className="px-4 py-2.5 flex items-center justify-between hover:bg-white/5 transition-colors group border-b border-white/5 last:border-0">
             {/* Outcome Label + Probability */}
             <div className="flex items-center gap-3 flex-1 min-w-0 mr-4">
-                <span className="text-[13px] font-medium text-zinc-300 group-hover:text-blue-400 truncate transition-colors">
+                <span className="text-[13px] font-medium text-zinc-300 group-hover:text-primary truncate transition-colors">
                     {label}
                 </span>
                 <span className={cn("text-[13px] font-bold tabular-nums shrink-0 opacity-80", getColor(market.price))}>

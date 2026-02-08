@@ -1,7 +1,9 @@
 export class TradingError extends Error {
-    constructor(message: string, public code: string, public status: number = 400) {
+    public data?: Record<string, unknown>;
+    constructor(message: string, public code: string, public status: number = 400, data?: Record<string, unknown>) {
         super(message);
         this.name = 'TradingError';
+        this.data = data;
     }
 }
 

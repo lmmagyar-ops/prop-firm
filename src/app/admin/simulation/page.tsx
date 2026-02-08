@@ -137,7 +137,7 @@ export default function SimulationPage() {
                     <button
                         onClick={() => setActiveTab('attrition')}
                         className={`px-6 py-3 font-semibold transition-colors ${activeTab === 'attrition'
-                            ? 'text-blue-600 border-b-2 border-blue-600'
+                            ? 'text-primary border-b-2 border-primary'
                             : 'text-gray-500 hover:text-gray-700'
                             }`}
                     >
@@ -146,7 +146,7 @@ export default function SimulationPage() {
                     <button
                         onClick={() => setActiveTab('monte-carlo')}
                         className={`px-6 py-3 font-semibold transition-colors ${activeTab === 'monte-carlo'
-                            ? 'text-blue-600 border-b-2 border-blue-600'
+                            ? 'text-primary border-b-2 border-primary'
                             : 'text-gray-500 hover:text-gray-700'
                             }`}
                     >
@@ -155,7 +155,7 @@ export default function SimulationPage() {
                     <button
                         onClick={() => setActiveTab('multi-tier')}
                         className={`px-6 py-3 font-semibold transition-colors ${activeTab === 'multi-tier'
-                            ? 'text-blue-600 border-b-2 border-blue-600'
+                            ? 'text-primary border-b-2 border-primary'
                             : 'text-gray-500 hover:text-gray-700'
                             }`}
                     >
@@ -293,7 +293,7 @@ function RealWorldModelTab({ traderCount, setTraderCount, evalMultiplier, setEva
                     </div>
                 </div>
 
-                <button onClick={runSimulation} className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition">
+                <button onClick={runSimulation} className="w-full bg-primary text-white py-3 rounded-lg font-semibold hover:bg-primary/80 transition">
                     Calculate Projection
                 </button>
             </div>
@@ -336,7 +336,7 @@ function RealWorldModelTab({ traderCount, setTraderCount, evalMultiplier, setEva
                             </div>
                             <div className="bg-white rounded-lg shadow p-6">
                                 <div className="text-sm text-gray-600 mb-1">Eval Multiplier</div>
-                                <div className="text-3xl font-bold text-blue-600 tabular-nums">{(results.totalEvals / results.totalTraders).toFixed(2)}x</div>
+                                <div className="text-3xl font-bold text-primary tabular-nums">{(results.totalEvals / results.totalTraders).toFixed(2)}x</div>
                                 <div className="text-xs text-gray-500 mt-1">Avg evals/trader</div>
                             </div>
                         </div>
@@ -345,7 +345,7 @@ function RealWorldModelTab({ traderCount, setTraderCount, evalMultiplier, setEva
                             <h3 className="text-lg font-semibold mb-4">Attrition Funnel</h3>
                             <div className="space-y-3">
                                 {[
-                                    { label: 'Eval Attempts', value: results.totalEvals, pct: 100, color: 'bg-blue-600' },
+                                    { label: 'Eval Attempts', value: results.totalEvals, pct: 100, color: 'bg-primary' },
                                     { label: 'Pass Evaluation', value: results.funnel.evaluationPasses, pct: (results.funnel.evaluationPasses / results.totalEvals) * 100, color: 'bg-green-600' },
                                     { label: 'Get First Payout', value: results.funnel.firstPayouts, pct: (results.funnel.firstPayouts / results.totalEvals) * 100, color: 'bg-yellow-600' },
                                     { label: 'Ongoing Survivors', value: results.funnel.ongoingTraders, pct: (results.funnel.ongoingTraders / results.totalEvals) * 100, color: 'bg-purple-600' },
@@ -363,7 +363,7 @@ function RealWorldModelTab({ traderCount, setTraderCount, evalMultiplier, setEva
                             </div>
                         </div>
 
-                        <div className={`rounded-lg shadow p-6 ${results.cashFlow.profitMargin > 70 ? 'bg-green-50 border-2 border-green-500' : results.cashFlow.profitMargin > 50 ? 'bg-blue-50 border-2 border-blue-500' : results.cashFlow.profitMargin > 0 ? 'bg-yellow-50 border-2 border-yellow-500' : 'bg-red-50 border-2 border-red-500'}`}>
+                        <div className={`rounded-lg shadow p-6 ${results.cashFlow.profitMargin > 70 ? 'bg-green-50 border-2 border-green-500' : results.cashFlow.profitMargin > 50 ? 'bg-primary/5 border-2 border-primary' : results.cashFlow.profitMargin > 0 ? 'bg-yellow-50 border-2 border-yellow-500' : 'bg-red-50 border-2 border-red-500'}`}>
                             <h3 className="text-lg font-semibold mb-2">
                                 {results.cashFlow.profitMargin > 70 ? '🚀 Highly Profitable' : results.cashFlow.profitMargin > 50 ? '✅ Profitable' : results.cashFlow.profitMargin > 0 ? '⚠️ Marginal' : '❌ Unprofitable'}
                             </h3>
@@ -435,7 +435,7 @@ function MonteCarloTab({ iterations, setIterations, traderCount, setTraderCount,
                     </div>
                 </div>
 
-                <button onClick={runSimulation} disabled={isRunning} className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition">
+                <button onClick={runSimulation} disabled={isRunning} className="w-full bg-primary text-white py-3 rounded-lg font-semibold hover:bg-primary/80 disabled:bg-gray-400 disabled:cursor-not-allowed transition">
                     {isRunning ? 'Running...' : 'Run Simulation'}
                 </button>
             </div>
@@ -455,7 +455,7 @@ function MonteCarloTab({ iterations, setIterations, traderCount, setTraderCount,
 
                 {isRunning && (
                     <div className="bg-white rounded-lg shadow p-12 text-center">
-                        <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mx-auto mb-4"></div>
+                        <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-primary mx-auto mb-4"></div>
                         <h3 className="text-xl font-semibold text-gray-700 mb-2">Running {iterations.toLocaleString()} Simulations...</h3>
                         <p className="text-gray-500">This may take a few seconds</p>
                     </div>
@@ -544,7 +544,7 @@ function MultiTierTab({ traderCount, setTraderCount, evalMultiplier, setEvalMult
                     <div className="flex items-end">
                         <button
                             onClick={runAnalysis}
-                            className="w-full bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 transition"
+                            className="w-full bg-primary text-white py-2 rounded-lg font-semibold hover:bg-primary/80 transition"
                         >
                             Run Analysis
                         </button>
@@ -571,7 +571,7 @@ function MultiTierTab({ traderCount, setTraderCount, evalMultiplier, setEvalMult
                             <div className="text-sm opacity-90 mb-1">Best by Margin</div>
                             <div className="text-3xl font-bold">{results.bestByMargin}</div>
                         </div>
-                        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow p-6 text-white">
+                        <div className="bg-gradient-to-br from-primary to-primary rounded-lg shadow p-6 text-white">
                             <div className="text-sm opacity-90 mb-1">Best by Absolute Profit</div>
                             <div className="text-3xl font-bold">{results.bestByAbsoluteProfit}</div>
                         </div>
@@ -609,14 +609,14 @@ function MultiTierTab({ traderCount, setTraderCount, evalMultiplier, setEvalMult
                                     {results.tiers.map((tier: any) => (
                                         <tr
                                             key={tier.tier}
-                                            className={`hover:bg-gray-50 transition ${tier.tierLabel === results.bestByAbsoluteProfit ? 'bg-blue-50' : ''
+                                            className={`hover:bg-gray-50 transition ${tier.tierLabel === results.bestByAbsoluteProfit ? 'bg-primary/5' : ''
                                                 }`}
                                         >
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 <div className="flex items-center">
                                                     <span className="font-semibold text-gray-900">{tier.tierLabel}</span>
                                                     {tier.tierLabel === results.bestByAbsoluteProfit && (
-                                                        <span className="ml-2 px-2 py-1 text-xs font-semibold text-blue-700 bg-blue-100 rounded">Best</span>
+                                                        <span className="ml-2 px-2 py-1 text-xs font-semibold text-primary bg-primary/15 rounded">Best</span>
                                                     )}
                                                 </div>
                                             </td>

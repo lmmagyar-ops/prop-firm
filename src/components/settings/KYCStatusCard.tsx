@@ -49,13 +49,13 @@ export function KYCStatusCard({ status, onStartVerification }: KYCStatusCardProp
                 };
             default:
                 return {
-                    icon: <ShieldAlert className="w-8 h-8 text-blue-400" />,
+                    icon: <ShieldAlert className="w-8 h-8 text-primary" />,
                     title: "Identity Verification Required",
                     description: "To withdraw funds or trade with larger accounts, you must complete KYC verification.",
-                    color: "bg-blue-500/10 border-blue-500/20",
-                    textColor: "text-blue-400",
+                    color: "bg-primary/10 border-primary/20",
+                    textColor: "text-primary",
                     cta: (
-                        <Button onClick={onStartVerification} className="w-full mt-4 bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/20">
+                        <Button onClick={onStartVerification} className="w-full mt-4 bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20">
                             Start Verification
                         </Button>
                     )

@@ -74,20 +74,16 @@ export async function getActiveMarkets(): Promise<MarketMetadata[]> {
 export async function getMarketById(marketId: string): Promise<MarketMetadata | null> {
     noStore();
     try {
-        // First try market:active_list (legacy binary markets)
-        const marketData = await redis.get("market:active_list");
-        if (marketData) {
-            const markets = JSON.parse(marketData) as MarketMetadata[];
-            const found = markets.find(m => m.id === marketId);
-            if (found) {
-                return {
-                    ...found,
-                    currentPrice: found.currentPrice ?? found.basePrice ?? 0.5
-                };
-            }
-        }
+        // IMPORTANT: Search event lists FIRST, then binary list.
+        // Sub-markets of large events (FIFA World Cup, Bitcoin, Elections) appear in BOTH
+        // event:active_list (with parent event volume) and market:active_list (with only
+        // sub-market volume). We must search events first so sub-markets inherit the parent
+        // event's volume via Math.max — this determines the correct volume tier for trade limits.
+        // Bug history: Previously searched market:active_list first, causing FIFA World Cup
+        // sub-markets ($5-7M individual volume) to miss their $126M event volume, dropping
+        // traders from the 5% tier ($500 cap) to the 2.5% tier ($250 cap).
 
-        // Fallback: Search event:active_list for multi-outcome markets
+        // 1. Search event:active_list (Polymarket multi-outcome events)
         const eventData = await redis.get("event:active_list");
         if (eventData) {
             const events = JSON.parse(eventData) as EventMetadata[];
@@ -112,7 +108,7 @@ export async function getMarketById(marketId: string): Promise<MarketMetadata | 
             }
         }
 
-        // Try Kalshi events too
+        // 2. Search kalshi:active_list (Kalshi events)
         const kalshiData = await redis.get("kalshi:active_list");
         if (kalshiData) {
             const events = JSON.parse(kalshiData) as EventMetadata[];
@@ -133,6 +129,19 @@ export async function getMarketById(marketId: string): Promise<MarketMetadata | 
                         currentPrice: subMarket.price
                     };
                 }
+            }
+        }
+
+        // 3. Fallback: market:active_list (standalone binary markets not in any event)
+        const marketData = await redis.get("market:active_list");
+        if (marketData) {
+            const markets = JSON.parse(marketData) as MarketMetadata[];
+            const found = markets.find(m => m.id === marketId);
+            if (found) {
+                return {
+                    ...found,
+                    currentPrice: found.currentPrice ?? found.basePrice ?? 0.5
+                };
             }
         }
 

@@ -19,13 +19,13 @@ export async function sendVerificationEmail(email: string, code: string, decoys:
                     "Authorization": `Bearer ${process.env.RESEND_API_KEY}`
                 },
                 body: JSON.stringify({
-                    from: "Propshot <onboarding@resend.dev>", // Default Resend domain for testing
+                    from: "Predictions Firm <onboarding@resend.dev>", // Default Resend domain for testing
                     to: [email],
-                    subject: "Authenticate Your Propshot Account",
+                    subject: "Authenticate Your Predictions Firm Account",
                     html: `
                         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; background: #111; padding: 40px; color: white;">
                             <h1 style="text-align: center; margin-bottom: 30px;">Authenticate Your Account</h1>
-                            <p style="text-align: center; color: #ccc; margin-bottom: 40px;">To complete your login to Propshot, click the number below that matches what you see on your authentication screen:</p>
+                            <p style="text-align: center; color: #ccc; margin-bottom: 40px;">To complete your login to Predictions Firm, click the number below that matches what you see on your authentication screen:</p>
                             
                             <div style="display: flex; justify-content: center; gap: 20px; margin-bottom: 40px;">
                                 ${[code, ...decoys].sort(() => Math.random() - 0.5).map(num => `
@@ -66,9 +66,9 @@ export async function sendPasswordResetEmail(email: string, token: string) {
                     "Authorization": `Bearer ${process.env.RESEND_API_KEY}`
                 },
                 body: JSON.stringify({
-                    from: "Propshot <onboarding@resend.dev>",
+                    from: "Predictions Firm <onboarding@resend.dev>",
                     to: [email],
-                    subject: "Reset Your Propshot Password",
+                    subject: "Reset Your Predictions Firm Password",
                     html: `
                         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; background: #111; padding: 40px; color: white; border-radius: 12px;">
                             <h1 style="text-align: center; margin-bottom: 30px; color: #fff;">Reset Your Password</h1>
@@ -120,14 +120,14 @@ export async function sendEmailVerificationLink(email: string, token: string) {
                     "Authorization": `Bearer ${process.env.RESEND_API_KEY}`
                 },
                 body: JSON.stringify({
-                    from: "Propshot <onboarding@resend.dev>",
+                    from: "Predictions Firm <onboarding@resend.dev>",
                     to: [email],
-                    subject: "Verify Your Propshot Email",
+                    subject: "Verify Your Predictions Firm Email",
                     html: `
                         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; background: #111; padding: 40px; color: white; border-radius: 12px;">
                             <h1 style="text-align: center; margin-bottom: 30px; color: #fff;">Verify Your Email</h1>
                             <p style="text-align: center; color: #aaa; margin-bottom: 30px;">
-                                Thanks for signing up for Propshot! Click the button below to verify your email address.
+                                Thanks for signing up for Predictions Firm! Click the button below to verify your email address.
                             </p>
                             
                             <div style="text-align: center; margin-bottom: 30px;">

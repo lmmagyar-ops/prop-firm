@@ -9,9 +9,9 @@ const STEPS = [
         title: "Spot The News",
         desc: "Breaking news creates opportunity. When the Fed speaks or elections shift, the market reacts instantly.",
         icon: Newspaper,
-        color: "text-blue-400",
-        bg: "bg-blue-500/10",
-        border: "border-blue-500/20"
+        color: "text-primary",
+        bg: "bg-primary/10",
+        border: "border-primary/20"
     },
     {
         step: "02",
@@ -48,8 +48,8 @@ export function EventTradingPlaybook() {
                         How It Works
                     </div>
 
-                    <h2 className="text-4xl md:text-5xl font-black text-white tracking-tighter leading-tight">
-                        The Event Trading <span className="text-blue-500">Playbook.</span>
+                    <h2 className="text-4xl md:text-5xl font-medium text-white tracking-tight leading-tight">
+                        The Event Trading <span className="text-primary">Playbook.</span>
                     </h2>
 
                     <p className="text-zinc-400 text-lg max-w-2xl mx-auto mt-6 leading-relaxed">
@@ -61,7 +61,7 @@ export function EventTradingPlaybook() {
             {/* Steps Grid */}
             <div className="grid md:grid-cols-3 gap-8 relative">
                 {/* Connecting Line (Desktop Only) */}
-                <div className="hidden md:block absolute top-[60px] left-[16%] right-[16%] h-[2px] bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-green-500/20 -z-10 border-t border-dashed border-zinc-700/50" />
+                <div className="hidden md:block absolute top-[60px] left-[16%] right-[16%] h-[2px] bg-gradient-to-r from-primary/20 via-purple-500/20 to-green-500/20 -z-10 border-t border-dashed border-zinc-700/50" />
 
                 {STEPS.map((step, i) => (
                     <motion.div
@@ -74,7 +74,7 @@ export function EventTradingPlaybook() {
                     >
                         <div className="relative bg-[#0E1217] border border-[#2E3A52] rounded-3xl p-8 hover:border-zinc-600 transition-colors h-full">
                             {/* Step Number */}
-                            <div className="absolute top-6 right-8 text-4xl font-black text-zinc-800/50 select-none group-hover:text-zinc-700/50 transition-colors">
+                            <div className="absolute top-6 right-8 text-4xl font-medium text-zinc-800/50 select-none group-hover:text-zinc-700/50 transition-colors">
                                 {step.step}
                             </div>
 

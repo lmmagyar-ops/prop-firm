@@ -40,72 +40,15 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "No active challenge found" }, { status: 400 });
         }
 
-        let trade;
-
-        try {
-            // Execute trade using TradeExecutor (handles position updates properly)
-            trade = await TradeExecutor.executeTrade(
-                userId,
-                activeChallenge.id,
-                marketId,
-                "BUY", // Always BUY for now (SELL is handled by close endpoint)
-                parseFloat(amount),
-                outcome as "YES" | "NO" // Pass direction to create correct position
-            );
-        } catch (error: any) {
-            // Auto-provision Redis market data for demo users
-            // Check for: "Market xxx is currently closed or halted" OR "Book Not Found"
-            const isMarketDataMissing = error.message?.includes("is currently closed or halted")
-                || error.message?.includes("Book Not Found");
-
-            log.debug("Trade error", { error: error.message, isMarketDataMissing });
-
-            if (isMarketDataMissing) {
-                log.debug("Auto-provisioning Redis market data");
-                try {
-                    const Redis = (await import("ioredis")).default;
-                    const redis = new Redis(process.env.REDIS_URL || "redis://localhost:6380", {
-                        connectTimeout: 5000, // 5 second timeout
-                        commandTimeout: 5000,
-                        maxRetriesPerRequest: 1
-                    });
-
-                    const now = Date.now();
-                    // Seed Price
-                    await redis.set(`market:price:${marketId}`, JSON.stringify({
-                        price: "0.56",
-                        asset_id: marketId,
-                        timestamp: now
-                    }));
-
-                    // Seed Book
-                    await redis.set(`market:book:${marketId}`, JSON.stringify({
-                        bids: [{ price: "0.56", size: "10000" }, { price: "0.55", size: "10000" }],
-                        asks: [{ price: "0.57", size: "10000" }, { price: "0.58", size: "10000" }]
-                    }));
-
-                    log.debug("Redis data seeded successfully");
-                    redis.disconnect();
-
-                    // Retry execution
-                    log.debug("Retrying trade execution");;
-                    trade = await TradeExecutor.executeTrade(
-                        userId,
-                        activeChallenge.id,
-                        marketId,
-                        "BUY",
-                        parseFloat(amount),
-                        outcome as "YES" | "NO"
-                    );
-                    log.debug("Trade retry succeeded");
-                } catch (redisError: any) {
-                    log.error("Redis seeding failed", redisError);
-                    throw new Error(`Trade failed: Market data unavailable and could not provision`);
-                }
-            } else {
-                throw error;
-            }
-        }
+        // Execute trade using TradeExecutor (handles position updates properly)
+        const trade = await TradeExecutor.executeTrade(
+            userId,
+            activeChallenge.id,
+            marketId,
+            "BUY", // Always BUY for now (SELL is handled by close endpoint)
+            parseFloat(amount),
+            outcome as "YES" | "NO" // Pass direction to create correct position
+        );
 
         // Use the activeChallenge that was already found (not a new query that might return wrong one)
         const challenge = activeChallenge;
@@ -192,13 +135,18 @@ export async function POST(req: NextRequest) {
         return NextResponse.json(responsePayload);
 
     } catch (error: any) {
-        log.error("Trade execution failed", error);
-        // Return detailed error for debugging (remove in production)
+        // DEFENSE-IN-DEPTH: Structured error responses for client-side handling
+        const status = error.status || 500;
+        const code = error.code || 'UNKNOWN';
+        const data = error.data || {};
+
+        log.error(`Trade execution failed [${code}]`, error);
+
         return NextResponse.json({
             error: error.message || "Trade failed",
-            stack: error.stack?.split('\n').slice(0, 5).join('\n'), // First 5 lines of stack
-            name: error.name
-        }, { status: 500 });
+            code,
+            ...data, // Spread freshPrice etc. for re-quote UI
+        }, { status });
     }
 }
 

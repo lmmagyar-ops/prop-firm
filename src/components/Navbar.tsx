@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { BarChart3 } from "lucide-react";
 import { useSession } from "next-auth/react";
 
 export function Navbar() {
@@ -13,13 +12,8 @@ export function Navbar() {
             <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
 
                 {/* Logo */}
-                <Link href="/" className="flex items-center gap-2 group cursor-pointer">
-                    <div className="w-8 h-8 rounded-lg bg-[var(--vapi-mint)]/10 flex items-center justify-center border border-[var(--vapi-mint)]/20">
-                        <BarChart3 className="w-4 h-4 text-[var(--vapi-mint)]" />
-                    </div>
-                    <span className="font-bold text-lg text-white group-hover:text-[var(--vapi-mint)] transition-colors">
-                        Propshot
-                    </span>
+                <Link href="/" className="flex items-center group cursor-pointer">
+                    <img src="/logo-wordmark-white.png" alt="Predictions Firm" className="h-8 w-auto group-hover:opacity-80 transition-opacity" />
                 </Link>
 
                 {/* Nav Links - Monospace Style */}

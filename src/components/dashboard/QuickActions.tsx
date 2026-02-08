@@ -38,7 +38,7 @@ export function QuickActions({ hasActiveChallenge, hasPositions }: QuickActionsP
                                 variant="ghost"
                                 className="w-full justify-start gap-3 text-left hover:bg-[#2E3A52]"
                             >
-                                <TrendingUp className="w-4 h-4 text-blue-400" />
+                                <TrendingUp className="w-4 h-4 text-primary" />
                                 <span className="text-sm">Browse Markets</span>
                             </Button>
                         </Link>
@@ -80,7 +80,7 @@ export function QuickActions({ hasActiveChallenge, hasPositions }: QuickActionsP
                 ) : (
                     <Button
                         onClick={() => setIsExpanded(true)}
-                        className="h-14 w-14 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all hover:scale-110"
+                        className="h-14 w-14 rounded-full bg-gradient-to-r from-primary to-purple-500 shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all hover:scale-110"
                     >
                         <Zap className="w-6 h-6" />
                     </Button>

@@ -124,7 +124,7 @@ export function SocialMediaSection({ socials, onSave }: SocialMediaSectionProps)
                             value={formData[key]}
                             onChange={(e) => setFormData({ ...formData, [key]: e.target.value })}
                             placeholder={placeholder}
-                            className="w-full px-3 py-2 bg-[#1A232E] border border-[#2E3A52] rounded-lg text-white placeholder:text-zinc-600 focus:outline-none focus:border-blue-500"
+                            className="w-full px-3 py-2 bg-[#1A232E] border border-[#2E3A52] rounded-lg text-white placeholder:text-zinc-600 focus:outline-none focus:border-primary"
                         />
                     </div>
                 ))}

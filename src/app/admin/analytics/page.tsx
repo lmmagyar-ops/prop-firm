@@ -30,8 +30,8 @@ export default function AnalyticsPage() {
                     sub="Stable at optimal levels"
                     icon={UserMinus}
                     trend="neutral"
-                    gradient="from-blue-500/10 to-transparent"
-                    text="text-blue-500"
+                    gradient="from-primary/10 to-transparent"
+                    text="text-primary"
                 />
                 <StatsCard
                     title="LTV/CAC Ratio"

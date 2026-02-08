@@ -167,79 +167,60 @@ export function MarketGridWithTabs({ events = [], balance, platform = "polymarke
     const totalItems = filteredEvents.length;
 
     return (
-        <div className="space-y-6">
-            {/* Category Tabs - Platform-aware styling */}
-            <div className={cn(
-                "flex items-center gap-1 overflow-x-auto scrollbar-hide pb-3 border-b",
-                isLightTheme ? "border-slate-200" : "border-white/5"
-            )}>
-                {CATEGORIES.map((cat) => {
-                    const count = categoryCounts[cat.id] || 0;
-                    return (
-                        <button
-                            key={cat.id}
-                            onClick={() => setActiveTab(cat.id)}
-                            className={cn(
-                                "relative flex items-center gap-2 px-4 py-2 text-sm font-semibold transition-colors whitespace-nowrap",
-                                activeTab === cat.id
-                                    ? isLightTheme ? "text-slate-900" : "text-white"
-                                    : isLightTheme ? "text-slate-500 hover:text-slate-700" : "text-zinc-500 hover:text-zinc-300"
-                            )}
-                        >
-                            {cat.icon && (
-                                <cat.icon className={cn(
-                                    "w-4 h-4",
+        <div className="space-y-4">
+            {/* Category Tabs + Search — single unified bar */}
+            <div className="relative">
+                <div className={cn(
+                    "flex items-center gap-1 overflow-x-auto scrollbar-hide pb-3 border-b pr-44",
+                    isLightTheme ? "border-slate-200" : "border-white/5"
+                )}>
+                    {CATEGORIES.map((cat) => {
+                        const count = categoryCounts[cat.id] || 0;
+                        return (
+                            <button
+                                key={cat.id}
+                                onClick={() => setActiveTab(cat.id)}
+                                className={cn(
+                                    "relative flex items-center gap-2 px-4 py-2 text-sm font-semibold transition-colors whitespace-nowrap",
                                     activeTab === cat.id
-                                        ? isLightTheme ? "text-green-600" : "text-emerald-400"
-                                        : isLightTheme ? "text-slate-500" : "text-zinc-500"
-                                )} />
-                            )}
-                            {cat.label}
-                            {/* Per-tab count badge */}
-                            {count > 0 && (
-                                <span className={cn(
-                                    "text-[10px] font-bold tabular-nums px-1.5 py-0.5 rounded-full",
-                                    activeTab === cat.id
-                                        ? isLightTheme ? "bg-green-100 text-green-700" : "bg-white/10 text-white"
-                                        : isLightTheme ? "bg-slate-100 text-slate-500" : "bg-white/5 text-zinc-500"
+                                        ? isLightTheme ? "text-slate-900" : "text-white"
+                                        : isLightTheme ? "text-slate-500 hover:text-slate-700" : "text-zinc-500 hover:text-zinc-300"
                                 )}
-                                >
-                                    {count}
-                                </span>
-                            )}
-                            {/* Active underline indicator */}
-                            {activeTab === cat.id && (
-                                <span className={cn(
-                                    "absolute bottom-0 left-0 right-0 h-0.5 rounded-full",
-                                    isLightTheme ? "bg-green-500" : "bg-white"
-                                )} />
-                            )}
-                        </button>
-                    );
-                })}
-            </div>
-
-            {/* Header with Search */}
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <h2 className={cn(
-                        "text-lg font-semibold",
-                        isLightTheme ? "text-slate-900" : "text-white"
-                    )}>
-                        {activeTab === 'trending' ? 'Trending Markets' :
-                            activeTab === 'all' ? 'All Markets' :
-                                `${activeTab} Markets`}
-                    </h2>
-                    {/* Platform Badge */}
-                    <span className={cn(
-                        "px-2.5 py-1 text-xs font-semibold rounded-full border flex items-center gap-1.5",
-                        platformConfig[platform].color
-                    )}>
-                        <span>{platformConfig[platform].icon}</span>
-                        {platformConfig[platform].label}
-                    </span>
+                            >
+                                {cat.icon && (
+                                    <cat.icon className={cn(
+                                        "w-4 h-4",
+                                        activeTab === cat.id
+                                            ? isLightTheme ? "text-green-600" : "text-emerald-400"
+                                            : isLightTheme ? "text-slate-500" : "text-zinc-500"
+                                    )} />
+                                )}
+                                {cat.label}
+                                {/* Inline count — subtle, no pill */}
+                                {count > 0 && (
+                                    <span className={cn(
+                                        "text-[11px] font-medium tabular-nums ml-0.5",
+                                        activeTab === cat.id
+                                            ? isLightTheme ? "text-green-600/70" : "text-zinc-400"
+                                            : isLightTheme ? "text-slate-400" : "text-zinc-600"
+                                    )}>
+                                        {count}
+                                    </span>
+                                )}
+                                {/* Active underline indicator with smooth transition */}
+                                {activeTab === cat.id && (
+                                    <span className={cn(
+                                        "absolute bottom-0 left-0 right-0 h-0.5 rounded-full animate-in fade-in slide-in-from-bottom-1 duration-200",
+                                        isLightTheme ? "bg-green-500" : "bg-white"
+                                    )} />
+                                )}
+                            </button>
+                        );
+                    })}
                 </div>
-                <div className="flex items-center gap-4">
+
+                {/* Right-edge scroll fade + inline search/count */}
+                <div className="absolute right-0 top-0 bottom-3 flex items-center gap-3 pl-16 bg-gradient-to-l from-[#0E1217] from-70% via-[#0E1217] via-85% to-transparent">
                     <SearchModal
                         events={events}
                         onSelectEvent={(event) => {
@@ -249,7 +230,7 @@ export function MarketGridWithTabs({ events = [], balance, platform = "polymarke
                             });
                         }}
                     />
-                    <span className="text-sm text-zinc-500">
+                    <span className="text-xs text-zinc-500 tabular-nums whitespace-nowrap">
                         {totalItems} markets
                     </span>
                 </div>
@@ -262,9 +243,14 @@ export function MarketGridWithTabs({ events = [], balance, platform = "polymarke
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4">
-                    {/* Render Featured Events - Platform-aware cards */}
-                    {filteredEvents.map((event) => (
-                        <div key={event.id} onClick={() => handleEventClick(event.id)} className="cursor-pointer h-full">
+                    {/* Render Featured Events - Platform-aware cards with stagger animation */}
+                    {filteredEvents.map((event, index) => (
+                        <div
+                            key={event.id}
+                            onClick={() => handleEventClick(event.id)}
+                            className="cursor-pointer h-full animate-in fade-in slide-in-from-bottom-2 duration-300 fill-mode-both"
+                            style={{ animationDelay: `${Math.min(index * 30, 300)}ms` }}
+                        >
                             {platform === "kalshi" ? (
                                 // Kalshi uses matchup style for binary, multi-outcome for complex
                                 event.isMultiOutcome ? (

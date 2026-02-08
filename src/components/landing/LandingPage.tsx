@@ -10,6 +10,8 @@ import { ComparisonSection } from "./ComparisonSection";
 import { FAQSection } from "./FAQSection";
 import { Testimonials } from "./Testimonials";
 import { LiveStatsBar } from "./LiveStatsBar";
+import ScrollReveal from "@/components/reactbits/ScrollReveal";
+import SpotlightCard from "@/components/reactbits/SpotlightCard";
 
 export function LandingPage() {
     const [activeStep, setActiveStep] = useState(0);
@@ -126,7 +128,7 @@ function HowItWorksSection({ activeStep, timelineRef }: HowItWorksSectionProps) 
         <section className="relative z-10 max-w-6xl mx-auto px-6 py-32" ref={timelineRef}>
             <div className="text-center mb-20">
                 <div className="mono-label text-[var(--vapi-mint)] mb-4">How It Works</div>
-                <h2 className="text-4xl md:text-6xl font-black tracking-tight text-white">
+                <h2 className="text-4xl md:text-6xl font-medium tracking-tight text-white">
                     Your Path to <span className="text-gradient-mint">Capital.</span>
                 </h2>
                 <p className="text-[var(--vapi-gray-text)] text-lg mt-4 max-w-xl mx-auto">
@@ -145,34 +147,35 @@ function HowItWorksSection({ activeStep, timelineRef }: HowItWorksSectionProps) 
 
                 <div className="grid md:grid-cols-3 gap-6">
                     {steps.map((item, i) => (
-                        <div
-                            key={i}
-                            data-step={i}
-                            className={`group relative thin-border-card rounded-3xl p-8 transition-all duration-500 ${i <= activeStep
-                                ? 'border-[var(--vapi-mint)]/40 shadow-[0_0_40px_-15px_var(--vapi-mint)]'
-                                : 'hover:border-[var(--vapi-mint)]/20'
-                                }`}
-                        >
-                            {/* Step Number Circle */}
-                            <div className={`absolute -top-4 left-8 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-500 ${i <= activeStep
-                                ? 'bg-[var(--vapi-mint)] text-black'
-                                : 'bg-[var(--vapi-border)] text-[var(--vapi-gray-text)]'
-                                }`}>
-                                {item.step}
-                            </div>
-
-                            <div className="flex justify-between items-start mb-8 pt-4">
-                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border transition-all duration-500 ${i <= activeStep
-                                    ? 'bg-[var(--vapi-mint)]/10 border-[var(--vapi-mint)]/30'
-                                    : 'bg-white/5 border-white/10'
+                        <ScrollReveal key={i} delay={i * 0.15} direction="up" distance={50}>
+                            <div
+                                data-step={i}
+                                className={`group relative thin-border-card rounded-3xl p-8 transition-all duration-500 ${i <= activeStep
+                                    ? 'border-[var(--vapi-mint)]/40 shadow-[0_0_40px_-15px_var(--vapi-mint)]'
+                                    : 'hover:border-[var(--vapi-mint)]/20'
+                                    }`}
+                            >
+                                {/* Step Number Circle */}
+                                <div className={`absolute -top-4 left-8 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-500 ${i <= activeStep
+                                    ? 'bg-[var(--vapi-mint)] text-black'
+                                    : 'bg-[var(--vapi-border)] text-[var(--vapi-gray-text)]'
                                     }`}>
-                                    <item.icon className={`w-6 h-6 transition-colors duration-500 ${i <= activeStep ? 'text-[var(--vapi-mint)]' : 'text-[var(--vapi-gray-text)]'
-                                        }`} />
+                                    {item.step}
                                 </div>
+
+                                <div className="flex justify-between items-start mb-8 pt-4">
+                                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border transition-all duration-500 ${i <= activeStep
+                                        ? 'bg-[var(--vapi-mint)]/10 border-[var(--vapi-mint)]/30'
+                                        : 'bg-white/5 border-white/10'
+                                        }`}>
+                                        <item.icon className={`w-6 h-6 transition-colors duration-500 ${i <= activeStep ? 'text-[var(--vapi-mint)]' : 'text-[var(--vapi-gray-text)]'
+                                            }`} />
+                                    </div>
+                                </div>
+                                <h3 className="text-xl font-bold text-white mb-3">{item.title}</h3>
+                                <p className="text-[var(--vapi-gray-text)] leading-relaxed">{item.desc}</p>
                             </div>
-                            <h3 className="text-xl font-bold text-white mb-3">{item.title}</h3>
-                            <p className="text-[var(--vapi-gray-text)] leading-relaxed">{item.desc}</p>
-                        </div>
+                        </ScrollReveal>
                     ))}
                 </div>
             </div>
@@ -220,7 +223,7 @@ function PricingSection() {
 
             <div className="text-center mb-16">
                 <div className="mono-label text-[var(--vapi-mint)] mb-4">Pricing</div>
-                <h2 className="text-4xl md:text-5xl font-black text-white tracking-tight">
+                <h2 className="text-4xl md:text-5xl font-medium text-white tracking-tight">
                     Simple, Transparent.
                 </h2>
                 <p className="text-[var(--vapi-gray-text)] text-lg mt-4">
@@ -230,12 +233,13 @@ function PricingSection() {
 
             <div className="grid md:grid-cols-3 gap-6 items-stretch">
                 {tiers.map((tier, i) => (
-                    <div
+                    <SpotlightCard
                         key={i}
-                        className={`group relative thin-border-card rounded-3xl p-8 flex flex-col transition-all duration-300 ${tier.popular
+                        className={`group thin-border-card rounded-3xl p-8 flex flex-col transition-all duration-300 ${tier.popular
                             ? 'border-[var(--vapi-mint)]/40 shadow-[0_0_60px_-20px_var(--vapi-mint)] hover:-translate-y-2'
                             : 'hover:border-[var(--vapi-mint)]/40 hover:shadow-[0_0_50px_-20px_var(--vapi-mint)] hover:-translate-y-1'
                             }`}
+                        spotlightColor={tier.popular ? 'rgba(0, 255, 178, 0.15)' : 'rgba(255, 255, 255, 0.08)'}
                     >
                         {tier.popular && (
                             <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-[var(--vapi-mint)] text-black mono-label text-[10px] animate-pulse">
@@ -246,7 +250,7 @@ function PricingSection() {
                         <div className={`mono-label mb-2 ${tier.popular ? 'text-[var(--vapi-mint)]' : 'text-[var(--vapi-gray-text)]'}`}>
                             {tier.name}
                         </div>
-                        <div className="text-5xl font-black text-white mb-2 group-hover:text-gradient-mint transition-all">
+                        <div className="text-5xl font-medium text-white mb-2 group-hover:text-gradient-mint transition-all">
                             {tier.balance}
                         </div>
                         <p className="text-[var(--vapi-gray-text)] text-sm mb-6">{tier.desc}</p>
@@ -287,7 +291,7 @@ function PricingSection() {
                         </div>
 
                         <div className="mt-6 pt-6 border-t border-[var(--vapi-border)]">
-                            <div className="text-3xl font-black text-white mb-4">${tier.price}</div>
+                            <div className="text-3xl font-normal text-white mb-4">${tier.price}</div>
                             <Link href={`/signup?intent=buy_evaluation&tier=${tier.name.toLowerCase()}&price=${tier.price}`} className="block">
                                 <button className={`w-full py-4 rounded-full font-bold transition-all ${tier.popular
                                     ? 'pill-btn pill-btn-mint flex items-center justify-center gap-2'
@@ -297,7 +301,7 @@ function PricingSection() {
                                 </button>
                             </Link>
                         </div>
-                    </div>
+                    </SpotlightCard>
                 ))}
             </div>
         </section>
@@ -314,7 +318,7 @@ function Footer() {
                     <span className="hover:text-white cursor-pointer transition-colors">Risk Disclosure</span>
                 </div>
                 <p className="text-[var(--vapi-gray-text)] text-sm">
-                    © 2025 Propshot via Polymarket Data. All rights reserved.<br />
+                    © 2025 Predictions Firm via Polymarket Data. All rights reserved.<br />
                     <span className="text-white/30">This is a simulated trading environment. No real funds are at risk during evaluation.</span>
                 </p>
             </div>

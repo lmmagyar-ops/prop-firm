@@ -27,7 +27,7 @@ export function SessionReplayTimeline() {
     const getEventIcon = (type: string) => {
         switch (type) {
             case "login":
-                return <Play className="h-4 w-4 text-blue-400" />;
+                return <Play className="h-4 w-4 text-primary" />;
             case "logout":
                 return <Clock className="h-4 w-4 text-zinc-500" />;
             case "trade":
@@ -44,7 +44,7 @@ export function SessionReplayTimeline() {
     const getEventColor = (type: string) => {
         switch (type) {
             case "login":
-                return "border-blue-500/20 bg-blue-500/10";
+                return "border-primary/20 bg-primary/10";
             case "logout":
                 return "border-zinc-500/20 bg-zinc-500/10";
             case "trade":
@@ -81,7 +81,7 @@ export function SessionReplayTimeline() {
             <CardContent>
                 <div className="relative">
                     {/* Timeline line */}
-                    <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-gradient-to-b from-blue-500 via-zinc-700 to-zinc-500" />
+                    <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-gradient-to-b from-primary via-zinc-700 to-zinc-500" />
 
                     {/* Events */}
                     <div className="space-y-4">

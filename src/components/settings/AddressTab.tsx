@@ -57,8 +57,8 @@ export function AddressTab({ user }: { user: any }) {
         <div className="max-w-2xl space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="bg-[#1A232E] border border-[#2E3A52] rounded-xl p-8">
                 <div className="flex items-center gap-4 mb-8 pb-8 border-b border-[#2E3A52]">
-                    <div className="p-3 bg-blue-500/10 rounded-lg">
-                        <MapPin className="w-6 h-6 text-blue-400" />
+                    <div className="p-3 bg-primary/10 rounded-lg">
+                        <MapPin className="w-6 h-6 text-primary" />
                     </div>
                     <div>
                         <h3 className="text-lg font-bold text-white">Shipping Address</h3>
@@ -149,7 +149,7 @@ export function AddressTab({ user }: { user: any }) {
                     <Button
                         onClick={handleSave}
                         disabled={isSaving}
-                        className="bg-blue-600 hover:bg-blue-500 text-white font-bold min-w-[150px]"
+                        className="bg-primary hover:bg-primary/90 text-white font-bold min-w-[150px]"
                     >
                         {isSaving ? (
                             <>

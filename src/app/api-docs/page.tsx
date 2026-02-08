@@ -241,7 +241,7 @@ function EndpointCard({ endpoint }: { endpoint: Endpoint }) {
 
     const methodColors: Record<string, string> = {
         GET: 'bg-green-500/20 text-green-400 border-green-500/30',
-        POST: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+        POST: 'bg-primary/20 text-primary border-primary/30',
         PUT: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
         DELETE: 'bg-red-500/20 text-red-400 border-red-500/30',
     };
@@ -290,7 +290,7 @@ function EndpointCard({ endpoint }: { endpoint: Endpoint }) {
                     {endpoint.query && (
                         <div>
                             <h4 className="text-xs font-semibold text-white/40 uppercase mb-2">Query Parameters</h4>
-                            <pre className="bg-black/30 rounded p-3 text-sm text-blue-400 overflow-x-auto">
+                            <pre className="bg-black/30 rounded p-3 text-sm text-primary overflow-x-auto">
                                 {JSON.stringify(endpoint.query, null, 2)}
                             </pre>
                         </div>
@@ -339,7 +339,7 @@ export default function ApiDocsPage() {
                             key={key}
                             onClick={() => setActiveSection(activeSection === key ? null : key)}
                             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeSection === key
-                                ? 'bg-blue-500 text-white'
+                                ? 'bg-primary text-white'
                                 : 'bg-white/10 text-white/70 hover:bg-white/20'
                                 }`}
                         >
@@ -365,8 +365,8 @@ export default function ApiDocsPage() {
                 </div>
 
                 {/* Auth Info */}
-                <div className="mt-12 p-6 bg-blue-500/10 border border-blue-500/30 rounded-lg">
-                    <h3 className="text-lg font-semibold text-blue-400 mb-2">🔐 Authentication</h3>
+                <div className="mt-12 p-6 bg-primary/10 border border-primary/30 rounded-lg">
+                    <h3 className="text-lg font-semibold text-primary mb-2">🔐 Authentication</h3>
                     <p className="text-white/70 text-sm">
                         Most endpoints require authentication via session cookies (handled automatically by NextAuth.js).
                         For cron jobs, use the <code className="bg-black/30 px-1 rounded">x-cron-secret</code> header

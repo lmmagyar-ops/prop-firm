@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Component, type ReactNode } from "react";
+import { useState, useEffect, Component, type ReactNode } from "react";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { X, TrendingUp, Calendar, Loader2 } from "lucide-react";
@@ -14,7 +14,6 @@ import { getCleanOutcomeName } from "@/lib/market-utils";
 import { OrderBook } from "./OrderBook";
 import { RulesSummary } from "./RulesSummary";
 import { MarketTimeline } from "./MarketTimeline";
-import { RecentActivityFeed } from "./RecentActivityFeed";
 
 // Dynamic import with ssr:false — lightweight-charts uses canvas/document APIs
 // that crash during server-side rendering, which silently breaks the entire page
@@ -79,6 +78,7 @@ interface EventDetailModalProps {
 export function EventDetailModal({ event, open, onClose, onTrade, platform = "polymarket" }: EventDetailModalProps) {
     const isMobile = useMediaQuery("(max-width: 768px)");
     const [selectedMarketId, setSelectedMarketId] = useState<string | null>(null);
+    const [selectedSide, setSelectedSide] = useState<'yes' | 'no'>('yes');
 
     const isKalshi = platform === "kalshi";
     const bgColor = isKalshi ? "bg-white" : "bg-[#0D1117]";
@@ -110,20 +110,19 @@ export function EventDetailModal({ event, open, onClose, onTrade, platform = "po
                 <div className={cn("px-6 pt-5 pb-4 border-b", borderColor)}>
                     {/* Top Row: Breadcrumbs & Actions */}
                     <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-2 text-xs font-semibold tracking-wide text-slate-500 uppercase">
+                        <div className="flex items-center gap-2 text-xs font-semibold tracking-wide uppercase">
                             {(event.categories && event.categories.length > 0
-                                ? event.categories.slice(0, 2)
+                                ? event.categories.slice(0, 3)
                                 : ['Other']
                             ).map((cat, i) => (
-                                <span key={cat}>
-                                    {i > 0 && <span className="text-slate-300 mr-2">/</span>}
-                                    <span className="hover:text-slate-800 cursor-pointer transition-colors">{cat}</span>
+                                <span key={cat} className="flex items-center gap-2">
+                                    {i > 0 && <span className={cn(isKalshi ? "text-slate-300" : "text-zinc-600")}>·</span>}
+                                    <span className={cn(
+                                        "transition-colors",
+                                        isKalshi ? "text-slate-500 hover:text-slate-700" : "text-zinc-500 hover:text-zinc-300"
+                                    )}>{cat}</span>
                                 </span>
                             ))}
-                            <span className="text-slate-300">/</span>
-                            <span className={cn("truncate max-w-[200px]", isKalshi ? "text-slate-800" : "text-zinc-200")}>
-                                {event.title.split(" ").slice(0, 3).join(" ")}...
-                            </span>
                         </div>
 
                         <div className="flex items-center gap-1">
@@ -208,7 +207,7 @@ export function EventDetailModal({ event, open, onClose, onTrade, platform = "po
 
                 {/* Large Probability Display (Polymarket style) - For binary markets */}
                 {!isKalshi && event.markets.length === 1 && (
-                    <div className="px-6 py-4 border-b border-white/5">
+                    <div className="px-6 py-4 border-b border-white/5 animate-in fade-in duration-300">
                         <div className="flex items-baseline gap-3">
                             <span className={cn(
                                 "text-3xl font-bold tabular-nums",
@@ -216,8 +215,11 @@ export function EventDetailModal({ event, open, onClose, onTrade, platform = "po
                             )}>
                                 {Math.round(event.markets[0].price * 100)}% chance
                             </span>
-                            <span className="text-sm text-zinc-500">
-                                {event.markets[0].price >= 0.5 ? "▲" : "▼"} {Math.abs(Math.round((Math.random() * 10) - 5))}%
+                            <span className={cn(
+                                "text-sm font-medium",
+                                event.markets[0].price >= 0.5 ? "text-emerald-500/60" : "text-rose-500/60"
+                            )}>
+                                {event.markets[0].price >= 0.5 ? "▲" : "▼"} {Math.round(event.markets[0].price * 6)}%
                             </span>
                         </div>
                     </div>
@@ -231,6 +233,7 @@ export function EventDetailModal({ event, open, onClose, onTrade, platform = "po
                             <ChartErrorBoundary>
                                 <ProbabilityChart
                                     key={selectedMarket.id}
+                                    tokenId={selectedMarket.id}
                                     currentPrice={selectedMarket.price}
                                     outcome={selectedMarket.price >= 0.5 ? "YES" : "NO"}
                                 />
@@ -256,7 +259,10 @@ export function EventDetailModal({ event, open, onClose, onTrade, platform = "po
                             eventTitle={event.title}
                             isSelected={market.id === selectedMarketId}
                             onSelect={() => setSelectedMarketId(market.id)}
-                            onTrade={(side) => onTrade(market.id, side, market.question)}
+                            onTrade={(side) => {
+                                setSelectedMarketId(market.id);
+                                setSelectedSide(side);
+                            }}
                             isKalshi={isKalshi}
                         />
                     ))}
@@ -306,12 +312,6 @@ export function EventDetailModal({ event, open, onClose, onTrade, platform = "po
 
                     {!isKalshi && <OrderBook tokenId={selectedMarket?.id} />}
 
-                    {/* Live Activity Feed — Polymarket only */}
-                    {!isKalshi && (
-                        <div className="border-t border-white/5">
-                            <RecentActivityFeed />
-                        </div>
-                    )}
                 </div>
             </div>
 
@@ -330,7 +330,7 @@ export function EventDetailModal({ event, open, onClose, onTrade, platform = "po
                     "h-[57px]"
                 )}>
                     <h3 className={cn("font-bold text-sm", textColor)}>
-                        Buy {getDisplayName(selectedMarket.question, event.title)}
+                        {selectedMarket ? getDisplayName(selectedMarket.question, event.title) : 'Select an outcome'}
                     </h3>
                 </div>
 
@@ -340,6 +340,7 @@ export function EventDetailModal({ event, open, onClose, onTrade, platform = "po
                         eventTitle={event.title}
                         onTradeComplete={onClose}
                         isKalshi={isKalshi}
+                        initialSide={selectedSide}
                     />
                 </div>
             </div>
@@ -350,11 +351,14 @@ export function EventDetailModal({ event, open, onClose, onTrade, platform = "po
     if (!isMobile) {
         return (
             <Dialog open={open} onOpenChange={(val) => !val && onClose()}>
-                <DialogContent className={cn(
-                    "!max-w-5xl h-[85vh] p-0 gap-0 overflow-hidden",
-                    bgColor,
-                    isKalshi ? "border-slate-200" : "border-zinc-800"
-                )}>
+                <DialogContent
+                    showCloseButton={false}
+                    className={cn(
+                        "!max-w-5xl h-[85vh] p-0 gap-0 overflow-hidden",
+                        bgColor,
+                        isKalshi ? "border-slate-200" : "border-zinc-800"
+                    )}
+                >
                     <DialogTitle className="sr-only">{event.title}</DialogTitle>
                     <DialogDescription className="sr-only">Event details</DialogDescription>
                     {content}
@@ -397,12 +401,12 @@ function OutcomeRow({ market, eventTitle, isSelected, onSelect, onTrade, isKalsh
     return (
         <div
             className={cn(
-                "px-6 py-3 flex items-center border-b cursor-pointer transition-all group", // Reduced py-4 to py-3
+                "px-6 py-3 flex items-center border-b cursor-pointer transition-all duration-150 group",
                 isKalshi ? "border-slate-100" : "border-white/5",
-                // Selection state
+                // Selection state with left accent border
                 isSelected
-                    ? (isKalshi ? "bg-blue-50/40" : "bg-blue-500/10")
-                    : (isKalshi ? "hover:bg-slate-50" : "hover:bg-white/5")
+                    ? (isKalshi ? "bg-blue-50/40 border-l-2 border-l-[#00C896]" : "bg-primary/10 border-l-2 border-l-emerald-400")
+                    : (isKalshi ? "hover:bg-slate-50" : "hover:bg-white/[0.03]")
             )}
             onClick={onSelect}
         >
@@ -412,7 +416,7 @@ function OutcomeRow({ market, eventTitle, isSelected, onSelect, onTrade, isKalsh
                     "text-[15px] transition-colors flex flex-col justify-center", // Flex col for hierarchy
                     isKalshi
                         ? (isSelected ? "text-[#00C896] font-bold" : "text-slate-900 font-semibold group-hover:text-[#00C896]")
-                        : "text-white group-hover:text-blue-400"
+                        : "text-white group-hover:text-primary"
                 )}>
                     {isKalshi ? market.question : getCleanOutcomeName(market.question, eventTitle)}
 
@@ -420,9 +424,9 @@ function OutcomeRow({ market, eventTitle, isSelected, onSelect, onTrade, isKalsh
                     {isKalshi && (
                         <span className={cn(
                             "text-[11px] font-normal mt-0.5",
-                            isSelected ? "text-blue-400" : "text-slate-400"
+                            isSelected ? "text-primary" : "text-slate-400"
                         )}>
-                            {formatVolume(market.volume)} Vol. • Series-2025
+                            {formatVolume(market.volume)} Vol.
                         </span>
                     )}
                 </div>
@@ -445,14 +449,14 @@ function OutcomeRow({ market, eventTitle, isSelected, onSelect, onTrade, isKalsh
                 )}>
                     {percentage}%
                 </span>
-                {/* Change indicator - more integrated */}
+                {/* Change indicator - deterministic based on price */}
                 {
                     isKalshi && (
                         <span className={cn(
                             "text-[10px] font-medium mt-1 flex items-center tabular-nums",
-                            isKalshi ? (Math.random() > 0.5 ? "text-emerald-500" : "text-rose-500") : ""
+                            percentage >= 50 ? "text-emerald-500" : "text-rose-500"
                         )}>
-                            {Math.random() > 0.5 ? '▲ 1%' : '▼ 1%'}
+                            {percentage >= 50 ? '▲' : '▼'} {Math.round(percentage * 0.03)}%
                         </span>
                     )
                 }
@@ -520,20 +524,73 @@ interface TradingSidebarProps {
     eventTitle?: string;
     onTradeComplete?: () => void;
     isKalshi?: boolean;
+    initialSide?: 'yes' | 'no';
 }
 
-function TradingSidebar({ market, eventTitle, onTradeComplete, isKalshi }: TradingSidebarProps) {
-    const [side, setSide] = useState<'yes' | 'no'>('yes');
+function TradingSidebar({ market, eventTitle, onTradeComplete, isKalshi, initialSide = 'yes' }: TradingSidebarProps) {
+    const [side, setSide] = useState<'yes' | 'no'>(initialSide);
+    const [mode, setMode] = useState<'buy' | 'sell'>('buy');
     const [amount, setAmount] = useState(0); // Dollar amount
+    const [sellLoading, setSellLoading] = useState(false);
+    const [userPosition, setUserPosition] = useState<any>(null);
+    const [positionLoading, setPositionLoading] = useState(false);
+    const [requotePrice, setRequotePrice] = useState<number | null>(null);
+
+    // Sync side when parent changes it (e.g. clicking outcome YES/NO buttons)
+    useEffect(() => {
+        setSide(initialSide);
+        setRequotePrice(null); // Clear re-quote on side change
+    }, [initialSide]);
+
+    // Clear re-quote when market changes
+    useEffect(() => {
+        setRequotePrice(null);
+    }, [market.id]);
+
+    // DEFENSE-IN-DEPTH: Listen for price re-quote events from trade execution
+    useEffect(() => {
+        const handler = (e: Event) => {
+            const detail = (e as CustomEvent).detail;
+            if (detail?.freshPrice) {
+                setRequotePrice(detail.freshPrice);
+            }
+        };
+        window.addEventListener('price-requote', handler);
+        return () => window.removeEventListener('price-requote', handler);
+    }, []);
+
+    // Fetch user's position for this market when sell mode is activated
+    useEffect(() => {
+        if (mode !== 'sell') return;
+        let cancelled = false;
+        setPositionLoading(true);
+
+        fetch('/api/positions/check?marketId=' + encodeURIComponent(market.id))
+            .then(r => r.json())
+            .then(data => {
+                if (!cancelled) setUserPosition(data.position || null);
+            })
+            .catch(() => {
+                if (!cancelled) setUserPosition(null);
+            })
+            .finally(() => {
+                if (!cancelled) setPositionLoading(false);
+            });
+
+        return () => { cancelled = true; };
+    }, [mode, market.id]);
 
     const { executeTrade, isLoading } = useTradeExecution({
         onSuccess: () => {
             setAmount(0); // Reset after successful trade
+            setRequotePrice(null); // Clear re-quote on success
             onTradeComplete?.();
         },
     });
 
-    const yesPrice = Math.round(market.price * 100);
+    // Use re-quoted price if available, otherwise use market price
+    const effectiveMarketPrice = requotePrice ?? market.price;
+    const yesPrice = Math.round(effectiveMarketPrice * 100);
     const noPrice = 100 - yesPrice;
     const price = side === 'yes' ? yesPrice : noPrice;
     const shares = amount / (price / 100);
@@ -548,15 +605,45 @@ function TradingSidebar({ market, eventTitle, onTradeComplete, isKalshi }: Tradi
         );
     };
 
+    const handleSell = async () => {
+        if (!userPosition) return;
+        setSellLoading(true);
+        try {
+            const res = await fetch('/api/trade/close', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ positionId: userPosition.id }),
+            });
+            const data = await res.json();
+            if (data.success) {
+                const { toast } = await import('sonner');
+                toast.success(`Closed position — P&L: $${data.pnl?.toFixed(2) || '0.00'}`);
+                window.dispatchEvent(new CustomEvent('balance-updated', {
+                    detail: { newBalance: data.newBalance }
+                }));
+                onTradeComplete?.();
+            } else {
+                const { toast } = await import('sonner');
+                toast.error(data.error || 'Failed to close position');
+            }
+        } catch {
+            const { toast } = await import('sonner');
+            toast.error('Network error');
+        } finally {
+            setSellLoading(false);
+        }
+    };
+
     return (
         <div className="space-y-6">
             {/* Selected Outcome */}
             <div className="flex items-center gap-3">
                 <div className={cn(
                     "w-10 h-10 rounded-lg flex items-center justify-center shrink-0",
-                    isKalshi ? "bg-slate-100" : "bg-blue-500/20"
+                    isKalshi ? "bg-slate-100" : "bg-primary/20"
                 )}>
-                    <TrendingUp className={cn("w-5 h-5", isKalshi ? "text-slate-500" : "text-blue-400")} />
+                    <TrendingUp className={cn("w-5 h-5", isKalshi ? "text-slate-500" : "text-primary")} />
                 </div>
                 <div>
                     <div className={cn("text-sm font-semibold line-clamp-2", isKalshi ? "text-slate-900" : "text-white")}>
@@ -565,139 +652,233 @@ function TradingSidebar({ market, eventTitle, onTradeComplete, isKalshi }: Tradi
                 </div>
             </div>
 
-            {/* Buy/Sell Tabs (Kalshi specific) */}
-            {isKalshi && (
-                <div className="flex gap-2 p-1 bg-slate-100 rounded-lg">
-                    <button className="flex-1 py-1.5 text-sm font-semibold rounded-md bg-white text-slate-900 shadow-sm">
-                        Buy
-                    </button>
-                    <button className="flex-1 py-1.5 text-sm font-semibold rounded-md text-slate-500 hover:text-slate-700">
-                        Sell
-                    </button>
-                </div>
-            )}
-
-            {/* Currency Selector (Kalshi style Mock) */}
-            {isKalshi && (
-                <div className="flex justify-end">
-                    <button className="flex items-center gap-1 text-sm font-semibold text-slate-900">
-                        Dollars <span className="text-slate-400">∨</span>
-                    </button>
-                </div>
-            )}
-
-            {/* Yes/No Toggle */}
-            <div className="flex gap-2">
+            {/* Buy/Sell Toggle */}
+            <div className={cn(
+                "flex gap-1 p-1 rounded-lg",
+                isKalshi ? "bg-slate-100" : "bg-zinc-800/80"
+            )}>
                 <button
-                    onClick={() => setSide('yes')}
+                    onClick={() => setMode('buy')}
                     className={cn(
-                        "flex-1 py-3 rounded-lg font-semibold transition-all flex flex-col items-center",
-                        side === 'yes'
-                            ? (isKalshi ? "bg-[#00C896] text-white shadow-md" : "bg-emerald-500 text-white")
-                            : (isKalshi ? "bg-white border border-slate-200 text-slate-500 hover:border-[#00C896]/50" : "bg-zinc-800 text-zinc-400 hover:text-white")
+                        "flex-1 py-1.5 text-sm font-semibold rounded-md transition-all",
+                        mode === 'buy'
+                            ? (isKalshi ? "bg-white text-slate-900 shadow-sm" : "bg-zinc-700 text-white shadow-sm")
+                            : (isKalshi ? "text-slate-500 hover:text-slate-700" : "text-zinc-500 hover:text-zinc-300")
                     )}
                 >
-                    <span className="text-xs uppercase tracking-wider opacity-90">Yes</span>
-                    <span>{yesPrice < 1 ? "<1" : yesPrice}¢</span>
+                    Buy
                 </button>
                 <button
-                    onClick={() => setSide('no')}
+                    onClick={() => setMode('sell')}
                     className={cn(
-                        "flex-1 py-3 rounded-lg font-semibold transition-all flex flex-col items-center",
-                        side === 'no'
-                            ? (isKalshi ? "bg-[#E63E5D] text-white shadow-md" : "bg-rose-500 text-white")
-                            : (isKalshi ? "bg-white border border-slate-200 text-slate-500 hover:border-[#E63E5D]/50" : "bg-zinc-800 text-zinc-400 hover:text-white")
+                        "flex-1 py-1.5 text-sm font-semibold rounded-md transition-all",
+                        mode === 'sell'
+                            ? (isKalshi ? "bg-white text-slate-900 shadow-sm" : "bg-zinc-700 text-white shadow-sm")
+                            : (isKalshi ? "text-slate-500 hover:text-slate-700" : "text-zinc-500 hover:text-zinc-300")
                     )}
                 >
-                    <span className="text-xs uppercase tracking-wider opacity-90">No</span>
-                    <span>{noPrice < 1 ? "<1" : noPrice}¢</span>
+                    Sell
                 </button>
             </div>
 
-            {/* Amount Input */}
-            <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                    <span className={cn(isKalshi ? "text-slate-500" : "text-zinc-400")}>Amount ($)</span>
-                    <span className={cn(isKalshi ? "text-slate-400" : "text-zinc-500")}>Max</span>
-                </div>
-                <div className="relative">
-                    <input
-                        type="number"
-                        value={amount || ''}
-                        onChange={(e) => setAmount(Number(e.target.value))}
-                        placeholder="0"
-                        className={cn(
-                            "w-full px-4 py-3 border rounded-lg text-right text-lg font-mono focus:outline-none focus:ring-2",
-                            isKalshi
-                                ? "bg-white border-slate-200 text-slate-900 focus:ring-[#00C896]/20 focus:border-[#00C896]"
-                                : "bg-zinc-800 border-zinc-700 text-white focus:border-blue-500"
-                        )}
-                    />
-                    {isKalshi && <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">$</span>}
-                </div>
+            {/* === SELL MODE === */}
+            {mode === 'sell' ? (
+                <div className="space-y-4">
+                    {positionLoading ? (
+                        <div className="flex items-center justify-center py-8">
+                            <Loader2 className={cn("w-5 h-5 animate-spin", isKalshi ? "text-slate-400" : "text-zinc-500")} />
+                        </div>
+                    ) : userPosition ? (
+                        <>
+                            {/* Position Info */}
+                            <div className={cn(
+                                "rounded-lg p-4 space-y-3",
+                                isKalshi ? "bg-slate-50 border border-slate-200" : "bg-zinc-800/60 border border-zinc-700/50"
+                            )}>
+                                <div className="flex justify-between text-sm">
+                                    <span className={cn(isKalshi ? "text-slate-500" : "text-zinc-400")}>Side</span>
+                                    <span className={cn("font-semibold", userPosition.direction === 'YES' ? "text-emerald-500" : "text-rose-500")}>
+                                        {userPosition.direction}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                    <span className={cn(isKalshi ? "text-slate-500" : "text-zinc-400")}>Shares</span>
+                                    <span className={cn("font-mono", isKalshi ? "text-slate-900" : "text-white")}>
+                                        {parseFloat(userPosition.shares).toFixed(2)}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                    <span className={cn(isKalshi ? "text-slate-500" : "text-zinc-400")}>Avg Price</span>
+                                    <span className={cn("font-mono", isKalshi ? "text-slate-900" : "text-white")}>
+                                        {Math.round(parseFloat(userPosition.entryPrice) * 100)}¢
+                                    </span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                    <span className={cn(isKalshi ? "text-slate-500" : "text-zinc-400")}>Invested</span>
+                                    <span className={cn("font-semibold", isKalshi ? "text-slate-900" : "text-white")}>
+                                        ${parseFloat(userPosition.sizeAmount || '0').toFixed(2)}
+                                    </span>
+                                </div>
+                            </div>
 
-                {isKalshi && (
-                    <div className="text-right text-xs text-[#00C896] font-medium">
-                        Earn 3.25% Interest
-                    </div>
-                )}
+                            {/* Close Position Button */}
+                            <button
+                                onClick={handleSell}
+                                disabled={sellLoading}
+                                className={cn(
+                                    "w-full py-4 rounded-lg font-bold text-white transition-all flex items-center justify-center gap-2",
+                                    isKalshi ? "bg-[#E63E5D] hover:bg-[#D43552]" : "bg-rose-500 hover:bg-rose-400",
+                                    sellLoading && "opacity-50 cursor-not-allowed"
+                                )}
+                            >
+                                {sellLoading ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        Closing...
+                                    </>
+                                ) : (
+                                    `Close ${userPosition.direction} Position`
+                                )}
+                            </button>
+                        </>
+                    ) : (
+                        <div className={cn(
+                            "text-center py-8 space-y-2",
+                            isKalshi ? "text-slate-400" : "text-zinc-500"
+                        )}>
+                            <p className="text-sm font-medium">No open position</p>
+                            <p className="text-xs">Buy shares first to sell them later.</p>
+                        </div>
+                    )}
+                </div>
+            ) : (
+                /* === BUY MODE === */
+                <>
+                    {/* Currency Selector (Kalshi style Mock) */}
+                    {isKalshi && (
+                        <div className="flex justify-end">
+                            <button className="flex items-center gap-1 text-sm font-semibold text-slate-900">
+                                Dollars <span className="text-slate-400">∨</span>
+                            </button>
+                        </div>
+                    )}
 
-                <div className="flex justify-center gap-1.5 flex-wrap">
-                    {[-100, -10, 10, 100, 200].map((amt) => (
+                    {/* Yes/No Toggle */}
+                    <div className="flex gap-2">
                         <button
-                            key={amt}
-                            onClick={() => setAmount(Math.max(0, amount + amt))}
+                            onClick={() => setSide('yes')}
                             className={cn(
-                                "px-2.5 py-1.5 text-xs font-semibold rounded-md transition-colors",
-                                isKalshi
-                                    ? "bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200"
-                                    : (amt < 0 ? "bg-zinc-800 hover:bg-zinc-700 text-zinc-400" : "bg-zinc-700 hover:bg-zinc-600 text-white")
+                                "flex-1 py-3 rounded-lg font-semibold transition-all flex flex-col items-center",
+                                side === 'yes'
+                                    ? (isKalshi ? "bg-[#00C896] text-white shadow-md" : "bg-emerald-500 text-white")
+                                    : (isKalshi ? "bg-white border border-slate-200 text-slate-500 hover:border-[#00C896]/50" : "bg-zinc-800 text-zinc-400 hover:text-white")
                             )}
                         >
-                            {amt > 0 ? `+${amt}` : amt}
+                            <span className="text-xs uppercase tracking-wider opacity-90">Yes</span>
+                            <span>{yesPrice < 1 ? "<1" : yesPrice}¢</span>
                         </button>
-                    ))}
-                </div>
-            </div>
+                        <button
+                            onClick={() => setSide('no')}
+                            className={cn(
+                                "flex-1 py-3 rounded-lg font-semibold transition-all flex flex-col items-center",
+                                side === 'no'
+                                    ? (isKalshi ? "bg-[#E63E5D] text-white shadow-md" : "bg-rose-500 text-white")
+                                    : (isKalshi ? "bg-white border border-slate-200 text-slate-500 hover:border-[#E63E5D]/50" : "bg-zinc-800 text-zinc-400 hover:text-white")
+                            )}
+                        >
+                            <span className="text-xs uppercase tracking-wider opacity-90">No</span>
+                            <span>{noPrice < 1 ? "<1" : noPrice}¢</span>
+                        </button>
+                    </div>
 
-            {/* Summary */}
-            <div className={cn("space-y-2 text-sm", isKalshi ? "pt-4 border-t border-slate-100" : "")}>
-                <div className="flex justify-between">
-                    <span className={cn(isKalshi ? "text-slate-500" : "text-zinc-400")}>Shares</span>
-                    <span className={cn("font-mono", isKalshi ? "text-slate-900" : "text-white")}>{shares > 0 ? shares.toFixed(2) : '0'}</span>
-                </div>
-                <div className="flex justify-between">
-                    <span className={cn(isKalshi ? "text-slate-500" : "text-zinc-400")}>Total</span>
-                    <span className={cn("font-semibold", isKalshi ? "text-slate-900" : "text-emerald-400")}>${amount.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between">
-                    <span className={cn(isKalshi ? "text-slate-500" : "text-zinc-400")}>To Win 🌿</span>
-                    <span className="text-emerald-500 font-semibold">${toWin > 0 ? toWin.toFixed(2) : '0.00'}</span>
-                </div>
-            </div>
+                    {/* Amount Input */}
+                    <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                            <span className={cn(isKalshi ? "text-slate-500" : "text-zinc-400")}>Amount ($)</span>
+                            <span className={cn(isKalshi ? "text-slate-400" : "text-zinc-500")}>Max</span>
+                        </div>
+                        <div className="relative">
+                            <input
+                                type="number"
+                                value={amount || ''}
+                                onChange={(e) => setAmount(Number(e.target.value))}
+                                placeholder="0"
+                                className={cn(
+                                    "w-full px-4 py-3 border rounded-lg text-right text-lg font-mono focus:outline-none focus:ring-2",
+                                    isKalshi
+                                        ? "bg-white border-slate-200 text-slate-900 focus:ring-[#00C896]/20 focus:border-[#00C896]"
+                                        : "bg-zinc-800 border-zinc-700 text-white focus:border-primary"
+                                )}
+                            />
+                            {isKalshi && <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">$</span>}
+                        </div>
 
-            {/* Submit Button */}
-            <button
-                onClick={handleSubmit}
-                disabled={amount <= 0 || isLoading}
-                className={cn(
-                    "w-full py-4 rounded-lg font-bold text-white transition-all flex items-center justify-center gap-2",
-                    side === 'yes'
-                        ? (isKalshi ? "bg-[#00C896] hover:bg-[#00B88A]" : "bg-emerald-500 hover:bg-emerald-400 disabled:bg-emerald-500/50")
-                        : (isKalshi ? "bg-[#E63E5D] hover:bg-[#D43552]" : "bg-rose-500 hover:bg-rose-400 disabled:bg-rose-500/50"),
-                    (amount <= 0 || isLoading) && "opacity-50 cursor-not-allowed",
-                    isKalshi && (side === 'yes' ? "shadow-lg shadow-blue-500/10" : "shadow-lg shadow-pink-500/10")
-                )}
-            >
-                {isLoading ? (
-                    <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        Executing...
-                    </>
-                ) : (
-                    `Buy ${side === 'yes' ? 'Yes' : 'No'}`
-                )}
-            </button>
+                        {isKalshi && (
+                            <div className="text-right text-xs text-[#00C896] font-medium">
+                                Earn 3.25% Interest
+                            </div>
+                        )}
+
+                        <div className="flex justify-center gap-1.5 flex-wrap">
+                            {[5, 10, 25, 50, 100].map((amt) => (
+                                <button
+                                    key={amt}
+                                    onClick={() => setAmount(amt)}
+                                    className={cn(
+                                        "px-3 py-1.5 text-xs font-semibold rounded-md transition-all",
+                                        amount === amt
+                                            ? (isKalshi ? "bg-[#00C896] text-white shadow-sm" : "bg-emerald-500 text-white")
+                                            : (isKalshi
+                                                ? "bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200"
+                                                : "bg-zinc-800 hover:bg-zinc-700 text-zinc-300")
+                                    )}
+                                >
+                                    ${amt}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Summary */}
+                    <div className={cn("space-y-2 text-sm", isKalshi ? "pt-4 border-t border-slate-100" : "")}>
+                        <div className="flex justify-between">
+                            <span className={cn(isKalshi ? "text-slate-500" : "text-zinc-400")}>Shares</span>
+                            <span className={cn("font-mono", isKalshi ? "text-slate-900" : "text-white")}>{shares > 0 ? shares.toFixed(2) : '0'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className={cn(isKalshi ? "text-slate-500" : "text-zinc-400")}>Total</span>
+                            <span className={cn("font-semibold", isKalshi ? "text-slate-900" : "text-emerald-400")}>${amount.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className={cn(isKalshi ? "text-slate-500" : "text-zinc-400")}>Potential Return</span>
+                            <span className="text-emerald-500 font-semibold">${toWin > 0 ? toWin.toFixed(2) : '0.00'}</span>
+                        </div>
+                    </div>
+
+                    {/* Submit Button */}
+                    <button
+                        onClick={handleSubmit}
+                        disabled={amount <= 0 || isLoading}
+                        className={cn(
+                            "w-full py-4 rounded-lg font-bold text-white transition-all flex items-center justify-center gap-2",
+                            side === 'yes'
+                                ? (isKalshi ? "bg-[#00C896] hover:bg-[#00B88A]" : "bg-emerald-500 hover:bg-emerald-400 disabled:bg-emerald-500/50")
+                                : (isKalshi ? "bg-[#E63E5D] hover:bg-[#D43552]" : "bg-rose-500 hover:bg-rose-400 disabled:bg-rose-500/50"),
+                            (amount <= 0 || isLoading) && "opacity-50 cursor-not-allowed",
+                            isKalshi && (side === 'yes' ? "shadow-lg shadow-primary/10" : "shadow-lg shadow-pink-500/10")
+                        )}
+                    >
+                        {isLoading ? (
+                            <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                Executing...
+                            </>
+                        ) : (
+                            `Buy ${side === 'yes' ? 'Yes' : 'No'}`
+                        )}
+                    </button>
+                </>
+            )}
 
             <p className={cn("text-xs text-center", isKalshi ? "text-slate-400" : "text-zinc-500")}>
                 By trading, you agree to the Terms of Use.

@@ -45,7 +45,7 @@ export function QuizSection() {
 
             {/* Headline */}
             <div className="text-center mb-16">
-                <h2 className="text-4xl md:text-5xl lg:text-6xl font-black text-white tracking-tight leading-tight mb-4">
+                <h2 className="text-4xl md:text-5xl lg:text-6xl font-medium text-white tracking-tight leading-tight mb-4">
                     You're Already an Analyst.<br />
                     <span className="text-gradient-mint">You Just Didn't Know It.</span>
                 </h2>
@@ -102,7 +102,7 @@ function QuizCard() {
             <div className="thin-border-card rounded-3xl p-8 md:p-12 bg-black/40 backdrop-blur-sm max-w-2xl mx-auto">
                 <div className="text-center space-y-6">
                     <div className="text-6xl mb-4">{score === 3 ? "🎯" : score >= 2 ? "👏" : "📚"}</div>
-                    <h3 className="text-3xl font-black text-white">
+                    <h3 className="text-3xl font-normal text-white">
                         {score === 3 ? "Perfect!" : score >= 2 ? "Great Job!" : "Keep Learning!"}
                     </h3>
                     <p className="text-[var(--vapi-gray-text)] text-lg">
@@ -145,7 +145,7 @@ function QuizCard() {
             </div>
 
             {/* Headline */}
-            <h3 className="text-2xl md:text-3xl font-black text-white mb-3">
+            <h3 className="text-2xl md:text-3xl font-normal text-white mb-3">
                 {question.headline}
             </h3>
             <p className="text-[var(--vapi-gray-text)] mb-8">
@@ -203,7 +203,7 @@ function QuizCard() {
 
                     <button
                         onClick={handleNextQuestion}
-                        className="w-full py-4 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-bold transition-colors"
+                        className="w-full py-4 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold transition-colors"
                     >
                         {currentQuestion < QUIZ_QUESTIONS.length - 1 ? "Next Question" : "See Results"}
                     </button>

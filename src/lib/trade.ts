@@ -112,7 +112,9 @@ export class TradeExecutor {
         }
 
         // 4. INTEGRITY CHECK: Calculate Impact Cost (Detailed Slippage)
-        const book = await MarketService.getOrderBook(marketId);
+        // DEFENSE-IN-DEPTH: Fetch FRESH order book at trade time, bypassing 5-min cache.
+        // This guarantees the execution price matches current market conditions.
+        const book = await MarketService.getOrderBookFresh(marketId);
 
         // Fallback: Strict Integrity Mode
         if (!book) {
@@ -157,28 +159,33 @@ export class TradeExecutor {
 
         const simulation = MarketService.calculateImpact(book, effectiveSide, amount);
 
-        // PRICE INTEGRITY CHECK: Compare execution price to event list display price
-        // If they differ by more than 50%, fall back to synthetic order book
+        // DEFENSE-IN-DEPTH LAYER 2: Price Deviation Guard (3% threshold)
+        // Compare execution price against the display price the user saw.
+        // If deviation exceeds 3%, REJECT the trade and return the fresh price
+        // so the UI can show a re-quote. Never silently fill at a bad price.
         const eventListPrice = await MarketService.lookupPriceFromEvents(marketId);
         if (eventListPrice && simulation.filled) {
             const displayPrice = parseFloat(eventListPrice.price);
-            const priceDeviation = Math.abs(simulation.executedPrice - displayPrice) / displayPrice;
+            // For NO direction, compare against the NO equivalent
+            const comparableExecPrice = direction === "NO" ? (1 - simulation.executedPrice) : simulation.executedPrice;
+            const comparableDisplayPrice = direction === "NO" ? (1 - displayPrice) : displayPrice;
+            const priceDeviation = Math.abs(comparableExecPrice - comparableDisplayPrice) / comparableDisplayPrice;
 
-            if (priceDeviation > 0.5) { // More than 50% deviation
-                logger.warn(`PRICE INTEGRITY VIOLATION: execution=${simulation.executedPrice.toFixed(4)} vs display=${displayPrice.toFixed(4)} (${(priceDeviation * 100).toFixed(0)}% deviation)`, {
+            if (priceDeviation > 0.03) { // More than 3% deviation
+                logger.warn(`PRICE_MOVED: execution=${comparableExecPrice.toFixed(4)} vs display=${comparableDisplayPrice.toFixed(4)} (${(priceDeviation * 100).toFixed(1)}% deviation)`, {
                     marketId: marketId.slice(0, 12),
                     bookSource: book.source,
+                    direction,
                 });
 
-                // Recalculate with synthetic book built from event list price
-                const syntheticBook = MarketService.buildSyntheticOrderBookPublic(displayPrice);
-                const correctedSimulation = MarketService.calculateImpact(syntheticBook, effectiveSide, amount);
-
-                if (correctedSimulation.filled) {
-                    logger.info(`Using synthetic book instead. correctedPrice=${correctedSimulation.executedPrice.toFixed(4)}`);
-                    // Replace simulation values with corrected ones
-                    Object.assign(simulation, correctedSimulation);
-                }
+                // Return fresh price to client for re-quote UI
+                const freshPrice = direction === "NO" ? (1 - simulation.executedPrice) : simulation.executedPrice;
+                throw new TradingError(
+                    `Price moved to ${(freshPrice * 100).toFixed(0)}¢. Tap Buy again to confirm at the new price.`,
+                    'PRICE_MOVED',
+                    409, // Conflict status code
+                    { freshPrice: parseFloat(freshPrice.toFixed(4)) }
+                );
             }
         }
 

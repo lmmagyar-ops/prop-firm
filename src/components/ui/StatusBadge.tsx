@@ -42,10 +42,10 @@ const statusConfig: Record<StatusType, { bg: string; text: string; dot: string; 
         border: "border-zinc-500/20",
     },
     info: {
-        bg: "bg-blue-500/10",
-        text: "text-blue-400",
+        bg: "bg-primary/10",
+        text: "text-primary",
         dot: "bg-blue-400",
-        border: "border-blue-500/20",
+        border: "border-primary/20",
     },
 };
 

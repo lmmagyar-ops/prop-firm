@@ -15,8 +15,8 @@ export default function TermsPage() {
                         </Button>
                     </Link>
                     <div className="flex-1" />
-                    <Link href="/" className="font-serif font-bold text-xl tracking-tight">
-                        Propshot
+                    <Link href="/" className="inline-block">
+                        <img src="/logo-wordmark-white.png" alt="Predictions Firm" className="h-8 w-auto" />
                     </Link>
                 </div>
             </header>
@@ -26,8 +26,8 @@ export default function TermsPage() {
                 <div className="space-y-8">
                     {/* Title */}
                     <div className="text-center space-y-4">
-                        <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-500/20 rounded-full">
-                            <FileText className="h-8 w-8 text-blue-400" />
+                        <div className="inline-flex items-center justify-center w-16 h-16 bg-primary/20 rounded-full">
+                            <FileText className="h-8 w-8 text-primary" />
                         </div>
                         <h1 className="text-4xl font-bold">Terms and Conditions</h1>
                         <p className="text-zinc-400">
@@ -50,11 +50,11 @@ export default function TermsPage() {
                     <div className="space-y-8 text-zinc-300">
                         <section className="space-y-4">
                             <div className="flex items-center gap-3">
-                                <Scale className="h-5 w-5 text-blue-400" />
+                                <Scale className="h-5 w-5 text-primary" />
                                 <h2 className="text-2xl font-semibold text-white">1. Acceptance of Terms</h2>
                             </div>
                             <p className="leading-relaxed">
-                                By accessing or using Propshot Trading (&quot;the Service&quot;), you agree to be bound by these Terms and Conditions. If you do not agree to these terms, you may not use the Service.
+                                By accessing or using Predictions Firm Trading (&quot;the Service&quot;), you agree to be bound by these Terms and Conditions. If you do not agree to these terms, you may not use the Service.
                             </p>
                         </section>
 
@@ -64,7 +64,7 @@ export default function TermsPage() {
                                 <h2 className="text-2xl font-semibold text-white">2. Description of Service</h2>
                             </div>
                             <p className="leading-relaxed">
-                                Propshot provides a simulated trading evaluation platform. Users trade with simulated funds on real prediction market data. Successful traders may qualify for funded accounts with profit-sharing arrangements.
+                                Predictions Firm provides a simulated trading evaluation platform. Users trade with simulated funds on real prediction market data. Successful traders may qualify for funded accounts with profit-sharing arrangements.
                             </p>
                             <ul className="list-disc list-inside space-y-2 text-zinc-400">
                                 <li>All trading is simulated using virtual balances</li>
@@ -101,7 +101,7 @@ export default function TermsPage() {
                             <h2 className="text-2xl font-semibold text-white">6. Contact</h2>
                             <p className="leading-relaxed">
                                 For questions about these Terms, please contact us at{" "}
-                                <a href="mailto:legal@projectx.com" className="text-blue-400 hover:text-blue-300 underline">
+                                <a href="mailto:legal@projectx.com" className="text-primary hover:text-primary/80 underline">
                                     legal@projectx.com
                                 </a>
                             </p>
@@ -111,7 +111,7 @@ export default function TermsPage() {
                     {/* Back Button */}
                     <div className="pt-8 border-t border-white/10 text-center">
                         <Link href="/signup">
-                            <Button className="bg-blue-600 hover:bg-blue-500">
+                            <Button className="bg-primary hover:bg-primary/90">
                                 <ArrowLeft className="h-4 w-4 mr-2" />
                                 Back to Sign Up
                             </Button>

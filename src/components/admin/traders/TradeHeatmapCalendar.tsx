@@ -117,9 +117,9 @@ export function TradeHeatmapCalendar() {
                                 {calendarData.filter(d => d.count > 0).length}
                             </div>
                         </div>
-                        <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                            <div className="text-xs text-blue-400/70 uppercase tracking-wider">Avg/Day</div>
-                            <div className="text-lg font-bold text-blue-400">
+                        <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg">
+                            <div className="text-xs text-primary/70 uppercase tracking-wider">Avg/Day</div>
+                            <div className="text-lg font-bold text-primary">
                                 {(calendarData.reduce((sum, d) => sum + d.count, 0) / 84).toFixed(1)}
                             </div>
                         </div>

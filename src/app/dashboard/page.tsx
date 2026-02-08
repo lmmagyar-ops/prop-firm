@@ -24,6 +24,7 @@ import { DevTools } from "@/components/dashboard/DevTools";
 import { WelcomeTour } from "@/components/dashboard/WelcomeTour";
 import { TraderSpotlight } from "@/components/dashboard/TraderSpotlight";
 import { QuickActions } from "@/components/dashboard/QuickActions";
+import { ActiveChallengeHeading } from "@/components/dashboard/ActiveChallengeHeading";
 
 // Funded Account Components
 import {
@@ -110,12 +111,7 @@ export default async function DashboardPage() {
             {/* Active Challenge Section - ONLY if hasActiveChallenge */}
             {hasActiveChallenge && activeChallenge && stats && (
                 <>
-                    <div className="border-t border-white/5 pt-6 mt-8">
-                        <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-                            <span className={`w-2 h-2 rounded-full ${isFunded ? 'bg-amber-500' : 'bg-green-500'} animate-pulse`} />
-                            {isFunded ? 'Funded Account' : 'Active Challenge'}
-                        </h2>
-                    </div>
+                    <ActiveChallengeHeading isFunded={isFunded} />
 
                     {/* FUNDED PHASE UI */}
                     {isFunded && fundedStats ? (
@@ -269,7 +265,7 @@ export default async function DashboardPage() {
                             {/* Check if we have a PENDING challenge waiting to be started */}
                             {data.pendingChallenge ? (
                                 <>
-                                    <div className="w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-blue-500/20 shadow-[0_0_30px_-10px_rgba(59,130,246,0.5)]">
+                                    <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-primary/20 shadow-[0_0_30px_-10px_rgba(59,130,246,0.5)]">
                                         <div className="text-2xl">🚀</div>
                                     </div>
                                     <h2 className="text-2xl font-bold text-white mb-3">
@@ -326,8 +322,8 @@ export default async function DashboardPage() {
                                 </>
                             ) : (
                                 <>
-                                    <div className="w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-blue-500/20 shadow-[0_0_30px_-10px_rgba(59,130,246,0.5)]">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-500"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                                    <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-primary/20 shadow-[0_0_30px_-10px_rgba(59,130,246,0.5)]">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
                                     </div>
 
                                     <h2 className="text-2xl font-bold text-white mb-3">

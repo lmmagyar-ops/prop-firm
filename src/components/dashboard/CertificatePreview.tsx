@@ -59,8 +59,8 @@ export function CertificatePreview({
                     {/* Top Row: Brand & Chip */}
                     <div className="flex justify-between items-start">
                         <div className="space-y-6">
-                            <h2 className="font-sans font-black text-2xl tracking-tighter text-white/90 uppercase flex items-center gap-2">
-                                Project <span className="text-blue-500">X</span>
+                            <h2 className="font-sans font-medium text-2xl tracking-tight text-white/90 uppercase flex items-center gap-2">
+                                Project <span className="text-primary">X</span>
                             </h2>
                             {/* SIM Chip Visual */}
                             <div className="w-14 h-10 bg-gradient-to-br from-yellow-200 to-yellow-600 rounded-md border border-yellow-700/50 relative overflow-hidden shadow-lg">
@@ -74,7 +74,7 @@ export function CertificatePreview({
                                 <Wifi className="w-5 h-5 rotate-90" />
                             </div>
                             <div className="px-3 py-1 rounded-full bg-white/5 border border-white/10 backdrop-blur-md">
-                                <span className="text-[10px] font-mono text-blue-300 tracking-widest uppercase">
+                                <span className="text-[10px] font-mono text-primary/80 tracking-widest uppercase">
                                     {typeLabel}
                                 </span>
                             </div>
@@ -83,10 +83,10 @@ export function CertificatePreview({
 
                     {/* Middle Row: Numbers */}
                     <div className="space-y-2 mt-6">
-                        <div className="font-mono text-xs text-blue-400/80 tracking-[0.2em] uppercase pl-1">
+                        <div className="font-mono text-xs text-primary/80 tracking-[0.2em] uppercase pl-1">
                             Total Profit
                         </div>
-                        <h1 className="font-mono text-5xl md:text-6xl font-black text-white tracking-tight drop-shadow-2xl">
+                        <h1 className="font-mono text-5xl md:text-6xl font-medium text-white tracking-tight drop-shadow-2xl">
                             ${amount.toLocaleString()}
                         </h1>
                     </div>
@@ -111,10 +111,10 @@ export function CertificatePreview({
                         </div>
 
                         {/* Hologram / Logo - Abstract Shape instead of Eagle */}
-                        <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-blue-500/10 to-cyan-500/10 border border-white/10 flex items-center justify-center relative overflow-hidden group-hover:border-blue-500/30 transition-colors">
+                        <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-primary/10 to-cyan-500/10 border border-white/10 flex items-center justify-center relative overflow-hidden group-hover:border-primary/30 transition-colors">
                             <div className="absolute inset-0 bg-[conic-gradient(from_0deg,transparent,rgba(46,129,255,0.4),transparent)] animate-spin-slow opacity-50" />
-                            <div className="w-8 h-8 rounded-full border border-blue-400/30 flex items-center justify-center z-10 backdrop-blur-sm">
-                                <div className="w-4 h-4 rounded-full bg-blue-500/50 blur-[2px]" />
+                            <div className="w-8 h-8 rounded-full border border-primary/30 flex items-center justify-center z-10 backdrop-blur-sm">
+                                <div className="w-4 h-4 rounded-full bg-primary/50 blur-[2px]" />
                             </div>
                         </div>
                     </div>
@@ -136,7 +136,7 @@ export function CertificatePreview({
                     Download PDF
                 </Button>
                 <Button
-                    className="bg-[#29af73] hover:bg-[#29af73]/90 text-white shadow-lg shadow-blue-500/20"
+                    className="bg-[#29af73] hover:bg-[#29af73]/90 text-white shadow-lg shadow-primary/20"
                     onClick={() => setIsShareModalOpen(true)}
                 >
                     <Share2 className="w-4 h-4 mr-2" />

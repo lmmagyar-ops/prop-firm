@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { Target, AlertTriangle, Shield, Clock } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import CountUp from "@/components/reactbits/CountUp";
 
 interface MissionTrackerProps {
     startingBalance: number;
@@ -46,7 +47,7 @@ export function MissionTracker({
                     <div>
                         <div className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Mission Status</div>
                         <div className="text-white font-bold text-sm flex items-center gap-2">
-                            Phase 1 Evaluation <span className="text-zinc-600">|</span> <span className="text-blue-400">{daysRemaining} Days Left</span>
+                            Phase 1 Evaluation <span className="text-zinc-600">|</span> <span className="text-primary">{daysRemaining} Days Left</span>
                         </div>
                     </div>
                 </div>
@@ -80,7 +81,7 @@ export function MissionTracker({
                         <div className="flex justify-between text-xs font-bold">
                             <span className="text-zinc-400">Daily Loss Limit ($400)</span>
                             {/* Assuming profit acts as daily P&L for MVP Day 1 */}
-                            <span className={`${profit < -300 ? "text-red-500 animate-pulse" : "text-blue-400"}`}>
+                            <span className={`${profit < -300 ? "text-red-500 animate-pulse" : "text-primary"}`}>
                                 {Math.max(0, 400 + Math.min(profit, 0)).toFixed(0)} Left
                             </span>
                         </div>
@@ -102,7 +103,7 @@ export function MissionTracker({
                     <div className="space-y-2">
                         <div className="flex justify-between text-xs font-bold">
                             <span className="text-zinc-400">Max Drawdown ($800)</span>
-                            <span className={`${drawdownProgress > 80 ? "text-red-500 animate-pulse" : "text-blue-400"}`}>
+                            <span className={`${drawdownProgress > 80 ? "text-red-500 animate-pulse" : "text-primary"}`}>
                                 {(100 - drawdownProgress).toFixed(1)}% Left
                             </span>
                         </div>
@@ -111,7 +112,7 @@ export function MissionTracker({
                                 initial={{ width: 0 }}
                                 animate={{ width: `${drawdownProgress}%` }}
                                 transition={{ duration: 1, ease: "easeOut" }}
-                                className={`h-full relative ${drawdownProgress > 80 ? "bg-red-500" : "bg-blue-600"}`}
+                                className={`h-full relative ${drawdownProgress > 80 ? "bg-red-500" : "bg-primary"}`}
                             />
                         </div>
                         <div className="text-[10px] text-zinc-500 text-right font-mono">
@@ -126,7 +127,14 @@ export function MissionTracker({
                     <div className="text-right">
                         <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1">Account Balance</div>
                         <div className="text-lg font-bold font-mono text-white">
-                            ${currentBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                            <CountUp
+                                to={currentBalance}
+                                from={startingBalance}
+                                duration={1.5}
+                                separator=","
+                                prefix="$"
+                                className="text-lg font-bold font-mono text-white"
+                            />
                         </div>
                     </div>
                 </div>

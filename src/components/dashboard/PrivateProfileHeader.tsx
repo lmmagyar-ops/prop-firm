@@ -27,14 +27,14 @@ export function PrivateProfileHeader({ user }: PrivateProfileHeaderProps) {
                 {/* Avatar with Pulse */}
                 <div className="relative h-24 w-24 shrink-0">
                     {/* Outer pulsating ring */}
-                    <div className="absolute inset-0 rounded-full border border-blue-500/30 animate-ping opacity-20" />
-                    <div className="absolute -inset-1 rounded-full border border-blue-500/20" />
+                    <div className="absolute inset-0 rounded-full border border-primary/30 animate-ping opacity-20" />
+                    <div className="absolute -inset-1 rounded-full border border-primary/20" />
 
                     <div className="h-full w-full rounded-full bg-[#1A232E] border-2 border-[#2E3A52] flex items-center justify-center overflow-hidden relative z-10">
                         {user.image ? (
                             <img src={user.image} alt={user.displayName || "User"} className="h-full w-full object-cover" />
                         ) : (
-                            <User className="h-10 w-10 text-blue-400/50" />
+                            <User className="h-10 w-10 text-primary/50" />
                         )}
                     </div>
                     {/* Status Indicator: Neon Green */}
@@ -45,7 +45,7 @@ export function PrivateProfileHeader({ user }: PrivateProfileHeaderProps) {
                 <div className="space-y-1">
                     <h1 className="text-4xl font-bold text-white tracking-tight flex items-center gap-3">
                         {user.displayName || "Trader"}
-                        <span className="text-xs font-mono font-medium text-blue-400 bg-blue-400/10 px-2 py-0.5 rounded border border-blue-400/20">
+                        <span className="text-xs font-mono font-medium text-primary bg-primary/10 px-2 py-0.5 rounded border border-primary/20">
                             PRO
                         </span>
                     </h1>

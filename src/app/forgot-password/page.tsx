@@ -44,8 +44,8 @@ export default function ForgotPasswordPage() {
             <div className="w-full max-w-md space-y-8">
                 {/* Header */}
                 <div className="text-center">
-                    <Link href="/" className="font-serif font-bold text-4xl tracking-tight text-white">
-                        Propshot
+                    <Link href="/" className="inline-block">
+                        <img src="/logo-wordmark-white.png" alt="Predictions Firm" className="h-10 w-auto mx-auto" />
                     </Link>
                     <p className="mt-4 text-zinc-400 text-sm">
                         {submitted ? "Check your email" : "Reset your password"}
@@ -78,8 +78,8 @@ export default function ForgotPasswordPage() {
                         // Form State
                         <>
                             <div className="text-center mb-6">
-                                <div className="mx-auto w-12 h-12 bg-blue-500/10 rounded-full flex items-center justify-center mb-4">
-                                    <Mail className="w-6 h-6 text-blue-400" />
+                                <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4">
+                                    <Mail className="w-6 h-6 text-primary" />
                                 </div>
                                 <p className="text-zinc-400 text-sm">
                                     Enter your email address and we'll send you a link to reset your password.
@@ -111,7 +111,7 @@ export default function ForgotPasswordPage() {
                                 <Button
                                     type="submit"
                                     disabled={isLoading || !email}
-                                    className="w-full h-12 bg-blue-600 hover:bg-blue-500 text-white font-semibold"
+                                    className="w-full h-12 bg-primary hover:bg-primary/90 text-white font-semibold"
                                 >
                                     {isLoading ? (
                                         <Loader2 className="w-5 h-5 animate-spin" />

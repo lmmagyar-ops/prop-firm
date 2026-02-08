@@ -150,11 +150,11 @@ export default function LeaderboardPage() {
             </div>
 
             {/* Your Stats Card - Sticky */}
-            <div className="bg-gradient-to-br from-blue-600/10 to-purple-600/10 border-2 border-blue-500/30 rounded-2xl p-6 sticky top-4 z-10 backdrop-blur-sm">
+            <div className="bg-gradient-to-br from-primary/10 to-purple-600/10 border-2 border-primary/30 rounded-2xl p-6 sticky top-4 z-10 backdrop-blur-sm">
                 <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-blue-500/20">
-                            <User className="w-5 h-5 text-blue-400" />
+                        <div className="p-2 rounded-lg bg-primary/20">
+                            <User className="w-5 h-5 text-primary" />
                         </div>
                         <div>
                             <h2 className="text-lg font-bold text-white">Your Ranking</h2>
@@ -260,7 +260,7 @@ export default function LeaderboardPage() {
                                         {entry.leaderboardPrivacy === "public" ? (
                                             <Link
                                                 href={`/profile/${entry.userId}`}
-                                                className="font-medium text-white hover:text-blue-400 transition-colors group-hover:underline"
+                                                className="font-medium text-white hover:text-primary transition-colors group-hover:underline"
                                             >
                                                 {entry.displayName}
                                             </Link>
@@ -299,7 +299,7 @@ export default function LeaderboardPage() {
                                             <div className="inline-flex items-center gap-1">
                                                 <div className="w-12 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
                                                     <div
-                                                        className="h-full bg-blue-500 rounded-full"
+                                                        className="h-full bg-primary rounded-full"
                                                         style={{ width: `${entry.winRate}%` }}
                                                     />
                                                 </div>
@@ -370,7 +370,7 @@ export default function LeaderboardPage() {
                                             size="sm"
                                             onClick={() => setCurrentPage(pageNum)}
                                             className={currentPage === pageNum
-                                                ? "bg-blue-600 text-white"
+                                                ? "bg-primary text-white"
                                                 : "bg-[#1A232E] border-[#2E3A52] text-white hover:bg-[#2E3A52]"
                                             }
                                         >
@@ -399,7 +399,7 @@ export default function LeaderboardPage() {
 
 function StatCard({ label, value, color = "blue" }: { label: string; value: string; color?: "blue" | "green" | "red" | "purple" }) {
     const colors = {
-        blue: "text-blue-400",
+        blue: "text-primary",
         green: "text-green-400",
         red: "text-red-400",
         purple: "text-purple-400",

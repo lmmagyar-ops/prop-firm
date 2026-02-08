@@ -17,7 +17,7 @@ const LEVELS = [
         label: "Validator",
         profitTarget: "10%",
         features: ["Lower Commissions", "Payout in 24h"],
-        color: "from-blue-500 to-blue-400",
+        color: "from-primary to-primary",
         icon: TrendingUp
     },
     {
@@ -52,7 +52,7 @@ export function ScalingLadder() {
                     viewport={{ once: true }}
                     transition={{ duration: 0.6 }}
                 >
-                    <h2 className="text-4xl md:text-5xl font-black tracking-tighter text-white leading-tight">
+                    <h2 className="text-4xl md:text-5xl font-medium tracking-tight text-white leading-tight">
                         Scale Your Capital.
                         <br />
                         <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#29af73] to-cyan-400">
@@ -89,7 +89,7 @@ export function ScalingLadder() {
                             </div>
 
                             {/* Amount */}
-                            <h3 className="text-2xl font-black text-white mb-1">
+                            <h3 className="text-2xl font-normal text-white mb-1">
                                 {level.amount}
                             </h3>
                             <p className="text-[#29af73] font-bold text-sm uppercase tracking-wider mb-6">

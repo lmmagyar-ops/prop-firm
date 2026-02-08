@@ -15,7 +15,7 @@ export default function VerifySuccessPage() {
         <div className="min-h-screen bg-black flex items-center justify-center p-4 relative overflow-hidden">
             <div className="w-full max-w-lg bg-zinc-900/50 backdrop-blur-xl border border-white/10 rounded-2xl p-12 shadow-2xl relative z-10 text-center">
 
-                <h1 className="text-3xl font-bold text-white mb-8">Welcome to Propshot</h1>
+                <h1 className="text-3xl font-bold text-white mb-8">Welcome to Predictions Firm</h1>
 
                 <div className="flex justify-center mb-8">
                     <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(34,197,94,0.5)]">

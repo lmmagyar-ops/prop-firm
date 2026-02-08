@@ -112,7 +112,7 @@ export default function GrowthPage() {
                     value={loading ? "—" : String(kpis?.whales || 0)}
                     sub={kpis ? `${kpis.totalCustomers} total customers` : "Loading..."}
                     icon={Users}
-                    color="text-blue-500"
+                    color="text-primary"
                     loading={loading}
                 />
                 <StatsCard

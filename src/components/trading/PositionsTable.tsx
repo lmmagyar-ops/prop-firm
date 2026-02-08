@@ -119,7 +119,7 @@ export function PositionsTable({ challengeId }: PositionsTableProps) {
                 <h3 className="text-sm font-bold text-white">Positions</h3>
                 <button
                     onClick={() => setViewNetted(!viewNetted)}
-                    className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                    className="text-xs text-primary hover:text-primary/80 transition-colors"
                 >
                     {viewNetted ? "View All" : "View Net Positions"}
                 </button>

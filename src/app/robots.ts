@@ -9,7 +9,7 @@ import { MetadataRoute } from "next";
  */
 
 export default function robots(): MetadataRoute.Robots {
-    const baseUrl = process.env.NEXTAUTH_URL || "https://propshot.io";
+    const baseUrl = process.env.NEXTAUTH_URL || "https://predictionsfirm.com";
 
     return {
         rules: [

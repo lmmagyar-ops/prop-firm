@@ -56,7 +56,7 @@ export function DevTools({ userId }: DevToolsProps) {
                             - $200
                         </Button>
                     </div>
-                    <Button variant="outline" size="sm" onClick={() => runAction("advance_day")} disabled={loading} className="text-xs h-8 justify-start text-blue-400 border-blue-500/20">
+                    <Button variant="outline" size="sm" onClick={() => runAction("advance_day")} disabled={loading} className="text-xs h-8 justify-start text-primary border-primary/20">
                         Advance Day (Reset Daily)
                     </Button>
                     <Button variant="outline" size="sm" onClick={() => runAction("reset")} disabled={loading} className="text-xs h-8 bg-red-500/10 text-red-500 hover:bg-red-500/20 hover:text-red-400 border-red-500/20 justify-start">

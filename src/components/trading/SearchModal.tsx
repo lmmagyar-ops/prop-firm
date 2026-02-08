@@ -180,7 +180,7 @@ export function SearchModal({ events, onSelectEvent }: SearchModalProps) {
                                     className={cn(
                                         "w-full px-4 py-3 flex items-center gap-3 text-left transition-colors",
                                         i === selectedIndex
-                                            ? "bg-blue-500/20"
+                                            ? "bg-primary/20"
                                             : "hover:bg-white/5"
                                     )}
                                 >

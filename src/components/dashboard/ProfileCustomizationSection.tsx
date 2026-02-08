@@ -113,7 +113,7 @@ export function ProfileCustomizationSection({
                     <select
                         value={formData.tradingStyle}
                         onChange={(e) => setFormData({ ...formData, tradingStyle: e.target.value })}
-                        className="w-full px-3 py-2 bg-[#1A232E] border border-[#2E3A52] rounded-lg text-white focus:outline-none focus:border-blue-500"
+                        className="w-full px-3 py-2 bg-[#1A232E] border border-[#2E3A52] rounded-lg text-white focus:outline-none focus:border-primary"
                     >
                         <option value="">Select style</option>
                         <option value="Scalper">Scalper</option>
@@ -130,7 +130,7 @@ export function ProfileCustomizationSection({
                         value={formData.favoriteMarkets}
                         onChange={(e) => setFormData({ ...formData, favoriteMarkets: e.target.value })}
                         placeholder="e.g., Crypto, Forex, Politics"
-                        className="w-full px-3 py-2 bg-[#1A232E] border border-[#2E3A52] rounded-lg text-white focus:outline-none focus:border-blue-500"
+                        className="w-full px-3 py-2 bg-[#1A232E] border border-[#2E3A52] rounded-lg text-white focus:outline-none focus:border-primary"
                     />
                 </div>
             </div>

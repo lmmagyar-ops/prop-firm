@@ -64,7 +64,7 @@ export function ChallengeStats({
 
     // Status logic
     let status = "ACTIVE";
-    let statusColor = "text-blue-400 border-blue-500/30 bg-blue-500/10";
+    let statusColor = "text-primary border-primary/30 bg-primary/10";
 
     if (distanceToDeath <= 0) {
         status = "FAILED";
@@ -141,7 +141,7 @@ export function ChallengeStats({
                         <div
                             className={cn(
                                 "h-full transition-all duration-700 ease-out",
-                                drawdownUsed > 80 ? "bg-red-500 animate-pulse" : "bg-blue-500"
+                                drawdownUsed > 80 ? "bg-red-500 animate-pulse" : "bg-primary"
                             )}
                             style={{ width: `${drawdownUsed}%` }}
                         />

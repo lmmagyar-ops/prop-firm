@@ -111,7 +111,7 @@ export function PortfolioDropdown() {
                             animate={{ scale: 1 }}
                             exit={{ scale: 0 }}
                             transition={{ type: "spring", stiffness: 500, damping: 25 }}
-                            className="absolute top-1 right-1 md:top-0 md:right-0 flex items-center justify-center w-4 h-4 bg-blue-600 text-[10px] font-bold text-white rounded-full ring-2 ring-black shadow-[0_0_10px_rgba(37,99,235,0.5)]"
+                            className="absolute top-1 right-1 md:top-0 md:right-0 flex items-center justify-center w-4 h-4 bg-primary text-[10px] font-bold text-white rounded-full ring-2 ring-black shadow-[0_0_10px_rgba(41,175,115,0.5)]"
                         >
                             {positionCount}
                         </motion.span>

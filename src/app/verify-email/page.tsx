@@ -89,36 +89,36 @@ function VerifyEmailContent() {
     return (
         <div className="min-h-screen bg-black flex items-center justify-center p-4 relative overflow-hidden">
             {/* Ambient Background */}
-            <div className="absolute top-[-20%] left-[-10%] w-[800px] h-[800px] bg-blue-600/10 rounded-full blur-[120px] pointer-events-none" />
+            <div className="absolute top-[-20%] left-[-10%] w-[800px] h-[800px] bg-primary/10 rounded-full blur-[120px] pointer-events-none" />
             <div className="absolute bottom-[-20%] right-[-10%] w-[600px] h-[600px] bg-emerald-500/10 rounded-full blur-[120px] pointer-events-none" />
 
             <div className="w-full max-w-lg bg-zinc-900/50 backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl relative z-10 text-center">
 
                 <div className="flex justify-center mb-6">
-                    <div className="w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center">
-                        <Mail className="w-8 h-8 text-blue-500" />
+                    <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
+                        <Mail className="w-8 h-8 text-primary" />
                     </div>
                 </div>
 
-                <h1 className="text-2xl font-bold text-white mb-2">Welcome to Propshot</h1>
+                <h1 className="text-2xl font-bold text-white mb-2">Welcome to Predictions Firm</h1>
                 <p className="text-zinc-400 mb-6">Your account has been created.</p>
 
                 <div className="bg-zinc-800/50 rounded-xl p-6 mb-8 border border-white/5">
                     <p className="text-sm text-zinc-400 mb-4">
-                        Check <span className="text-blue-400 font-semibold">{email}</span> to activate your account.
+                        Check <span className="text-primary font-semibold">{email}</span> to activate your account.
                     </p>
 
                     <p className="text-sm text-zinc-300 mb-4">
                         In the email, click the following number to authenticate
                     </p>
 
-                    <div className="text-6xl font-black text-white mb-6 tracking-wider font-mono">
+                    <div className="text-6xl font-medium text-white mb-6 tracking-wider font-mono">
                         {isLoading ? "..." : code}
                     </div>
 
                     {/* Fake Progress Bar */}
                     <div className="h-1.5 w-full bg-zinc-700 rounded-full overflow-hidden">
-                        <div className="h-full bg-blue-500 w-2/3 animate-pulse" />
+                        <div className="h-full bg-primary w-2/3 animate-pulse" />
                     </div>
 
                     {/* ADD: Display time remaining */}
@@ -138,7 +138,7 @@ function VerifyEmailContent() {
                 <button
                     onClick={handleResend}
                     disabled={isResending}
-                    className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg transition-colors mb-4 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full bg-primary hover:bg-primary/90 text-white font-bold py-3 rounded-lg transition-colors mb-4 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     {isResending ? "Sending..." : "Send again"}
                 </button>

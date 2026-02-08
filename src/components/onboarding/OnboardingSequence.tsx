@@ -47,7 +47,7 @@ export function OnboardingSequence({ challenge }: OnboardingProps) {
                     initial={{ top: "-10%" }}
                     animate={{ top: "110%" }}
                     transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-                    className="absolute left-0 right-0 h-[2px] bg-blue-500/30 blur-[2px]"
+                    className="absolute left-0 right-0 h-[2px] bg-primary/50/30 blur-[2px]"
                 />
             </div>
 
@@ -65,7 +65,7 @@ export function OnboardingSequence({ challenge }: OnboardingProps) {
                             exit={{ opacity: 0, filter: "blur(10px)" }}
                             className="space-y-4 w-full max-w-md"
                         >
-                            <div className="flex items-center gap-3 text-blue-500 mb-8 border-b border-blue-500/20 pb-4">
+                            <div className="flex items-center gap-3 text-primary mb-8 border-b border-primary/20 pb-4">
                                 <Terminal className="w-5 h-5 animate-pulse" />
                                 <span className="text-xs font-bold tracking-[0.2em]">SECURE_UPLINK</span>
                             </div>
@@ -91,7 +91,7 @@ export function OnboardingSequence({ challenge }: OnboardingProps) {
                                 <motion.div
                                     animate={{ rotate: 360 }}
                                     transition={{ duration: 8, ease: "linear", repeat: Infinity }}
-                                    className="absolute inset-0 rounded-full border border-zinc-800 border-t-blue-500/50 border-r-transparent"
+                                    className="absolute inset-0 rounded-full border border-zinc-800 border-t-primary/50 border-r-transparent"
                                 />
                                 <motion.div
                                     animate={{ rotate: -360 }}
@@ -115,7 +115,7 @@ export function OnboardingSequence({ challenge }: OnboardingProps) {
                                 <div className="text-5xl font-black text-white font-mono tracking-tighter">
                                     $<Counter from={0} to={startingBalance} duration={3} />.00
                                 </div>
-                                <div className="text-sm font-bold text-blue-500">USD EVALUATION LIMIT</div>
+                                <div className="text-sm font-bold text-primary">USD EVALUATION LIMIT</div>
                             </div>
                         </motion.div>
                     )}
@@ -236,7 +236,7 @@ function Counter({ from, to, duration }: { from: number, to: number, duration: n
 }
 
 function BriefCard({ icon: Icon, color, label, value, sub, delay }: any) {
-    const colorClass = color === "blue" ? "text-blue-400" : color === "red" ? "text-red-400" : "text-zinc-400";
+    const colorClass = color === "blue" ? "text-primary" : color === "red" ? "text-red-400" : "text-zinc-400";
     return (
         <motion.div
             initial={{ opacity: 0, y: 10 }}

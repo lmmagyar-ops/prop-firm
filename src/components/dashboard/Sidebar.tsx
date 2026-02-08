@@ -16,13 +16,17 @@ import {
     Clock,
     History,
     TrendingUp,
-    Lock
+    Lock,
+    ChevronsLeft,
+    ChevronsRight,
 } from "lucide-react";
 
 interface SidebarProps {
     active?: string; // Optional override, otherwise derived from pathname
     verificationStatus?: "locked" | "pending" | "verified";
     hasActiveChallenge?: boolean;
+    isCollapsed?: boolean;
+    onToggle?: () => void;
 }
 
 // Derive active page from pathname
@@ -41,7 +45,12 @@ function getActiveFromPath(pathname: string): string {
     return "Dashboard";
 }
 
-export function Sidebar({ active, hasActiveChallenge = false }: SidebarProps) {
+export function Sidebar({
+    active,
+    hasActiveChallenge = false,
+    isCollapsed = false,
+    onToggle,
+}: SidebarProps) {
     const searchParams = useSearchParams();
     const pathname = usePathname();
     const [showTradeGlow, setShowTradeGlow] = useState(false);
@@ -64,15 +73,41 @@ export function Sidebar({ active, hasActiveChallenge = false }: SidebarProps) {
     }, [searchParams]);
 
     return (
-        <aside className="hidden md:flex w-64 border-r border-[#2E3A52] bg-[#161B22] flex-col fixed inset-y-0 left-0 z-50">
-            <div className="p-6">
-                <Link href="/dashboard" className="font-serif font-bold text-2xl tracking-tight text-white/90">Propshot</Link>
+        <aside
+            className={`hidden md:flex border-r border-[#2E3A52] bg-[#161B22] flex-col fixed inset-y-0 left-0 z-50 transition-all duration-200 ease-out ${isCollapsed ? "w-16" : "w-64"
+                }`}
+        >
+            {/* Logo */}
+            <div className={`p-6 ${isCollapsed ? "px-3 py-6 flex justify-center" : ""}`}>
+                <Link href="/dashboard" className="block">
+                    {isCollapsed ? (
+                        <img
+                            src="/icon.png"
+                            alt="Predictions Firm"
+                            className="h-8 w-8 rounded-lg"
+                        />
+                    ) : (
+                        <img
+                            src="/logo-wordmark-white.png"
+                            alt="Predictions Firm"
+                            className="h-10 w-auto"
+                        />
+                    )}
+                </Link>
             </div>
 
-            <nav className="flex-1 px-4 space-y-1" data-testid="sidebar-nav">
-                {/* Primary Navigation - Dashboard & Trade at top */}
-                <NavItem icon={LayoutDashboard} label="Dashboard" href="/dashboard" isActive={activePage === "Dashboard"} />
-                {/* Trade - Locked when no active challenge */}
+            <nav
+                className={`flex-1 space-y-1 ${isCollapsed ? "px-2" : "px-4"}`}
+                data-testid="sidebar-nav"
+            >
+                {/* Primary Navigation */}
+                <NavItem
+                    icon={LayoutDashboard}
+                    label="Dashboard"
+                    href="/dashboard"
+                    isActive={activePage === "Dashboard"}
+                    collapsed={isCollapsed}
+                />
                 {hasActiveChallenge ? (
                     <NavItem
                         icon={TrendingUp}
@@ -81,42 +116,131 @@ export function Sidebar({ active, hasActiveChallenge = false }: SidebarProps) {
                         isActive={activePage === "Trade"}
                         glow={showTradeGlow}
                         onClick={() => setShowTradeGlow(false)}
+                        collapsed={isCollapsed}
                     />
                 ) : (
-                    <div className="px-4 py-3 flex items-center gap-3 text-zinc-600 cursor-not-allowed">
-                        <Lock className="w-4 h-4" />
-                        <span className="text-sm font-medium">Trade (Locked)</span>
+                    <div
+                        className={`flex items-center gap-3 text-zinc-600 cursor-not-allowed ${isCollapsed
+                            ? "px-0 py-3 justify-center"
+                            : "px-4 py-3"
+                            }`}
+                        title={isCollapsed ? "Trade (Locked)" : undefined}
+                    >
+                        <Lock className="w-4 h-4 flex-shrink-0" />
+                        {!isCollapsed && (
+                            <span className="text-sm font-medium">
+                                Trade (Locked)
+                            </span>
+                        )}
                     </div>
                 )}
 
                 {/* Secondary Navigation */}
                 <div className="pt-3">
-                    <NavItem icon={Users} label="Public Profile" href="/dashboard/public-profile" isActive={activePage === "Public Profile"} />
-                    <NavItem icon={Award} label="Certificates" href="/dashboard/certificates" isActive={activePage === "Certificates"} />
-                    <NavItem icon={ShoppingCart} label="Buy Evaluation" href="/buy-evaluation" highlight isActive={activePage === "Buy Evaluation"} />
+                    <NavItem
+                        icon={Users}
+                        label="Public Profile"
+                        href="/dashboard/public-profile"
+                        isActive={activePage === "Public Profile"}
+                        collapsed={isCollapsed}
+                    />
+                    <NavItem
+                        icon={Award}
+                        label="Certificates"
+                        href="/dashboard/certificates"
+                        isActive={activePage === "Certificates"}
+                        collapsed={isCollapsed}
+                    />
+                    <NavItem
+                        icon={ShoppingCart}
+                        label="Buy Evaluation"
+                        href="/buy-evaluation"
+                        highlight
+                        isActive={activePage === "Buy Evaluation"}
+                        collapsed={isCollapsed}
+                    />
                 </div>
 
                 {/* Settings & Support */}
                 <div className="pt-3" data-testid="sidebar-settings">
-                    <NavItem icon={History} label="Trade History" href="/dashboard/history" isActive={activePage === "Trade History"} />
-                    <NavItem icon={Settings} label="Settings" href="/dashboard/settings" isActive={activePage === "Settings"} />
-                    <NavItem icon={Wallet} label="Payouts" href="/dashboard/payouts" isActive={activePage === "Payouts"} />
-                    <NavItem icon={HelpCircle} label="FAQ" href="/dashboard/faq" isActive={activePage === "FAQ"} />
-                    <NavItem icon={Trophy} label="Leaderboard" href="/dashboard/leaderboard" isActive={activePage === "Leaderboard"} />
+                    <NavItem
+                        icon={History}
+                        label="Trade History"
+                        href="/dashboard/history"
+                        isActive={activePage === "Trade History"}
+                        collapsed={isCollapsed}
+                    />
+                    <NavItem
+                        icon={Settings}
+                        label="Settings"
+                        href="/dashboard/settings"
+                        isActive={activePage === "Settings"}
+                        collapsed={isCollapsed}
+                    />
+                    <NavItem
+                        icon={Wallet}
+                        label="Payouts"
+                        href="/dashboard/payouts"
+                        isActive={activePage === "Payouts"}
+                        collapsed={isCollapsed}
+                    />
+                    <NavItem
+                        icon={HelpCircle}
+                        label="FAQ"
+                        href="/dashboard/faq"
+                        isActive={activePage === "FAQ"}
+                        collapsed={isCollapsed}
+                    />
+                    <NavItem
+                        icon={Trophy}
+                        label="Leaderboard"
+                        href="/dashboard/leaderboard"
+                        isActive={activePage === "Leaderboard"}
+                        collapsed={isCollapsed}
+                    />
                 </div>
             </nav>
 
-            <div className="p-4">
-                <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-600 to-cyan-500 p-4">
-                    <Clock className="w-8 h-8 text-white/20 absolute -bottom-2 -right-2" />
-                    <div className="relative z-10">
-                        <p className="font-bold text-xs text-blue-100 uppercase mb-1">Support</p>
-                        <Link href="/dashboard/faq" className="flex items-center gap-2 text-sm font-semibold hover:underline">
-                            <MessageSquare className="w-4 h-4" /> Chat with us
-                        </Link>
+            {/* Support Card — hidden when collapsed */}
+            {!isCollapsed && (
+                <div className="p-4">
+                    <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-primary to-cyan-500 p-4">
+                        <Clock className="w-8 h-8 text-white/20 absolute -bottom-2 -right-2" />
+                        <div className="relative z-10">
+                            <p className="font-bold text-xs text-primary/80 uppercase mb-1">
+                                Support
+                            </p>
+                            <Link
+                                href="/dashboard/faq"
+                                className="flex items-center gap-2 text-sm font-semibold hover:underline"
+                            >
+                                <MessageSquare className="w-4 h-4" /> Chat with
+                                us
+                            </Link>
+                        </div>
                     </div>
                 </div>
-            </div>
+            )}
+
+            {/* Collapse Toggle */}
+            <button
+                onClick={onToggle}
+                className="p-4 border-t border-[#2E3A52] flex items-center justify-center text-zinc-500 hover:text-white hover:bg-[#1A232E] transition-colors"
+                title={isCollapsed ? "Expand sidebar ( [ )" : "Collapse sidebar ( [ )"}
+                aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            >
+                {isCollapsed ? (
+                    <ChevronsRight className="w-4 h-4" />
+                ) : (
+                    <div className="flex items-center gap-2 text-xs">
+                        <ChevronsLeft className="w-4 h-4" />
+                        <span>Collapse</span>
+                        <kbd className="ml-auto px-1.5 py-0.5 rounded bg-[#0E1217] border border-[#2E3A52] text-[10px] font-mono text-zinc-500">
+                            [
+                        </kbd>
+                    </div>
+                )}
+            </button>
         </aside>
     );
 }
@@ -130,24 +254,54 @@ interface NavItemProps {
     className?: string;
     glow?: boolean;
     onClick?: () => void;
+    collapsed?: boolean;
 }
 
-function NavItem({ icon: Icon, label, isActive, highlight, href = "#", className, glow, onClick }: NavItemProps) {
+function NavItem({
+    icon: Icon,
+    label,
+    isActive,
+    highlight,
+    href = "#",
+    className,
+    glow,
+    onClick,
+    collapsed,
+}: NavItemProps) {
     return (
         <Link
             href={href}
             onClick={onClick}
             className={`
-                relative flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all
-                ${isActive ? "bg-[#29af73]/10 text-[#29af73] border-l-2 border-[#29af73]" : "text-[#94A3B8] hover:text-white hover:bg-[#1A232E]"}
-                ${highlight && !isActive ? "bg-[#29af73]/10 text-[#29af73] hover:bg-[#29af73]/20 border border-[#29af73]/20" : ""}
-                ${glow ? "animate-pulse bg-gradient-to-r from-green-500/20 to-blue-500/20 border border-green-500/50 shadow-[0_0_20px_rgba(34,197,94,0.3)]" : ""}
+                group relative flex items-center gap-3 rounded-lg text-sm font-medium transition-all
+                ${collapsed ? "px-0 py-3 justify-center" : "px-4 py-3"}
+                ${isActive
+                    ? "bg-[#29af73]/10 text-[#29af73] border-l-2 border-[#29af73]"
+                    : "text-[#94A3B8] hover:text-white hover:bg-[#1A232E]"
+                }
+                ${highlight && !isActive
+                    ? "bg-[#29af73]/10 text-[#29af73] hover:bg-[#29af73]/20 border border-[#29af73]/20"
+                    : ""
+                }
+                ${glow
+                    ? "animate-pulse bg-gradient-to-r from-green-500/20 to-primary/20 border border-green-500/50 shadow-[0_0_20px_rgba(34,197,94,0.3)]"
+                    : ""
+                }
                 ${className || ""}
             `}
         >
-            <Icon className={`w-4 h-4 ${highlight || isActive || glow ? "text-blue-400" : ""}`} />
-            {label}
-            {glow && (
+            <Icon
+                className={`w-4 h-4 flex-shrink-0 ${highlight || isActive || glow ? "text-primary" : ""
+                    }`}
+            />
+            {!collapsed && label}
+            {/* CSS tooltip — instant, styled, right of icon */}
+            {collapsed && (
+                <span className="absolute left-full ml-2 px-2.5 py-1.5 rounded-md bg-[#1A232E] border border-[#2E3A52] text-xs font-medium text-white whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-150 z-[60] shadow-lg">
+                    {label}
+                </span>
+            )}
+            {glow && !collapsed && (
                 <span className="absolute -right-1 -top-1 flex h-3 w-3">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
@@ -156,3 +310,4 @@ function NavItem({ icon: Icon, label, isActive, highlight, href = "#", className
         </Link>
     );
 }
+

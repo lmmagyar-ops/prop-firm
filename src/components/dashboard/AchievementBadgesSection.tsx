@@ -82,7 +82,7 @@ export function AchievementBadgesSection({
                 </p>
                 <div className="h-2 w-32 bg-zinc-800 rounded-full overflow-hidden">
                     <div
-                        className="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-500"
+                        className="h-full bg-gradient-to-r from-primary to-purple-500 transition-all duration-500"
                         style={{ width: `${(earnedCount / achievements.length) * 100}%` }}
                     />
                 </div>

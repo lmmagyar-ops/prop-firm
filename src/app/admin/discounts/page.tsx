@@ -339,8 +339,8 @@ export default function DiscountsPage() {
                 <Card className="bg-zinc-900/40 border-white/5">
                     <CardContent className="pt-6">
                         <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-blue-500/10">
-                                <Users className="h-5 w-5 text-blue-400" />
+                            <div className="p-2 rounded-lg bg-primary/10">
+                                <Users className="h-5 w-5 text-primary" />
                             </div>
                             <div>
                                 <div className="text-2xl font-bold text-white tabular-nums">

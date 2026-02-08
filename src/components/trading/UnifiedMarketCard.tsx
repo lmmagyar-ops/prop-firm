@@ -52,7 +52,7 @@ function OutcomeRow({ market, eventTitle, onTrade }: OutcomeRowProps) {
 
     const getPriceColor = (price: number) => {
         if (price >= 0.7) return "text-emerald-400";
-        if (price >= 0.4) return "text-blue-400";
+        if (price >= 0.4) return "text-primary";
         return "text-zinc-400";
     };
 
@@ -60,7 +60,7 @@ function OutcomeRow({ market, eventTitle, onTrade }: OutcomeRowProps) {
         <div className="px-4 py-2.5 flex items-center justify-between hover:bg-white/5 transition-colors group border-b border-white/5 last:border-0">
             {/* Outcome Label + Probability */}
             <div className="flex items-center gap-3 flex-1 min-w-0 mr-4">
-                <span className="text-[13px] font-medium text-zinc-300 group-hover:text-blue-400 truncate transition-colors">
+                <span className="text-[13px] font-medium text-zinc-300 group-hover:text-primary truncate transition-colors">
                     {label}
                 </span>
                 <span className={cn("text-[13px] font-bold tabular-nums shrink-0", getPriceColor(market.price))}>

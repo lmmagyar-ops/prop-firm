@@ -52,7 +52,7 @@ export function FAQSection() {
 
             <div className="text-center mb-16">
                 <div className="mono-label text-[var(--vapi-mint)] mb-4">FAQ</div>
-                <h2 className="text-4xl md:text-5xl font-black text-white tracking-tight mb-4">
+                <h2 className="text-4xl md:text-5xl font-medium text-white tracking-tight mb-4">
                     Got Questions?<br />
                     <span className="text-gradient-mint">We've Got Answers.</span>
                 </h2>
@@ -79,7 +79,7 @@ export function FAQSection() {
                 <div className="text-4xl mb-4">🎙️</div>
                 <h3 className="text-xl font-bold text-white mb-2">Still have questions?</h3>
                 <p className="text-[var(--vapi-gray-text)] mb-6">
-                    Talk to Luna, our AI assistant. She knows everything about Propshot.
+                    Talk to Luna, our AI assistant. She knows everything about Predictions Firm.
                 </p>
                 <button className="pill-btn pill-btn-mint flex items-center gap-2 mx-auto">
                     Ask Luna <ArrowRight className="w-4 h-4" />

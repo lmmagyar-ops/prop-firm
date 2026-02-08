@@ -63,7 +63,7 @@ export function ChartsVsReality() {
                     viewport={{ once: true }}
                     transition={{ duration: 0.6 }}
                 >
-                    <h2 className="text-4xl md:text-6xl font-black tracking-tighter text-white leading-tight">
+                    <h2 className="text-4xl md:text-6xl font-medium tracking-tight text-white leading-tight">
                         Trade <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#29af73] to-cyan-400">Events</span>, Not Noise.
                     </h2>
                     <p className="text-zinc-400 text-lg md:text-xl max-w-2xl mx-auto mt-6 leading-relaxed">
@@ -96,7 +96,7 @@ export function ChartsVsReality() {
                     <div className="relative z-10 flex flex-col items-center gap-8 scale-110 md:scale-125 transition-transform">
                         <div className="text-center space-y-4">
                             <div className="inline-block text-6xl mb-4">🇺🇸</div>
-                            <h3 className="text-4xl md:text-5xl font-black text-white leading-none">US Recession in 2026?</h3>
+                            <h3 className="text-4xl md:text-5xl font-medium text-white leading-none">US Recession in 2026?</h3>
                             <div className="flex items-center justify-center gap-4 text-zinc-500 font-bold tracking-widest text-sm">
                                 <span>ECONOMY</span>
                                 <span className="w-1 h-1 bg-zinc-700 rounded-full" />
@@ -107,15 +107,15 @@ export function ChartsVsReality() {
                         <div className="flex gap-4 w-full max-w-md">
                             <div className="flex-1 bg-green-500/10 border border-green-500/30 p-6 rounded-2xl flex flex-col items-center gap-2 group hover:bg-green-500/20 transition-colors">
                                 <span className="text-green-500 font-bold uppercase tracking-wider text-sm">Yes</span>
-                                <span className="text-4xl font-black text-white">28¢</span>
+                                <span className="text-4xl font-medium text-white">28¢</span>
                             </div>
                             <div className="flex-1 bg-red-500/10 border border-red-500/30 p-6 rounded-2xl flex flex-col items-center gap-2 group hover:bg-red-500/20 transition-colors">
                                 <span className="text-red-500 font-bold uppercase tracking-wider text-sm">No</span>
-                                <span className="text-4xl font-black text-white">72¢</span>
+                                <span className="text-4xl font-medium text-white">72¢</span>
                             </div>
                         </div>
 
-                        <p className="text-blue-200/60 font-medium text-lg mt-4">Simple. Binary. Logic.</p>
+                        <p className="text-primary/60 font-medium text-lg mt-4">Simple. Binary. Logic.</p>
                     </div>
                 </div>
 
@@ -154,7 +154,7 @@ export function ChartsVsReality() {
                             {/* Floating Indicators Overlay */}
                             <div className="absolute top-1/4 left-1/4 space-y-2 font-mono text-xs">
                                 <div className="text-red-400">RSI: 88.2 (Overbought)</div>
-                                <div className="text-blue-400">MACD: Bearish Div</div>
+                                <div className="text-primary">MACD: Bearish Div</div>
                                 <div className="text-yellow-400">Elliott Wave: Wave 5?</div>
                                 <div className="text-zinc-500">Fib Retracement: 0.618</div>
                             </div>

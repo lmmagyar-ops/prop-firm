@@ -33,10 +33,10 @@ export default function BuyEvaluationClient({ hasActiveChallenge }: BuyEvaluatio
                 </div>
 
                 {/* Info Banner */}
-                <div className="bg-gradient-to-r from-blue-600/10 to-cyan-600/10 border border-blue-500/20 rounded-xl p-6">
+                <div className="bg-gradient-to-r from-primary/10 to-primary/80/10 border border-primary/20 rounded-xl p-6">
                     <div className="flex items-center gap-4">
-                        <div className="p-3 bg-blue-500/20 rounded-lg">
-                            <Check className="w-6 h-6 text-blue-400" />
+                        <div className="p-3 bg-primary/20 rounded-lg">
+                            <Check className="w-6 h-6 text-primary" />
                         </div>
                         <div>
                             <h3 className="font-bold text-white">1-Step Challenge</h3>
@@ -58,7 +58,7 @@ export default function BuyEvaluationClient({ hasActiveChallenge }: BuyEvaluatio
                             <div key={plan.size} className="p-6 text-center relative">
                                 {plan.isPopular && (
                                     <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                                        <span className="bg-blue-500 text-white text-xs font-bold px-3 py-1 rounded-full">
+                                        <span className="bg-primary text-white text-xs font-bold px-3 py-1 rounded-full">
                                             POPULAR
                                         </span>
                                     </div>
@@ -146,8 +146,8 @@ export default function BuyEvaluationClient({ hasActiveChallenge }: BuyEvaluatio
                                 >
                                     <Button
                                         className={`w-full font-bold py-6 ${plan.isPopular
-                                            ? "bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 shadow-[0_0_30px_rgba(59,130,246,0.3)]"
-                                            : "bg-blue-500 hover:bg-blue-400"
+                                            ? "bg-gradient-to-r from-primary to-primary/80 hover:from-primary hover:to-cyan-500 shadow-[0_0_30px_rgba(59,130,246,0.3)]"
+                                            : "bg-primary hover:bg-primary/80"
                                             }`}
                                     >
                                         ${plan.price}
@@ -212,7 +212,7 @@ function MetricRow({
             {values.map((value, idx) => (
                 <div
                     key={idx}
-                    className={`p-6 text-center text-sm font-mono ${isUniform ? "text-zinc-400" : highlight === "blue" ? "text-blue-400 font-bold" : "text-white"
+                    className={`p-6 text-center text-sm font-mono ${isUniform ? "text-zinc-400" : highlight === "blue" ? "text-primary font-bold" : "text-white"
                         }`}
                 >
                     {value}

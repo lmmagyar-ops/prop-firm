@@ -5,6 +5,8 @@ import { Clock, TrendingUp, TrendingDown, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useSelectedChallengeContext } from "@/contexts/SelectedChallengeContext";
+import ScrollReveal from "@/components/reactbits/ScrollReveal";
+import SpotlightCard from "@/components/reactbits/SpotlightCard";
 
 interface Trade {
     id: string;
@@ -46,7 +48,6 @@ export function RecentTradesWidget() {
 
         fetchTrades();
 
-        // Also refresh when a new trade is executed
         const handleBalanceUpdate = () => {
             fetchTrades();
         };
@@ -95,77 +96,82 @@ export function RecentTradesWidget() {
     }
 
     return (
-        <div className="bg-card/50 border border-white/5 rounded-xl p-6">
-            <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-zinc-500" />
-                    Recent Trades
-                </h3>
-                <Link
-                    href="/dashboard/history"
-                    className="text-xs text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1"
-                >
-                    View All <ExternalLink className="w-3 h-3" />
-                </Link>
-            </div>
-
-            <div className="space-y-3">
-                {trades.map((trade) => (
-                    <div
-                        key={trade.id}
-                        className="flex items-center justify-between py-2 border-b border-white/5 last:border-0"
+        <ScrollReveal direction="up" distance={20} duration={0.4}>
+            <SpotlightCard
+                className="bg-card/50 border border-white/5 rounded-xl p-6"
+                spotlightColor="rgba(0, 255, 178, 0.06)"
+                spotlightSize={500}
+            >
+                <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-zinc-500" />
+                        Recent Trades
+                    </h3>
+                    <Link
+                        href="/dashboard/history"
+                        className="text-xs text-primary hover:text-primary/80 transition-colors flex items-center gap-1"
                     >
-                        <div className="flex items-center gap-3 min-w-0 flex-1">
-                            {/* Market Image */}
-                            <div className="w-8 h-8 rounded-lg bg-zinc-800 overflow-hidden flex-shrink-0">
-                                {trade.image ? (
-                                    <img src={trade.image} alt="" className="w-full h-full object-cover" />
-                                ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-xs">📊</div>
-                                )}
-                            </div>
+                        View All <ExternalLink className="w-3 h-3" />
+                    </Link>
+                </div>
 
-                            {/* Market Details */}
-                            <div className="min-w-0 flex-1">
-                                <p className="text-sm font-medium text-white truncate">
-                                    {trade.marketTitle}
-                                </p>
-                                <div className="flex items-center gap-2 text-xs text-zinc-500">
-                                    <span className={cn(
-                                        "px-1.5 py-0.5 rounded font-bold",
-                                        trade.type === "BUY"
-                                            ? "bg-green-500/10 text-green-400"
-                                            : "bg-red-500/10 text-red-400"
-                                    )}>
-                                        {trade.type}
-                                    </span>
-                                    <span>{trade.shares.toFixed(1)} @ {(trade.price * 100).toFixed(1)}¢</span>
-                                    <span className="text-zinc-600">•</span>
-                                    <span>{formatTime(trade.executedAt)}</span>
+                <div className="space-y-3">
+                    {trades.map((trade, index) => (
+                        <ScrollReveal key={trade.id} direction="up" distance={15} duration={0.3} delay={index * 0.05}>
+                            <div className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
+                                <div className="flex items-center gap-3 min-w-0 flex-1">
+                                    {/* Market Image */}
+                                    <div className="w-8 h-8 rounded-lg bg-zinc-800 overflow-hidden flex-shrink-0">
+                                        {trade.image ? (
+                                            <img src={trade.image} alt="" className="w-full h-full object-cover" />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center text-xs">📊</div>
+                                        )}
+                                    </div>
+
+                                    {/* Market Details */}
+                                    <div className="min-w-0 flex-1">
+                                        <p className="text-sm font-medium text-white truncate">
+                                            {trade.marketTitle}
+                                        </p>
+                                        <div className="flex items-center gap-2 text-xs text-zinc-500">
+                                            <span className={cn(
+                                                "px-1.5 py-0.5 rounded font-bold",
+                                                trade.type === "BUY"
+                                                    ? "bg-green-500/10 text-green-400"
+                                                    : "bg-red-500/10 text-red-400"
+                                            )}>
+                                                {trade.type}
+                                            </span>
+                                            <span>{trade.shares.toFixed(1)} @ {(trade.price * 100).toFixed(1)}¢</span>
+                                            <span className="text-zinc-600">•</span>
+                                            <span>{formatTime(trade.executedAt)}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Amount / P&L */}
+                                <div className="text-right flex-shrink-0 ml-4">
+                                    <p className="text-sm font-bold text-white">${trade.amount.toFixed(2)}</p>
+                                    {trade.realizedPnL !== null && (
+                                        <p className={cn(
+                                            "text-xs font-medium flex items-center justify-end gap-0.5",
+                                            trade.realizedPnL >= 0 ? "text-green-400" : "text-red-400"
+                                        )}>
+                                            {trade.realizedPnL >= 0 ? (
+                                                <TrendingUp className="w-3 h-3" />
+                                            ) : (
+                                                <TrendingDown className="w-3 h-3" />
+                                            )}
+                                            {trade.realizedPnL >= 0 ? "+" : ""}${trade.realizedPnL.toFixed(2)}
+                                        </p>
+                                    )}
                                 </div>
                             </div>
-                        </div>
-
-                        {/* Amount / P&L */}
-                        <div className="text-right flex-shrink-0 ml-4">
-                            <p className="text-sm font-bold text-white">${trade.amount.toFixed(2)}</p>
-                            {trade.realizedPnL !== null && (
-                                <p className={cn(
-                                    "text-xs font-medium flex items-center justify-end gap-0.5",
-                                    trade.realizedPnL >= 0 ? "text-green-400" : "text-red-400"
-                                )}>
-                                    {trade.realizedPnL >= 0 ? (
-                                        <TrendingUp className="w-3 h-3" />
-                                    ) : (
-                                        <TrendingDown className="w-3 h-3" />
-                                    )}
-                                    {trade.realizedPnL >= 0 ? "+" : ""}${trade.realizedPnL.toFixed(2)}
-                                </p>
-                            )}
-                        </div>
-                    </div>
-                ))}
-            </div>
-        </div>
+                        </ScrollReveal>
+                    ))}
+                </div>
+            </SpotlightCard>
+        </ScrollReveal>
     );
 }

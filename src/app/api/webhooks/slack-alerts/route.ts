@@ -183,7 +183,7 @@ function buildSlackMessage(type: string, data: SlackWebhookPayload["data"]): Sla
 
         default:
             return {
-                text: `[Propshot Alert] ${type}: ${JSON.stringify(data)}`,
+                text: `[Predictions Firm Alert] ${type}: ${JSON.stringify(data)}`,
             };
     }
 }

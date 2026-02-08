@@ -13,10 +13,10 @@ import { ArrowRight, Shield, Zap, Target, Users } from "lucide-react";
 
 export const metadata: Metadata = {
     title: "About Us",
-    description: "Learn about Propshot, the world's first prediction market prop firm. We fund traders to trade on Polymarket and Kalshi with our capital.",
+    description: "Learn about Predictions Firm, the world's first prediction market prop firm. We fund traders to trade on Polymarket and Kalshi with our capital.",
     openGraph: {
-        title: "About Propshot - Prediction Market Prop Firm",
-        description: "Learn about Propshot, the world's first prediction market prop firm.",
+        title: "About Predictions Firm - Prediction Market Prop Firm",
+        description: "Learn about Predictions Firm, the world's first prediction market prop firm.",
     },
 };
 
@@ -26,7 +26,7 @@ export default function AboutPage() {
             {/* Hero */}
             <section className="relative py-24 px-6">
                 <div className="max-w-4xl mx-auto text-center">
-                    <h1 className="text-4xl md:text-6xl font-black mb-6">
+                    <h1 className="text-4xl md:text-6xl font-medium mb-6">
                         The Future of <span className="text-[#29af73]">Prop Trading</span>
                     </h1>
                     <p className="text-xl text-zinc-400 max-w-2xl mx-auto">

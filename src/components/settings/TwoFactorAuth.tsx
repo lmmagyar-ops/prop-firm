@@ -194,8 +194,8 @@ export function TwoFactorAuth({ twoFactorEnabled, onStatusChange }: TwoFactorAut
             <Card className="bg-[#0D1117] border-[#2E3A52]">
                 <CardHeader>
                     <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-blue-500/10">
-                            <Key className="h-5 w-5 text-blue-400" />
+                        <div className="p-2 rounded-lg bg-primary/10">
+                            <Key className="h-5 w-5 text-primary" />
                         </div>
                         <div>
                             <CardTitle className="text-white">Setup Two-Factor Authentication</CardTitle>
@@ -274,7 +274,7 @@ export function TwoFactorAuth({ twoFactorEnabled, onStatusChange }: TwoFactorAut
                             <Button
                                 type="submit"
                                 disabled={isLoading || verificationCode.length !== 6}
-                                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                                className="flex-1 bg-primary hover:bg-primary/80 text-white"
                             >
                                 {isLoading ? (
                                     <>
@@ -349,7 +349,7 @@ export function TwoFactorAuth({ twoFactorEnabled, onStatusChange }: TwoFactorAut
                         <Button
                             onClick={handleSetup2FA}
                             disabled={isLoading}
-                            className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                            className="w-full bg-primary hover:bg-primary/80 text-white"
                         >
                             {isLoading ? (
                                 <>

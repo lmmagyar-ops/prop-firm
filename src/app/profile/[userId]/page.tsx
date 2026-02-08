@@ -51,7 +51,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
                     </p>
                     <a
                         href="/dashboard/leaderboard"
-                        className="inline-block px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors"
+                        className="inline-block px-6 py-3 bg-primary hover:bg-primary/80 text-white font-semibold rounded-lg transition-colors"
                     >
                         Back to Leaderboard
                     </a>
@@ -78,10 +78,10 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
                 )}
 
                 {/* Header */}
-                <div className="bg-gradient-to-br from-blue-600/10 to-purple-600/10 border border-blue-500/30 rounded-2xl p-8">
+                <div className="bg-gradient-to-br from-primary/10 to-purple-600/10 border border-primary/30 rounded-2xl p-8">
                     <div className="flex items-start gap-6">
                         {/* Avatar */}
-                        <div className="w-24 h-24 rounded-full bg-[#0E1217] border-2 border-blue-500 flex items-center justify-center flex-shrink-0">
+                        <div className="w-24 h-24 rounded-full bg-[#0E1217] border-2 border-primary flex items-center justify-center flex-shrink-0">
                             {userData.image ? (
                                 <img src={userData.image} alt={userData.displayName || "User"} className="w-full h-full rounded-full object-cover" />
                             ) : (
@@ -128,7 +128,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
                             description="Lifetime earnings"
                         />
                         <StatCard
-                            icon={<TrendingUp className="w-5 h-5 text-blue-400" />}
+                            icon={<TrendingUp className="w-5 h-5 text-primary" />}
                             label="Win Rate"
                             value="0%"
                             description="Success percentage"
@@ -199,7 +199,7 @@ function SocialLink({ platform, handle }: { platform: string; handle: string }) 
     return (
         <a
             href={`#`}
-            className="px-4 py-2 bg-[#0E1217] border border-[#2E3A52] rounded-lg hover:border-blue-500/30 transition-colors text-sm"
+            className="px-4 py-2 bg-[#0E1217] border border-[#2E3A52] rounded-lg hover:border-primary/30 transition-colors text-sm"
         >
             <span className="text-zinc-500">{platform}:</span> <span className="text-white">{handle}</span>
         </a>

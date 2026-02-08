@@ -96,9 +96,9 @@ export function DrawdownWaterfall() {
 
                 {/* Summary Stats */}
                 <div className="mt-4 grid grid-cols-3 gap-3">
-                    <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                        <div className="text-xs text-blue-400/70 uppercase tracking-wider">Starting</div>
-                        <div className="text-lg font-bold text-blue-400">$100k</div>
+                    <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg">
+                        <div className="text-xs text-primary/70 uppercase tracking-wider">Starting</div>
+                        <div className="text-lg font-bold text-primary">$100k</div>
                     </div>
                     <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
                         <div className="text-xs text-red-400/70 uppercase tracking-wider">Total Loss</div>

@@ -16,7 +16,7 @@ export function PayoutHistoryTable({ history }: PayoutHistoryTableProps) {
     const getStatusColor = (status: string) => {
         switch (status.toLowerCase()) {
             case 'completed': return 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20';
-            case 'processing': return 'text-blue-400 bg-blue-500/10 border-blue-500/20';
+            case 'processing': return 'text-primary bg-primary/10 border-primary/20';
             case 'failed': return 'text-red-400 bg-red-500/10 border-red-500/20';
             default: return 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20';
         }

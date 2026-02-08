@@ -80,8 +80,8 @@ export default async function TradePage() {
                     // Empty State: No Active Evaluation
                     <div className="flex items-center justify-center min-h-[60vh]">
                         <div className="max-w-2xl w-full mx-auto text-center space-y-6 p-8">
-                            <div className="w-20 h-20 mx-auto bg-blue-500/10 rounded-full flex items-center justify-center">
-                                <svg className="w-10 h-10 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div className="w-20 h-20 mx-auto bg-primary/10 rounded-full flex items-center justify-center">
+                                <svg className="w-10 h-10 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                                 </svg>
                             </div>
@@ -105,8 +105,8 @@ export default async function TradePage() {
                                         <p className="text-sm opacity-70">Start trading immediately after purchase</p>
                                     </div>
                                     <div className="space-y-2">
-                                        <div className="w-10 h-10 bg-blue-500/10 rounded-lg flex items-center justify-center">
-                                            <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                                            <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                             </svg>
                                         </div>
@@ -128,7 +128,7 @@ export default async function TradePage() {
                             <div className="pt-4">
                                 <a
                                     href="/buy-evaluation"
-                                    className="inline-flex items-center gap-2 px-8 py-4 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-xl transition-all shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40"
+                                    className="inline-flex items-center gap-2 px-8 py-4 bg-primary hover:bg-primary/90 text-white font-semibold rounded-xl transition-all shadow-lg shadow-primary/20 hover:shadow-primary/40"
                                 >
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />

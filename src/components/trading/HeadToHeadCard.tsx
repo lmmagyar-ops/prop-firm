@@ -1,7 +1,7 @@
 "use client";
 
 import { memo } from "react";
-import { TrendingUp, Clock } from "lucide-react";
+import { TrendingUp, Users } from "lucide-react";
 import Image from "next/image";
 import type { EventMetadata } from "@/app/actions/market";
 
@@ -47,7 +47,7 @@ export const HeadToHeadCard = memo(function HeadToHeadCard({ event, onTrade }: H
 
 
     return (
-        <div className="bg-zinc-900/50 border border-white/5 rounded-xl overflow-hidden hover:border-white/10 transition-all">
+        <div className="bg-zinc-900/50 border border-white/5 rounded-xl overflow-hidden hover:border-white/10 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/20 transition-all duration-200 h-full flex flex-col">
             {/* Header */}
             <div className="p-4 border-b border-white/5">
                 <div className="flex items-start gap-3">
@@ -70,8 +70,8 @@ export const HeadToHeadCard = memo(function HeadToHeadCard({ event, onTrade }: H
                                 {formatVolume(event.volume)} Vol.
                             </span>
                             <span className="flex items-center gap-1">
-                                <Clock className="w-3 h-3" />
-                                Live
+                                <Users className="w-3 h-3" />
+                                {event.markets.length} options
                             </span>
                         </div>
                     </div>
@@ -109,7 +109,7 @@ export const HeadToHeadCard = memo(function HeadToHeadCard({ event, onTrade }: H
                 <div className="flex gap-3 mt-auto">
                     <button
                         onClick={() => onTrade(team1.id, 'yes')}
-                        className="flex-1 py-3 rounded-lg font-semibold text-sm text-blue-400 transition-all bg-transparent border border-blue-500/40 hover:bg-blue-500/10 hover:border-blue-400"
+                        className="flex-1 py-3 rounded-lg font-semibold text-sm text-primary transition-all bg-transparent border border-primary/40 hover:bg-primary/10 hover:border-primary"
                     >
                         {team1Name}
                     </button>

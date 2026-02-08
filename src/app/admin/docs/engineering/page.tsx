@@ -33,7 +33,7 @@ export default function EngineeringDocPage() {
             {/* --- Hero Section --- */}
             <div className="relative border-b border-white/10 pb-8 overflow-hidden">
                 <div className="absolute top-0 right-0 p-12 bg-emerald-500/10 blur-[100px] rounded-full h-64 w-64 -z-10 pointer-events-none" />
-                <div className="absolute bottom-0 left-0 p-12 bg-blue-500/10 blur-[100px] rounded-full h-48 w-48 -z-10 pointer-events-none" />
+                <div className="absolute bottom-0 left-0 p-12 bg-primary/10 blur-[100px] rounded-full h-48 w-48 -z-10 pointer-events-none" />
 
                 <div className="flex items-center gap-3 mb-4">
                     <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 tracking-widest font-mono text-[10px] uppercase">
@@ -189,19 +189,19 @@ export default function EngineeringDocPage() {
                     number="02"
                     title="Evaluation Engine"
                     icon={Activity}
-                    color="text-blue-400"
+                    color="text-primary"
                     desc="Risk Management & Performance Tracking"
                 />
 
-                <Card className="bg-zinc-900/60 border-blue-500/20">
+                <Card className="bg-zinc-900/60 border-primary/20">
                     <CardHeader>
                         <CardTitle className="text-base text-zinc-200 flex items-center gap-2">
-                            <Code2 className="h-4 w-4 text-blue-400" /> The Equity Formula
+                            <Code2 className="h-4 w-4 text-primary" /> The Equity Formula
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="bg-black/40 p-4 rounded-lg border border-white/5 font-mono text-sm">
-                            <p className="text-blue-400">Equity = Cash Balance + Σ(Position Values)</p>
+                            <p className="text-primary">Equity = Cash Balance + Σ(Position Values)</p>
                             <p className="text-zinc-500 mt-2 text-xs">Where Position Value = shares × basis_price</p>
                         </div>
 
@@ -321,9 +321,9 @@ export default function EngineeringDocPage() {
                         title="Navigation Guardrails"
                         desc="Server-Steered Locking"
                         icon={Shield}
-                        color="bg-blue-500/10 text-blue-400"
+                        color="bg-primary/10 text-primary"
                     >
-                        Failed/passed accounts have restricted routes. <code className="text-blue-400">cursor-not-allowed</code> and div wrappers instead of Link anchors.
+                        Failed/passed accounts have restricted routes. <code className="text-primary">cursor-not-allowed</code> and div wrappers instead of Link anchors.
                     </FeatureCard>
 
                     <FeatureCard

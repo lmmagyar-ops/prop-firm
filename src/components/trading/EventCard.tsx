@@ -117,7 +117,7 @@ function OutcomeRow({ market, label, onSelect }: OutcomeRowProps) {
     // Color based on probability
     const getColor = (price: number) => {
         if (price >= 0.7) return "text-emerald-400";
-        if (price >= 0.4) return "text-blue-400";
+        if (price >= 0.4) return "text-primary";
         if (price >= 0.15) return "text-amber-400";
         return "text-zinc-400";
     };

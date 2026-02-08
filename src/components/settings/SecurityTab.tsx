@@ -87,8 +87,8 @@ export function SecurityTab({ twoFactorEnabled }: SecurityTabProps) {
             <Card className="bg-[#0D1117] border-[#2E3A52]">
                 <CardHeader>
                     <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-blue-500/10">
-                            <Shield className="h-5 w-5 text-blue-400" />
+                        <div className="p-2 rounded-lg bg-primary/10">
+                            <Shield className="h-5 w-5 text-primary" />
                         </div>
                         <div>
                             <CardTitle className="text-white">Change Password</CardTitle>
@@ -218,7 +218,7 @@ export function SecurityTab({ twoFactorEnabled }: SecurityTabProps) {
                         <Button
                             type="submit"
                             disabled={isLoading || !allChecksPassed || !passwordsMatch || !formData.currentPassword}
-                            className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                            className="w-full bg-primary hover:bg-primary/80 text-white"
                         >
                             {isLoading ? (
                                 <>

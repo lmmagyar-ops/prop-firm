@@ -16,8 +16,8 @@ export default async function VerificationPage() {
         <div className="max-w-4xl mx-auto space-y-8">
             {/* Header */}
             <div className="text-center space-y-4">
-                <div className="w-20 h-20 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto border border-blue-500/20 shadow-[0_0_40px_-10px_rgba(59,130,246,0.5)]">
-                    <ShieldCheck className="w-10 h-10 text-blue-500" />
+                <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto border border-primary/20 shadow-[0_0_40px_-10px_rgba(59,130,246,0.5)]">
+                    <ShieldCheck className="w-10 h-10 text-primary" />
                 </div>
                 <h1 className="text-3xl font-bold text-white">Identity Verification Required</h1>
                 <p className="text-zinc-400 text-lg max-w-2xl mx-auto">
@@ -27,11 +27,11 @@ export default async function VerificationPage() {
             </div>
 
             {/* Status Alert */}
-            <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-6">
+            <div className="bg-primary/5 border border-primary/20 rounded-xl p-6">
                 <div className="flex items-start gap-4">
-                    <AlertCircle className="w-6 h-6 text-blue-400 flex-shrink-0 mt-1" />
+                    <AlertCircle className="w-6 h-6 text-primary flex-shrink-0 mt-1" />
                     <div className="space-y-2">
-                        <h3 className="text-lg font-semibold text-blue-400">KYC Integration Coming Soon</h3>
+                        <h3 className="text-lg font-semibold text-primary">KYC Integration Coming Soon</h3>
                         <p className="text-zinc-400">
                             We're currently in pre-launch phase. Our identity verification partner will be integrated closer to launch.
                             In the meantime, you can review what documentation you'll need to prepare.
@@ -92,8 +92,8 @@ export default async function VerificationPage() {
                     {/* Payment Information */}
                     <div className="space-y-3">
                         <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 bg-blue-500/10 rounded-lg flex items-center justify-center border border-blue-500/20">
-                                <CreditCard className="w-6 h-6 text-blue-400" />
+                            <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center border border-primary/20">
+                                <CreditCard className="w-6 h-6 text-primary" />
                             </div>
                             <h3 className="font-semibold text-white">Payment Information</h3>
                         </div>
@@ -136,7 +136,7 @@ export default async function VerificationPage() {
                 </Link>
                 <Button
                     disabled
-                    className="bg-blue-600 hover:bg-blue-700 text-white opacity-50 cursor-not-allowed"
+                    className="bg-primary hover:bg-primary/80 text-white opacity-50 cursor-not-allowed"
                 >
                     Start Verification (Coming Soon)
                 </Button>
@@ -144,7 +144,7 @@ export default async function VerificationPage() {
 
             {/* Footer Note */}
             <div className="text-center text-sm text-zinc-600 border-t border-white/5 pt-6">
-                Questions about verification? Contact us at <span className="text-blue-400">support@projectx.com</span>
+                Questions about verification? Contact us at <span className="text-primary">support@projectx.com</span>
             </div>
         </div>
     );

@@ -30,7 +30,7 @@ export const KalshiMultiOutcomeCard = memo(function KalshiMultiOutcomeCard({ eve
     };
 
     return (
-        <div className="bg-white border border-slate-200 rounded-xl p-3 hover:border-blue-400 hover:shadow-lg transition-all flex flex-col shadow-sm group">
+        <div className="bg-white border border-slate-200 rounded-xl p-3 hover:border-primary hover:shadow-lg transition-all flex flex-col shadow-sm group">
             {/* Header */}
             <div className="flex items-start gap-3 mb-2">
                 {event.image && (

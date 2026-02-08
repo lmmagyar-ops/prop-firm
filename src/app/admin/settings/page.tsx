@@ -313,8 +313,8 @@ export default function SettingsPage() {
                     {/* New Signups Toggle */}
                     <div className="flex items-center justify-between p-4 bg-zinc-800/30 border border-white/5 rounded-lg">
                         <div className="flex items-center gap-3">
-                            <div className={`p-2 rounded-lg ${newSignupsEnabled ? 'bg-blue-500/10' : 'bg-zinc-700/30'}`}>
-                                <Database className={`h-5 w-5 ${newSignupsEnabled ? 'text-blue-400' : 'text-zinc-500'}`} />
+                            <div className={`p-2 rounded-lg ${newSignupsEnabled ? 'bg-primary/10' : 'bg-zinc-700/30'}`}>
+                                <Database className={`h-5 w-5 ${newSignupsEnabled ? 'text-primary' : 'text-zinc-500'}`} />
                             </div>
                             <div>
                                 <h3 className="text-sm font-medium text-white">New User Registration</h3>
@@ -406,8 +406,8 @@ export default function SettingsPage() {
                 <Card className="bg-zinc-900/40 border-white/5 backdrop-blur-md shadow-2xl">
                     <CardHeader>
                         <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-blue-500/10 border border-blue-500/20">
-                                <Database className="h-5 w-5 text-blue-400" />
+                            <div className="p-2 rounded-lg bg-primary/10 border border-primary/20">
+                                <Database className="h-5 w-5 text-primary" />
                             </div>
                             <div>
                                 <CardTitle className="text-lg font-medium text-zinc-200">Data Export</CardTitle>
@@ -420,7 +420,7 @@ export default function SettingsPage() {
                             <p className="text-sm text-zinc-500">Export data to CSV format</p>
                             <Button
                                 variant="outline"
-                                className="w-full border-blue-500/20 text-blue-400 hover:bg-blue-500/10"
+                                className="w-full border-primary/20 text-primary hover:bg-primary/10"
                                 onClick={() => toast.success("Export started", { description: "Preparing CSV export..." })}
                             >
                                 Export to CSV

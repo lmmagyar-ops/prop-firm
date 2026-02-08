@@ -64,7 +64,7 @@ export default function PrivacyTab({
             {/* Header */}
             <div>
                 <h2 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
-                    <Shield className="w-5 h-5 text-blue-400" />
+                    <Shield className="w-5 h-5 text-primary" />
                     Privacy & Visibility Settings
                 </h2>
                 <p className="text-sm text-zinc-400">
@@ -85,7 +85,7 @@ export default function PrivacyTab({
                     className="space-y-3"
                 >
                     {/* Public */}
-                    <div className="flex items-start space-x-3 p-4 rounded-lg border border-[#2E3A52] hover:border-blue-500/30 transition-colors">
+                    <div className="flex items-start space-x-3 p-4 rounded-lg border border-[#2E3A52] hover:border-primary/30 transition-colors">
                         <RadioGroupItem value="public" id="public" className="mt-1" />
                         <div className="flex-1">
                             <Label htmlFor="public" className="text-white font-medium cursor-pointer flex items-center gap-2">
@@ -99,11 +99,11 @@ export default function PrivacyTab({
                     </div>
 
                     {/* Semi-Private */}
-                    <div className="flex items-start space-x-3 p-4 rounded-lg border border-[#2E3A52] hover:border-blue-500/30 transition-colors">
+                    <div className="flex items-start space-x-3 p-4 rounded-lg border border-[#2E3A52] hover:border-primary/30 transition-colors">
                         <RadioGroupItem value="semi_private" id="semi_private" className="mt-1" />
                         <div className="flex-1">
                             <Label htmlFor="semi_private" className="text-white font-medium cursor-pointer flex items-center gap-2">
-                                <Eye className="w-4 h-4 text-blue-400" />
+                                <Eye className="w-4 h-4 text-primary" />
                                 Semi-Private - Anonymous Stats
                             </Label>
                             <p className="text-xs text-zinc-500 mt-1">
@@ -113,7 +113,7 @@ export default function PrivacyTab({
                     </div>
 
                     {/* Fully Private */}
-                    <div className="flex items-start space-x-3 p-4 rounded-lg border border-[#2E3A52] hover:border-blue-500/30 transition-colors">
+                    <div className="flex items-start space-x-3 p-4 rounded-lg border border-[#2E3A52] hover:border-primary/30 transition-colors">
                         <RadioGroupItem value="fully_private" id="fully_private" className="mt-1" />
                         <div className="flex-1">
                             <Label htmlFor="fully_private" className="text-white font-medium cursor-pointer flex items-center gap-2">
@@ -128,10 +128,10 @@ export default function PrivacyTab({
                 </RadioGroup>
 
                 {/* Current Selection Description */}
-                <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 flex items-start gap-3">
-                    <AlertCircle className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+                <div className="bg-primary/10 border border-primary/20 rounded-lg p-4 flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
                     <div>
-                        <p className="text-sm text-blue-200 font-medium mb-1">Current Setting</p>
+                        <p className="text-sm text-primary/80 font-medium mb-1">Current Setting</p>
                         <p className="text-sm text-zinc-400">{getPrivacyDescription()}</p>
                     </div>
                 </div>
@@ -197,19 +197,19 @@ export default function PrivacyTab({
                 <h3 className="text-sm font-semibold text-white mb-3">Privacy Tips</h3>
                 <ul className="space-y-2 text-sm text-zinc-400">
                     <li className="flex items-start gap-2">
-                        <span className="text-blue-400 mt-1">•</span>
+                        <span className="text-primary mt-1">•</span>
                         <span>Public profiles help build credibility with potential clients and employers</span>
                     </li>
                     <li className="flex items-start gap-2">
-                        <span className="text-blue-400 mt-1">•</span>
+                        <span className="text-primary mt-1">•</span>
                         <span>Semi-private is a good balance if you want to compete anonymously</span>
                     </li>
                     <li className="flex items-start gap-2">
-                        <span className="text-blue-400 mt-1">•</span>
+                        <span className="text-primary mt-1">•</span>
                         <span>You can change these settings anytime without affecting your account status</span>
                     </li>
                     <li className="flex items-start gap-2">
-                        <span className="text-blue-400 mt-1">•</span>
+                        <span className="text-primary mt-1">•</span>
                         <span>Hiding your country is recommended if you're concerned about location privacy</span>
                     </li>
                 </ul>
@@ -220,7 +220,7 @@ export default function PrivacyTab({
                 <Button
                     onClick={handleSave}
                     disabled={isSaving}
-                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                    className="bg-primary hover:bg-primary/80 text-white"
                 >
                     {isSaving ? "Saving..." : "Save Privacy Settings"}
                 </Button>

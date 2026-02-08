@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
 
         // Generate a new TOTP secret
         const totp = new TOTP({
-            issuer: "Propshot Trading",
+            issuer: "Predictions Firm",
             label: session.user.email || session.user.name || "User",
             algorithm: "SHA1",
             digits: 6,

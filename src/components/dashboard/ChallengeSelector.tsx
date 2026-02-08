@@ -129,7 +129,7 @@ export function ChallengeSelector({ challenges, selectedChallengeId, onSelect }:
                         className="flex items-center gap-2 px-4 py-2 bg-zinc-900/50 border border-zinc-800 rounded-lg hover:bg-zinc-900 hover:border-zinc-700 transition-all text-sm"
                     >
                         <span className="text-sm">{getPlatformIcon(selectedChallenge.platform)}</span>
-                        <Briefcase className="w-4 h-4 text-blue-500" />
+                        <Briefcase className="w-4 h-4 text-primary" />
                         <span className="font-medium text-white" data-testid="account-balance">
                             ${parseFloat(selectedChallenge.equity || selectedChallenge.currentBalance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
@@ -189,13 +189,13 @@ export function ChallengeSelector({ challenges, selectedChallengeId, onSelect }:
                                                     }}
                                                     className={cn(
                                                         "w-full px-4 py-3 flex items-start gap-3 hover:bg-zinc-800/50 transition-colors border-b border-zinc-800/50 last:border-0",
-                                                        isSelected && "bg-blue-500/10"
+                                                        isSelected && "bg-primary/10"
                                                     )}
                                                 >
                                                     {/* Checkmark or Number */}
                                                     <div className="flex-shrink-0 w-5 h-5 flex items-center justify-center">
                                                         {isSelected ? (
-                                                            <Check className="w-4 h-4 text-blue-500" />
+                                                            <Check className="w-4 h-4 text-primary" />
                                                         ) : (
                                                             <span className="text-xs text-zinc-600 font-medium">
                                                                 {index + 1}
@@ -209,7 +209,7 @@ export function ChallengeSelector({ challenges, selectedChallengeId, onSelect }:
                                                             <span className="text-sm">{getPlatformIcon(challenge.platform)}</span>
                                                             <span className={cn(
                                                                 "font-medium text-sm",
-                                                                isSelected ? "text-blue-400" : "text-white"
+                                                                isSelected ? "text-primary" : "text-white"
                                                             )}>
                                                                 ${parseInt(challenge.startingBalance).toLocaleString()} Eval
                                                             </span>
@@ -255,7 +255,7 @@ export function ChallengeSelector({ challenges, selectedChallengeId, onSelect }:
                         onClick={() => setIsOpen(true)}
                         className="flex items-center gap-2 px-3 py-2 bg-zinc-900/50 border border-zinc-800 rounded-lg text-sm"
                     >
-                        <Briefcase className="w-4 h-4 text-blue-500" />
+                        <Briefcase className="w-4 h-4 text-primary" />
                         <span className="font-medium text-white text-xs" data-testid="account-balance-mobile">
                             ${parseFloat(selectedChallenge.equity || selectedChallenge.currentBalance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
@@ -317,7 +317,7 @@ export function ChallengeSelector({ challenges, selectedChallengeId, onSelect }:
                                                     className={cn(
                                                         "w-full p-4 rounded-xl border transition-all text-left",
                                                         isSelected
-                                                            ? "bg-blue-500/10 border-blue-500/50"
+                                                            ? "bg-primary/10 border-primary/50"
                                                             : "bg-zinc-800/50 border-zinc-700 active:bg-zinc-800"
                                                     )}
                                                 >
@@ -326,12 +326,12 @@ export function ChallengeSelector({ challenges, selectedChallengeId, onSelect }:
                                                             <div className="flex items-center gap-2">
                                                                 <span className={cn(
                                                                     "font-bold text-base",
-                                                                    isSelected ? "text-blue-400" : "text-white"
+                                                                    isSelected ? "text-primary" : "text-white"
                                                                 )}>
                                                                     ${parseInt(challenge.startingBalance).toLocaleString()} Evaluation
                                                                 </span>
                                                                 {isSelected && (
-                                                                    <Check className="w-5 h-5 text-blue-500" />
+                                                                    <Check className="w-5 h-5 text-primary" />
                                                                 )}
                                                             </div>
                                                             <span className="text-xs text-zinc-500 font-mono">

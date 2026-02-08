@@ -234,7 +234,7 @@ export default function FAQPage() {
                     <h1 className="text-5xl font-bold mb-4">Frequently Asked Questions</h1>
                     <p className="text-xl text-zinc-400">
                         Everything you need to know about trading with us. Can't find an answer?{" "}
-                        <Link href="/contact" className="text-blue-400 hover:text-blue-300 underline">
+                        <Link href="/contact" className="text-primary hover:text-primary/80 underline">
                             Hit up support
                         </Link>
                         .
@@ -267,7 +267,7 @@ export default function FAQPage() {
                                 key={cat.name}
                                 onClick={() => setSelectedCategory(cat.name)}
                                 className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2 ${isActive
-                                    ? "bg-blue-600 text-white"
+                                    ? "bg-primary text-white"
                                     : "bg-[#1A232E] text-zinc-400 hover:bg-[#2E3A52] hover:text-white"
                                     }`}
                             >
@@ -287,7 +287,7 @@ export default function FAQPage() {
                                 Try a different search term or{" "}
                                 <button
                                     onClick={() => setSearchQuery("")}
-                                    className="text-blue-400 hover:text-blue-300 underline"
+                                    className="text-primary hover:text-primary/80 underline"
                                 >
                                     clear your search
                                 </button>
@@ -299,14 +299,14 @@ export default function FAQPage() {
                             return (
                                 <div
                                     key={index}
-                                    className="bg-[#1A232E] border border-[#2E3A52] rounded-xl overflow-hidden hover:border-blue-500/30 transition-all"
+                                    className="bg-[#1A232E] border border-[#2E3A52] rounded-xl overflow-hidden hover:border-primary/30 transition-all"
                                 >
                                     <button
                                         onClick={() => setOpenIndex(isOpen ? null : index)}
                                         className="w-full px-6 py-5 flex items-start justify-between gap-4 text-left"
                                     >
                                         <div className="flex-1">
-                                            <span className="text-xs text-blue-400 font-medium mb-1 block">
+                                            <span className="text-xs text-primary font-medium mb-1 block">
                                                 {faq.category}
                                             </span>
                                             <h3 className="text-lg font-semibold text-white">{faq.question}</h3>
@@ -328,14 +328,14 @@ export default function FAQPage() {
                 </div>
 
                 {/* CTA */}
-                <div className="mt-16 bg-gradient-to-br from-blue-600/10 to-purple-600/10 border border-blue-500/20 rounded-2xl p-8 text-center">
+                <div className="mt-16 bg-gradient-to-br from-primary/10 to-purple-600/10 border border-primary/20 rounded-2xl p-8 text-center">
                     <h2 className="text-2xl font-bold mb-2">Still have questions?</h2>
                     <p className="text-zinc-400 mb-6">
                         Our support team is here to help. Average response time: under 4 hours.
                     </p>
                     <Link
                         href="/contact"
-                        className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold transition-colors"
+                        className="inline-flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primary/80 rounded-lg font-semibold transition-colors"
                     >
                         <Headphones className="w-5 h-5" />
                         Contact Support

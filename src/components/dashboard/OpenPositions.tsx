@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import SpotlightCard from "@/components/reactbits/SpotlightCard";
 
 interface OpenPositionsProps {
     positions: Array<{
@@ -32,7 +33,6 @@ export function OpenPositions({ positions: initialPositions }: OpenPositionsProp
     const [positions, setPositions] = useState(initialPositions);
     const [closingId, setClosingId] = useState<string | null>(null);
 
-    // Sync with parent when initialPositions change
     useEffect(() => {
         setPositions(initialPositions);
     }, [initialPositions]);
@@ -63,10 +63,7 @@ export function OpenPositions({ positions: initialPositions }: OpenPositionsProp
                 toast.error(`Position closed: ${pnlText} loss`);
             }
 
-            // Remove from local state immediately for instant UI feedback
             setPositions(prev => prev.filter(p => p.id !== positionId));
-
-            // Force server refresh to ensure data consistency
             router.refresh();
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Failed to close position';
@@ -86,7 +83,11 @@ export function OpenPositions({ positions: initialPositions }: OpenPositionsProp
     }
 
     return (
-        <div className="bg-zinc-900/50 border border-white/10 rounded-2xl overflow-hidden">
+        <SpotlightCard
+            className="bg-zinc-900/50 border border-white/10 rounded-2xl overflow-hidden"
+            spotlightColor="rgba(0, 255, 178, 0.06)"
+            spotlightSize={600}
+        >
             <div className="flex items-center justify-between p-6 border-b border-white/5">
                 <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider">
                     Open Positions
@@ -133,9 +134,15 @@ export function OpenPositions({ positions: initialPositions }: OpenPositionsProp
                                 <TableCell className="text-right font-mono text-sm text-white">
                                     {(pos.currentPrice * 100).toFixed(2)}¢
                                 </TableCell>
-                                <TableCell className={`text-right font-mono text-sm font-bold ${pos.unrealizedPnL >= 0 ? "text-green-500" : "text-red-500"
-                                    }`}>
-                                    {pos.unrealizedPnL >= 0 ? "+" : ""}${pos.unrealizedPnL.toFixed(2)}
+                                <TableCell className="text-right font-mono text-sm font-bold">
+                                    <span
+                                        className={pos.unrealizedPnL >= 0
+                                            ? "bg-gradient-to-r from-green-400 to-emerald-300 bg-clip-text text-transparent"
+                                            : "bg-gradient-to-r from-red-400 to-rose-300 bg-clip-text text-transparent"
+                                        }
+                                    >
+                                        {pos.unrealizedPnL >= 0 ? "+" : ""}${pos.unrealizedPnL.toFixed(2)}
+                                    </span>
                                 </TableCell>
                                 <TableCell className="text-right">
                                     <Button
@@ -157,6 +164,6 @@ export function OpenPositions({ positions: initialPositions }: OpenPositionsProp
                     </TableBody>
                 </Table>
             </div>
-        </div>
+        </SpotlightCard>
     );
 }

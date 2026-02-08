@@ -49,7 +49,7 @@ const eventIcons: Record<string, typeof Activity> = {
 const eventColors: Record<string, string> = {
     login: "bg-green-500/20 text-green-400 border-green-500/30",
     logout: "bg-zinc-500/20 text-zinc-400 border-zinc-500/30",
-    trade_executed: "bg-blue-500/20 text-blue-400 border-blue-500/30",
+    trade_executed: "bg-primary/20 text-primary border-primary/30",
     trade_failed: "bg-red-500/20 text-red-400 border-red-500/30",
     page_view: "bg-purple-500/20 text-purple-400 border-purple-500/30",
     error: "bg-red-500/20 text-red-400 border-red-500/30",
@@ -219,7 +219,7 @@ export default function AdminEventsPage() {
             <Card className="bg-zinc-900/50 border-zinc-800">
                 <CardHeader className="border-b border-zinc-800">
                     <CardTitle className="text-lg text-white flex items-center gap-2">
-                        <Activity className="w-5 h-5 text-blue-400" />
+                        <Activity className="w-5 h-5 text-primary" />
                         Event Stream
                         <Badge variant="secondary" className="ml-2 bg-zinc-800">
                             {events.length} events

@@ -70,8 +70,8 @@ export function PricingSection() {
             sizeDisplay: "5K",
             desc: "Perfect for learning market mechanics with minimal risk.",
             popular: false,
-            gradient: "from-blue-500/20 to-cyan-500/5",
-            border: "group-hover:border-blue-500/50"
+            gradient: "from-primary/20 to-cyan-500/5",
+            border: "group-hover:border-primary/50"
         },
         {
             key: "grinder" as const,
@@ -98,7 +98,7 @@ export function PricingSection() {
     return (
         <section className="relative z-10 max-w-7xl mx-auto px-6 py-24 mb-20">
             <div className="text-center mb-16 space-y-4">
-                <h2 className="text-4xl md:text-5xl font-black text-white tracking-tighter">
+                <h2 className="text-4xl md:text-5xl font-medium text-white tracking-tight">
                     Our <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#29af73] to-cyan-400">Evaluations.</span>
                 </h2>
                 <p className="text-zinc-400 text-lg font-medium">
@@ -133,7 +133,7 @@ export function PricingSection() {
                                 {/* Popular Badge */}
                                 {isPopular && (
                                     <div className="absolute top-0 right-0 left-0 flex justify-center -mt-3">
-                                        <div className="px-4 py-1.5 rounded-full bg-[#29af73] text-white text-[11px] font-black uppercase tracking-widest shadow-lg shadow-blue-900/50 border border-white/10">
+                                        <div className="px-4 py-1.5 rounded-full bg-[#29af73] text-white text-[11px] font-black uppercase tracking-widest shadow-lg shadow-primary/30 border border-white/10">
                                             Most Popular
                                         </div>
                                     </div>
@@ -146,7 +146,7 @@ export function PricingSection() {
                                         <div className="text-sm font-bold text-zinc-500 uppercase tracking-widest">
                                             {tierData.name}
                                         </div>
-                                        <div className="text-6xl font-black text-white tracking-tighter">
+                                        <div className="text-6xl font-medium text-white tracking-tight">
                                             {tierData.sizeDisplay}
                                         </div>
                                         <p className="text-zinc-500 text-xs font-medium max-w-[180px] mx-auto leading-relaxed">
@@ -181,7 +181,7 @@ export function PricingSection() {
                                         {/* Highlight Feature */}
                                         <div className="pt-4  flex items-center justify-between">
                                             <span className="text-zinc-300 text-sm font-bold">Profit Split</span>
-                                            <span className="text-green-400 font-black text-base shadow-green-500/20 drop-shadow-sm">90%</span>
+                                            <span className="text-green-400 font-medium text-base shadow-green-500/20 drop-shadow-sm">90%</span>
                                         </div>
                                         <div className="w-full bg-zinc-800/50 h-1.5 rounded-full overflow-hidden">
                                             <div className="bg-green-500 h-full w-[90%]" />
@@ -196,7 +196,7 @@ export function PricingSection() {
 
                                         <div className="text-center">
                                             <div className="flex items-baseline justify-center gap-1 mb-4">
-                                                <span className="text-4xl font-black text-white tracking-tight">${plan.price}</span>
+                                                <span className="text-4xl font-medium text-white tracking-tight">${plan.price}</span>
                                                 <span className="text-zinc-500 text-sm font-medium">/ one-time</span>
                                             </div>
 
@@ -204,7 +204,7 @@ export function PricingSection() {
                                                 <Button
                                                     className={`w-full h-14 rounded-2xl text-base font-bold tracking-wide transition-all duration-300 border-none
                                                         ${isPopular
-                                                            ? 'bg-[#29af73] hover:bg-[#2563EB] text-white hover:scale-[1.02] shadow-lg shadow-blue-600/20'
+                                                            ? 'bg-[#29af73] hover:bg-[#2563EB] text-white hover:scale-[1.02] shadow-lg shadow-primary/20'
                                                             : 'bg-[#1A202C] hover:bg-white hover:text-black text-zinc-300'
                                                         }
                                                     `}

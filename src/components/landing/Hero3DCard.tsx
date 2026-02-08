@@ -60,12 +60,12 @@ export function Hero3DCard() {
                     {/* Header */}
                     <div className="flex items-start justify-between mb-8 relative z-10">
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#29af73] to-blue-600 flex items-center justify-center shadow-[0_0_20px_rgba(46,129,255,0.4)]">
+                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#29af73] to-primary flex items-center justify-center shadow-[0_0_20px_rgba(46,129,255,0.4)]">
                                 <Activity className="w-5 h-5 text-white" />
                             </div>
                             <div>
                                 <p className="text-[10px] font-bold text-[#29af73] uppercase tracking-widest mb-0.5">Prediction Engine</p>
-                                <h3 className="text-white font-bold text-xl leading-tight">Fed Rate Cut <br /> in March?</h3>
+                                <h3 className="text-white font-medium text-xl leading-tight">Fed Rate Cut <br />in March?</h3>
                             </div>
                         </div>
                         <div className="flex items-center gap-1.5 bg-[#29af73]/10 border border-[#29af73]/20 text-[#29af73] text-[10px] font-black px-2 py-1 rounded uppercase tracking-wider animate-pulse">
@@ -99,7 +99,7 @@ export function Hero3DCard() {
                         </svg>
 
                         {/* Probability Badge */}
-                        <div className="absolute top-4 right-4 bg-[#29af73] text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-lg shadow-blue-500/20 tabular-nums">
+                        <div className="absolute top-4 right-4 bg-[#29af73] text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-lg shadow-primary/20 tabular-nums">
                             92% PROBABILITY
                         </div>
                     </div>
@@ -109,13 +109,13 @@ export function Hero3DCard() {
                         <div className="p-3 rounded-xl bg-[#131722]/80 border border-[#2E3A52]">
                             <p className="text-zinc-500 text-[10px] uppercase font-bold mb-1">Your Position</p>
                             <div className="flex items-baseline gap-2">
-                                <span className="text-white font-black text-xl">YES</span>
+                                <span className="text-white font-medium text-xl">YES</span>
                                 <span className="text-[#00b67a] text-xs font-bold">+18.2%</span>
                             </div>
                         </div>
                         <div className="p-3 rounded-xl bg-[#131722]/80 border border-[#2E3A52]">
                             <p className="text-zinc-500 text-[10px] uppercase font-bold mb-1">Unrealized P&L</p>
-                            <span className="text-white font-black text-xl tabular-nums">$4,250.00</span>
+                            <span className="text-white font-medium text-xl tabular-nums">$4,250.00</span>
                         </div>
                     </div>
 
@@ -167,7 +167,7 @@ export function Hero3DCard() {
                     </div>
                     <div>
                         <p className="text-zinc-400 text-[9px] font-bold uppercase tracking-wider">Payout Processed</p>
-                        <p className="text-white font-black text-lg tabular-nums">+$850.00</p>
+                        <p className="text-white font-medium text-lg tabular-nums">+$850.00</p>
                     </div>
                 </motion.div>
 

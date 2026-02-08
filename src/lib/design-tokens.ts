@@ -39,7 +39,7 @@ export const colors = {
     border: {
         default: 'rgba(255, 255, 255, 0.1)',  // 10% white
         subtle: 'rgba(255, 255, 255, 0.05)',  // 5% white
-        focused: '#3b82f6',                    // Blue focus ring
+        focused: '#29af73',                    // Brand green focus ring
     },
 
     // Text
@@ -55,7 +55,7 @@ export const colors = {
         success: '#10B981',     // emerald-500
         warning: '#F59E0B',     // amber-500
         error: '#EF4444',       // red-500
-        info: '#3B82F6',        // blue-500
+        info: '#29af73',        // brand-green
     },
 
     // Price change indicators

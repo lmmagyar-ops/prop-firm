@@ -19,14 +19,13 @@ export function TopNav({ userId }: TopNavProps) {
             <header className="sticky top-0 z-50 w-full border-b border-[#2E3A52] bg-[#0E1217]/80 backdrop-blur-md">
                 <div className="max-w-[1800px] mx-auto px-6 h-16 flex items-center justify-between">
 
-                    {/* Left: Mobile Logo & Navigation */}
-                    <div className="flex items-center gap-4">
-                        <Link href="/dashboard/trade" className="flex items-center gap-2 md:hidden">
-                            <img src="/icon.png" alt="Funded Prediction" className="w-8 h-8 rounded-lg" />
+                    {/* Left: Mobile only — Logo, Navigation, New Evaluation (sidebar covers desktop) */}
+                    <div className="flex md:hidden items-center gap-4">
+                        <Link href="/dashboard/trade" className="flex items-center gap-2">
+                            <img src="/icon.png" alt="Predictions Firm" className="w-8 h-8 rounded-lg" />
                         </Link>
 
-                        {/* Primary Navigation Links */}
-                        <nav className="hidden md:flex items-center gap-1">
+                        <nav className="flex items-center gap-1">
                             <Link href="/dashboard">
                                 <Button
                                     variant="ghost"
@@ -55,7 +54,6 @@ export function TopNav({ userId }: TopNavProps) {
                             </Link>
                         </nav>
 
-                        {/* New Evaluation Button */}
                         <Link href="/buy-evaluation">
                             <Button className="bg-[#29af73] hover:bg-[#1e8a5a] text-white font-bold h-9 px-4 shadow-lg shadow-green-900/20">
                                 New Evaluation

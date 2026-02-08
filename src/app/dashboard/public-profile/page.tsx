@@ -128,7 +128,7 @@ export default async function PublicProfilePage() {
             {/* Key Metrics Section */}
             <section>
                 <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                    <Settings2 className="w-5 h-5 text-blue-400" />
+                    <Settings2 className="w-5 h-5 text-primary" />
                     Performance Metrics
                 </h2>
                 <ProfileMetricsGrid metrics={data.metrics} isPublic />
@@ -185,7 +185,7 @@ export default async function PublicProfilePage() {
             {/* Profile Share */}
             <section>
                 <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                    <Share2 className="w-5 h-5 text-blue-400" />
+                    <Share2 className="w-5 h-5 text-primary" />
                     Share Your Profile
                 </h2>
                 <div className="bg-[#1A232E] border border-[#2E3A52] rounded-xl p-6">

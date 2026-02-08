@@ -104,7 +104,7 @@ export function TraderDNAProfiles() {
                     icon: Bot,
                     label: "Bot",
                     variant: "info" as const,
-                    color: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+                    color: "bg-primary/10 text-primary border-primary/20",
                     description: "Algorithmic patterns",
                 };
         }

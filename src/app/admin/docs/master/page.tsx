@@ -56,7 +56,7 @@ export default function MasterDocPage() {
                     number="01"
                     title="Mission Control"
                     icon={Activity}
-                    color="text-blue-400"
+                    color="text-primary"
                     desc="Global System Monitoring"
                 />
                 <div className="grid md:grid-cols-2 gap-6">
@@ -64,9 +64,9 @@ export default function MasterDocPage() {
                         title="The Golden Ratio"
                         desc="The most critical metric: Revenue vs. Liability."
                         icon={BarChart3}
-                        color="bg-blue-500/10 text-blue-400"
+                        color="bg-primary/10 text-primary"
                     >
-                        Keep the <span className="text-blue-400">Golden Ratio</span> above 1.5. If it drops below,
+                        Keep the <span className="text-primary">Golden Ratio</span> above 1.5. If it drops below,
                         the system is taking on too much exposure relative to income.
                     </FeatureCard>
                     <FeatureCard
@@ -498,7 +498,7 @@ function ChecklistItem({ text, desc }: { text: string, desc: string }) {
 
 function StepNode({ number, title, children, color, icon: Icon }: any) {
     const colors: any = {
-        blue: "bg-blue-500 border-blue-400",
+        blue: "bg-primary border-primary",
         purple: "bg-purple-500 border-purple-400",
         orange: "bg-orange-500 border-orange-400",
         green: "bg-green-500 border-green-400",

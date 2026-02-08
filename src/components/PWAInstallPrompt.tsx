@@ -114,7 +114,7 @@ export function PWAInstallPrompt() {
                             </div>
                             <div className="flex-1 min-w-0">
                                 <h3 className="text-sm font-bold text-white mb-1">
-                                    Add Propshot to Home Screen
+                                    Add Predictions Firm to Home Screen
                                 </h3>
                                 <p className="text-xs text-zinc-400 mb-3">
                                     {isIOS

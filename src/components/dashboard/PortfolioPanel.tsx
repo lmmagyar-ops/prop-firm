@@ -117,7 +117,7 @@ export function PortfolioPanel() {
                             animate={{ scale: 1 }}
                             exit={{ scale: 0 }}
                             transition={{ type: "spring", stiffness: 500, damping: 25 }}
-                            className="absolute -top-1 -right-1 flex items-center justify-center w-5 h-5 bg-blue-600 text-[10px] font-bold text-white rounded-full ring-2 ring-zinc-900"
+                            className="absolute -top-1 -right-1 flex items-center justify-center w-5 h-5 bg-primary text-[10px] font-bold text-white rounded-full ring-2 ring-zinc-900"
                         >
                             {positionCount}
                         </motion.span>
@@ -153,7 +153,7 @@ export function PortfolioPanel() {
                             {/* Header */}
                             <div className="flex items-center justify-between p-4 border-b border-zinc-800">
                                 <div className="flex items-center gap-3">
-                                    <Briefcase className="w-5 h-5 text-blue-500" />
+                                    <Briefcase className="w-5 h-5 text-primary" />
                                     <h2 className="text-lg font-bold text-white">Portfolio</h2>
                                 </div>
                                 <div className="flex items-center gap-2">

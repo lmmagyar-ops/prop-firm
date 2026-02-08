@@ -47,18 +47,18 @@ export function PayoutsTab({ existingMethods = [] }: PayoutsTabProps) {
     return (
         <div className="space-y-6">
             {/* Integration Notice */}
-            <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-6">
+            <div className="bg-primary/5 border border-primary/20 rounded-xl p-6">
                 <div className="flex items-start gap-4">
-                    <AlertCircle className="w-6 h-6 text-blue-400 flex-shrink-0 mt-1" />
+                    <AlertCircle className="w-6 h-6 text-primary flex-shrink-0 mt-1" />
                     <div className="space-y-2">
-                        <h3 className="text-lg font-semibold text-blue-400">Payout Integration Pending</h3>
+                        <h3 className="text-lg font-semibold text-primary">Payout Integration Pending</h3>
                         <p className="text-zinc-400 text-sm">
                             We're currently finalizing business registration. Once complete, you'll be able to configure payout methods via:
                         </p>
                         <ul className="text-zinc-400 text-sm space-y-1 ml-4">
-                            <li>• <strong className="text-blue-400">Confirmo</strong> - Crypto payments (BTC, ETH, USDC)</li>
-                            <li>• <strong className="text-blue-400">PayPal</strong> - Traditional payments</li>
-                            <li>• <strong className="text-blue-400">Moonpay</strong> - Alternative crypto processor</li>
+                            <li>• <strong className="text-primary">Confirmo</strong> - Crypto payments (BTC, ETH, USDC)</li>
+                            <li>• <strong className="text-primary">PayPal</strong> - Traditional payments</li>
+                            <li>• <strong className="text-primary">Moonpay</strong> - Alternative crypto processor</li>
                         </ul>
                         <p className="text-xs text-zinc-500 mt-3">
                             Expected integration: ~2 weeks
@@ -85,7 +85,7 @@ export function PayoutsTab({ existingMethods = [] }: PayoutsTabProps) {
                         <Button
                             onClick={() => setShowAdd(!showAdd)}
                             disabled
-                            className="bg-blue-600 hover:bg-blue-700 opacity-50 cursor-not-allowed"
+                            className="bg-primary hover:bg-primary/80 opacity-50 cursor-not-allowed"
                         >
                             <Plus className="w-4 h-4 mr-2" />
                             Add Method
@@ -115,7 +115,7 @@ export function PayoutsTab({ existingMethods = [] }: PayoutsTabProps) {
                                             {method.type === "crypto" ? (
                                                 <Coins className="w-5 h-5 text-orange-400" />
                                             ) : (
-                                                <CreditCard className="w-5 h-5 text-blue-400" />
+                                                <CreditCard className="w-5 h-5 text-primary" />
                                             )}
                                         </div>
                                         <div>

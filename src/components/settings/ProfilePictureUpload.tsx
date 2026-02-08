@@ -36,7 +36,7 @@ export function ProfilePictureUpload({ currentImageUrl, onUpload }: ProfilePictu
             <div
                 className={cn(
                     "relative w-32 h-32 mx-auto rounded-full overflow-hidden border-4 cursor-pointer transition-all group",
-                    isDragging ? "border-blue-500 scale-105" : "border-zinc-800 hover:border-zinc-700"
+                    isDragging ? "border-primary scale-105" : "border-zinc-800 hover:border-zinc-700"
                 )}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}

@@ -155,7 +155,7 @@ export function TraderBotGuard({ onVerified, className }: TraderBotGuardProps) {
                                     disabled={isVerified}
                                     className={cn(
                                         "py-2.5 px-3 rounded-lg text-sm font-medium transition-all",
-                                        "border hover:border-blue-500/50 hover:bg-blue-500/10",
+                                        "border hover:border-primary/50 hover:bg-primary/10",
                                         selectedAnswer === option && isWrong
                                             ? "border-red-500/50 bg-red-500/10 text-red-400"
                                             : "border-white/10 bg-black/40 text-zinc-300 hover:text-white",

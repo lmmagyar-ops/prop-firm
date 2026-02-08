@@ -51,8 +51,8 @@ function LoginContent() {
             <div className="w-full max-w-md space-y-8">
                 {/* Header */}
                 <div className="text-center">
-                    <Link href="/" className="font-serif font-bold text-4xl tracking-tight text-white">
-                        Propshot
+                    <Link href="/" className="inline-block">
+                        <img src="/logo-wordmark-white.png" alt="Predictions Firm" className="h-10 w-auto mx-auto" />
                     </Link>
                     <p className="mt-4 text-zinc-400 text-sm">
                         Sign in to your account to continue
@@ -74,7 +74,7 @@ function LoginContent() {
                     )}
 
                     {registered && (
-                        <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 text-sm text-blue-400">
+                        <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 text-sm text-primary">
                             Account created! Please check your email to verify your account before signing in.
                         </div>
                     )}
@@ -154,7 +154,7 @@ function LoginContent() {
                                 <Label htmlFor="password" className="text-zinc-400">
                                     Password
                                 </Label>
-                                <Link href="/forgot-password" className="text-xs text-blue-400 hover:text-blue-300">
+                                <Link href="/forgot-password" className="text-xs text-primary hover:text-primary/80">
                                     Forgot password?
                                 </Link>
                             </div>
@@ -172,7 +172,7 @@ function LoginContent() {
                         <Button
                             type="submit"
                             disabled={isLoading}
-                            className="w-full h-12 bg-blue-600 hover:bg-blue-500 text-white font-semibold"
+                            className="w-full h-12 bg-primary hover:bg-primary/90 text-white font-semibold"
                         >
                             {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Sign In"}
                         </Button>
@@ -182,7 +182,7 @@ function LoginContent() {
                 {/* Sign Up Link */}
                 <p className="text-center text-sm text-zinc-500">
                     Don't have an account?{" "}
-                    <Link href="/signup" className="text-blue-400 hover:text-blue-300 font-semibold">
+                    <Link href="/signup" className="text-primary hover:text-primary/80 font-semibold">
                         Sign up
                     </Link>
                 </p>

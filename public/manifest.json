@@ -1,6 +1,6 @@
 {
-    "name": "Funded Prediction",
-    "short_name": "Funded Prediction",
+    "name": "Predictions Firm",
+    "short_name": "Predictions Firm",
     "description": "Trade Polymarket with our capital. Zero personal liability.",
     "start_url": "/",
     "display": "standalone",

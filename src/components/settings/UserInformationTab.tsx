@@ -66,7 +66,7 @@ export function UserInformationTab({ user, onTabChange }: UserInformationTabProp
                             id="firstName"
                             value={formData.firstName}
                             onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                            className="mt-2 bg-[#0E1217] border-[#2E3A52] text-white placeholder:text-zinc-600 focus:border-blue-500/50 focus:ring-blue-500/20"
+                            className="mt-2 bg-[#0E1217] border-[#2E3A52] text-white placeholder:text-zinc-600 focus:border-primary/50 focus:ring-primary/20"
                             placeholder="John"
                         />
                     </div>
@@ -76,7 +76,7 @@ export function UserInformationTab({ user, onTabChange }: UserInformationTabProp
                             id="lastName"
                             value={formData.lastName}
                             onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                            className="mt-2 bg-[#0E1217] border-[#2E3A52] text-white placeholder:text-zinc-600 focus:border-blue-500/50 focus:ring-blue-500/20"
+                            className="mt-2 bg-[#0E1217] border-[#2E3A52] text-white placeholder:text-zinc-600 focus:border-primary/50 focus:ring-primary/20"
                             placeholder="Doe"
                         />
                     </div>
@@ -111,7 +111,7 @@ export function UserInformationTab({ user, onTabChange }: UserInformationTabProp
                         {(!isEditing && user.displayName) && (
                             <button
                                 onClick={() => setIsEditing(true)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-blue-400 transition-colors"
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-primary transition-colors"
                             >
                                 <Pencil className="w-4 h-4" />
                             </button>
@@ -126,7 +126,7 @@ export function UserInformationTab({ user, onTabChange }: UserInformationTabProp
                     <h3 className="text-lg font-bold text-white mb-4">Social Media Profiles</h3>
                     <div className="space-y-4">
                         {[
-                            { name: "Facebook", key: "facebook", color: "text-blue-500 bg-blue-500/10" },
+                            { name: "Facebook", key: "facebook", color: "text-primary bg-primary/10" },
                             { name: "TikTok", key: "tiktok", color: "text-pink-500 bg-pink-500/10" },
                             { name: "Instagram", key: "instagram", color: "text-purple-500 bg-purple-500/10" },
                             { name: "X (Twitter)", key: "twitter", color: "text-zinc-200 bg-zinc-500/10" },
@@ -157,7 +157,7 @@ export function UserInformationTab({ user, onTabChange }: UserInformationTabProp
                 <Button
                     onClick={handleSave}
                     disabled={isSaving}
-                    className="w-full h-12 text-base bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/20 font-bold"
+                    className="w-full h-12 text-base bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20 font-bold"
                 >
                     {isSaving ? (
                         <>

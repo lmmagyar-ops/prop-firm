@@ -56,7 +56,7 @@ export function PayoutUpgradeModal({ isOpen, onClose, payoutAmount }: PayoutUpgr
 
                 <div className="bg-[#0E1217] border border-[#2E3A52] rounded-xl p-6 mb-6 space-y-4">
                     <h3 className="font-semibold text-white flex items-center gap-2">
-                        <Eye className="w-4 h-4 text-blue-400" />
+                        <Eye className="w-4 h-4 text-primary" />
                         Ready to Build Your Reputation?
                     </h3>
                     <p className="text-sm text-zinc-400">
@@ -78,9 +78,9 @@ export function PayoutUpgradeModal({ isOpen, onClose, payoutAmount }: PayoutUpgr
                     </ul>
                 </div>
 
-                <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 mb-6">
+                <div className="bg-primary/10 border border-primary/20 rounded-lg p-4 mb-6">
                     <p className="text-xs text-zinc-400 text-center">
-                        You're currently in <span className="text-blue-400 font-semibold">Semi-Private</span> mode.
+                        You're currently in <span className="text-primary font-semibold">Semi-Private</span> mode.
                         Switch to <span className="text-green-400 font-semibold">Public</span> to showcase your success!
                     </p>
                 </div>
@@ -96,7 +96,7 @@ export function PayoutUpgradeModal({ isOpen, onClose, payoutAmount }: PayoutUpgr
                     </Button>
                     <Button
                         onClick={handleUpgrade}
-                        className="flex-1 bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700 text-white font-semibold"
+                        className="flex-1 bg-gradient-to-r from-primary to-green-600 hover:from-primary/80 hover:to-green-700 text-white font-semibold"
                     >
                         Go Public Now
                     </Button>

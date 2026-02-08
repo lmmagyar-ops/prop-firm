@@ -41,7 +41,7 @@ export function TraderRiskDistribution() {
                         </div>
                         <div className="flex items-center justify-between gap-4">
                             <span className="text-xs text-zinc-400">Position Size:</span>
-                            <span className="text-sm font-bold text-blue-400">${data.positionSize.toLocaleString()}</span>
+                            <span className="text-sm font-bold text-primary">${data.positionSize.toLocaleString()}</span>
                         </div>
                         <div className="flex items-center justify-between gap-4">
                             <span className="text-xs text-zinc-400">Risk Score:</span>
@@ -58,7 +58,7 @@ export function TraderRiskDistribution() {
         <Card className="bg-zinc-900/40 border-white/5 backdrop-blur-md shadow-2xl">
             <CardHeader>
                 <CardTitle className="text-lg font-medium text-zinc-200 flex items-center gap-2">
-                    <Users className="h-5 w-5 text-blue-400" />
+                    <Users className="h-5 w-5 text-primary" />
                     Trader Risk Distribution
                 </CardTitle>
                 <CardDescription className="text-zinc-500">Drawdown vs Position Size scatter plot</CardDescription>

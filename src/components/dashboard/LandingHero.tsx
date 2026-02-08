@@ -1,13 +1,15 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import Link from "next/link";
 import { ChevronRight, ArrowRight } from "lucide-react";
 import { PLANS } from "@/config/plans";
 import { Navbar } from "@/components/Navbar";
-import { ProbabilityOrbs } from "@/components/ProbabilityOrbs";
 import { UrgencyTimer } from "@/components/landing/UrgencyTimer";
+import Aurora from "@/components/reactbits/Aurora";
+import SplitText from "@/components/reactbits/SplitText";
+import ShinyText from "@/components/reactbits/ShinyText";
+import ClickSpark from "@/components/reactbits/ClickSpark";
 
 export function LandingHero() {
     const [selectedPlanKey, setSelectedPlanKey] = useState<keyof typeof PLANS>("grinder");
@@ -21,29 +23,58 @@ export function LandingHero() {
 
             <Navbar />
 
-            {/* Atmospheric Corner Glows - Vapi Style */}
-            <div className="glow-indigo-corner animate-pulse-glow" />
-            <div className="glow-purple-corner animate-pulse-glow" />
+            {/* Aurora Background — GPU-Accelerated WebGL */}
+            <div className="absolute inset-0 z-0 opacity-40 pointer-events-none">
+                <Aurora
+                    colorStops={['#00FFB2', '#7c3aed', '#00FFB2']}
+                    amplitude={1.2}
+                    blend={0.6}
+                    speed={0.8}
+                />
+            </div>
 
-            {/* Dot Grid Background */}
-            <div className="absolute inset-0 bg-dot-grid-subtle opacity-60 pointer-events-none" />
-
-            {/* Floating Probability Orbs */}
-            <ProbabilityOrbs />
+            {/* Subtle dot grid overlay */}
+            <div className="absolute inset-0 bg-dot-grid-subtle opacity-30 pointer-events-none z-[1]" />
 
             {/* Main Content */}
             <div className="relative z-10 flex flex-col items-center justify-center flex-1 px-4 w-full max-w-5xl mx-auto pt-32 pb-20">
 
-                {/* Main Headline - Clean & Bold */}
-                <div className="animate-slide-up text-center space-y-6 mb-12">
-                    <h1 className="text-5xl md:text-7xl lg:text-[90px] leading-[0.95] font-black tracking-tight text-white">
-                        Prove Your Edge.<br />
-                        <span className="text-gradient-mint">Get Funded.</span>
+                {/* Main Headline — Staggered character reveal */}
+                <div className="text-center space-y-6 mb-12">
+                    <h1 className="text-5xl md:text-7xl lg:text-[90px] leading-[1.05] font-medium tracking-tight text-white">
+                        <SplitText
+                            text="Prove Your Edge."
+                            splitType="words"
+                            delay={0.08}
+                            duration={0.7}
+                            from={{ opacity: 0, y: 50 }}
+                            to={{ opacity: 1, y: 0 }}
+                            tag="span"
+                            className="text-5xl md:text-7xl lg:text-[90px] leading-[1.05] font-medium tracking-tight text-white"
+                        />
+                        <br />
+                        <SplitText
+                            text="Get Funded."
+                            splitType="words"
+                            delay={0.08}
+                            duration={0.7}
+                            from={{ opacity: 0, y: 50 }}
+                            to={{ opacity: 1, y: 0 }}
+                            tag="span"
+                            className="text-5xl md:text-7xl lg:text-[90px] leading-[1.05] font-medium tracking-tight text-gradient-mint"
+                        />
                     </h1>
 
                     <p className="text-lg md:text-xl text-[var(--vapi-gray-text)] max-w-2xl mx-auto leading-relaxed">
-                        Pass our evaluation. Trade prediction markets.
-                        <span className="text-white font-medium"> Keep up to 90% of what you earn.</span>
+                        Pass our evaluation. Trade prediction markets.{" "}
+                        <ShinyText
+                            text="Keep up to 90% of what you earn."
+                            speed={3}
+                            color="rgba(255,255,255,0.6)"
+                            shineColor="#00FFB2"
+                            spread={120}
+                            className="font-medium"
+                        />
                     </p>
                 </div>
 
@@ -72,7 +103,7 @@ export function LandingHero() {
 
                 {/* Price Display */}
                 <div className="animate-slide-up-delay-2 flex items-baseline gap-2 mb-4">
-                    <span className="text-5xl md:text-6xl font-black text-white tracking-tight">
+                    <span className="text-5xl md:text-6xl font-medium text-white tracking-tight">
                         ${activePlan.price}
                     </span>
                     <span className="text-[var(--vapi-gray-text)] text-lg">/one-time</span>
@@ -83,18 +114,20 @@ export function LandingHero() {
                     <UrgencyTimer hoursToExpire={24} label="Launch pricing ends in" />
                 </div>
 
-                {/* CTA Button - Mint Pill Style */}
+                {/* CTA Button — with ClickSpark micro-interaction */}
                 <div className="animate-slide-up-delay-3 flex flex-col items-center gap-4">
                     <div className="flex flex-col sm:flex-row items-center gap-4">
-                        <Link
-                            href={`/signup?intent=buy_evaluation&tier=${activePlan.id}&price=${activePlan.price}`}
-                            className="group"
-                        >
-                            <button className="pill-btn pill-btn-mint flex items-center gap-2 text-lg px-10 py-5 font-bold">
-                                Get Funded
-                                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                            </button>
-                        </Link>
+                        <ClickSpark sparkColor="#00FFB2" sparkCount={10} sparkRadius={40}>
+                            <Link
+                                href={`/signup?intent=buy_evaluation&tier=${activePlan.id}&price=${activePlan.price}`}
+                                className="group"
+                            >
+                                <button className="pill-btn pill-btn-mint flex items-center gap-2 text-lg px-10 py-5 font-bold">
+                                    Get Funded
+                                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                                </button>
+                            </Link>
+                        </ClickSpark>
                         <a
                             href="https://discord.gg/projectx"
                             target="_blank"

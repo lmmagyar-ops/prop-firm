@@ -30,7 +30,7 @@ interface ActiveUser {
 const ACTION_COLORS: Record<string, string> = {
     trade_executed: "bg-green-500/20 text-green-400 border-green-500/30",
     trade_failed: "bg-red-500/20 text-red-400 border-red-500/30",
-    page_view: "bg-blue-500/20 text-blue-400 border-blue-500/30",
+    page_view: "bg-primary/20 text-primary border-primary/30",
     login: "bg-purple-500/20 text-purple-400 border-purple-500/30",
     logout: "bg-zinc-500/20 text-zinc-400 border-zinc-500/30",
     challenge_started: "bg-amber-500/20 text-amber-400 border-amber-500/30",
@@ -219,7 +219,7 @@ export default function ActivityLogsPage() {
                 </Card>
                 <Card className="bg-zinc-900/40 border-white/5">
                     <CardContent className="pt-4 pb-4">
-                        <div className="text-2xl font-bold text-blue-400 tabular-nums">
+                        <div className="text-2xl font-bold text-primary tabular-nums">
                             {filteredLogs.filter(l => l.action === "page_view").length}
                         </div>
                         <div className="text-xs text-zinc-500">Page Views</div>

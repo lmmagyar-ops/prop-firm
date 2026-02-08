@@ -60,7 +60,7 @@ export function TraderList({ onSelect, selectedId }: TraderListProps) {
                                 <TableCell className="py-3">
                                     <div className="flex items-center gap-3">
                                         <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${trader.style === 'SNIPER' ? 'bg-green-500/20 text-green-400' :
-                                                trader.style === 'GAMBLER' ? 'bg-red-500/20 text-red-400' : 'bg-blue-500/20 text-blue-400'
+                                                trader.style === 'GAMBLER' ? 'bg-red-500/20 text-red-400' : 'bg-primary/20 text-primary'
                                             }`}>
                                             {trader.name.charAt(0)}
                                         </div>
@@ -86,7 +86,7 @@ export function TraderList({ onSelect, selectedId }: TraderListProps) {
                                             </Badge>
                                         )}
                                         {trader.style === "AVERAGE" && (
-                                            <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/20 text-[10px] gap-1 px-2">
+                                            <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-[10px] gap-1 px-2">
                                                 <User className="h-3 w-3" /> AVERAGE
                                             </Badge>
                                         )}

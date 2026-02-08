@@ -1,23 +1,55 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { TrendingUp, TrendingDown } from "lucide-react";
+import { getActiveEvents } from "@/app/actions/market";
 
-const MARKETS = [
-    { symbol: "BTC/USD", price: 96420.50, change: 2.4, isUp: true },
-    { symbol: "ETH/USD", price: 3450.12, change: -1.2, isUp: false },
-    { symbol: "SOL/USD", price: 145.20, change: 5.8, isUp: true },
-    { symbol: "TRUMP 2024", price: 0.52, change: 1.1, isUp: true },
-    { symbol: "FED RATE CUT", price: 0.85, change: 0.0, isUp: true },
-    { symbol: "BITCOIN > 100K", price: 0.33, change: -4.5, isUp: false },
-    { symbol: "TSLA/USD", price: 240.50, change: 1.5, isUp: true },
-    { symbol: "NVDA/USD", price: 950.00, change: 3.2, isUp: true },
-];
+interface TickerMarket {
+    symbol: string;
+    price: number;
+}
 
+/**
+ * MarketTicker — Scrolling ticker showing REAL market prices from Redis.
+ *
+ * Fetches top 10 markets by volume via getActiveEvents() server action.
+ * Returns null if no data is available (honest empty state).
+ */
 export function MarketTicker() {
+    const [markets, setMarkets] = useState<TickerMarket[]>([]);
+
+    useEffect(() => {
+        async function fetchMarkets() {
+            try {
+                const events = await getActiveEvents("polymarket");
+
+                const tickerData = events
+                    .sort((a, b) => b.volume - a.volume)
+                    .slice(0, 10)
+                    .map(event => {
+                        const price = event.markets[0]?.price ?? 0;
+                        const symbol = event.title.length > 30
+                            ? event.title.substring(0, 28) + "…"
+                            : event.title;
+                        return { symbol, price };
+                    })
+                    .filter(m => m.price > 0 && m.price < 1);
+
+                setMarkets(tickerData);
+            } catch (error) {
+                console.error("[MarketTicker] Failed to fetch events:", error);
+            }
+        }
+
+        fetchMarkets();
+    }, []);
+
+    // No data = no ticker (honest empty state)
+    if (markets.length === 0) return null;
+
     return (
         <div className="w-full bg-black/80 border-y border-white/5 backdrop-blur-md overflow-hidden py-3 flex items-center relative z-40">
-            {/* Gradient Fades for Smooth Edges */}
+            {/* Gradient Fades */}
             <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-black to-transparent z-10" />
             <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-black to-transparent z-10" />
 
@@ -27,20 +59,18 @@ export function MarketTicker() {
                 transition={{
                     repeat: Infinity,
                     ease: "linear",
-                    duration: 30, // Adjust speed here
+                    duration: 30,
                 }}
             >
-                {/* Double the list for seamless loop */}
-                {[...MARKETS, ...MARKETS].map((market, i) => (
+                {/* Double for seamless loop */}
+                {[...markets, ...markets].map((market, i) => (
                     <div key={i} className="flex items-center gap-3">
-                        <span className="font-bold text-zinc-400 text-sm tracking-wider">{market.symbol}</span>
-                        <span className={`font-mono font-bold text-sm ${market.isUp ? "text-green-400" : "text-red-400"}`}>
-                            ${market.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        <span className="font-bold text-zinc-400 text-sm tracking-wider">
+                            {market.symbol}
                         </span>
-                        <div className={`flex items-center text-xs ml-1 ${market.isUp ? "text-green-500/80" : "text-red-500/80"}`}>
-                            {market.isUp ? <TrendingUp className="w-3 h-3 mr-1" /> : <TrendingDown className="w-3 h-3 mr-1" />}
-                            {Math.abs(market.change)}%
-                        </div>
+                        <span className="font-mono font-bold text-sm text-white">
+                            {Math.round(market.price * 100)}¢
+                        </span>
                     </div>
                 ))}
             </motion.div>

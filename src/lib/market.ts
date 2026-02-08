@@ -453,6 +453,51 @@ export class MarketService {
     }
 
     /**
+     * Fetches a FRESH order book directly from Polymarket's CLOB API.
+     * Bypasses Redis cache entirely — used exclusively for trade execution.
+     * This guarantees the execution price matches current market conditions.
+     * 
+     * Falls back to cached order book if the fresh fetch fails.
+     */
+    static async getOrderBookFresh(tokenId: string): Promise<OrderBook | null> {
+        try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 3000); // 3s hard timeout
+
+            const res = await fetch(
+                `https://clob.polymarket.com/book?token_id=${tokenId}`,
+                { signal: controller.signal }
+            );
+            clearTimeout(timeout);
+
+            if (!res.ok) {
+                console.warn(`[MarketService] Fresh book fetch failed (${res.status}) for ${tokenId.slice(0, 12)}...`);
+                // Fall back to cached
+                return this.getOrderBook(tokenId);
+            }
+
+            const book: OrderBook = await res.json();
+
+            // Validate book has meaningful data
+            if (!book.bids?.length && !book.asks?.length) {
+                console.warn(`[MarketService] Fresh book empty for ${tokenId.slice(0, 12)}..., using cached`);
+                return this.getOrderBook(tokenId);
+            }
+
+            console.log(`[MarketService] ✅ Fresh order book fetched for ${tokenId.slice(0, 12)}... (${book.bids?.length || 0} bids, ${book.asks?.length || 0} asks)`);
+            return { ...book, source: 'live' as const };
+        } catch (error: any) {
+            if (error.name === 'AbortError') {
+                console.warn(`[MarketService] Fresh book fetch TIMED OUT for ${tokenId.slice(0, 12)}..., using cached`);
+            } else {
+                console.warn(`[MarketService] Fresh book fetch error for ${tokenId.slice(0, 12)}...:`, error.message);
+            }
+            // Fall back to cached order book
+            return this.getOrderBook(tokenId);
+        }
+    }
+
+    /**
      * Build a synthetic order book from a known price.
      * Simulates REALISTIC liquidity around the current price.
      * Public for use by TradeExecutor price integrity checks.

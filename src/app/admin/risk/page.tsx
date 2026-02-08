@@ -127,9 +127,9 @@ export default function RiskDeskPage() {
                     </CardHeader>
                     <CardContent>
                         <div className="grid grid-cols-3 gap-4">
-                            <div className="p-4 rounded-lg bg-blue-500/10 border border-blue-500/20">
-                                <div className="text-xs text-blue-400 uppercase tracking-wider mb-1">Challenge Phase</div>
-                                <div className="text-2xl font-bold text-blue-400 font-mono">{formatCurrency(data.breakdown.challenge)}</div>
+                            <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
+                                <div className="text-xs text-primary uppercase tracking-wider mb-1">Challenge Phase</div>
+                                <div className="text-2xl font-bold text-primary font-mono">{formatCurrency(data.breakdown.challenge)}</div>
                             </div>
                             <div className="p-4 rounded-lg bg-purple-500/10 border border-purple-500/20">
                                 <div className="text-xs text-purple-400 uppercase tracking-wider mb-1">Verification Phase</div>
@@ -167,7 +167,7 @@ function RiskMetricCard({ title, value, icon: Icon, status, sub, loading }: any)
         good: "text-green-500",
         low: "text-green-500",
         medium: "text-yellow-500",
-        neutral: "text-blue-500"
+        neutral: "text-primary"
     };
 
     return (

@@ -4,7 +4,118 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ---
 
+## 2026-02-08
+
+### 1:50 PM - Market Detail Page Fixes (Chart, Sell Toggle, Outcome Selection) 🔧
+
+**3 fixes implemented from Polymarket comparison audit:**
+
+1. **Chart Y-axis → Percentages**: Added `localization.priceFormatter` to `ProbabilityChart.tsx` — Y-axis now shows `20%`, `60%`, `95%` instead of raw decimals `0.20`, `0.60`, `0.95`. Crosshair tooltip also formatted as percentage.
+
+2. **Outcome Click → Sidebar Selection**: Added `selectedSide` state to `EventDetailModal`. Clicking an outcome's YES/NO button now sets both `selectedMarketId` AND `selectedSide`, passed to `TradingSidebar` via `initialSide` prop with `useEffect` sync.
+
+3. **Buy/Sell Toggle (all platforms)**: Removed `isKalshi` guard from Buy/Sell tabs. Sell mode:
+   - Fetches user's open position via new `/api/positions/check` endpoint
+   - Shows position info (side, shares, avg price, invested)
+   - "Close Position" button calls existing `/api/trade/close` endpoint
+   - Shows "No open position" message if user has no position
+
+**Files changed:**
+- `src/components/trading/ProbabilityChart.tsx` — `priceFormatter` added
+- `src/components/trading/EventDetailModal.tsx` — `selectedSide`, `initialSide`, Buy/Sell toggle, sell mode UI
+- `src/app/api/positions/check/route.ts` — **[NEW]** Position lookup endpoint
+
+**Build:** ✅ Clean (exit code 0)
+
+### 1:40 PM - Market Detail Page: Polymarket Comparison Audit 🔍
+
+**Context:** Side-by-side comparison of Polymarket's market detail page vs ours for the same market ("Who will Trump nominate as Fed Chair?").
+
+**Key Differences Found:**
+
+| Area | Polymarket | Ours | Severity |
+|------|-----------|------|----------|
+| **Chart Y-axis** | Shows percentages (0%-100%) | Shows decimals (0.20, 0.60, 0.90) | 🔴 Confusing — users think in cents, not decimals |
+| **Chart time range** | Full history (Oct→Feb), 1H/6H/1D/1W/1M/ALL selectors | Shorter range (~1 month), TradingView embed | 🟡 Good enough, TV handles it |
+| **Multi-outcome chart** | Color-coded lines for each outcome overlaid | Single outcome line only | 🟡 Nice-to-have |
+| **Order form: input model** | Share-based (enter shares, see cost) + Limit Price | Dollar-based ($5/$10/$25 presets, we calc shares) | ✅ Ours is more beginner-friendly |
+| **Order form: Sell toggle** | Prominent Buy/Sell toggle at top | No visible Sell tab for open positions | 🟠 Should add sell from market detail |
+| **Share quick-buttons** | −100, −10, +10, +100 (share delta) | $5, $10, $25, $50, $100 (preset amounts) | ✅ Ours is simpler |
+| **Expiration toggle** | "Set Expiration" on/off | Not present | 🟢 Not critical for us (B-book) |
+| **Limit orders** | Full Limit tab with limit price input | Not present | 🟡 Could add later |
+| **Outcome interactions** | "Buy Yes 94.9¢" / "Buy No 5.3¢" buttons per outcome | "YES 95¢" / "NO 5¢" toggle buttons | 🟡 Mostly equivalent |
+| **Volume display** | "$428,230,167 Vol." (full number) | "$428.2M Vol" (abbreviated) | ✅ Ours is cleaner |
+| **Bookmark / share** | Pin + Share icons | Not present | 🟢 Low priority |
+
+**Weirdness/Bugs Found in Ours:**
+
+1. 🔴 **Chart Y-axis shows raw decimals** (0.20, 0.40, 0.60, 0.80) instead of cents/percentages (20¢, 40¢, 60¢, 80¢). This is the TradingView widget using raw data — should format as percentages or cents.
+2. 🟠 **No way to sell from market detail** — users can only close positions from the Open Positions table on dashboard. Polymarket has Buy/Sell toggle right in the order panel.
+3. 🟡 **Only one outcome line on chart** — Polymarket shows all outcomes color-coded in a single chart. We show only the selected outcome.
+
+**Status:** Analysis complete. Items logged for future sprint.
+
+---
+
+### 1:30 PM - Dashboard UI Enhancement Phase 4: Active Challenge Screens ✅
+
+**Context:** Applied React Bits premium animations to all active challenge dashboard components.
+
+**Components Enhanced (7 total):**
+
+| Component | File | Enhancements |
+|-----------|------|-------------|
+| ChallengeHeader | `ChallengeHeader.tsx` | SpotlightCard + CountUp on days remaining + glowing ACTIVE badge (shadow + pulse) |
+| LiveEquityDisplay | `LiveEquityDisplay.tsx` | SpotlightCard cursor-following glow |
+| RiskMeters | `RiskMeters.tsx` | SpotlightCard (spotlight turns red when usage >80%) + CountUp on drawdown % |
+| OpenPositions | `OpenPositions.tsx` | SpotlightCard + gradient P&L text (green→emerald for profit, red→rose for loss) |
+| RecentTradesWidget | `RecentTradesWidget.tsx` | ScrollReveal on section + SpotlightCard + staggered ScrollReveal on individual trade rows |
+| ChallengeHistoryTable | `ChallengeHistoryTable.tsx` | SpotlightCard + ScrollReveal + redesigned filter tabs with colored glow shadows + gradient P&L text |
+| ActiveChallengeHeading | `ActiveChallengeHeading.tsx` [NEW] | ShinyText shimmer (mint #00FFB2) on "Active Challenge" / "Funded Account" heading |
+
+**Dashboard Page Updated:** `src/app/dashboard/page.tsx` — imported and used `ActiveChallengeHeading` client component.
+
+**Build:** ✅ `npx next build` exit code 0
+**Verification:** All components render correctly with animations.
+
+---
+
+### Morning - Dashboard UI Enhancement Phase 3: Landing Page + Core Dashboard ✅
+
+**Context:** Integrated React Bits animated components across the entire platform for Anthropic-level visual polish.
+
+**React Bits Components Created (in `src/components/reactbits/`):**
+
+| Component | Source | Tech |
+|-----------|--------|------|
+| `Aurora.tsx` | React Bits | GPU WebGL background (requires `ogl`) |
+| `SplitText.tsx` | React Bits | Staggered text reveal via Framer Motion |
+| `ShinyText.tsx` + CSS | React Bits | Animated gradient shimmer overlay |
+| `CountUp.tsx` | React Bits | Spring-physics number animation |
+| `ClickSpark.tsx` | React Bits | SVG spark burst on click |
+| `SpotlightCard.tsx` | React Bits | Cursor-following radial gradient glow |
+| `ScrollReveal.tsx` | React Bits | Scroll-triggered fade/slide via IntersectionObserver |
+
+**Landing Page Enhancements:**
+- Hero: Aurora WebGL background, SplitText headline, ShinyText subtitle, ClickSpark on CTA
+- Below-fold: ScrollReveal on "How It Works" cards, SpotlightCard on pricing cards
+
+**Dashboard Phase 3 Enhancements:**
+- `MissionTracker.tsx` — CountUp on Account Balance
+- `LifetimeStatsGrid.tsx` — SpotlightCard per stat card + CountUp on all numbers + ScrollReveal on section
+- `TraderSpotlight.tsx` — ShinyText on dynamic title (color-matched) + CountUp on 4 quick stats + ScrollReveal
+- `ProfitProgress.tsx` — CountUp on profit/percentage + pulsing white glow on progress bar
+
+**Bug Fix:** `SpotlightCard.tsx` — moved `overflow-hidden` from container to spotlight overlay div (fixing clipped "MOST POPULAR" badge on pricing cards).
+
+**Dependencies Added:** `ogl` (Aurora WebGL), `motion` (Framer Motion for CountUp/SplitText)
+
+**Build:** ✅ `npx next build` exit code 0
+
+---
+
 ## 2026-02-07
+
 
 ### 6:00 PM - Codebase Optimizations + Market Integrity Guards ✅
 

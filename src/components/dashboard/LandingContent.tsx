@@ -83,7 +83,7 @@ function QuizCard() {
             <div className="thin-border-card rounded-3xl p-8 md:p-12 bg-black/40 backdrop-blur-sm max-w-2xl mx-auto">
                 <div className="text-center space-y-6">
                     <div className="text-6xl mb-4">{score === 3 ? "🎯" : score >= 2 ? "👏" : "📚"}</div>
-                    <h3 className="text-3xl font-black text-white">
+                    <h3 className="text-3xl font-normal text-white">
                         {score === 3 ? "Perfect!" : score >= 2 ? "Great Job!" : "Keep Learning!"}
                     </h3>
                     <p className="text-[var(--vapi-gray-text)] text-lg">
@@ -126,7 +126,7 @@ function QuizCard() {
             </div>
 
             {/* Headline */}
-            <h3 className="text-2xl md:text-3xl font-black text-white mb-3">
+            <h3 className="text-2xl md:text-3xl font-normal text-white mb-3">
                 {question.headline}
             </h3>
             <p className="text-[var(--vapi-gray-text)] mb-8">
@@ -187,7 +187,7 @@ function QuizCard() {
                     {/* Next Question Button */}
                     <button
                         onClick={handleNextQuestion}
-                        className="w-full py-4 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-bold transition-colors"
+                        className="w-full py-4 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold transition-colors"
                     >
                         {currentQuestion < QUIZ_QUESTIONS.length - 1 ? "Next Question" : "See Results"}
                     </button>
@@ -263,7 +263,7 @@ export function LandingContent() {
             <section className="relative z-10 max-w-6xl mx-auto px-6 py-32" ref={timelineRef}>
                 <div className="text-center mb-20">
                     <div className="mono-label text-[var(--vapi-mint)] mb-4">How It Works</div>
-                    <h2 className="text-4xl md:text-6xl font-black tracking-tight text-white">
+                    <h2 className="text-4xl md:text-6xl font-medium tracking-tight text-white">
                         Your Path to <span className="text-gradient-mint">Capital.</span>
                     </h2>
                     <p className="text-[var(--vapi-gray-text)] text-lg mt-4 max-w-xl mx-auto">
@@ -342,7 +342,7 @@ export function LandingContent() {
 
                 <div className="text-center mb-16">
                     <div className="mono-label text-[var(--vapi-mint)] mb-4">Pricing</div>
-                    <h2 className="text-4xl md:text-5xl font-black text-white tracking-tight">
+                    <h2 className="text-4xl md:text-5xl font-medium text-white tracking-tight">
                         Simple, Transparent.
                     </h2>
                     <p className="text-[var(--vapi-gray-text)] text-lg mt-4">
@@ -354,7 +354,7 @@ export function LandingContent() {
                     {/* Scout - $5K */}
                     <div className="group thin-border-card rounded-3xl p-8 flex flex-col hover:border-[var(--vapi-mint)]/40 hover:shadow-[0_0_50px_-20px_var(--vapi-mint)] hover:-translate-y-1 transition-all duration-300">
                         <div className="mono-label text-[var(--vapi-gray-text)] mb-2">Scout</div>
-                        <div className="text-5xl font-black text-white mb-2 group-hover:text-gradient-mint transition-all">$5K</div>
+                        <div className="text-5xl font-medium text-white mb-2 group-hover:text-gradient-mint transition-all">$5K</div>
                         <p className="text-[var(--vapi-gray-text)] text-sm mb-6">Perfect for learning market mechanics.</p>
 
                         <div className="flex-1 space-y-0 text-sm">
@@ -393,7 +393,7 @@ export function LandingContent() {
                         </div>
 
                         <div className="mt-6 pt-6 border-t border-[var(--vapi-border)]">
-                            <div className="text-3xl font-black text-white mb-4">$79</div>
+                            <div className="text-3xl font-normal text-white mb-4">$79</div>
                             <Link href="/signup?intent=buy_evaluation&tier=scout&price=79" className="block">
                                 <button className="w-full py-4 rounded-full thin-border-card text-white font-bold group-hover:bg-white group-hover:text-black transition-all">
                                     Start Challenge
@@ -409,7 +409,7 @@ export function LandingContent() {
                         </div>
 
                         <div className="mono-label text-[var(--vapi-mint)] mb-2">Grinder</div>
-                        <div className="text-5xl font-black text-white mb-2">$10K</div>
+                        <div className="text-5xl font-medium text-white mb-2">$10K</div>
                         <p className="text-[var(--vapi-gray-text)] text-sm mb-6">The standard for serious traders.</p>
 
                         <div className="flex-1 space-y-0 text-sm">
@@ -448,7 +448,7 @@ export function LandingContent() {
                         </div>
 
                         <div className="mt-6 pt-6 border-t border-[var(--vapi-border)]">
-                            <div className="text-3xl font-black text-white mb-4">$149</div>
+                            <div className="text-3xl font-normal text-white mb-4">$149</div>
                             <Link href="/signup?intent=buy_evaluation&tier=grinder&price=149" className="block">
                                 <button className="pill-btn pill-btn-mint w-full py-4 flex items-center justify-center gap-2">
                                     Start Challenge <ArrowRight className="w-4 h-4" />
@@ -460,7 +460,7 @@ export function LandingContent() {
                     {/* Executive - $25K */}
                     <div className="group thin-border-card rounded-3xl p-8 flex flex-col hover:border-[var(--vapi-mint)]/40 hover:shadow-[0_0_50px_-20px_var(--vapi-mint)] hover:-translate-y-1 transition-all duration-300">
                         <div className="mono-label text-[var(--vapi-gray-text)] mb-2">Executive</div>
-                        <div className="text-5xl font-black text-white mb-2 group-hover:text-gradient-mint transition-all">$25K</div>
+                        <div className="text-5xl font-medium text-white mb-2 group-hover:text-gradient-mint transition-all">$25K</div>
                         <p className="text-[var(--vapi-gray-text)] text-sm mb-6">Maximum capital for experienced traders.</p>
 
                         <div className="flex-1 space-y-0 text-sm">
@@ -499,7 +499,7 @@ export function LandingContent() {
                         </div>
 
                         <div className="mt-6 pt-6 border-t border-[var(--vapi-border)]">
-                            <div className="text-3xl font-black text-white mb-4">$299</div>
+                            <div className="text-3xl font-normal text-white mb-4">$299</div>
                             <Link href="/signup?intent=buy_evaluation&tier=executive&price=299" className="block">
                                 <button className="w-full py-4 rounded-full thin-border-card text-white font-bold group-hover:bg-white group-hover:text-black transition-all">
                                     Start Challenge
@@ -517,7 +517,7 @@ export function LandingContent() {
 
                 {/* Headline */}
                 <div className="text-center mb-16">
-                    <h2 className="text-4xl md:text-5xl lg:text-6xl font-black text-white tracking-tight leading-tight mb-4">
+                    <h2 className="text-4xl md:text-5xl lg:text-6xl font-medium text-white tracking-tight leading-tight mb-4">
                         You're Already an Analyst.<br />
                         <span className="text-gradient-mint">You Just Didn't Know It.</span>
                     </h2>
@@ -536,8 +536,8 @@ export function LandingContent() {
                 <div className="h-px w-full bg-[var(--vapi-border)] mb-24" />
 
                 <div className="text-center mb-16">
-                    <div className="mono-label text-[var(--vapi-mint)] mb-4">Why Propshot</div>
-                    <h2 className="text-4xl md:text-5xl font-black text-white tracking-tight mb-4">
+                    <div className="mono-label text-[var(--vapi-mint)] mb-4">Why Predictions Firm</div>
+                    <h2 className="text-4xl md:text-5xl font-medium text-white tracking-tight mb-4">
                         See The Difference.
                     </h2>
                     <p className="text-[var(--vapi-gray-text)] text-lg max-w-2xl mx-auto">
@@ -557,7 +557,7 @@ export function LandingContent() {
                                             <div className="w-10 h-10 rounded-xl bg-[var(--vapi-mint)]/10 border border-[var(--vapi-mint)]/30 flex items-center justify-center">
                                                 <BarChart3 className="w-5 h-5 text-[var(--vapi-mint)]" />
                                             </div>
-                                            <span className="font-bold text-white">Propshot</span>
+                                            <span className="font-bold text-white">Predictions Firm</span>
                                         </div>
                                     </th>
                                     <th className="p-6 text-center">
@@ -623,7 +623,7 @@ export function LandingContent() {
 
                 <div className="text-center mb-16">
                     <div className="mono-label text-[var(--vapi-mint)] mb-4">FAQ</div>
-                    <h2 className="text-4xl md:text-5xl font-black text-white tracking-tight mb-4">
+                    <h2 className="text-4xl md:text-5xl font-medium text-white tracking-tight mb-4">
                         Got Questions?<br />
                         <span className="text-gradient-mint">We've Got Answers.</span>
                     </h2>
@@ -691,7 +691,7 @@ export function LandingContent() {
                     <div className="text-4xl mb-4">🎙️</div>
                     <h3 className="text-xl font-bold text-white mb-2">Still have questions?</h3>
                     <p className="text-[var(--vapi-gray-text)] mb-6">
-                        Talk to Luna, our AI assistant. She knows everything about Propshot.
+                        Talk to Luna, our AI assistant. She knows everything about Predictions Firm.
                     </p>
                     <button className="pill-btn pill-btn-mint flex items-center gap-2 mx-auto">
                         Ask Luna <ArrowRight className="w-4 h-4" />
@@ -709,7 +709,7 @@ export function LandingContent() {
                         <span className="hover:text-white cursor-pointer transition-colors">Risk Disclosure</span>
                     </div>
                     <p className="text-[var(--vapi-gray-text)] text-sm">
-                        © 2025 Propshot via Polymarket Data. All rights reserved.<br />
+                        © 2025 Predictions Firm via Polymarket Data. All rights reserved.<br />
                         <span className="text-white/30">This is a simulated trading environment. No real funds are at risk during evaluation.</span>
                     </p>
                 </div>

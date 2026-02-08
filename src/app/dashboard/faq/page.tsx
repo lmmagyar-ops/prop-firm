@@ -256,7 +256,7 @@ export default function FAQPage() {
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-bold text-white">Frequently Asked Questions</h1>
-                    <p className="text-zinc-400 mt-1">Everything you need to know about Propshot</p>
+                    <p className="text-zinc-400 mt-1">Everything you need to know about Predictions Firm</p>
                 </div>
             </div>
 
@@ -306,7 +306,7 @@ export default function FAQPage() {
                 <h3 className="text-lg font-semibold text-white mb-2">Still have questions?</h3>
                 <p className="text-zinc-400 mb-4">Our support team is here to help 24/7</p>
                 <a
-                    href="mailto:support@propshot.com"
+                    href="mailto:support@predictionsfirm.com"
                     className="inline-flex items-center gap-2 px-6 py-2 bg-[#29af73] hover:bg-[#29af73]/80 text-white font-medium rounded-lg transition-colors"
                 >
                     <Zap className="w-4 h-4" />

@@ -179,7 +179,7 @@ function SignupContent() {
                     </p>
                     <Link
                         href="/login"
-                        className="inline-block mt-4 text-blue-400 hover:text-blue-300 font-semibold"
+                        className="inline-block mt-4 text-primary hover:text-primary/80 font-semibold"
                     >
                         Go to Login →
                     </Link>
@@ -193,8 +193,8 @@ function SignupContent() {
             <div className="w-full max-w-md space-y-6">
                 {/* Header */}
                 <div className="text-center">
-                    <Link href="/" className="font-serif font-bold text-4xl tracking-tight text-white">
-                        Propshot
+                    <Link href="/" className="inline-block">
+                        <img src="/logo-wordmark-white.png" alt="Predictions Firm" className="h-10 w-auto mx-auto" />
                     </Link>
                     <p className="mt-4 text-zinc-400 text-sm">
                         Create your trading account
@@ -354,11 +354,11 @@ function SignupContent() {
                                 id="terms"
                                 checked={formData.agreedToTerms}
                                 onCheckedChange={(checked) => setFormData({ ...formData, agreedToTerms: checked as boolean })}
-                                className="mt-0.5 border-zinc-600 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
+                                className="mt-0.5 border-zinc-600 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                             />
                             <Label htmlFor="terms" className="text-sm text-zinc-400 leading-tight cursor-pointer">
                                 I agree to the{" "}
-                                <Link href="/terms" className="text-blue-400 hover:text-blue-300 underline" target="_blank">
+                                <Link href="/terms" className="text-primary hover:text-primary/80 underline" target="_blank">
                                     Terms and Conditions
                                 </Link>
                             </Label>
@@ -371,7 +371,7 @@ function SignupContent() {
                         <Button
                             type="submit"
                             disabled={isLoading || !allPasswordChecksPassed || !passwordsMatch || !formData.agreedToTerms || !botVerified}
-                            className="w-full h-12 bg-blue-600 hover:bg-blue-500 text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-full h-12 bg-primary hover:bg-primary/90 text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Sign Up"}
                         </Button>
@@ -381,7 +381,7 @@ function SignupContent() {
                 {/* Sign In Link */}
                 <p className="text-center text-sm text-zinc-500">
                     Already have an account?{" "}
-                    <Link href="/login" className="text-blue-400 hover:text-blue-300 font-semibold">
+                    <Link href="/login" className="text-primary hover:text-primary/80 font-semibold">
                         Sign in
                     </Link>
                 </p>

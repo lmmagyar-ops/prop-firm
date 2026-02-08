@@ -19,8 +19,8 @@ export function ComparisonSection() {
             <div className="h-px w-full bg-[var(--vapi-border)] mb-24" />
 
             <div className="text-center mb-16">
-                <div className="mono-label text-[var(--vapi-mint)] mb-4">Why Propshot</div>
-                <h2 className="text-4xl md:text-5xl font-black text-white tracking-tight mb-4">
+                <div className="mono-label text-[var(--vapi-mint)] mb-4">Why Predictions Firm</div>
+                <h2 className="text-4xl md:text-5xl font-medium text-white tracking-tight mb-4">
                     See The Difference.
                 </h2>
                 <p className="text-[var(--vapi-gray-text)] text-lg max-w-2xl mx-auto">
@@ -40,7 +40,7 @@ export function ComparisonSection() {
                                         <div className="w-10 h-10 rounded-xl bg-[var(--vapi-mint)]/10 border border-[var(--vapi-mint)]/30 flex items-center justify-center">
                                             <BarChart3 className="w-5 h-5 text-[var(--vapi-mint)]" />
                                         </div>
-                                        <span className="font-bold text-white">Propshot</span>
+                                        <span className="font-bold text-white">Predictions Firm</span>
                                     </div>
                                 </th>
                                 <th className="p-6 text-center">

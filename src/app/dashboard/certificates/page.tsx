@@ -35,14 +35,14 @@ export default async function CertificatesPage() {
                         <CertificatePreview {...data.featured} />
                     ) : (
                         <div className="w-full aspect-[1.586/1] bg-[#0B0E14] border border-white/5 rounded-3xl flex flex-col items-center justify-center p-8 text-center relative overflow-hidden group">
-                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-blue-500/5 via-transparent to-transparent opacity-50" />
+                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-primary/5 via-transparent to-transparent opacity-50" />
 
                             <div className="w-16 h-16 rounded-full bg-zinc-900 border border-white/5 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-500">
                                 <Lock className="w-6 h-6 text-zinc-600" />
                             </div>
                             <h3 className="text-xl font-bold text-white mb-2">No Active Certificate</h3>
                             <p className="text-zinc-500 max-w-sm">
-                                Complete a challenge or request your first payout to unlock your official Propshot certificate.
+                                Complete a challenge or request your first payout to unlock your official Predictions Firm certificate.
                             </p>
                         </div>
                     )}

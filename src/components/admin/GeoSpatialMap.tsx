@@ -147,7 +147,7 @@ export function GeoSpatialMap() {
 
     return (
         <Card className="bg-zinc-900/40 border-white/5 backdrop-blur-md shadow-2xl relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-blue-500/30 to-transparent" />
+            <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
             <CardHeader>
                 <CardTitle className="text-lg font-medium text-zinc-200">Live Trade Map</CardTitle>
                 <CardDescription className="text-zinc-500">Global trading activity in real-time</CardDescription>

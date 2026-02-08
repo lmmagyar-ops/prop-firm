@@ -75,7 +75,7 @@ export function MiniAcademy() {
                     viewport={{ once: true }}
                     transition={{ duration: 0.6 }}
                 >
-                    <h2 className="text-4xl md:text-5xl font-black tracking-tighter text-white leading-tight">
+                    <h2 className="text-4xl md:text-5xl font-medium tracking-tight text-white leading-tight">
                         You're Already an Analyst.
                         <br />
                         <span className="text-zinc-500">You Just Didn't Know It.</span>
@@ -95,7 +95,7 @@ export function MiniAcademy() {
                 transition={{ duration: 0.7, delay: 0.2 }}
                 className="relative"
             >
-                <div className="absolute -inset-1 bg-gradient-to-r from-purple-600 to-blue-600 rounded-3xl blur-xl opacity-30" />
+                <div className="absolute -inset-1 bg-gradient-to-r from-purple-600 to-primary rounded-3xl blur-xl opacity-30" />
 
                 <div className="relative bg-gradient-to-b from-[#131722] to-[#0B0E14] border border-[#2E3A52] rounded-3xl p-8 md:p-12">
 
@@ -119,11 +119,11 @@ export function MiniAcademy() {
                         >
                             {/* News Headline */}
                             <div className="mb-8 space-y-4">
-                                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-bold uppercase tracking-wider">
+                                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold uppercase tracking-wider">
                                     📰 Breaking News
                                 </div>
 
-                                <h3 className="text-2xl md:text-3xl font-black text-white leading-tight">
+                                <h3 className="text-2xl md:text-3xl font-normal text-white leading-tight">
                                     {scenario.headline}
                                 </h3>
 
@@ -149,7 +149,7 @@ export function MiniAcademy() {
                                         <div className="absolute inset-0 bg-gradient-to-t from-green-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                                         <div className="relative flex flex-col items-center gap-3">
                                             <TrendingUp className="w-8 h-8 text-green-400" />
-                                            <span className="text-xl font-black text-green-400">Price Goes UP</span>
+                                            <span className="text-xl font-medium text-green-400">Price Goes UP</span>
                                         </div>
                                     </button>
 
@@ -160,7 +160,7 @@ export function MiniAcademy() {
                                         <div className="absolute inset-0 bg-gradient-to-t from-red-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                                         <div className="relative flex flex-col items-center gap-3">
                                             <TrendingDown className="w-8 h-8 text-red-400" />
-                                            <span className="text-xl font-black text-red-400">Price Goes DOWN</span>
+                                            <span className="text-xl font-medium text-red-400">Price Goes DOWN</span>
                                         </div>
                                     </button>
                                 </div>
@@ -182,7 +182,7 @@ export function MiniAcademy() {
                                                 <XCircle className="w-8 h-8 text-red-400 flex-shrink-0" />
                                             )}
                                             <div>
-                                                <h4 className={`text-2xl font-black mb-2 ${isCorrect ? 'text-green-400' : 'text-red-400'
+                                                <h4 className={`text-2xl font-medium mb-2 ${isCorrect ? 'text-green-400' : 'text-red-400'
                                                     }`}>
                                                     {isCorrect ? 'Correct!' : 'Not Quite'}
                                                 </h4>

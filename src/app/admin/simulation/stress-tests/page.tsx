@@ -162,7 +162,7 @@ export default function StressTestsPage() {
                             className={`
                                 p-6 rounded-xl border-2 text-left transition-all
                                 ${selectedScenario === scenario.key
-                                    ? 'bg-blue-950/50 border-blue-500 shadow-lg shadow-blue-500/20'
+                                    ? 'bg-primary/5 border-primary shadow-lg shadow-primary/20'
                                     : 'bg-slate-800/50 border-slate-700 hover:border-slate-600 hover:bg-slate-800/70'
                                 }
                                 ${isRunning ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
@@ -282,7 +282,7 @@ export default function StressTestsPage() {
                 {/* Loading State */}
                 {isRunning && (
                     <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-12 text-center">
-                        <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
+                        <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mb-4"></div>
                         <p className="text-slate-400">Running stress test simulation...</p>
                     </div>
                 )}

@@ -120,9 +120,9 @@ export function PayoutForecast() {
                         <div className="text-xs text-zinc-500 uppercase tracking-wider">Last Week</div>
                         <div className="text-lg font-bold text-white">$22k</div>
                     </div>
-                    <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                        <div className="text-xs text-blue-400/70 uppercase tracking-wider">4-Week Forecast</div>
-                        <div className="text-lg font-bold text-blue-400">${(totalForecast / 1000).toFixed(0)}k</div>
+                    <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg">
+                        <div className="text-xs text-primary/70 uppercase tracking-wider">4-Week Forecast</div>
+                        <div className="text-lg font-bold text-primary">${(totalForecast / 1000).toFixed(0)}k</div>
                     </div>
                     <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
                         <div className="text-xs text-emerald-400/70 uppercase tracking-wider flex items-center gap-1">

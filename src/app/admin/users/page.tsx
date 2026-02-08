@@ -344,7 +344,7 @@ export default function UsersPage() {
         if (user.totalPnL > 5000) return { label: 'WHALE', color: 'text-amber-400', icon: Crown };
         if (user.totalPnL > 1000) return { label: 'SNIPER', color: 'text-green-400', icon: TrendingUp };
         if (user.totalPnL < -1000) return { label: 'REKT', color: 'text-red-400', icon: Skull };
-        return { label: 'TRADER', color: 'text-blue-400', icon: User };
+        return { label: 'TRADER', color: 'text-primary', icon: User };
     };
 
     return (
@@ -489,8 +489,8 @@ export default function UsersPage() {
                     <Card className="bg-zinc-900/40 border-white/5">
                         <CardContent className="pt-6">
                             <div className="flex items-center gap-3">
-                                <div className="p-2 rounded-lg bg-blue-500/10">
-                                    <Users className="h-5 w-5 text-blue-400" />
+                                <div className="p-2 rounded-lg bg-primary/10">
+                                    <Users className="h-5 w-5 text-primary" />
                                 </div>
                                 <div>
                                     <div className="text-2xl font-bold text-white tabular-nums">{summary.totalUsers}</div>
@@ -765,7 +765,7 @@ export default function UsersPage() {
                                                                     <DropdownMenuItem
                                                                         onClick={() => updateChallenge(challenge.id, { phase: 'challenge' })}
                                                                         disabled={updatingChallengeId === challenge.id}
-                                                                        className="cursor-pointer text-blue-400 focus:text-blue-400 focus:bg-blue-500/10"
+                                                                        className="cursor-pointer text-primary focus:text-primary focus:bg-primary/10"
                                                                     >
                                                                         <Target className="h-3 w-3 mr-2" />
                                                                         Challenge
@@ -864,7 +864,7 @@ export default function UsersPage() {
                                                     disabled={updatingUserId === selectedUser.id}
                                                     className={`w-full ${selectedUser.role === 'admin'
                                                         ? 'border-purple-500/20 text-purple-400 hover:bg-purple-500/10'
-                                                        : 'border-blue-500/20 text-blue-400 hover:bg-blue-500/10'}`}
+                                                        : 'border-primary/20 text-primary hover:bg-primary/10'}`}
                                                 >
                                                     {updatingUserId === selectedUser.id ? (
                                                         <>
@@ -886,7 +886,7 @@ export default function UsersPage() {
                                             </AlertDialogTrigger>
                                             <AlertDialogContent className="bg-zinc-900 border-zinc-700">
                                                 <AlertDialogHeader>
-                                                    <AlertDialogTitle className={selectedUser.role === 'admin' ? 'text-orange-400' : 'text-blue-400'}>
+                                                    <AlertDialogTitle className={selectedUser.role === 'admin' ? 'text-orange-400' : 'text-primary'}>
                                                         {selectedUser.role === 'admin' ? 'Demote to User?' : 'Promote to Admin?'}
                                                     </AlertDialogTitle>
                                                     <AlertDialogDescription className="text-zinc-400">
@@ -907,7 +907,7 @@ export default function UsersPage() {
                                                     <AlertDialogCancel className="bg-zinc-800 border-zinc-700 text-zinc-300 hover:bg-zinc-700">Cancel</AlertDialogCancel>
                                                     <AlertDialogAction
                                                         onClick={() => updateUser(selectedUser.id, { role: selectedUser.role === 'admin' ? 'user' : 'admin' })}
-                                                        className={selectedUser.role === 'admin' ? 'bg-orange-600 hover:bg-orange-700' : 'bg-blue-600 hover:bg-blue-700'}
+                                                        className={selectedUser.role === 'admin' ? 'bg-orange-600 hover:bg-orange-700' : 'bg-primary hover:bg-primary/80'}
                                                     >
                                                         {selectedUser.role === 'admin' ? (
                                                             <>

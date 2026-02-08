@@ -81,7 +81,7 @@ const TerminalDisplay = ({ state }: { state: TerminalState }) => {
                         <motion.div key="execution" className="space-y-1">
                             <TypewriterLine text="> INIT_EXECUTION_ENGINE" color="text-white" />
                             <TypewriterLine text="> CONNECTING_CLOB... OK" delay={0.1} color="text-emerald-500" />
-                            <TypewriterLine text="[EXEC] BUY 'TRUMP' @ $0.45 | qty: 5000" delay={0.3} color="text-blue-400" />
+                            <TypewriterLine text="[EXEC] BUY 'TRUMP' @ $0.45 | qty: 5000" delay={0.3} color="text-primary" />
                             <TypewriterLine text="[EXEC] SELL 'BIDEN' @ $0.12 | qty: 2500" delay={0.4} color="text-red-400" />
                             <TypewriterLine text="[FILL] ORDER #88219 CONFIRMED (32ms)" delay={0.6} color="text-zinc-300" />
                             <TypewriterLine text="[FILL] ORDER #88220 CONFIRMED (28ms)" delay={0.8} color="text-zinc-300" />
@@ -93,11 +93,11 @@ const TerminalDisplay = ({ state }: { state: TerminalState }) => {
                         <motion.div key="velocity" className="space-y-1">
                             <TypewriterLine text="> ANALYZING_TURNOVER" color="text-white" />
                             <TypewriterLine text="CAPITAL_DEPLOYED: $25,000.00" delay={0.1} />
-                            <TypewriterLine text="DAILY_VOLUME: $142,500.00" delay={0.2} color="text-blue-400" />
+                            <TypewriterLine text="DAILY_VOLUME: $142,500.00" delay={0.2} color="text-primary" />
                             <TypewriterLine text="POSITIONS_CLOSED: 42" delay={0.3} />
                             <div className="py-2 border-y border-white/10 my-2">
                                 <div className="text-xs text-zinc-500">VELOCITY_MULTIPLIER</div>
-                                <div className="text-xl font-black text-purple-400">5.7x</div>
+                                <div className="text-xl font-medium text-purple-400">5.7x</div>
                             </div>
                             <TypewriterLine text="> FEE_REBATE_ACTIVED" delay={0.5} color="text-emerald-500" />
                         </motion.div>
@@ -115,7 +115,7 @@ const TerminalDisplay = ({ state }: { state: TerminalState }) => {
                                 <div className="flex justify-between text-green-500"><span>0.64</span> <span>150,000</span></div>
                                 <div className="flex justify-between text-green-400"><span>0.63</span> <span>300,000</span></div>
                             </div>
-                            <TypewriterLine text="> LIQUIDITY_SCORE: HIGH" delay={0.4} color="text-blue-400" />
+                            <TypewriterLine text="> LIQUIDITY_SCORE: HIGH" delay={0.4} color="text-primary" />
                         </motion.div>
                     )}
 
@@ -124,7 +124,7 @@ const TerminalDisplay = ({ state }: { state: TerminalState }) => {
                             <TypewriterLine text="> INITIATE_SETTLEMENT" color="text-white" />
                             <TypewriterLine text="VERIFYING_WALLET... OK" delay={0.2} color="text-emerald-500" />
                             <TypewriterLine text="BATCHING_TRANSFERS... " delay={0.4} />
-                            <TypewriterLine text="TX_HASH: 0x7f...3a2b" delay={0.6} color="text-blue-400" />
+                            <TypewriterLine text="TX_HASH: 0x7f...3a2b" delay={0.6} color="text-primary" />
                             <div className="bg-emerald-500/10 border border-emerald-500/20 p-2 rounded mt-2">
                                 <div className="text-xs text-emerald-400 font-bold flex items-center gap-2">
                                     <CheckCircle2 className="w-3 h-3" /> SETTLEMENT COMPLETE
@@ -157,9 +157,9 @@ export function HighFrequencySection() {
             icon: Zap,
             title: "Direct Market Access",
             desc: "Executions < 100ms. Direct connection to the Polymarket CLOB.",
-            color: "text-blue-400",
-            bg: "bg-blue-500/10",
-            border: "group-hover:border-blue-500/50"
+            color: "text-primary",
+            bg: "bg-primary/10",
+            border: "group-hover:border-primary/50"
         },
         {
             id: "VELOCITY",
@@ -195,13 +195,13 @@ export function HighFrequencySection() {
             <div className="relative bg-gradient-to-b from-[#131722] to-[#0B0E14] border border-[#2E3A52] rounded-[40px] p-8 md:p-16 overflow-hidden">
                 {/* Background Grid/Glow */}
                 <div className="absolute inset-0 bg-[linear-gradient(rgba(46,129,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(46,129,255,0.03)_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_at_center,black,transparent_80%)]" />
-                <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-blue-500/5 blur-[120px] rounded-full pointer-events-none" />
+                <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-primary/5 blur-[120px] rounded-full pointer-events-none" />
 
                 <div className="relative z-10 flex flex-col lg:flex-row items-center gap-16">
 
                     {/* Left: Content & Interactive List */}
                     <div className="flex-1 space-y-8 text-center lg:text-left">
-                        <h2 className="text-4xl md:text-5xl font-black text-white tracking-tighter leading-tight">
+                        <h2 className="text-4xl md:text-5xl font-medium text-white tracking-tight leading-tight">
                             Built for <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#29af73] to-cyan-400">High Frequency</span> <br />
                             Prediction Markets.
                         </h2>
@@ -245,7 +245,7 @@ export function HighFrequencySection() {
 
                     {/* Right: The Interactive Terminal */}
                     <div className="flex-1 w-full relative">
-                        <div className="absolute -inset-1 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl opacity-20 blur-xl" />
+                        <div className="absolute -inset-1 bg-gradient-to-r from-primary to-purple-600 rounded-2xl opacity-20 blur-xl" />
                         <div className="relative bg-[#050505] border border-[#2E3A52] rounded-2xl shadow-2xl h-[500px] w-full max-w-md mx-auto overflow-hidden ring-1 ring-white/5">
                             <TerminalDisplay state={activeState} />
                         </div>

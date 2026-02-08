@@ -1,6 +1,5 @@
 
-import { Sidebar } from "@/components/dashboard/Sidebar";
-import { TopNav } from "@/components/dashboard/TopNav";
+import { DashboardShell } from "@/components/dashboard/DashboardShell";
 import { PageViewTracker } from "@/components/PageViewTracker";
 import { auth } from "@/auth";
 import { db } from "@/db";
@@ -38,17 +37,13 @@ export default async function DashboardLayout({
             {/* Page View Tracking */}
             <PageViewTracker userId={userId} />
 
-            {/* Sidebar now auto-detects active page from URL */}
-            <Sidebar hasActiveChallenge={hasActiveChallenge} />
-
-            <main className="flex-1 ml-0 md:ml-64 flex flex-col min-h-screen">
-                <TopNav userId={userId} />
-
-                <div className="flex-1 p-6 max-w-[1800px] mx-auto w-full">
-                    {children}
-                </div>
-            </main>
+            {/* Client shell handles sidebar collapse + content offset */}
+            <DashboardShell
+                userId={userId}
+                hasActiveChallenge={hasActiveChallenge}
+            >
+                {children}
+            </DashboardShell>
         </div>
     );
 }
-

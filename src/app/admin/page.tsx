@@ -210,7 +210,7 @@ function OverviewTab() {
                                 </div>
                                 <div className="h-2 w-full bg-zinc-800/50 rounded-full overflow-hidden">
                                     <div
-                                        className="h-full bg-blue-500 rounded-full"
+                                        className="h-full bg-primary rounded-full"
                                         style={{ width: `${(stats.activeUsers.challenge / totalUsers) * 100}%` }}
                                     />
                                 </div>
@@ -458,7 +458,7 @@ function TradersTab() {
                 ) : (
                     <div className="space-y-4">
                         {filteredChallenges.map((c) => (
-                            <div key={c.challengeId} className={`flex flex-col sm:flex-row justify-between items-start sm:items-center bg-black/40 p-4 rounded border ${selectedIds.has(c.challengeId) ? 'border-blue-500/50 bg-blue-500/10' : 'border-zinc-800'} gap-4 transition-colors`}>
+                            <div key={c.challengeId} className={`flex flex-col sm:flex-row justify-between items-start sm:items-center bg-black/40 p-4 rounded border ${selectedIds.has(c.challengeId) ? 'border-primary/50 bg-primary/10' : 'border-zinc-800'} gap-4 transition-colors`}>
                                 <div className="flex items-center gap-4">
                                     <Checkbox
                                         checked={selectedIds.has(c.challengeId)}

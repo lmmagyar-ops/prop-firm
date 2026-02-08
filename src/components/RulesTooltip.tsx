@@ -17,7 +17,7 @@ export function RulesTooltip() {
         },
         {
             icon: Shield,
-            color: "text-blue-500",
+            color: "text-primary",
             title: "Max Drawdown",
             value: "8%",
             desc: "Static limit. No trailing nonsense."
@@ -45,7 +45,7 @@ export function RulesTooltip() {
             onMouseLeave={() => setIsOpen(false)}
         >
             <button className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors text-sm font-medium mt-4 group">
-                <Info className="w-4 h-4 group-hover:text-blue-500 transition-colors" />
+                <Info className="w-4 h-4 group-hover:text-primary transition-colors" />
                 View Trading Rules
             </button>
 
@@ -62,7 +62,7 @@ export function RulesTooltip() {
                             {/* Header */}
                             <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/5">
                                 <h3 className="font-bold text-white text-sm uppercase tracking-wider">Evaluation Parameters</h3>
-                                <span className="text-[10px] bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded font-mono">PHASE 1</span>
+                                <span className="text-[10px] bg-primary/20 text-primary px-2 py-0.5 rounded font-mono">PHASE 1</span>
                             </div>
 
                             {/* Rules Grid */}
@@ -86,7 +86,7 @@ export function RulesTooltip() {
                             </div>
 
                             {/* Footer Gradient Line */}
-                            <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 opacity-50" />
+                            <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-purple-500 to-pink-500 opacity-50" />
                         </div>
 
                         {/* Arrow */}

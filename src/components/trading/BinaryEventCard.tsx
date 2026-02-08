@@ -33,7 +33,7 @@ export const BinaryEventCard = memo(function BinaryEventCard({ event, onTrade }:
     };
 
     return (
-        <div className="bg-zinc-900/50 border border-white/5 rounded-xl p-4 hover:border-white/10 transition-all min-h-[180px] h-full flex flex-col">
+        <div className="bg-zinc-900/50 border border-white/5 rounded-xl p-4 hover:border-white/10 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/20 transition-all duration-200 min-h-[180px] h-full flex flex-col">
             {/* Header Row: Icon + Title + Percentage Badge */}
             <div className="flex items-start gap-3 mb-4">
                 {/* Small circular icon */}
@@ -92,12 +92,6 @@ export const BinaryEventCard = memo(function BinaryEventCard({ event, onTrade }:
             {/* Footer Stats */}
             <div className="flex items-center justify-between text-xs text-zinc-500 mt-auto">
                 <span>{formatVolume(event.volume)} Vol.</span>
-                {event.volume > 0 && (
-                    <span className="flex items-center gap-1 text-red-500 font-medium">
-                        <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                        LIVE
-                    </span>
-                )}
             </div>
         </div>
     );

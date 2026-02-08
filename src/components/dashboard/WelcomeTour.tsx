@@ -47,11 +47,11 @@ export function WelcomeTour() {
                         <motion.div
                             initial={{ scale: 0.9, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
-                            className="bg-zinc-900 border border-blue-500/50 p-6 rounded-2xl relative shadow-[0_0_50px_rgba(59,130,246,0.2)]"
+                            className="bg-zinc-900 border border-primary/50 p-6 rounded-2xl relative shadow-[0_0_50px_rgba(59,130,246,0.2)]"
                         >
                             <div className="flex items-start gap-4">
-                                <div className="p-3 bg-blue-500/10 rounded-xl border border-blue-500/20">
-                                    <Target className="w-8 h-8 text-blue-500" />
+                                <div className="p-3 bg-primary/10 rounded-xl border border-primary/20">
+                                    <Target className="w-8 h-8 text-primary" />
                                 </div>
                                 <div>
                                     <h3 className="text-xl font-bold text-white mb-2">Your Mission Monitor</h3>
@@ -60,7 +60,7 @@ export function WelcomeTour() {
                                     </p>
                                     <button
                                         onClick={nextStep}
-                                        className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-lg font-bold text-sm transition-colors"
+                                        className="bg-primary hover:bg-primary/90 text-white px-6 py-2 rounded-lg font-bold text-sm transition-colors"
                                     >
                                         Next: Risk Rules
                                     </button>
@@ -68,7 +68,7 @@ export function WelcomeTour() {
                             </div>
 
                             {/* Decorative Arrow pointing up */}
-                            <div className="absolute -top-3 left-12 w-6 h-6 bg-zinc-900 border-t border-l border-blue-500/50 rotate-45" />
+                            <div className="absolute -top-3 left-12 w-6 h-6 bg-zinc-900 border-t border-l border-primary/50 rotate-45" />
                         </motion.div>
                     </div>
                 )}
@@ -110,7 +110,7 @@ export function WelcomeTour() {
                             animate={{ scale: 1, y: 0, opacity: 1 }}
                             className="bg-zinc-900 border border-zinc-800 p-8 rounded-3xl"
                         >
-                            <h2 className="text-3xl font-black text-white mb-4">System Online</h2>
+                            <h2 className="text-3xl font-medium text-white mb-4">System Online</h2>
                             <p className="text-zinc-400 mb-8">
                                 You are now connected to the live Prediction Market feed. Execution is instant. Good luck.
                             </p>

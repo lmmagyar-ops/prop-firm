@@ -69,7 +69,7 @@ export function PayoutRequestForm({ availableBalance }: { availableBalance: numb
 
     return (
         <div className="space-y-6">
-            {/* Tabs (Trading Withdrawal vs Propshot Payout) */}
+            {/* Tabs (Trading Withdrawal vs Predictions Firm Payout) */}
             <div className="flex gap-4 mb-6">
                 <div className="flex-1 p-4 bg-[#1A232E] border border-[#2E3A52] rounded-xl text-center cursor-not-allowed opacity-50">
                     <p className="text-sm text-zinc-500">Trading Withdrawal</p>
@@ -77,7 +77,7 @@ export function PayoutRequestForm({ availableBalance }: { availableBalance: numb
                 </div>
                 <div className="flex-1 p-4 bg-[#29af73]/10 border border-[#29af73]/30 rounded-xl text-center cursor-pointer relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-4 h-4 bg-[#29af73] rounded-bl-lg" />
-                    <p className="text-sm text-[#29af73] font-bold">Propshot Payout</p>
+                    <p className="text-sm text-[#29af73] font-bold">Predictions Firm Payout</p>
                     <p className="text-2xl font-bold font-mono text-white">$300.00</p>
                 </div>
             </div>
@@ -143,7 +143,7 @@ export function PayoutRequestForm({ availableBalance }: { availableBalance: numb
             <Button
                 onClick={handleSubmitPayout}
                 disabled={isSubmitting}
-                className="w-full bg-blue-600 hover:bg-blue-500 py-6 text-lg font-bold shadow-lg shadow-blue-500/20"
+                className="w-full bg-primary hover:bg-primary/90 py-6 text-lg font-bold shadow-lg shadow-primary/20"
             >
                 {isSubmitting ? (
                     <Loader2 className="w-6 h-6 animate-spin" />

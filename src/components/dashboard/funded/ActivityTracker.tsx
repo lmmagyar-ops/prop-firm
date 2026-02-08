@@ -8,6 +8,8 @@ interface ActivityTrackerProps {
     lastActivityAt: Date | null;
     payoutCycleStart: Date | null;
     platform: "polymarket" | "kalshi";
+    /** Actual dates the user traded — used for the 14-day heatmap */
+    tradingDayDates?: string[]; // ISO date strings (YYYY-MM-DD)
 }
 
 export function ActivityTracker({
@@ -16,7 +18,10 @@ export function ActivityTracker({
     lastActivityAt,
     payoutCycleStart,
     platform,
+    tradingDayDates = [],
 }: ActivityTrackerProps) {
+    // Build a Set of traded dates for O(1) lookup in heatmap
+    const tradedDateSet = new Set(tradingDayDates);
     const progressPercent = Math.min(100, (tradingDays / requiredDays) * 100);
 
     // Calculate days since last activity
@@ -91,8 +96,9 @@ export function ActivityTracker({
                 </div>
                 <div className="flex gap-1">
                     {last14Days.map((date, i) => {
-                        // Simulate activity (in reality, this would come from actual data)
-                        const hasActivity = Math.random() > 0.6;
+                        // Check if the user actually traded on this date
+                        const dateStr = date.toISOString().split('T')[0];
+                        const hasActivity = tradedDateSet.has(dateStr);
                         const isToday = i === 13;
 
                         return (
@@ -120,21 +126,21 @@ export function ActivityTracker({
             <div className="grid grid-cols-2 gap-4">
                 {/* Last Activity */}
                 <div className={`p-4 rounded-xl border ${inactivityDanger
-                        ? 'bg-red-500/10 border-red-500/30'
-                        : inactivityWarning
-                            ? 'bg-yellow-500/10 border-yellow-500/30'
-                            : 'bg-zinc-900/50 border-white/5'
+                    ? 'bg-red-500/10 border-red-500/30'
+                    : inactivityWarning
+                        ? 'bg-yellow-500/10 border-yellow-500/30'
+                        : 'bg-zinc-900/50 border-white/5'
                     }`}>
                     <div className="flex items-center gap-2 mb-1">
                         <Clock className={`w-4 h-4 ${inactivityDanger ? 'text-red-500' :
-                                inactivityWarning ? 'text-yellow-500' :
-                                    'text-zinc-500'
+                            inactivityWarning ? 'text-yellow-500' :
+                                'text-zinc-500'
                             }`} />
                         <span className="text-xs text-zinc-500 uppercase tracking-wider">Last Activity</span>
                     </div>
                     <div className={`text-lg font-bold ${inactivityDanger ? 'text-red-500' :
-                            inactivityWarning ? 'text-yellow-500' :
-                                'text-white'
+                        inactivityWarning ? 'text-yellow-500' :
+                            'text-white'
                         }`}>
                         {lastActivityAt
                             ? daysSinceActivity === 0

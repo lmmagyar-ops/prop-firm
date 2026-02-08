@@ -31,11 +31,11 @@ export default function PaymentSuccessPage() {
 
     return (
         <div className="min-h-screen bg-black flex items-center justify-center p-4 relative overflow-hidden font-sans">
-            <div className="absolute top-[-20%] left-[-10%] w-[800px] h-[800px] bg-blue-600/10 rounded-full blur-[120px] pointer-events-none" />
+            <div className="absolute top-[-20%] left-[-10%] w-[800px] h-[800px] bg-primary/10 rounded-full blur-[120px] pointer-events-none" />
 
             {status === "processing" && (
                 <div className="text-center z-10">
-                    <div className="w-16 h-16 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin mx-auto mb-6" />
+                    <div className="w-16 h-16 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-6" />
                     <h2 className="text-2xl font-bold text-white mb-2">Provisioning Terminal</h2>
                     <p className="text-zinc-500 animate-pulse">Allocating capital and risk controls...</p>
                 </div>
@@ -88,7 +88,7 @@ export default function PaymentSuccessPage() {
                     </div>
 
                     <Link href="/dashboard">
-                        <Button className="w-full h-12 bg-blue-600 hover:bg-blue-500 text-white font-bold text-lg rounded-xl shadow-[0_0_20px_-5px_rgba(37,99,235,0.5)] transition-all">
+                        <Button className="w-full h-12 bg-primary hover:bg-primary/90 text-white font-bold text-lg rounded-xl shadow-[0_0_20px_-5px_rgba(41,175,115,0.5)] transition-all">
                             Enter Terminal <ArrowRight className="ml-2 w-5 h-5" />
                         </Button>
                     </Link>

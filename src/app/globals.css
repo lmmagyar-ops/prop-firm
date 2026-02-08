@@ -83,24 +83,20 @@
 }
 
 .dark {
-  /* New "Professional Navy" Theme (Polymarket Inspired) */
-  /* Deep Slate (Matches Market Cards perfectly) */
+  /* Professional Navy Theme — Brand Green Primary */
   --background: #151B26;
-  /* Deep Navy Base */
   --foreground: oklch(0.985 0 0);
 
-  /* Cards - Interactive Elements */
+  /* Cards */
   --card: oklch(0.18 0.05 260);
-  /* Distinct lighter navy */
   --card-foreground: oklch(0.985 0 0);
 
   /* Popovers */
   --popover: oklch(0.18 0.05 260);
   --popover-foreground: oklch(0.985 0 0);
 
-  /* Primary - "Sky Blue" Action Color */
-  --primary: oklch(0.62 0.19 245);
-  /* Vivid Sky Blue */
+  /* Primary — Brand Green (#29af73) */
+  --primary: #29af73;
   --primary-foreground: oklch(1 0 0);
 
   /* Secondary / Muted */
@@ -113,37 +109,37 @@
   --accent: oklch(0.25 0.05 260);
   --accent-foreground: oklch(0.985 0 0);
 
-  /* Borders - Subtle Navy */
+  /* Borders */
   --border: oklch(0.25 0.05 260);
   --input: oklch(0.25 0.05 260);
-  --ring: oklch(0.62 0.19 245);
-  /* Match Primary */
+  --ring: #29af73;
 
   /* Destructive */
   --destructive: oklch(0.396 0.141 25.723);
 
   /* Charts */
-  --chart-1: oklch(0.62 0.19 245);
-  /* Blue */
+  --chart-1: #29af73;
   --chart-2: oklch(0.696 0.17 162.48);
-  /* Green */
   --chart-3: oklch(0.769 0.188 70.08);
-  /* Orange */
   --chart-4: oklch(0.627 0.265 303.9);
-  /* Purple */
   --chart-5: oklch(0.645 0.246 16.439);
-  /* Red */
 
   /* Sidebar */
   --sidebar: oklch(0.14 0.05 260);
-  /* Blend with bg */
   --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.62 0.19 245);
+  --sidebar-primary: #29af73;
   --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-accent: oklch(0.18 0.05 260);
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(0.25 0.05 260);
-  --sidebar-ring: oklch(0.62 0.19 245);
+  --sidebar-ring: #29af73;
+
+  /* ── Brand Design Tokens ── */
+  --brand-green: #29af73;
+  --brand-green-hover: #238c5c;
+  --brand-teal: #295353;
+  --brand-danger: #ad2a3d;
+  --brand-critical: #9e0028;
 }
 
 @layer utilities {
@@ -345,15 +341,15 @@
    VAPI-INSPIRED DESIGN SYSTEM
    ======================================== */
 
-/* Vapi Color Palette */
+/* Vapi Color Palette — Aligned with Brand */
 :root {
   --vapi-black: #000000;
-  --vapi-mint: #4FD1C5;
-  --vapi-mint-light: #B4F4E0;
+  --vapi-mint: #29af73;
+  --vapi-mint-light: #52c98f;
   --vapi-gray-text: #94A3B8;
   --vapi-border: #1E293B;
-  --vapi-glow-indigo: rgba(99, 102, 241, 0.15);
-  --vapi-glow-purple: rgba(139, 92, 246, 0.1);
+  --vapi-glow-indigo: rgba(41, 175, 115, 0.15);
+  --vapi-glow-purple: rgba(41, 83, 83, 0.1);
 }
 
 /* Dot Grid Background Pattern */

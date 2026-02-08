@@ -9,6 +9,7 @@ import { MarketTicker } from "@/components/MarketTicker";
 import { OpenPositions } from "./OpenPositions";
 import { ProbabilityChart } from "@/components/trading/ProbabilityChart";
 import { useRouter } from "next/navigation";
+import { getActiveEvents, type EventMetadata } from "@/app/actions/market";
 
 import { ChallengeFailedModal } from "@/components/dashboard/ChallengeFailedModal";
 import { ChallengePassedModal } from "@/components/dashboard/ChallengePassedModal";
@@ -23,7 +24,6 @@ interface DashboardViewProps {
 
 export function DashboardView({ initialBalance = null, demoMode = false, userId = "demo-user-1", challengeHistory = [] }: DashboardViewProps) {
     const [balance, setBalance] = useState<number | null>(initialBalance);
-    const [price, setPrice] = useState(0.56);
     const router = useRouter();
 
     // Get selected challenge from context
@@ -44,13 +44,51 @@ export function DashboardView({ initialBalance = null, demoMode = false, userId 
         }
     }, [initialBalance, latestChallenge]);
 
-    // State for Dynamic Market Info
-    const [marketInfo, setMarketInfo] = useState({
-        id: "simulated-btc",
-        title: "BTC/USD (Perpetual)",
-        volume: "$1.2B",
-        category: "CRYPTO"
-    });
+    // Featured market — fetched from real Redis data
+    const [featuredMarket, setFeaturedMarket] = useState<{
+        id: string;
+        title: string;
+        price: number;
+        volume: string;
+        category: string;
+    } | null>(null);
+
+    useEffect(() => {
+        if (demoMode) {
+            setBalance(10000);
+            return;
+        }
+
+        async function fetchFeaturedMarket() {
+            try {
+                const events = await getActiveEvents("polymarket");
+                if (events.length === 0) return;
+
+                // Pick the highest-volume event as the featured market
+                const top = events.sort((a, b) => b.volume - a.volume)[0];
+                const price = top.markets[0]?.price ?? 0;
+                const tokenId = top.markets[0]?.id;
+
+                if (price > 0 && price < 1 && tokenId) {
+                    const vol = top.volume >= 1_000_000
+                        ? `$${(top.volume / 1_000_000).toFixed(1)}M`
+                        : `$${(top.volume / 1_000).toFixed(0)}K`;
+
+                    setFeaturedMarket({
+                        id: tokenId,
+                        title: top.title,
+                        price,
+                        volume: vol,
+                        category: top.categories?.[0]?.toUpperCase() || "MARKETS",
+                    });
+                }
+            } catch (error) {
+                console.error("[DashboardView] Failed to fetch featured market:", error);
+            }
+        }
+
+        fetchFeaturedMarket();
+    }, [demoMode]);
 
     // Derived states
     const currentEquity = balance || 10000;
@@ -58,74 +96,6 @@ export function DashboardView({ initialBalance = null, demoMode = false, userId 
     const MAX_DRAWDOWN = 10000 * 0.10;
     const drawdownAmount = 10000 - currentEquity;
     const drawdownPercent = Math.max(0, drawdownAmount / MAX_DRAWDOWN);
-
-    // Live Price Updates via WebSocket
-    useEffect(() => {
-        if (demoMode) {
-            setBalance(10000);
-            return;
-        }
-
-        const isLive = false;
-
-        // DISABLED: WebSocket (Not available on Vercel serverless)
-        // TODO: Re-enable when WS server is deployed to Railway/Render
-        /*
-        const ws = new WebSocket("ws://localhost:3001");
-
-        ws.onopen = () => {
-            console.log("🟢 Connected to Market Data Feed");
-        };
-
-        ws.onmessage = (event) => {
-            try {
-                const payload = JSON.parse(event.data);
-
-                if (payload.price && payload.asset_id) {
-                    isLive = true; // Switch to live mode on first packet
-                    setPrice(parseFloat(payload.price));
-
-                    // Snap to the real market
-                    setMarketInfo(prev => {
-                        if (prev.id !== payload.asset_id) {
-                            return {
-                                id: payload.asset_id,
-                                title: "Polymarket Live Feed (High Frequency)",
-                                volume: "$24M+",
-                                category: "CRYPTO"
-                            };
-                        }
-                        return prev;
-                    });
-                }
-            } catch (e) {
-                console.error("WS Parse Error", e);
-            }
-        };
-
-        ws.onerror = (e) => {
-            console.warn("WS Connection Failed. Using Polling Fallback.");
-        };
-
-        ws.onclose = () => {
-            console.log("WS Closed");
-        };
-        */        // 2. Simulation (The Fallback / Filler)
-        const simInterval = setInterval(() => {
-            if (!isLive) {
-                // Generate random walk for BTC simulation
-                setPrice(prev => {
-                    const change = (Math.random() - 0.5) * 0.002;
-                    return Math.max(0.01, prev + change);
-                });
-            }
-        }, 1000);
-
-        return () => {
-            // ws.close();
-            clearInterval(simInterval);
-        };
-    }, [demoMode]);
 
     return (
         <div className="font-sans text-white">
@@ -147,47 +117,63 @@ export function DashboardView({ initialBalance = null, demoMode = false, userId 
                     daysRemaining={29}
                 />
 
-                {/* 3. Market Card (Clickable to go to Trade page) */}
+                {/* 3. Featured Market Card (Real data or CTA) */}
                 <div
                     onClick={() => router.push('/dashboard/trade')}
                     className="cursor-pointer group relative overflow-hidden bg-[#1A232E] border border-[#2E3A52] hover:border-zinc-600 transition-all duration-300 rounded-xl p-6"
                 >
-                    <div className="flex justify-between items-start mb-6">
-                        <div className="flex gap-4">
-                            <div className="relative">
-                                {/* Dynamic Icon based on Category could go here */}
-                                <div className="w-12 h-12 rounded-lg bg-zinc-800 flex items-center justify-center text-2xl border border-zinc-700 shadow-lg">⚡️</div>
-                                <div className="absolute -bottom-2 -right-2 w-8 h-8 rounded-lg bg-zinc-900 flex items-center justify-center text-lg border border-zinc-700 shadow-lg">🟢</div>
-                            </div>
-                            <div>
-                                <h1 className="text-xl md:text-2xl font-black text-white leading-tight group-hover:text-blue-400 transition-colors">
-                                    {marketInfo.title}
-                                </h1>
-                                <div className="flex items-center gap-3 mt-2 text-xs font-bold tracking-wider text-zinc-500">
-                                    <span className="text-blue-400">{marketInfo.category}</span>
-                                    <span>•</span>
-                                    <span>VOL: {marketInfo.volume}</span>
-                                    <span>•</span>
-                                    <span className="text-green-500">LIVE</span>
+                    {featuredMarket ? (
+                        <>
+                            <div className="flex justify-between items-start mb-6">
+                                <div className="flex gap-4">
+                                    <div className="relative">
+                                        <div className="w-12 h-12 rounded-lg bg-zinc-800 flex items-center justify-center text-2xl border border-zinc-700 shadow-lg">📈</div>
+                                        <div className="absolute -bottom-2 -right-2 w-8 h-8 rounded-lg bg-zinc-900 flex items-center justify-center text-lg border border-zinc-700 shadow-lg">🟢</div>
+                                    </div>
+                                    <div>
+                                        <h1 className="text-xl md:text-2xl font-medium text-white leading-tight group-hover:text-primary transition-colors">
+                                            {featuredMarket.title}
+                                        </h1>
+                                        <div className="flex items-center gap-3 mt-2 text-xs font-bold tracking-wider text-zinc-500">
+                                            <span className="text-primary">{featuredMarket.category}</span>
+                                            <span>•</span>
+                                            <span>VOL: {featuredMarket.volume}</span>
+                                            <span>•</span>
+                                            <span className="text-green-500">LIVE</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <div className="text-4xl font-medium text-green-500 font-mono tracking-tighter">
+                                        {Math.round(featuredMarket.price * 100)}¢
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        <div className="text-right">
-                            <div className="text-4xl font-black text-green-500 font-mono tracking-tighter">
-                                {(price * 100).toFixed(1)}¢
-                            </div>
-                            <div className="inline-flex items-center gap-1 bg-green-500/10 text-green-400 px-2 py-0.5 rounded text-[10px] font-bold mt-1">
-                                <TrendingUp className="w-3 h-3" /> +2.4% TODAY
-                            </div>
-                        </div>
-                    </div>
 
-                    {/* Mini Chart Preview */}
-                    <div className="h-[200px] w-full rounded-lg overflow-hidden pointer-events-none opacity-80 group-hover:opacity-100 transition-opacity">
-                        <ProbabilityChart currentPrice={price} outcome="YES" />
-                    </div>
+                            {/* Real Chart with real tokenId */}
+                            <div className="h-[200px] w-full rounded-lg overflow-hidden pointer-events-none opacity-80 group-hover:opacity-100 transition-opacity">
+                                <ProbabilityChart
+                                    tokenId={featuredMarket.id}
+                                    currentPrice={featuredMarket.price}
+                                    outcome="YES"
+                                />
+                            </div>
+                        </>
+                    ) : (
+                        /* Honest empty state — no fake data */
+                        <div className="flex flex-col items-center justify-center py-12 text-center">
+                            <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center text-3xl mb-4 border border-primary/20">📊</div>
+                            <h2 className="text-xl font-bold text-white mb-2">Start Trading</h2>
+                            <p className="text-zinc-500 text-sm max-w-md">
+                                Browse live prediction markets and place your first trade.
+                            </p>
+                            <div className="mt-4 px-6 py-2 bg-primary/10 text-primary rounded-lg text-sm font-bold border border-primary/20 group-hover:bg-primary/20 transition-colors">
+                                Explore Markets →
+                            </div>
+                        </div>
+                    )}
 
-                    <div className="absolute inset-0 bg-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                    <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
                 </div>
 
                 {/* 4. Open Positions */}
@@ -200,13 +186,17 @@ export function DashboardView({ initialBalance = null, demoMode = false, userId 
             {/* Mobile Nav */}
             <MobileNav />
 
-            {/* Mobile Sticky Button - Navigate to Trade page */}
+            {/* Mobile Sticky Button */}
             <div className="lg:hidden fixed bottom-20 left-4 right-4 z-40">
                 <button
                     onClick={() => router.push('/dashboard/trade')}
-                    className="w-full bg-[#29af73] text-white font-black uppercase py-4 rounded-xl shadow-2xl shadow-blue-900/50 border border-blue-500/50 flex items-center justify-center gap-2"
+                    className="w-full bg-[#29af73] text-white font-black uppercase py-4 rounded-xl shadow-2xl shadow-primary/30 border border-primary/50 flex items-center justify-center gap-2"
                 >
-                    Trade Now • {(price * 100).toFixed(1)}¢
+                    {featuredMarket ? (
+                        <>Trade Now • {Math.round(featuredMarket.price * 100)}¢</>
+                    ) : (
+                        <>Explore Markets</>
+                    )}
                 </button>
             </div>
 

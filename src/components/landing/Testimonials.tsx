@@ -85,7 +85,7 @@ const TESTIMONIALS: Testimonial[] = [
 // Tier badge colors
 const TIER_COLORS: Record<string, string> = {
     Scout: "bg-zinc-700 text-zinc-300",
-    Grinder: "bg-blue-900/50 text-blue-400",
+    Grinder: "bg-[#295353]/50 text-primary",
     Executive: "bg-purple-900/50 text-purple-400",
 };
 
@@ -238,8 +238,8 @@ export function Testimonials() {
                             key={index}
                             onClick={() => setCurrentIndex(index)}
                             className={`w-2 h-2 rounded-full transition-all ${index === currentIndex
-                                    ? "w-6 bg-[#29af73]"
-                                    : "bg-zinc-700 hover:bg-zinc-600"
+                                ? "w-6 bg-[#29af73]"
+                                : "bg-zinc-700 hover:bg-zinc-600"
                                 }`}
                             role="tab"
                             aria-selected={index === currentIndex}

@@ -72,7 +72,7 @@ export default function PromotionsDocsPage() {
                             <div className="text-zinc-400">25% off all tiers. Example: <code>SUMMER25</code></div>
                         </div>
                         <div>
-                            <div className="font-mono text-blue-400 mb-1">Fixed Amount</div>
+                            <div className="font-mono text-primary mb-1">Fixed Amount</div>
                             <div className="text-zinc-400">$50 off. Example: <code>SAVE50</code></div>
                         </div>
                         <div>
@@ -195,10 +195,10 @@ export default function PromotionsDocsPage() {
                 </div>
 
                 <div className="grid md:grid-cols-3 gap-4">
-                    <Card className="bg-blue-500/10 border-blue-500/20">
+                    <Card className="bg-primary/10 border-primary/20">
                         <CardContent className="pt-6">
                             <div className="flex items-center gap-2 mb-3">
-                                <Badge variant="outline" className="bg-blue-500/20 text-blue-400 border-blue-500/30">Tier 1</Badge>
+                                <Badge variant="outline" className="bg-primary/20 text-primary border-primary/30">Tier 1</Badge>
                                 <span className="text-xs text-zinc-500">Self-Serve</span>
                             </div>
                             <div className="text-2xl font-bold text-white mb-1">10%</div>
@@ -281,7 +281,7 @@ export default function PromotionsDocsPage() {
                             </ul>
                         </div>
                         <div>
-                            <div className="font-mono text-blue-400 mb-2">2. Assess Promotional Strategy</div>
+                            <div className="font-mono text-primary mb-2">2. Assess Promotional Strategy</div>
                             <ul className="space-y-1 text-zinc-400 ml-4">
                                 <li>• Read their application strategy: Do they have a plan or just "I'll post it"?</li>
                                 <li>• Best affiliates create <strong>tutorials</strong> or <strong>case studies</strong>, not just ads</li>

@@ -72,7 +72,7 @@ const Header = memo(function Header({ volume, activeTraders, mobile }: HeaderPro
                     </div>
                 )}
                 <div className="flex items-center gap-1 bg-zinc-900 px-2 py-1 rounded-md border border-zinc-800">
-                    <Users className="w-3 h-3 text-blue-500" />
+                    <Users className="w-3 h-3 text-primary" />
                     <span className="font-mono text-zinc-300 ml-1">{activeTraders}</span>
                 </div>
             </div>

@@ -20,7 +20,7 @@ export function KYCTab() {
     if (status === 'in_progress') {
         return (
             <div className="flex flex-col items-center justify-center min-h-[400px] border border-dashed border-white/20 rounded-xl bg-zinc-900/20">
-                <Loader2 className="w-8 h-8 text-blue-500 animate-spin mb-4" />
+                <Loader2 className="w-8 h-8 text-primary animate-spin mb-4" />
                 <h3 className="text-xl font-bold text-white mb-2">Identity Verification</h3>
                 <p className="text-zinc-500 mb-8 max-w-md text-center">
                     Pleaase follow the instructions in the verification window.
@@ -42,8 +42,8 @@ export function KYCTab() {
 
     return (
         <div className="max-w-2xl mx-auto text-center py-12">
-            <div className="w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
-                <ShieldCheck className="w-8 h-8 text-blue-400" />
+            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                <ShieldCheck className="w-8 h-8 text-primary" />
             </div>
 
             <h2 className="text-2xl font-bold text-white mb-4">Identity Verification Required</h2>
@@ -68,7 +68,7 @@ export function KYCTab() {
             <Button
                 size="lg"
                 onClick={startVerification}
-                className="bg-blue-600 hover:bg-blue-500 text-white font-bold h-12 px-8 shadow-lg shadow-blue-500/20"
+                className="bg-primary hover:bg-primary/90 text-white font-bold h-12 px-8 shadow-lg shadow-primary/20"
             >
                 Start Verification
             </Button>

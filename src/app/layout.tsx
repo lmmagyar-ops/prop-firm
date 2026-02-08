@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, JetBrains_Mono, Playfair_Display, Outfit } from "next/font/google";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "sonner";
 import { AuthProvider } from "@/components/providers/AuthProvider";
@@ -7,8 +7,6 @@ import { Analytics } from '@vercel/analytics/react';
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono" });
-const serif = Playfair_Display({ subsets: ["latin"], variable: "--font-serif" });
-const outfit = Outfit({ subsets: ["latin"], variable: "--font-heading" });
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -30,8 +28,8 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   // Primary Meta
   title: {
-    default: "Funded Prediction - World's First Prediction Market Prop Firm",
-    template: "%s | Funded Prediction",
+    default: "Predictions Firm - World's First Prediction Market Prop Firm",
+    template: "%s | Predictions Firm",
   },
   description: "Trade prediction markets with our capital. Pass a simple evaluation, get funded up to $25K, and keep up to 90% of profits. Bi-weekly USDC payouts.",
   keywords: [
@@ -44,9 +42,9 @@ export const metadata: Metadata = {
     "trading evaluation",
     "crypto payouts",
   ],
-  authors: [{ name: "Funded Prediction" }],
-  creator: "Funded Prediction",
-  publisher: "Funded Prediction",
+  authors: [{ name: "Predictions Firm" }],
+  creator: "Predictions Firm",
+  publisher: "Predictions Firm",
 
   // Canonical
   metadataBase: new URL(process.env.NEXTAUTH_URL || "https://predictionsfirm.com"),
@@ -59,15 +57,15 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_US",
     url: "/",
-    siteName: "Funded Prediction",
-    title: "Funded Prediction - World's First Prediction Market Prop Firm",
+    siteName: "Predictions Firm",
+    title: "Predictions Firm - World's First Prediction Market Prop Firm",
     description: "Trade prediction markets with our capital. Pass a simple evaluation, get funded up to $25K, keep up to 90% of profits.",
     images: [
       {
         url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: "Funded Prediction - Prediction Market Prop Firm",
+        alt: "Predictions Firm - Prediction Market Prop Firm",
       },
     ],
   },
@@ -75,7 +73,7 @@ export const metadata: Metadata = {
   // Twitter Card
   twitter: {
     card: "summary_large_image",
-    title: "Funded Prediction - World's First Prediction Market Prop Firm",
+    title: "Predictions Firm - World's First Prediction Market Prop Firm",
     description: "Trade prediction markets with our capital. Get funded up to $25K, keep 90% of profits.",
     images: ["/og-image.png"],
     creator: "@propfirmpm",
@@ -102,7 +100,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'Funded Prediction',
+    title: 'Predictions Firm',
   },
   other: {
     'mobile-web-app-capable': 'yes',
@@ -122,7 +120,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
       </head>
-      <body className={`${inter.variable} ${mono.variable} ${serif.variable} ${outfit.variable} font-sans bg-background text-foreground antialiased selection:bg-primary/30`} suppressHydrationWarning>
+      <body className={`${inter.variable} ${mono.variable} font-sans bg-background text-foreground antialiased selection:bg-primary/30`} suppressHydrationWarning>
         <AuthProvider>
           {children}
           <Toaster richColors position="top-right" closeButton />

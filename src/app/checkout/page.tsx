@@ -177,7 +177,7 @@ function CheckoutContent() {
                 {/* Header */}
                 <div className="flex justify-between items-center mb-6">
                     <Link href="/buy-evaluation">
-                        <Button variant="ghost" className="text-white hover:text-blue-400 pl-0 hover:bg-transparent">
+                        <Button variant="ghost" className="text-white hover:text-primary pl-0 hover:bg-transparent">
                             &lt; Back
                         </Button>
                     </Link>
@@ -189,13 +189,13 @@ function CheckoutContent() {
                     <div className="space-y-6">
 
                         {/* 1. Identity */}
-                        <div className="bg-[#0f1926] border border-blue-900/30 rounded-xl p-6">
-                            <div className="flex items-center gap-2 mb-4 border-l-4 border-blue-500 pl-3">
+                        <div className="bg-[#0f1926] border border-primary/20 rounded-xl p-6">
+                            <div className="flex items-center gap-2 mb-4 border-l-4 border-primary pl-3">
                                 <h2 className="text-lg font-bold">Trader Identity</h2>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-1">
-                                    <label className="text-xs font-bold text-blue-400">First Name</label>
+                                    <label className="text-xs font-bold text-primary">First Name</label>
                                     <Input
                                         placeholder="John"
                                         value={firstName}
@@ -204,7 +204,7 @@ function CheckoutContent() {
                                     />
                                 </div>
                                 <div className="space-y-1">
-                                    <label className="text-xs font-bold text-blue-400">Last Name</label>
+                                    <label className="text-xs font-bold text-primary">Last Name</label>
                                     <Input
                                         placeholder="Doe"
                                         value={lastName}
@@ -214,13 +214,13 @@ function CheckoutContent() {
                                 </div>
                             </div>
                             <div className="space-y-1 mt-4">
-                                <label className="text-xs font-bold text-blue-400">Email Address</label>
+                                <label className="text-xs font-bold text-primary">Email Address</label>
                                 <Input value={email} readOnly className="bg-[#162231] border-0 h-10 font-mono text-zinc-400 cursor-not-allowed" />
                             </div>
                         </div>
 
                         {/* 2. Trading Platform Selector */}
-                        <div className="bg-[#0f1926] border border-blue-900/30 rounded-xl p-6">
+                        <div className="bg-[#0f1926] border border-primary/20 rounded-xl p-6">
                             <div className="flex items-center gap-2 mb-4 border-l-4 border-purple-500 pl-3">
                                 <h2 className="text-lg font-bold">Trading Platform</h2>
                             </div>
@@ -277,7 +277,7 @@ function CheckoutContent() {
                         </div>
 
                         {/* 3. Payment Selector */}
-                        <div className="bg-[#0f1926] border border-blue-900/30 rounded-xl p-6">
+                        <div className="bg-[#0f1926] border border-primary/20 rounded-xl p-6">
                             <div className="flex items-center gap-2 mb-4 border-l-4 border-green-500 pl-3">
                                 <h2 className="text-lg font-bold">Payment Method</h2>
                             </div>
@@ -286,7 +286,7 @@ function CheckoutContent() {
                                 <button
                                     onClick={() => setPaymentMethod("card")}
                                     className={`p-4 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${paymentMethod === "card"
-                                        ? "bg-blue-600/10 border-blue-500 text-blue-400 shadow-[0_0_20px_-5px_rgba(37,99,235,0.3)]"
+                                        ? "bg-primary/10 border-primary text-primary shadow-[0_0_20px_-5px_rgba(41,175,115,0.3)]"
                                         : "bg-[#162231] border-white/5 text-zinc-500 hover:bg-[#1e2d40] hover:text-white"
                                         }`}
                                 >
@@ -313,11 +313,11 @@ function CheckoutContent() {
                                         initial={{ opacity: 0, height: 0 }}
                                         animate={{ opacity: 1, height: "auto" }}
                                         exit={{ opacity: 0, height: 0 }}
-                                        className="mt-4 bg-blue-500/5 border border-blue-500/20 rounded-lg p-4"
+                                        className="mt-4 bg-primary/5 border border-primary/20 rounded-lg p-4"
                                     >
                                         <div className="flex items-start gap-3">
-                                            <div className="bg-blue-500/20 p-2 rounded-full mt-1">
-                                                <CreditCard className="w-4 h-4 text-blue-400" />
+                                            <div className="bg-primary/20 p-2 rounded-full mt-1">
+                                                <CreditCard className="w-4 h-4 text-primary" />
                                             </div>
                                             <div>
                                                 <p className="text-sm text-white font-medium">Powered by MoonPay</p>
@@ -353,13 +353,13 @@ function CheckoutContent() {
                     </div>
 
                     {/* Right: Order Summary */}
-                    <div className="bg-[#0f1926] border border-blue-500/30 rounded-xl p-6 lg:p-8 flex flex-col shadow-[0_0_50px_-15px_rgba(37,99,235,0.15)] relative overflow-hidden h-fit">
-                        <div className="absolute inset-0 bg-gradient-to-b from-blue-500/5 to-transparent pointer-events-none" />
+                    <div className="bg-[#0f1926] border border-primary/30 rounded-xl p-6 lg:p-8 flex flex-col shadow-[0_0_50px_-15px_rgba(41,175,115,0.15)] relative overflow-hidden h-fit">
+                        <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent pointer-events-none" />
 
                         <div className="relative z-10 space-y-6">
                             <div className="flex items-center justify-between border-b border-white/10 pb-4">
                                 <h2 className="text-lg font-bold">Order Summary</h2>
-                                <span className="bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded text-xs font-mono font-bold uppercase">
+                                <span className="bg-primary/20 text-primary px-2 py-0.5 rounded text-xs font-mono font-bold uppercase">
                                     LEVEL: {tierId.toUpperCase()}
                                 </span>
                             </div>
@@ -383,14 +383,14 @@ function CheckoutContent() {
                                         <Checkbox
                                             checked={profitSplit}
                                             onCheckedChange={(c) => setProfitSplit(!!c)}
-                                            className="border-white/30 data-[state=checked]:bg-blue-500"
+                                            className="border-white/30 data-[state=checked]:bg-primary"
                                         />
                                         <span className="text-sm text-zinc-400 group-hover:text-white transition-colors">Add: 90/10 Profit Split</span>
                                     </label>
                                     {profitSplit && (
                                         <div className="flex justify-between items-center text-sm pl-6 animate-in fade-in slide-in-from-top-1">
                                             <span className="text-zinc-500">+ Boost Profit Share</span>
-                                            <span className="text-blue-400 font-bold font-mono">${splitAddonPrice.toFixed(2)}</span>
+                                            <span className="text-primary font-bold font-mono">${splitAddonPrice.toFixed(2)}</span>
                                         </div>
                                     )}
                                 </div>
@@ -428,8 +428,8 @@ function CheckoutContent() {
                                         <Button
                                             onClick={handleApplyDiscount}
                                             disabled={discountLoading || !discountCode.trim()}
-                                            className={`bg-blue-600 hover:bg-blue-500 min-w-[80px] ${discountCode.trim() && !discountLoading
-                                                ? "animate-pulse shadow-[0_0_15px_rgba(37,99,235,0.5)]"
+                                            className={`bg-primary hover:bg-primary/90 min-w-[80px] ${discountCode.trim() && !discountLoading
+                                                ? "animate-pulse shadow-[0_0_15px_rgba(41,175,115,0.5)]"
                                                 : ""
                                                 }`}
                                         >
@@ -466,7 +466,7 @@ function CheckoutContent() {
                                 </div>
                                 <div className="text-right">
                                     <span className="text-xs text-zinc-500">Payable in</span>
-                                    <div className="font-bold text-blue-400">USD via {paymentMethod === "card" ? "MoonPay" : "Confirmo"}</div>
+                                    <div className="font-bold text-primary">USD via {paymentMethod === "card" ? "MoonPay" : "Confirmo"}</div>
                                 </div>
                             </div>
 
@@ -476,10 +476,10 @@ function CheckoutContent() {
                                         id="rules"
                                         checked={agreedRules}
                                         onCheckedChange={(c) => setAgreedRules(!!c)}
-                                        className="border-white/30 mt-1 data-[state=checked]:bg-blue-500"
+                                        className="border-white/30 mt-1 data-[state=checked]:bg-primary"
                                     />
                                     <label htmlFor="rules" className="text-xs text-zinc-400">
-                                        I agree to the <span className="text-blue-400 underline">Trading Rules</span> and <span className="text-blue-400 underline">Terms</span>.*
+                                        I agree to the <span className="text-primary underline">Trading Rules</span> and <span className="text-primary underline">Terms</span>.*
                                     </label>
                                 </div>
                                 <div className="flex items-start gap-2">
@@ -487,10 +487,10 @@ function CheckoutContent() {
                                         id="refund"
                                         checked={agreedRefund}
                                         onCheckedChange={(c) => setAgreedRefund(!!c)}
-                                        className="border-white/30 mt-1 data-[state=checked]:bg-blue-500"
+                                        className="border-white/30 mt-1 data-[state=checked]:bg-primary"
                                     />
                                     <label htmlFor="refund" className="text-xs text-zinc-400">
-                                        I understand the <span className="text-blue-400 underline">No Refund Policy</span>.*
+                                        I understand the <span className="text-primary underline">No Refund Policy</span>.*
                                     </label>
                                 </div>
                             </div>
@@ -498,7 +498,7 @@ function CheckoutContent() {
                             <Button
                                 onClick={handlePurchase}
                                 disabled={loading || !agreedRules || !agreedRefund || !platform}
-                                className="w-full h-14 text-lg font-bold bg-blue-600 hover:bg-blue-500 text-white rounded-xl shadow-[0_0_30px_rgba(37,99,235,0.4)] disabled:opacity-50 disabled:shadow-none transition-all hover:scale-[1.02] active:scale-95"
+                                className="w-full h-14 text-lg font-bold bg-primary hover:bg-primary/90 text-white rounded-xl shadow-[0_0_30px_rgba(41,175,115,0.4)] disabled:opacity-50 disabled:shadow-none transition-all hover:scale-[1.02] active:scale-95"
                             >
                                 {loading ? (
                                     <Loader2 className="animate-spin w-6 h-6" />
@@ -523,7 +523,7 @@ function CheckoutContent() {
 
 export default function CheckoutPage() {
     return (
-        <Suspense fallback={<div className="min-h-screen bg-[#05101a] flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-blue-500" /></div>}>
+        <Suspense fallback={<div className="min-h-screen bg-[#05101a] flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>}>
             <CheckoutContent />
         </Suspense>
     );

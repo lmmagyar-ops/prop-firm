@@ -12,7 +12,7 @@ import { users } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcrypt";
 
-const E2E_EMAIL = "e2e-test@propshot.io";
+const E2E_EMAIL = "e2e-test@predictionsfirm.com";
 const E2E_PASSWORD = "TestBot2026!";
 const SALT_ROUNDS = 12;
 

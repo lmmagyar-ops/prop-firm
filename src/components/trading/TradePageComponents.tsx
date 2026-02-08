@@ -56,8 +56,8 @@ export function CategoryStrip() {
         <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide border-b border-white/5 pb-2">
             {/* Trending - Special Style */}
             <button className="flex items-center gap-2 px-3 py-2 text-sm font-bold text-white hover:bg-white/5 rounded-lg transition-colors whitespace-nowrap">
-                <div className="w-5 h-5 rounded bg-blue-500/10 flex items-center justify-center">
-                    <TrendingUp className="w-3 h-3 text-blue-400" />
+                <div className="w-5 h-5 rounded bg-primary/10 flex items-center justify-center">
+                    <TrendingUp className="w-3 h-3 text-primary" />
                 </div>
                 Trending
             </button>
@@ -93,7 +93,7 @@ export function MarketFilterStrip() {
                     <input
                         type="text"
                         placeholder="Search markets"
-                        className="w-full bg-[#1A232E] border border-[#2E3A52] hover:border-zinc-700 rounded-lg py-1.5 pl-9 pr-3 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-blue-500/50 transition-all h-9"
+                        className="w-full bg-[#1A232E] border border-[#2E3A52] hover:border-zinc-700 rounded-lg py-1.5 pl-9 pr-3 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-primary/50 transition-all h-9"
                     />
                 </div>
                 {/* Filter Icon Button */}

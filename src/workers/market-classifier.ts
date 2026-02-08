@@ -264,13 +264,18 @@ export function getCategories(
         if (!categories.includes('Culture')) categories.push('Culture');
     }
 
-    // === POST-PROCESSING: Sports wins over false-positive Politics/Business ===
+    // ═══════════════════════════════════════════════════════════════════
+    // POST-PROCESSING: Context-aware disambiguation
+    // ═══════════════════════════════════════════════════════════════════
+    // Keywords alone cause false positives. When multiple categories are
+    // detected, cross-reference context to decide which one truly fits.
+
+    // --- 1. Sports wins over Geopolitics/Politics/Business ---
     // Polymarket sends 'US-current-affairs' as the API category for ALL markets,
-    // including sports. This maps to 'Politics' first, then sports keywords add 
-    // 'Sports' later, resulting in breadcrumbs like "POLITICS / SPORTS / MAVERICKS VS BUCKS".
-    // When sports is confidently detected, strip out the noise categories.
+    // including sports. Country names in sports contexts (e.g. "Will Ukraine
+    // qualify for the World Cup?") should NOT trigger Geopolitics.
     if (categories.includes('Sports')) {
-        const noiseForSports = ['Politics', 'Business', 'Other'];
+        const noiseForSports = ['Politics', 'Geopolitics', 'Business', 'Other'];
         for (const noise of noiseForSports) {
             const idx = categories.indexOf(noise);
             if (idx !== -1) categories.splice(idx, 1);
@@ -281,6 +286,38 @@ export function getCategories(
             categories.splice(sportsIdx, 1);
             categories.unshift('Sports');
         }
+    }
+
+    // --- 2. Finance/Business wins over Geopolitics for economic topics ---
+    // "Will Russia raise rates?" or "China GDP growth" are Finance, not Geopolitics.
+    const financeKeywords = [
+        'rate cut', 'rate hike', 'raise rates', 'lower rates', 'interest rate',
+        'central bank', 'gdp', 'inflation', 'cpi', 'bonds', 'yield', 'deficit',
+        'trade deficit', 'economic growth', 'monetary policy', 'quantitative',
+        'stimulus', 'debt ceiling', 'default on', 'credit rating'
+    ];
+    const hasFinanceContext = financeKeywords.some(kw => q.includes(kw));
+    if (hasFinanceContext && categories.includes('Geopolitics')) {
+        // Finance context overrides bare Geopolitics
+        const geoIdx = categories.indexOf('Geopolitics');
+        if (geoIdx !== -1) categories.splice(geoIdx, 1);
+        if (!categories.includes('Business')) categories.push('Business');
+    }
+
+    // --- 3. Culture wins over Politics for entertainment/social-media topics ---
+    // "How many tweets will Elon post?" or "Musk follower count" are Culture/Entertainment.
+    const entertainmentKeywords = [
+        'tweet', 'tweets', 'follower', 'followers', 'subscriber', 'subscribers',
+        'post on x', 'post on twitter', 'how many times', 'social media',
+        'tiktok', 'instagram', 'youtube', 'streaming', 'podcast',
+        'dating', 'marriage', 'baby', 'divorce', 'reality tv'
+    ];
+    const hasEntertainmentContext = entertainmentKeywords.some(kw => q.includes(kw));
+    if (hasEntertainmentContext && categories.includes('Politics') && !categories.includes('Sports')) {
+        // Entertainment context overrides bare Politics assignment
+        const polIdx = categories.indexOf('Politics');
+        if (polIdx !== -1) categories.splice(polIdx, 1);
+        if (!categories.includes('Culture')) categories.push('Culture');
     }
 
     // Default

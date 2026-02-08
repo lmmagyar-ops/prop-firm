@@ -38,17 +38,17 @@ export function CertificateGallery({ certificates, title }: CertificateGalleryPr
                     <div
                         key={cert.id}
                         onClick={() => setSelectedCert(cert)}
-                        className="group cursor-pointer aspect-[16/10] bg-zinc-900/50 border border-white/10 rounded-xl overflow-hidden relative hover:border-blue-500/30 hover:shadow-lg transition-all"
+                        className="group cursor-pointer aspect-[16/10] bg-zinc-900/50 border border-white/10 rounded-xl overflow-hidden relative hover:border-primary/30 hover:shadow-lg transition-all"
                     >
                         {/* Thumbnail Representation */}
-                        <div className="absolute inset-0 bg-gradient-to-br from-blue-900/20 to-cyan-900/20 group-hover:from-blue-900/40 group-hover:to-cyan-900/40 transition-colors" />
+                        <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-primary/5 group-hover:from-primary/20 group-hover:to-primary/10 transition-colors" />
 
                         <div className="absolute inset-0 p-6 flex flex-col justify-between">
                             <div className="flex justify-between items-start">
                                 <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center border border-white/20">
                                     🏆
                                 </div>
-                                <span className="text-xs font-mono text-blue-300 bg-blue-900/30 px-2 py-1 rounded border border-blue-500/20">
+                                <span className="text-xs font-mono text-primary/80 bg-primary/15 px-2 py-1 rounded border border-primary/20">
                                     {cert.date.toLocaleDateString()}
                                 </span>
                             </div>

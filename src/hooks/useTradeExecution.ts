@@ -58,6 +58,19 @@ export function useTradeExecution(options: UseTradeExecutionOptions = {}) {
 
             if (!response.ok) {
                 const errorMsg = data.error || "Trade failed";
+
+                // DEFENSE-IN-DEPTH: Handle PRICE_MOVED re-quote gracefully
+                if (data.code === 'PRICE_MOVED' && data.freshPrice) {
+                    toast.info(errorMsg, { duration: 4000 });
+                    // Dispatch event so the TradingSidebar can update displayed price
+                    window.dispatchEvent(new CustomEvent('price-requote', {
+                        detail: { freshPrice: data.freshPrice }
+                    }));
+                    options.onError?.(errorMsg);
+                    setLastResult({ success: false, error: errorMsg });
+                    return { success: false, error: errorMsg };
+                }
+
                 toast.error(errorMsg);
                 options.onError?.(errorMsg);
                 setLastResult({ success: false, error: errorMsg });

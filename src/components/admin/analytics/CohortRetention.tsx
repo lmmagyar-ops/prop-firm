@@ -74,7 +74,7 @@ export function CohortRetention() {
                 <div className="flex items-center justify-between">
                     <div>
                         <CardTitle className="text-lg font-medium text-zinc-200 flex items-center gap-2">
-                            <Users className="h-5 w-5 text-blue-400" />
+                            <Users className="h-5 w-5 text-primary" />
                             Cohort Retention Analysis
                         </CardTitle>
                         <CardDescription className="text-zinc-500">

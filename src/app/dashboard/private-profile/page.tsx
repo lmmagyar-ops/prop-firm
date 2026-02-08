@@ -50,7 +50,7 @@ export default async function PrivateProfilePage() {
             </section>
 
             {/* CTA Section */}
-            <div className="relative rounded-2xl overflow-hidden bg-gradient-to-r from-blue-600 to-cyan-500 p-8 flex items-center justify-between mt-8">
+            <div className="relative rounded-2xl overflow-hidden bg-gradient-to-r from-primary to-cyan-500 p-8 flex items-center justify-between mt-8">
                 <h3 className="text-2xl font-bold text-white">Ready for a new Evaluation?</h3>
                 <Link href="/buy-evaluation">
                     <Button size="lg" className="bg-black hover:bg-zinc-900 text-white font-bold h-12 px-8">

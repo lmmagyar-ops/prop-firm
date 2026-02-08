@@ -10,7 +10,7 @@ export function AvailableBalanceCard({ availableBalance, breakoutBalance }: Avai
             {/* Available Amount Card */}
             <div className="bg-[#1A232E] border border-[#2E3A52] rounded-xl p-6">
                 <h3 className="text-sm text-zinc-500 uppercase mb-2">Available Amount</h3>
-                <p className="text-xs text-zinc-600 mb-4">Propshot Profit available</p>
+                <p className="text-xs text-zinc-600 mb-4">Predictions Firm Profit available</p>
                 <p className="text-4xl font-bold font-mono text-white">${availableBalance.toFixed(2)}</p>
             </div>
 
