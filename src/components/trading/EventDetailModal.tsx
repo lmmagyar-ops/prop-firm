@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { X, TrendingUp, Calendar, Loader2 } from "lucide-react";
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useTradeExecution } from "@/hooks/useTradeExecution";
@@ -12,7 +13,6 @@ import { getCleanOutcomeName } from "@/lib/market-utils";
 import { OrderBook } from "./OrderBook";
 import { RulesSummary } from "./RulesSummary";
 import { MarketTimeline } from "./MarketTimeline";
-import { KalshiChart } from "./KalshiChart";
 
 interface EventDetailModalProps {
     event: EventMetadata | null;
@@ -61,11 +61,15 @@ export function EventDetailModal({ event, open, onClose, onTrade, platform = "po
                     {/* Top Row: Breadcrumbs & Actions */}
                     <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-2 text-xs font-semibold tracking-wide text-slate-500 uppercase">
-                            <span className="hover:text-slate-800 cursor-pointer transition-colors">Economics</span>
-                            <span className="text-slate-300">/</span>
-                            <span className="hover:text-slate-800 cursor-pointer transition-colors">
-                                {event.title.includes("Fed") ? "Central Banking" : "Politics"}
-                            </span>
+                            {(event.categories && event.categories.length > 0
+                                ? event.categories.slice(0, 2)
+                                : ['Other']
+                            ).map((cat, i) => (
+                                <span key={cat}>
+                                    {i > 0 && <span className="text-slate-300 mr-2">/</span>}
+                                    <span className="hover:text-slate-800 cursor-pointer transition-colors">{cat}</span>
+                                </span>
+                            ))}
                             <span className="text-slate-300">/</span>
                             <span className={cn("truncate max-w-[200px]", isKalshi ? "text-slate-800" : "text-zinc-200")}>
                                 {event.title.split(" ").slice(0, 3).join(" ")}...
@@ -96,9 +100,11 @@ export function EventDetailModal({ event, open, onClose, onTrade, platform = "po
 
                     <div className="flex items-start gap-5">
                         {event.image && (
-                            <img
+                            <Image
                                 src={event.image}
                                 alt=""
+                                width={48}
+                                height={48}
                                 className="w-12 h-12 rounded-lg object-cover shadow-sm bg-slate-100"
                             />
                         )}
