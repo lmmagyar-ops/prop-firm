@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { challenges } from "@/db/schema";
+import { eq, and, gte } from "drizzle-orm";
 import crypto from "crypto";
 
 /**
@@ -105,6 +106,22 @@ export async function POST(req: NextRequest) {
                 console.error(`[Confirmo] Payment mismatch! Expected $${expectedPrice}, got $${paidAmount} for tier ${tier}`);
                 // Still provision but log the discrepancy - don't block the user
                 // In production, you might want to flag this for manual review
+            }
+
+            // IDEMPOTENCY GUARD: Prevent duplicate challenge creation from webhook retries
+            // Check if a challenge already exists for this user that was recently created
+            const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+            const existingChallenge = await db.query.challenges.findFirst({
+                where: and(
+                    eq(challenges.userId, userId),
+                    eq(challenges.status, "pending"),
+                    gte(challenges.startedAt, fiveMinutesAgo)
+                )
+            });
+
+            if (existingChallenge) {
+                console.log(`[Confirmo] ⚠️ Duplicate webhook detected — challenge ${existingChallenge.id.slice(0, 8)} already exists for user ${userId.slice(0, 8)} (created ${existingChallenge.startedAt?.toISOString()}). Skipping.`);
+                return NextResponse.json({ received: true, deduplicated: true });
             }
 
             // Create Challenge with correct tier-based rules

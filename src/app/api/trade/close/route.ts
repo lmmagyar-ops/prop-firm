@@ -4,6 +4,7 @@ import { TradeExecutor } from "@/lib/trade";
 import { db } from "@/db";
 import { challenges, positions } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { checkIdempotency, cacheIdempotencyResult } from "@/lib/trade-idempotency";
 
 export async function POST(req: NextRequest) {
     const session = await auth();
@@ -15,11 +16,22 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { positionId } = body;
+    const { positionId, idempotencyKey } = body;
     // NOTE: userId intentionally NOT destructured from body - security fix
 
     if (!positionId) {
         return NextResponse.json({ error: "Position ID required" }, { status: 400 });
+    }
+
+    // IDEMPOTENCY GUARD: Prevent duplicate close execution on client retries
+    if (idempotencyKey) {
+        const { isDuplicate, cachedResponse } = await checkIdempotency(idempotencyKey);
+        if (isDuplicate) {
+            if (cachedResponse && typeof cachedResponse === 'object' && 'inProgress' in cachedResponse) {
+                return NextResponse.json({ error: "Close already in progress" }, { status: 409 });
+            }
+            return NextResponse.json(cachedResponse);
+        }
     }
 
     try {
@@ -82,7 +94,7 @@ export async function POST(req: NextRequest) {
         const proceeds = parseFloat(trade.shares) * parseFloat(trade.price);
         const pnl = proceeds - invested; // Profit/loss = what you got back - what you invested
 
-        return NextResponse.json({
+        const responsePayload = {
             success: true,
             proceeds, // Amount user received from closing
             invested, // Original investment amount
@@ -93,7 +105,14 @@ export async function POST(req: NextRequest) {
                 price: parseFloat(trade.price),
             },
             newBalance: updatedChallenge?.currentBalance || challenge.currentBalance
-        });
+        };
+
+        // Cache response for idempotency (if key was provided)
+        if (idempotencyKey) {
+            await cacheIdempotencyResult(idempotencyKey, responsePayload);
+        }
+
+        return NextResponse.json(responsePayload);
 
     } catch (error: unknown) {
         const errMsg = error instanceof Error ? error.message : "Failed to close position";

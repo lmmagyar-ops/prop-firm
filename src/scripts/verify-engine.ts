@@ -568,6 +568,266 @@ async function runVerification() {
         const expectedBalance = INITIAL_BALANCE + totalPnL;
         assertApprox(finalBal, expectedBalance, 0.05, `PnL reconciliation: $${finalBal.toFixed(2)} ≈ $${INITIAL_BALANCE} + $${totalPnL.toFixed(2)}`);
 
+        // ---- PHASE 8: NO Direction Full Lifecycle ----
+        console.log('\n🔄 PHASE 8: NO direction full lifecycle (BUY NO → partial SELL NO → full close)...\n');
+
+        // 8a: BUY NO on Market A
+        const phase8Start = await getBalance(challengeId);
+        await refreshPrices();
+        const buyNo = await TradeExecutor.executeTrade(
+            TEST_USER_ID, challengeId, MARKET_A, 'BUY', TRADE_AMOUNT, 'NO'
+        );
+        const bal8a = await getBalance(challengeId);
+        assertApprox(bal8a, phase8Start - TRADE_AMOUNT, 0.01, 'Phase 8a: BUY NO deducted $100');
+        assert(parseFloat(buyNo.shares) > 0, `Phase 8a: BUY NO got positive shares (${buyNo.shares})`);
+        assert(parseFloat(buyNo.price) > 0 && parseFloat(buyNo.price) < 1, `Phase 8a: BUY NO entry price valid (${buyNo.price})`);
+
+        // Verify the position is NO direction
+        const noPos = await db.query.positions.findFirst({
+            where: and(
+                eq(positions.challengeId, challengeId),
+                eq(positions.marketId, MARKET_A),
+                eq(positions.direction, 'NO'),
+                eq(positions.status, 'OPEN')
+            )
+        });
+        assert(noPos !== undefined, 'Phase 8a: NO position created in DB');
+
+        // 8b: Partial SELL NO (sell half)
+        const noShares = parseFloat(noPos!.shares);
+        const halfNoShares = noShares / 2;
+        await refreshPrices();
+        const noMarketData = await MarketService.getLatestPrice(MARKET_A);
+        const noCurrentPrice = noMarketData ? parseFloat(noMarketData.price) : parseFloat(MID_PRICE);
+        const noEffectivePrice = 1 - noCurrentPrice; // NO direction: value = 1 - YES price
+        const partialNoValue = halfNoShares * noEffectivePrice;
+
+        const partialNoSell = await TradeExecutor.executeTrade(
+            TEST_USER_ID, challengeId, MARKET_A, 'SELL', partialNoValue, 'NO',
+            { shares: halfNoShares, isClosing: false }
+        );
+
+        // Position should still be OPEN with half shares
+        const afterPartialNo = await db.query.positions.findFirst({
+            where: and(
+                eq(positions.challengeId, challengeId),
+                eq(positions.marketId, MARKET_A),
+                eq(positions.direction, 'NO'),
+                eq(positions.status, 'OPEN')
+            )
+        });
+        assert(afterPartialNo !== undefined, 'Phase 8b: NO position still OPEN after partial sell');
+        assertApprox(parseFloat(afterPartialNo!.shares), halfNoShares, 0.5, `Phase 8b: Remaining NO shares ≈ ${halfNoShares.toFixed(2)}`);
+
+        // Verify PnL is populated on partial NO sell
+        const partialNoTradeDb = await db.query.trades.findFirst({ where: eq(trades.id, partialNoSell.id) });
+        assert(partialNoTradeDb?.realizedPnL !== null, 'Phase 8b: Partial NO sell has realizedPnL');
+
+        // 8c: Close remaining NO shares
+        const remainNoShares = parseFloat(afterPartialNo!.shares);
+        await refreshPrices();
+        const remainNoData = await MarketService.getLatestPrice(MARKET_A);
+        const remainNoPrice = remainNoData ? parseFloat(remainNoData.price) : parseFloat(MID_PRICE);
+        const remainNoEffective = 1 - remainNoPrice;
+        const remainNoValue = remainNoShares * remainNoEffective;
+
+        await TradeExecutor.executeTrade(
+            TEST_USER_ID, challengeId, MARKET_A, 'SELL', remainNoValue, 'NO',
+            { shares: remainNoShares, isClosing: true }
+        );
+
+        // Position should now be CLOSED
+        const closedNoPos = await db.query.positions.findFirst({
+            where: and(
+                eq(positions.challengeId, challengeId),
+                eq(positions.marketId, MARKET_A),
+                eq(positions.direction, 'NO'),
+                eq(positions.status, 'OPEN')
+            )
+        });
+        assert(closedNoPos === undefined, 'Phase 8c: NO position fully closed');
+
+        // Verify the closed NO position has pnl populated
+        const closedNoPosDb = await db.query.positions.findFirst({
+            where: and(
+                eq(positions.challengeId, challengeId),
+                eq(positions.marketId, MARKET_A),
+                eq(positions.direction, 'NO'),
+                eq(positions.status, 'CLOSED')
+            )
+        });
+        assert(closedNoPosDb !== undefined, 'Phase 8c: Closed NO position exists in DB');
+        assert(closedNoPosDb?.pnl !== null, 'Phase 8c: Closed NO position has pnl populated');
+
+        console.log(`  Phase 8 complete: NO lifecycle verified (${noShares.toFixed(2)} shares → partial → close)`);
+
+        // ---- PHASE 9: Dust & Boundary Amounts ----
+        console.log('\n💰 PHASE 9: Dust & boundary amounts...\n');
+
+        // 9a: Minimum viable trade ($0.50)
+        await refreshPrices();
+        const phase9StartBal = await getBalance(challengeId);
+        const dustTrade = await TradeExecutor.executeTrade(
+            TEST_USER_ID, challengeId, MARKET_B, 'BUY', 0.50, 'YES'
+        );
+        const bal9a = await getBalance(challengeId);
+        assert(parseFloat(dustTrade.shares) > 0, `Phase 9a: Dust trade got shares (${dustTrade.shares})`);
+        assertApprox(bal9a, phase9StartBal - 0.50, 0.01, 'Phase 9a: $0.50 dust trade deducted correctly');
+
+        // Close the dust position
+        const dustPos = await db.query.positions.findFirst({
+            where: and(
+                eq(positions.challengeId, challengeId),
+                eq(positions.marketId, MARKET_B),
+                eq(positions.direction, 'YES'),
+                eq(positions.status, 'OPEN')
+            )
+        });
+        if (dustPos) {
+            const dustShares = parseFloat(dustPos.shares);
+            await refreshPrices();
+            const dustMktData = await MarketService.getLatestPrice(MARKET_B);
+            const dustPrice = dustMktData ? parseFloat(dustMktData.price) : parseFloat(MID_PRICE);
+            await TradeExecutor.executeTrade(
+                TEST_USER_ID, challengeId, MARKET_B, 'SELL', dustShares * dustPrice, 'YES',
+                { shares: dustShares, isClosing: true }
+            );
+        }
+
+        // 9b: Large trade ($200 — substantial but within single-market limits)
+        // We use $200 instead of $499 because the synthetic orderbook's spread
+        // causes >3% price deviation at very large sizes, triggering PRICE_MOVED
+        await refreshPrices();
+        const phase9bBal = await getBalance(challengeId);
+        const nearLimitTrade = await TradeExecutor.executeTrade(
+            TEST_USER_ID, challengeId, MARKET_A, 'BUY', 200, 'YES'
+        );
+        const bal9b = await getBalance(challengeId);
+        assert(parseFloat(nearLimitTrade.shares) > 0, 'Phase 9b: $200 large trade accepted');
+        assertApprox(bal9b, phase9bBal - 200, 0.01, 'Phase 9b: $200 deducted correctly');
+
+        // Close the near-limit position
+        const nearLimitPos = await db.query.positions.findFirst({
+            where: and(
+                eq(positions.challengeId, challengeId),
+                eq(positions.marketId, MARKET_A),
+                eq(positions.direction, 'YES'),
+                eq(positions.status, 'OPEN')
+            )
+        });
+        if (nearLimitPos) {
+            const nlShares = parseFloat(nearLimitPos.shares);
+            await refreshPrices();
+            const nlMktData = await MarketService.getLatestPrice(MARKET_A);
+            const nlPrice = nlMktData ? parseFloat(nlMktData.price) : parseFloat(MID_PRICE);
+            await TradeExecutor.executeTrade(
+                TEST_USER_ID, challengeId, MARKET_A, 'SELL', nlShares * nlPrice, 'YES',
+                { shares: nlShares, isClosing: true }
+            );
+        }
+
+        // 9c: Negative amount should be rejected
+        await refreshPrices();
+        await assertRejects(
+            () => TradeExecutor.executeTrade(
+                TEST_USER_ID, challengeId, MARKET_A, 'BUY', -10, 'YES'
+            ),
+            'INVARIANT_VIOLATION',
+            'Phase 9c: Negative trade amount rejected'
+        );
+
+        // 9d: Zero amount should be rejected
+        await refreshPrices();
+        await assertRejects(
+            () => TradeExecutor.executeTrade(
+                TEST_USER_ID, challengeId, MARKET_A, 'BUY', 0, 'YES'
+            ),
+            'INVARIANT_VIOLATION',
+            'Phase 9d: Zero trade amount rejected'
+        );
+
+        // ---- PHASE 10: Sell-More-Than-Owned Guard ----
+        console.log('\n🚫 PHASE 10: Sell-more-than-owned guard...\n');
+
+        // Open a known position
+        await refreshPrices();
+        const phase10Bal = await getBalance(challengeId);
+        const phase10Buy = await TradeExecutor.executeTrade(
+            TEST_USER_ID, challengeId, MARKET_B, 'BUY', TRADE_AMOUNT, 'YES'
+        );
+        const phase10Shares = parseFloat(phase10Buy.shares);
+
+        // Try to sell MORE shares than we own
+        await refreshPrices();
+        const overSellShares = phase10Shares + 100; // Way more than we own
+        const overSellMktData = await MarketService.getLatestPrice(MARKET_B);
+        const overSellPrice = overSellMktData ? parseFloat(overSellMktData.price) : parseFloat(MID_PRICE);
+
+        await assertRejects(
+            () => TradeExecutor.executeTrade(
+                TEST_USER_ID, challengeId, MARKET_B, 'SELL', overSellShares * overSellPrice, 'YES',
+                { shares: overSellShares, isClosing: true }
+            ),
+            'Insufficient shares',
+            `Phase 10: Sell ${overSellShares.toFixed(0)} shares rejected (only own ${phase10Shares.toFixed(0)})`
+        );
+
+        // Balance should be unchanged after rejection (only the BUY cost should be deducted)
+        const phase10BalAfter = await getBalance(challengeId);
+        assertApprox(phase10BalAfter, phase10Bal - TRADE_AMOUNT, 0.01, 'Phase 10: Balance unchanged after over-sell rejection');
+
+        // Clean up: close the position
+        await refreshPrices();
+        const p10MktData = await MarketService.getLatestPrice(MARKET_B);
+        const p10Price = p10MktData ? parseFloat(p10MktData.price) : parseFloat(MID_PRICE);
+        await TradeExecutor.executeTrade(
+            TEST_USER_ID, challengeId, MARKET_B, 'SELL', phase10Shares * p10Price, 'YES',
+            { shares: phase10Shares, isClosing: true }
+        );
+
+        // ---- PHASE 11: Conservation of Money Invariant ----
+        console.log('\n⚖️  PHASE 11: Conservation of money (double-entry bookkeeping)...\n');
+
+        const finalBalP11 = await getBalance(challengeId);
+        const allTradesP11 = await db.query.trades.findMany({
+            where: eq(trades.challengeId, challengeId)
+        });
+
+        // 11a: Final balance == startingBalance + sum(all realizedPnL)
+        const allSellsP11 = allTradesP11.filter(t => t.type === 'SELL');
+        const totalPnLP11 = allSellsP11.reduce((sum, t) => sum + parseFloat(t.realizedPnL || '0'), 0);
+        const expectedBalP11 = INITIAL_BALANCE + totalPnLP11;
+        assertApprox(finalBalP11, expectedBalP11, 0.10, `Phase 11a: Conservation — $${finalBalP11.toFixed(2)} ≈ $${INITIAL_BALANCE} + PnL($${totalPnLP11.toFixed(2)})`);
+
+        // 11b: All positions should be CLOSED (no orphaned open positions)
+        const orphanedOpen = await db.query.positions.findMany({
+            where: and(eq(positions.challengeId, challengeId), eq(positions.status, 'OPEN'))
+        });
+        assert(orphanedOpen.length === 0, `Phase 11b: No orphaned open positions (found ${orphanedOpen.length})`);
+
+        // 11c: Every SELL has a corresponding BUY on the same market+direction
+        const buysMap = new Map<string, number>();
+        const sellsMap = new Map<string, number>();
+        for (const t of allTradesP11) {
+            const key = `${t.marketId}:${t.direction}`;
+            if (t.type === 'BUY') {
+                buysMap.set(key, (buysMap.get(key) || 0) + 1);
+            } else {
+                sellsMap.set(key, (sellsMap.get(key) || 0) + 1);
+            }
+        }
+        let orphanedSells = 0;
+        for (const [key, sellCount] of sellsMap) {
+            const buyCount = buysMap.get(key) || 0;
+            if (buyCount === 0) orphanedSells += sellCount;
+        }
+        assert(orphanedSells === 0, `Phase 11c: No orphaned sells without corresponding buys (found ${orphanedSells})`);
+
+        // 11d: Total trade count sanity
+        console.log(`  Total trades across all phases: ${allTradesP11.length}`);
+        console.log(`  Buys: ${allTradesP11.filter(t => t.type === 'BUY').length}, Sells: ${allSellsP11.length}`);
+        console.log(`  Net PnL: $${totalPnLP11.toFixed(2)} | Final Balance: $${finalBalP11.toFixed(2)}`);
+
         // ---- RESULTS ----
         console.log('\n═══════════════════════════════════════════════');
         console.log(`   RESULTS: ${pass} passed, ${fail} failed`);

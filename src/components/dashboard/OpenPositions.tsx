@@ -44,7 +44,7 @@ export function OpenPositions({ positions: initialPositions }: OpenPositionsProp
             const response = await fetch(`/api/trade/close`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ positionId }),
+                body: JSON.stringify({ positionId, idempotencyKey: crypto.randomUUID() }),
             });
 
             console.log("[ClosePosition] Response status:", response.status);

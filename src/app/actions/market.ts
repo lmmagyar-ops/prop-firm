@@ -430,19 +430,37 @@ export async function getActiveEvents(platform: Platform = "polymarket"): Promis
             if (livePriceData) {
                 const livePrices = JSON.parse(livePriceData) as Record<string, { price?: string }>;
                 let updatedCount = 0;
+                const removedMarketIds: string[] = [];
 
                 for (const event of filteredEvents) {
                     for (const market of event.markets) {
                         const liveEntry = livePrices[market.id];
                         if (liveEntry?.price) {
                             const livePrice = parseFloat(liveEntry.price);
-                            // Sanity check: only use live price if it's in tradable range
                             if (livePrice > 0.01 && livePrice < 0.99) {
+                                // Tradable range — update price
                                 market.price = livePrice;
                                 updatedCount++;
+                            } else {
+                                // LAYER 1: Market has reached resolution territory.
+                                // Mark for removal instead of silently keeping stale price.
+                                // This prevents the confusing state where the card shows 68¢
+                                // but the orderbook is actually at 99¢.
+                                removedMarketIds.push(market.id);
                             }
                         }
                     }
+                }
+
+                // Remove resolved sub-markets and events with no tradable markets left
+                if (removedMarketIds.length > 0) {
+                    filteredEvents = filteredEvents
+                        .map(event => ({
+                            ...event,
+                            markets: event.markets.filter(m => !removedMarketIds.includes(m.id))
+                        }))
+                        .filter(event => event.markets.length > 0);
+                    console.log(`[getActiveEvents] Removed ${removedMarketIds.length} resolved sub-markets via live price overlay`);
                 }
 
                 if (updatedCount > 0) {

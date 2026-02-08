@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { challenges, positions } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { createLogger } from "@/lib/logger";
+import { checkIdempotency, cacheIdempotencyResult } from "@/lib/trade-idempotency";
 
 const log = createLogger("TradeAPI");
 
@@ -20,11 +21,23 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { marketId, outcome, amount } = body;
+    const { marketId, outcome, amount, idempotencyKey } = body;
 
     // Validate inputs
     if (!marketId || !outcome || !amount || amount <= 0) {
         return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+    }
+
+    // IDEMPOTENCY GUARD: Prevent duplicate trade execution on client retries
+    if (idempotencyKey) {
+        const { isDuplicate, cachedResponse } = await checkIdempotency(idempotencyKey);
+        if (isDuplicate) {
+            if (cachedResponse && typeof cachedResponse === 'object' && 'inProgress' in cachedResponse) {
+                return NextResponse.json({ error: "Trade already in progress" }, { status: 409 });
+            }
+            log.info(`Returning cached response for duplicate trade`, { idempotencyKey: idempotencyKey.slice(0, 8) });
+            return NextResponse.json(cachedResponse);
+        }
     }
 
     try {
@@ -131,6 +144,11 @@ export async function POST(req: NextRequest) {
             },
             position: positionData
         };
+
+        // Cache response for idempotency (if key was provided)
+        if (idempotencyKey) {
+            await cacheIdempotencyResult(idempotencyKey, responsePayload);
+        }
 
         return NextResponse.json(responsePayload);
 

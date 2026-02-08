@@ -43,6 +43,9 @@ export function useTradeExecution(options: UseTradeExecutionOptions = {}) {
         setIsLoading(true);
 
         try {
+            // Generate unique idempotency key per trade attempt
+            const idempotencyKey = crypto.randomUUID();
+
             const response = await fetch("/api/trade/execute", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -51,6 +54,7 @@ export function useTradeExecution(options: UseTradeExecutionOptions = {}) {
                     marketId,
                     outcome,
                     amount,
+                    idempotencyKey,
                 }),
             });
 
@@ -58,6 +62,19 @@ export function useTradeExecution(options: UseTradeExecutionOptions = {}) {
 
             if (!response.ok) {
                 const errorMsg = data.error || "Trade failed";
+
+                // LAYER 3: Handle MARKET_RESOLVED — fundamentally untradable state
+                // Different from PRICE_MOVED: no "tap again" prompt, clear warning.
+                if (data.code === 'MARKET_RESOLVED' && data.freshPrice) {
+                    toast.warning(errorMsg, { duration: 6000 });
+                    // Dispatch event so TradingSidebar transitions to resolved state (Layer 2)
+                    window.dispatchEvent(new CustomEvent('price-requote', {
+                        detail: { freshPrice: data.freshPrice }
+                    }));
+                    options.onError?.(errorMsg);
+                    setLastResult({ success: false, error: errorMsg });
+                    return { success: false, error: errorMsg };
+                }
 
                 // DEFENSE-IN-DEPTH: Handle PRICE_MOVED re-quote gracefully
                 if (data.code === 'PRICE_MOVED' && data.freshPrice) {

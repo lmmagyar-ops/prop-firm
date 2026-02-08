@@ -172,14 +172,36 @@ export class TradeExecutor {
             const priceDeviation = Math.abs(comparableExecPrice - comparableDisplayPrice) / comparableDisplayPrice;
 
             if (priceDeviation > 0.03) { // More than 3% deviation
+                const freshPrice = direction === "NO" ? (1 - simulation.executedPrice) : simulation.executedPrice;
+
+                // LAYER 3: Differentiate between re-quote and resolution.
+                // >20% deviation OR price in resolution territory = fundamentally different market state.
+                // "Tap again" makes sense for 5% drift. It does NOT make sense for 45% drift.
+                const isResolutionTerritory = freshPrice >= 0.95 || freshPrice <= 0.05;
+                const isMassiveDeviation = priceDeviation > 0.20;
+
+                if (isResolutionTerritory || isMassiveDeviation) {
+                    logger.warn(`MARKET_RESOLVED: execution=${comparableExecPrice.toFixed(4)} vs display=${comparableDisplayPrice.toFixed(4)} (${(priceDeviation * 100).toFixed(1)}% deviation, fresh=${freshPrice.toFixed(4)})`, {
+                        marketId: marketId.slice(0, 12),
+                        bookSource: book.source,
+                        direction,
+                    });
+
+                    throw new TradingError(
+                        `This market has nearly resolved (${(freshPrice * 100).toFixed(0)}¢) and can no longer be traded.`,
+                        'MARKET_RESOLVED',
+                        409,
+                        { freshPrice: parseFloat(freshPrice.toFixed(4)) }
+                    );
+                }
+
+                // Normal re-quote: 3-20% deviation, price still tradable
                 logger.warn(`PRICE_MOVED: execution=${comparableExecPrice.toFixed(4)} vs display=${comparableDisplayPrice.toFixed(4)} (${(priceDeviation * 100).toFixed(1)}% deviation)`, {
                     marketId: marketId.slice(0, 12),
                     bookSource: book.source,
                     direction,
                 });
 
-                // Return fresh price to client for re-quote UI
-                const freshPrice = direction === "NO" ? (1 - simulation.executedPrice) : simulation.executedPrice;
                 throw new TradingError(
                     `Price moved to ${(freshPrice * 100).toFixed(0)}¢. Tap Buy again to confirm at the new price.`,
                     'PRICE_MOVED',
@@ -421,6 +443,24 @@ export class TradeExecutor {
         }
 
         logger.info(`Trade Complete: ${tradeResult.id}`, { tradeId: tradeResult.id });
+
+        // STRUCTURED AUDIT LOG: Single JSON line for forensic analysis & future log aggregation
+        const tradeLatencyMs = marketData.timestamp ? Date.now() - marketData.timestamp : null;
+        console.log(`[TRADE_AUDIT] ${JSON.stringify({
+            tradeId: tradeResult.id,
+            userId: userId.slice(0, 8),
+            challengeId: challengeId.slice(0, 8),
+            marketId: marketId.slice(0, 12),
+            side,
+            direction,
+            amount: parseFloat(finalAmount.toFixed(2)),
+            shares: parseFloat(shares.toFixed(4)),
+            executionPrice: parseFloat(executionPrice.toFixed(4)),
+            bookSource: book.source,
+            latencyMs: tradeLatencyMs,
+            slippagePct: parseFloat(simulation.slippagePercent.toFixed(4)),
+            timestamp: new Date().toISOString(),
+        })}`);
 
         // Calculate price age for transparency
         const priceAge = marketData.timestamp ? Date.now() - marketData.timestamp : null;
