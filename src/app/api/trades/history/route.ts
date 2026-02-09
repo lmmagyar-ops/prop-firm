@@ -16,8 +16,32 @@ export async function GET(req: Request) {
         const limit = parseInt(url.searchParams.get("limit") || "10");
         const challengeId = url.searchParams.get("challengeId");
 
-        // Get challenge ID - either from param or find active challenge
+        // Get challenge ID - from param, cookie, or fallback to any active challenge
         let targetChallengeId = challengeId;
+
+        // Try cookie if no explicit param (matches /api/user/balance pattern)
+        if (!targetChallengeId) {
+            const { cookies } = await import("next/headers");
+            const cookieStore = await cookies();
+            const cookieChallengeId = cookieStore.get("selectedChallengeId")?.value;
+
+            if (cookieChallengeId) {
+                // Verify the cookie challenge belongs to this user and is active
+                const [cookieChallenge] = await db
+                    .select({ id: challenges.id })
+                    .from(challenges)
+                    .where(and(
+                        eq(challenges.id, cookieChallengeId),
+                        eq(challenges.userId, session.user.id),
+                        eq(challenges.status, "active")
+                    ))
+                    .limit(1);
+
+                targetChallengeId = cookieChallenge?.id;
+            }
+        }
+
+        // Fallback: find any active challenge for this user
         if (!targetChallengeId) {
             const [activeChallenge] = await db
                 .select({ id: challenges.id })
