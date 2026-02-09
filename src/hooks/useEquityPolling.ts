@@ -36,20 +36,27 @@ export function useEquityPolling(initialEquity: number, intervalMs = 30_000) {
 
             const json = await res.json();
             const newEquity = json.equity ?? initialRef.current;
+            const initial = initialRef.current;
 
-            // Anti-flicker: if the polled value is within $1 of the server-rendered
-            // initial value and we haven't had a real update yet, skip the update
-            // to prevent the visual "reset" flash during hydration.
-            const delta = Math.abs(newEquity - initialRef.current);
+            // Guard 1: Reject $0 equity when SSR showed a real balance.
+            // This happens when the cookie points to a deleted/wrong challenge
+            // and the API falls back to "no active challenge" → returns 0.
+            if (!hasReceivedRealUpdate.current && newEquity === 0 && initial > 100) {
+                console.warn("[useEquityPolling] Rejected $0 poll — SSR value was", initial);
+                setLastUpdated(new Date());
+                return;
+            }
+
+            // Guard 2: Anti-flicker — if within $1 of SSR value, keep SSR value
+            const delta = Math.abs(newEquity - initial);
             if (!hasReceivedRealUpdate.current && delta < 1) {
-                // Values are essentially the same — keep the SSR value, just mark as live
                 setLastUpdated(new Date());
                 return;
             }
 
             hasReceivedRealUpdate.current = true;
             setData({
-                balance: json.balance ?? initialRef.current,
+                balance: json.balance ?? initial,
                 equity: newEquity,
                 positionValue: json.positionValue ?? 0,
                 positionCount: json.positionCount ?? 0,
