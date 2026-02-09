@@ -22,6 +22,7 @@ export async function GET(
                 status: challenges.status,
                 phase: challenges.phase,
                 currentBalance: challenges.currentBalance,
+                startingBalance: challenges.startingBalance,
                 startDate: challenges.startedAt,
                 rulesConfig: challenges.rulesConfig,
                 userId: users.id,
@@ -62,8 +63,7 @@ export async function GET(
         // Here we'll simulate it by aggregating trades by day.
         const timelineData = [];
         // Simpler approach for MVP: Start from 'startingBalance' and apply trades.
-        const rulesConfig = challenge.rulesConfig as Record<string, unknown> | null;
-        const startingBalance = Number(rulesConfig?.startingBalance || 10000);
+        const startingBalance = Number(challenge.startingBalance || 10000);
         let simBalance = startingBalance;
         const tradesAsc = [...tradeHistory].reverse();
 

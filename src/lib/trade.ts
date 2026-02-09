@@ -1,4 +1,3 @@
-
 import { db } from "@/db";
 import { trades, positions, challenges } from "@/db/schema";
 import { eq, and, sql } from "drizzle-orm";
@@ -6,13 +5,10 @@ import { MarketService } from "./market";
 import { RiskEngine } from "./risk";
 import { PositionManager } from "./trading/PositionManager";
 import { BalanceManager } from "./trading/BalanceManager";
-import { TRADING_CONFIG } from "@/config/trading";
 import { createLogger } from "./logger";
 import {
     TradingError,
     InsufficientFundsError,
-    MarketClosedError,
-    PriceStaleError,
     PositionNotFoundError,
     RiskLimitExceededError
 } from "@/errors/trading-errors";
@@ -62,42 +58,35 @@ export class TradeExecutor {
             throw new TradingError("Challenge is not active", 'CHALLENGE_INACTIVE', 400);
         }
 
-        // 2. Get Real-Time Price
-        const marketData = await MarketService.getLatestPrice(marketId);
-        if (!marketData) throw new MarketClosedError(marketId);
+        // ================================================
+        // PRICE RESOLUTION — Single Source of Truth
+        // ================================================
+        // We're a B-Book: we don't route to Polymarket.
+        // The Gamma API event list already has the correct price
+        // (aggregating both YES and NO token liquidity).
+        // One price source → one synthetic book → one trade.
 
-        // Reject trades on demo data (no real price available)
-        if (marketData.source === 'demo') {
-            console.log(`[Trade] ❌ No market data for ${marketId} - falling back to demo`);
+        const canonicalPrice = await MarketService.getCanonicalPrice(marketId);
+
+        if (canonicalPrice === null) {
             throw new TradingError(
-                'This market is currently unavailable. It may have been removed or is temporarily offline. Please refresh and try a different market.',
+                'This market is currently unavailable. It may have been removed or is temporarily offline.',
                 'NO_MARKET_DATA',
                 503
             );
         }
 
-        // Configurable Staleness Check
-        if (TRADING_CONFIG.risk.enableStalenessCheck) {
-            const freshAge = TRADING_CONFIG.risk.priceFreshnessMs;
-            if (!MarketService.isPriceFresh(marketData, freshAge)) {
-                // Determine age for error report (mock logic as isPriceFresh boolean doesn't return age)
-                // In production, isPriceFresh would return reason/age.
-                throw new PriceStaleError(marketId, 9999);
-            }
-        }
-
-        const currentPrice = parseFloat(marketData.price);
-
-        // EXTREME PRICE GUARD: Block trades on resolved/near-resolved markets
-        // Prices ≤0.01 or ≥0.99 indicate the market has effectively resolved
-        if (currentPrice <= 0.01 || currentPrice >= 0.99) {
-            logger.warn(`EXTREME PRICE BLOCKED: ${currentPrice.toFixed(4)} for ${marketId.slice(0, 12)}`);
+        // Resolution guard: reject trades on markets at ≥95¢ or ≤5¢
+        if (canonicalPrice >= 0.95 || canonicalPrice <= 0.05) {
             throw new TradingError(
-                'This market has effectively resolved and is no longer tradable. Please choose a different market.',
+                `This market has nearly resolved (${(canonicalPrice * 100).toFixed(0)}¢) and can no longer be traded.`,
                 'MARKET_RESOLVED',
-                400
+                409,
+                { freshPrice: canonicalPrice }
             );
         }
+
+        const currentPrice = canonicalPrice;
 
         // 3. Risk Check
         if (side === "BUY") {
@@ -111,105 +100,26 @@ export class TradeExecutor {
             }
         }
 
-        // 4. INTEGRITY CHECK: Calculate Impact Cost (Detailed Slippage)
-        // DEFENSE-IN-DEPTH: Fetch FRESH order book at trade time, bypassing 5-min cache.
-        // This guarantees the execution price matches current market conditions.
-        const book = await MarketService.getOrderBookFresh(marketId);
+        // 4. Build synthetic order book from canonical price
+        const book = MarketService.buildSyntheticOrderBookPublic(canonicalPrice);
+        const bookWithSource = { ...book, source: 'synthetic' as const };
 
-        // Fallback: Strict Integrity Mode
-        if (!book) {
-            logger.warn(`No orderbook found for ${marketId}`, { userId });
-            throw new TradingError("Market Liquidity Unavailable (Book Not Found)", 'NO_LIQUIDITY', 503);
-        }
-
-        // DEBUG: Log order book details to diagnose price discrepancy
-        logger.info(`ORDER BOOK DEBUG`, {
+        logger.info(`Trade execution`, {
             marketId: marketId.slice(0, 12),
-            source: book.source,
-            topAsk: book.asks?.[0]?.price,
-            topBid: book.bids?.[0]?.price,
-            askCount: book.asks?.length || 0,
-            bidCount: book.bids?.length || 0,
+            canonicalPrice: canonicalPrice.toFixed(4),
+            direction,
+            side,
+            amount,
         });
-
-        // Reject trades on demo order book (synthetic is allowed - uses real prices)
-        if (book.source === 'demo') {
-            throw new TradingError('Order book unavailable - liquidity feed down. Try again shortly.', 'NO_ORDER_BOOK', 503);
-        }
-
-        // AUDIT FIX: Log synthetic order book usage for operational visibility
-        // Synthetic books are built from event list prices - acceptable for B-Book model
-        if (book.source === 'synthetic') {
-            logger.warn(`SYNTHETIC ORDERBOOK USED for trade on ${marketId.slice(0, 12)}`, {
-                userId,
-                side,
-                amount,
-            });
-        }
 
         // For NO direction trades, flip the order book side to match correct counterparty:
         //   - BUY NO: Match against YES BIDS (YES buyers implicitly sell NO at 1-bid)
         //   - SELL NO: Match against YES ASKS (YES sellers implicitly buy NO at 1-ask)
-        // This is because prediction markets only have one order book (YES), and NO
-        // is the complement. When you buy NO at 32¢, you're matching with someone
-        // willing to buy YES at 68¢ (their bid).
         const effectiveSide = direction === "NO"
             ? (side === "BUY" ? "SELL" : "BUY")
             : side;
 
-        const simulation = MarketService.calculateImpact(book, effectiveSide, amount);
-
-        // DEFENSE-IN-DEPTH LAYER 2: Price Deviation Guard (3% threshold)
-        // Compare execution price against the display price the user saw.
-        // If deviation exceeds 3%, REJECT the trade and return the fresh price
-        // so the UI can show a re-quote. Never silently fill at a bad price.
-        const eventListPrice = await MarketService.lookupPriceFromEvents(marketId);
-        if (eventListPrice && simulation.filled) {
-            const displayPrice = parseFloat(eventListPrice.price);
-            // For NO direction, compare against the NO equivalent
-            const comparableExecPrice = direction === "NO" ? (1 - simulation.executedPrice) : simulation.executedPrice;
-            const comparableDisplayPrice = direction === "NO" ? (1 - displayPrice) : displayPrice;
-            const priceDeviation = Math.abs(comparableExecPrice - comparableDisplayPrice) / comparableDisplayPrice;
-
-            if (priceDeviation > 0.03) { // More than 3% deviation
-                const freshPrice = direction === "NO" ? (1 - simulation.executedPrice) : simulation.executedPrice;
-
-                // LAYER 3: Differentiate between re-quote and resolution.
-                // >20% deviation OR price in resolution territory = fundamentally different market state.
-                // "Tap again" makes sense for 5% drift. It does NOT make sense for 45% drift.
-                const isResolutionTerritory = freshPrice >= 0.95 || freshPrice <= 0.05;
-                const isMassiveDeviation = priceDeviation > 0.20;
-
-                if (isResolutionTerritory || isMassiveDeviation) {
-                    logger.warn(`MARKET_RESOLVED: execution=${comparableExecPrice.toFixed(4)} vs display=${comparableDisplayPrice.toFixed(4)} (${(priceDeviation * 100).toFixed(1)}% deviation, fresh=${freshPrice.toFixed(4)})`, {
-                        marketId: marketId.slice(0, 12),
-                        bookSource: book.source,
-                        direction,
-                    });
-
-                    throw new TradingError(
-                        `This market has nearly resolved (${(freshPrice * 100).toFixed(0)}¢) and can no longer be traded.`,
-                        'MARKET_RESOLVED',
-                        409,
-                        { freshPrice: parseFloat(freshPrice.toFixed(4)) }
-                    );
-                }
-
-                // Normal re-quote: 3-20% deviation, price still tradable
-                logger.warn(`PRICE_MOVED: execution=${comparableExecPrice.toFixed(4)} vs display=${comparableDisplayPrice.toFixed(4)} (${(priceDeviation * 100).toFixed(1)}% deviation)`, {
-                    marketId: marketId.slice(0, 12),
-                    bookSource: book.source,
-                    direction,
-                });
-
-                throw new TradingError(
-                    `Price moved to ${(freshPrice * 100).toFixed(0)}¢. Tap Buy again to confirm at the new price.`,
-                    'PRICE_MOVED',
-                    409, // Conflict status code
-                    { freshPrice: parseFloat(freshPrice.toFixed(4)) }
-                );
-            }
-        }
+        const simulation = MarketService.calculateImpact(bookWithSource, effectiveSide, amount);
 
         if (!simulation.filled) {
             throw new TradingError(`Trade Rejected: ${simulation.reason}`, 'SLIPPAGE_TOO_HIGH', 400);
@@ -342,6 +252,7 @@ export class TradeExecutor {
                 challengeId: challenge.id,
                 marketId: marketId,
                 type: side,
+                direction: direction, // YES or NO — audit trail
                 amount: finalAmount.toString(), // Notional value
                 price: executionPrice.toString(),
                 shares: shares.toString(),
@@ -444,8 +355,7 @@ export class TradeExecutor {
 
         logger.info(`Trade Complete: ${tradeResult.id}`, { tradeId: tradeResult.id });
 
-        // STRUCTURED AUDIT LOG: Single JSON line for forensic analysis & future log aggregation
-        const tradeLatencyMs = marketData.timestamp ? Date.now() - marketData.timestamp : null;
+        // STRUCTURED AUDIT LOG
         console.log(`[TRADE_AUDIT] ${JSON.stringify({
             tradeId: tradeResult.id,
             userId: userId.slice(0, 8),
@@ -456,19 +366,15 @@ export class TradeExecutor {
             amount: parseFloat(finalAmount.toFixed(2)),
             shares: parseFloat(shares.toFixed(4)),
             executionPrice: parseFloat(executionPrice.toFixed(4)),
-            bookSource: book.source,
-            latencyMs: tradeLatencyMs,
+            canonicalPrice,
+            bookSource: 'synthetic',
             slippagePct: parseFloat(simulation.slippagePercent.toFixed(4)),
             timestamp: new Date().toISOString(),
         })}`);
 
-        // Calculate price age for transparency
-        const priceAge = marketData.timestamp ? Date.now() - marketData.timestamp : null;
-
         return {
             ...tradeResult,
-            priceAge,           // How old the price data was (ms)
-            priceSource: marketData.source, // 'live', 'event_list', etc.
+            priceSource: 'canonical',
         };
     }
 }

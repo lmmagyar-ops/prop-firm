@@ -603,3 +603,207 @@ describe("ChallengeEvaluator - Edge Cases", () => {
     });
 });
 
+// ================================================
+// EARLY RETURN & IDEMPOTENCY TESTS
+// ================================================
+
+describe("ChallengeEvaluator - Early Returns", () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it("returns active when challenge not found in DB", async () => {
+        vi.mocked(db.query.challenges.findFirst).mockResolvedValue(null);
+
+        const result = await ChallengeEvaluator.evaluate("nonexistent-challenge");
+
+        expect(result.status).toBe("active");
+    });
+
+    it("returns passed without re-evaluation when challenge already passed", async () => {
+        vi.mocked(db.query.challenges.findFirst).mockResolvedValue({
+            id: "done",
+            status: "passed",
+        } as any);
+
+        const result = await ChallengeEvaluator.evaluate("done");
+
+        expect(result.status).toBe("passed");
+        // Should NOT call positions.findMany or db.update — early return
+        expect(db.query.positions.findMany).not.toHaveBeenCalled();
+        expect(db.update).not.toHaveBeenCalled();
+    });
+
+    it("returns failed without re-evaluation when challenge already failed", async () => {
+        vi.mocked(db.query.challenges.findFirst).mockResolvedValue({
+            id: "done",
+            status: "failed",
+        } as any);
+
+        const result = await ChallengeEvaluator.evaluate("done");
+
+        expect(result.status).toBe("failed");
+        expect(db.query.positions.findMany).not.toHaveBeenCalled();
+    });
+});
+
+// ================================================
+// EQUITY CALCULATION WITH POSITIONS
+// ================================================
+
+describe("ChallengeEvaluator - Equity with Open Positions", () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it("includes YES position value in equity", async () => {
+        const challenge = {
+            id: "eq-test",
+            status: "active",
+            currentBalance: "9500",     // Cash
+            startingBalance: "10000",
+            highWaterMark: "10000",
+            startOfDayBalance: "9500",
+            rulesConfig: { profitTarget: 1000, maxDrawdown: 1000, maxDailyDrawdownPercent: 0.05 },
+            pendingFailureAt: null,
+            endsAt: null,
+            phase: "challenge",
+        };
+
+        // YES position: 200 shares, live YES price = 0.50
+        // Position value = 200 * 0.50 = $100
+        // Equity = $9500 + $100 = $9600
+        const yesPosition = {
+            id: "pos-yes",
+            marketId: "mkt-yes",
+            direction: "YES",
+            shares: "200",
+            entryPrice: "0.40",
+            currentPrice: "0.45",
+            status: "OPEN",
+        };
+
+        vi.mocked(db.query.challenges.findFirst).mockResolvedValue(challenge as any);
+        vi.mocked(db.query.positions.findMany).mockResolvedValue([yesPosition as any]);
+
+        const result = await ChallengeEvaluator.evaluate("eq-test");
+
+        expect(result.status).toBe("active");
+        expect(result.equity).toBeCloseTo(9600, 0);
+    });
+
+    it("HWM does not update when equity drops (only on increase)", async () => {
+        const decliningChallenge = {
+            id: "decline",
+            status: "active",
+            currentBalance: "9500",       // $500 below HWM
+            startingBalance: "10000",
+            highWaterMark: "10200",       // Previous peak
+            startOfDayBalance: "9500",
+            rulesConfig: { profitTarget: 1000, maxDrawdown: 1000, maxDailyDrawdownPercent: 0.05 },
+            pendingFailureAt: null,
+            endsAt: null,
+            phase: "challenge",
+        };
+
+        vi.mocked(db.query.challenges.findFirst).mockResolvedValue(decliningChallenge as any);
+        vi.mocked(db.query.positions.findMany).mockResolvedValue([]);
+
+        const result = await ChallengeEvaluator.evaluate("decline");
+
+        expect(result.status).toBe("active");
+        // db.update should NOT be called for HWM update since equity < HWM
+        // (the only db.update in this path would be HWM update)
+        expect(db.update).not.toHaveBeenCalled();
+    });
+});
+
+describe("ChallengeEvaluator - Position Closure on Phase Transition", () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it("should close all open positions when transitioning to funded", async () => {
+        const passingChallenge = {
+            id: "transition-test",
+            status: "active",
+            currentBalance: "5600",
+            startingBalance: "5000",
+            highWaterMark: "5600",
+            startOfDayBalance: "5500",
+            rulesConfig: { profitTarget: 500, maxDrawdown: 500, maxDailyDrawdownPercent: 0.05 },
+            pendingFailureAt: null,
+            endsAt: new Date(Date.now() + 86400000),
+            phase: "challenge",
+        };
+
+        const openPositions = [
+            {
+                id: "pos-1",
+                marketId: "market-A",
+                shares: "100",
+                entryPrice: "0.40",
+                currentPrice: "0.50",
+                direction: "YES",
+                status: "OPEN",
+            },
+            {
+                id: "pos-2",
+                marketId: "market-B",
+                shares: "50",
+                entryPrice: "0.60",
+                currentPrice: "0.50",
+                direction: "YES",
+                status: "OPEN",
+            },
+        ];
+
+        vi.mocked(db.query.challenges.findFirst).mockResolvedValue(passingChallenge as any);
+        vi.mocked(db.query.positions.findMany).mockResolvedValue(openPositions as any);
+
+        const result = await ChallengeEvaluator.evaluate("transition-test");
+
+        expect(result.status).toBe("passed");
+
+        // db.update should be called 3 times:
+        // 1. Close position pos-1
+        // 2. Close position pos-2
+        // 3. Update challenge to funded phase
+        expect(db.update).toHaveBeenCalledTimes(3);
+
+        // Verify the set calls include CLOSED status for positions
+        const setCalls = vi.mocked(db.update).mock.results.map(
+            (r: any) => r.value.set.mock.calls[0][0]
+        );
+
+        // First two calls should close positions
+        expect(setCalls[0]).toMatchObject({ status: "CLOSED", shares: "0" });
+        expect(setCalls[1]).toMatchObject({ status: "CLOSED", shares: "0" });
+        // Third call should transition to funded
+        expect(setCalls[2]).toMatchObject({ phase: "funded", status: "active" });
+    });
+
+    it("should skip position closure if no open positions exist", async () => {
+        const passingChallenge = {
+            id: "clean-pass",
+            status: "active",
+            currentBalance: "5600",
+            startingBalance: "5000",
+            highWaterMark: "5600",
+            startOfDayBalance: "5500",
+            rulesConfig: { profitTarget: 500, maxDrawdown: 500, maxDailyDrawdownPercent: 0.05 },
+            pendingFailureAt: null,
+            endsAt: new Date(Date.now() + 86400000),
+            phase: "challenge",
+        };
+
+        vi.mocked(db.query.challenges.findFirst).mockResolvedValue(passingChallenge as any);
+        vi.mocked(db.query.positions.findMany).mockResolvedValue([]);
+
+        const result = await ChallengeEvaluator.evaluate("clean-pass");
+
+        expect(result.status).toBe("passed");
+        // Only 1 db.update call: the challenge phase transition
+        expect(db.update).toHaveBeenCalledTimes(1);
+    });
+});

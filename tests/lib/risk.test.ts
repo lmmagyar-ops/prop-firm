@@ -24,6 +24,13 @@ vi.mock("@/app/actions/market", () => ({
     getEventInfoForMarket: vi.fn(() => null) // Returns null = standalone market (uses per-market fallback)
 }));
 
+vi.mock("@/lib/market", () => ({
+    MarketService: {
+        getBatchOrderBookPrices: vi.fn(() => Promise.resolve(new Map())),
+        getBatchTitles: vi.fn(() => Promise.resolve(new Map())),
+    }
+}));
+
 // Import after mocking
 import { db } from "@/db";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars -- imported to verify mock exists
@@ -462,10 +469,4 @@ describe("RiskEngine - Position Tier Limits", () => {
     });
 });
 
-describe("RiskEngine.updateHighWaterMark", () => {
-    it("should be a no-op (delegated to evaluator)", async () => {
-        // Just verify it doesn't throw
-        await RiskEngine.updateHighWaterMark("challenge-1", 11000);
-        // The method logs but doesn't update - this is expected behavior
-    });
-});
+

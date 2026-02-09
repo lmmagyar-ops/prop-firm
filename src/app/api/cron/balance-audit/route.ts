@@ -50,8 +50,7 @@ export async function GET(req: Request) {
         const alerts: BalanceAuditResult[] = [];
 
         for (const challenge of activeChallenges) {
-            const rulesConfig = challenge.rulesConfig as any;
-            const startingBalance = rulesConfig?.startingBalance || 10000;
+            const startingBalance = parseFloat(challenge.startingBalance || '10000');
             const storedBalance = parseFloat(challenge.currentBalance);
 
             // Get all trades for this challenge

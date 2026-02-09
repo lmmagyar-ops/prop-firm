@@ -545,3 +545,35 @@ assert(entryPrice > 0 && entryPrice < 1, 'Entry price must be valid');
 ### Step 6: Document in `journal.md`
 
 Record: what was wrong, root cause, fix applied, files modified.
+
+---
+
+## Coding Conventions
+
+### Result\<T\> Pattern (for new code)
+
+> [!IMPORTANT]
+> All **new** pure business logic should return `Result<T>` instead of throwing. Existing code is not being refactored — this applies only to new functions.
+
+```typescript
+type Result<T> = { ok: true; value: T } | { ok: false; error: string };
+
+// Usage
+function calculatePayout(grossProfit: number, splitPct: number): Result<number> {
+    if (grossProfit <= 0) return { ok: false, error: "No profit to split" };
+    if (splitPct <= 0 || splitPct > 1) return { ok: false, error: "Invalid split" };
+    return { ok: true, value: grossProfit * splitPct };
+}
+
+// Caller
+const result = calculatePayout(5000, 0.85);
+if (!result.ok) {
+    logger.warn(result.error);
+    return;
+}
+// result.value is typed as number here
+```
+
+**When to use:** Pure functions, validators, parsers, calculations.
+**When NOT to use:** API routes (throw HTTP errors), DB operations (let Drizzle throw), infrastructure code.
+

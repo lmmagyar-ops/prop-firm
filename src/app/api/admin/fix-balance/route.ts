@@ -30,8 +30,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Challenge not found" }, { status: 404 });
     }
 
-    const rulesConfig = challenge.rulesConfig as any;
-    const startingBalance = rulesConfig?.startingBalance || 10000;
+    const startingBalance = parseFloat(challenge.startingBalance || '10000');
     const currentBalance = parseFloat(challenge.currentBalance);
 
     // Get all trades and recalculate

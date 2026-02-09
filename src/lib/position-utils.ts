@@ -2,8 +2,11 @@
  * Position Utilities
  * 
  * Shared utilities for position value calculations.
- * Centralizes direction-adjustment logic to avoid duplication.
+ * Single source of truth for direction-adjustment and portfolio valuation.
+ * Used by: risk.ts, evaluator.ts, dashboard-service.ts
  */
+
+import { safeParseFloat } from "./safe-parse";
 
 /**
  * Default drawdown limits used when rulesConfig values are missing.
@@ -11,6 +14,113 @@
  */
 export const DEFAULT_MAX_DRAWDOWN = 1000;
 export const DEFAULT_DAILY_DRAWDOWN = 500;
+
+// ─── Types ───────────────────────────────────────────────────────────
+
+/** Minimal position shape needed for portfolio valuation. */
+export interface PositionForValuation {
+    marketId: string;
+    shares: string;
+    entryPrice: string;
+    currentPrice?: string | null;
+    direction?: string | null;
+}
+
+/** Per-position valuation result. */
+export interface PositionValuation {
+    marketId: string;
+    shares: number;
+    effectivePrice: number;
+    positionValue: number;
+    unrealizedPnL: number;
+    priceSource: "live" | "stored";
+}
+
+/** Aggregated portfolio valuation result. */
+export interface PortfolioValuation {
+    totalValue: number;
+    positions: PositionValuation[];
+}
+
+// ─── Portfolio Valuation ─────────────────────────────────────────────
+
+/**
+ * Calculates the total value of a set of open positions using live prices.
+ *
+ * This is the SINGLE SOURCE OF TRUTH for position valuation across the app.
+ * It handles:
+ * - Direction adjustment (YES uses raw price, NO uses 1 - rawPrice)
+ * - NaN guards on shares/prices  
+ * - Fallback to stored entry price when live price is unavailable or invalid
+ * - Sanity bounds (rejects prices ≤0.01 or ≥0.99 from live feed)
+ *
+ * @param openPositions - Array of positions from the DB
+ * @param livePrices - Map of marketId → { price: string, source: string } from MarketService.getBatchOrderBookPrices()
+ * @returns Aggregated portfolio value and per-position breakdowns
+ */
+export function getPortfolioValue(
+    openPositions: PositionForValuation[],
+    livePrices: Map<string, { price: string; source?: string }>
+): PortfolioValuation {
+    const positions: PositionValuation[] = [];
+    let totalValue = 0;
+
+    for (const pos of openPositions) {
+        const shares = safeParseFloat(pos.shares);
+        const entryPrice = safeParseFloat(pos.entryPrice);
+        const direction = (pos.direction as "YES" | "NO") || "YES";
+
+        // Guard: skip positions with invalid data
+        if (isNaN(shares) || shares <= 0 || isNaN(entryPrice)) {
+            continue;
+        }
+
+        const priceData = livePrices.get(pos.marketId);
+        let effectivePrice: number;
+        let priceSource: "live" | "stored";
+
+        if (priceData) {
+            const rawPrice = parseFloat(priceData.price);
+
+            // Sanity check: valid range for active markets
+            if (rawPrice > 0.01 && rawPrice < 0.99 && !isNaN(rawPrice)) {
+                // Live price is raw YES price — apply direction adjustment
+                effectivePrice = getDirectionAdjustedPrice(rawPrice, direction);
+                priceSource = "live";
+            } else {
+                // Invalid live price — fall back to stored entry price
+                // Entry price is ALREADY direction-adjusted in DB, use directly
+                effectivePrice = entryPrice;
+                priceSource = "stored";
+            }
+        } else {
+            // No live price — fall back to stored price
+            // currentPrice (if available) is already direction-adjusted
+            // entryPrice is already direction-adjusted
+            const storedPrice = pos.currentPrice
+                ? safeParseFloat(pos.currentPrice)
+                : entryPrice;
+            effectivePrice = isNaN(storedPrice) ? entryPrice : storedPrice;
+            priceSource = "stored";
+        }
+
+        const positionValue = shares * effectivePrice;
+        const unrealizedPnL = (effectivePrice - entryPrice) * shares;
+
+        positions.push({
+            marketId: pos.marketId,
+            shares,
+            effectivePrice,
+            positionValue,
+            unrealizedPnL,
+            priceSource,
+        });
+
+        totalValue += positionValue;
+    }
+
+    return { totalValue, positions };
+}
 
 /**
  * Adjusts a market price for position direction.

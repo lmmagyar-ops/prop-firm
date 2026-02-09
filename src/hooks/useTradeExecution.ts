@@ -64,13 +64,12 @@ export function useTradeExecution(options: UseTradeExecutionOptions = {}) {
                 const errorMsg = data.error || "Trade failed";
 
                 // LAYER 3: Handle MARKET_RESOLVED — fundamentally untradable state
-                // Different from PRICE_MOVED: no "tap again" prompt, clear warning.
-                if (data.code === 'MARKET_RESOLVED' && data.freshPrice) {
+                // Show a warning toast but do NOT dispatch price-requote.
+                // Setting requotePrice from MARKET_RESOLVED poisons the sidebar into
+                // a permanent "Market Nearly Resolved" guard state that blocks trading,
+                // even when the stale CLOB price (99¢) doesn't reflect reality (65¢).
+                if (data.code === 'MARKET_RESOLVED') {
                     toast.warning(errorMsg, { duration: 6000 });
-                    // Dispatch event so TradingSidebar transitions to resolved state (Layer 2)
-                    window.dispatchEvent(new CustomEvent('price-requote', {
-                        detail: { freshPrice: data.freshPrice }
-                    }));
                     options.onError?.(errorMsg);
                     setLastResult({ success: false, error: errorMsg });
                     return { success: false, error: errorMsg };

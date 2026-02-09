@@ -192,10 +192,11 @@ export class RiskMonitor {
     ): Promise<void> {
         try {
             // AUDIT FIX: Status guard prevents double-firing on already-failed challenges
+            // NOTE: Do NOT overwrite currentBalance with equity — that double-counts
+            // unrealized P&L since positions still exist. Keep cash balance as-is.
             const result = await db.update(challenges)
                 .set({
                     status: 'failed',
-                    currentBalance: equity.toString() // Store final equity
                 })
                 .where(and(
                     eq(challenges.id, challenge.id),
@@ -207,6 +208,9 @@ export class RiskMonitor {
                 console.log(`[RiskMonitor] Challenge ${challenge.id} already transitioned, skipping breach`);
                 return;
             }
+
+            // Close all open positions to prevent orphans
+            await this.closeAllPositions(challenge.id);
 
             // Log to audit
             await db.insert(auditLogs).values({
@@ -239,43 +243,31 @@ export class RiskMonitor {
     ): Promise<void> {
         try {
             const currentPhase = challenge.phase;
-            let newPhase = currentPhase;
-            let newStatus = 'passed';
 
-            // Determine next phase
-            if (currentPhase === 'challenge') {
-                newPhase = 'verification';
-                newStatus = 'active'; // Verification starts immediately
-            } else if (currentPhase === 'verification') {
-                newPhase = 'funded';
-                newStatus = 'active';
-            }
+            // 1-STEP MODEL: challenge → funded directly (no verification phase)
+            // This matches the evaluator and the marketing promise.
+            const newPhase = 'funded';
+            const newStatus = 'active';
 
-            // Build update payload
+            // Build update payload — full funded reset
             const startingBalance = parseFloat(challenge.startingBalance);
+            const tier = startingBalance >= 25000 ? '25k' as const
+                : startingBalance >= 10000 ? '10k' as const
+                    : '5k' as const;
+            const tierRules = FUNDED_RULES[tier];
+
             const updatePayload: Record<string, unknown> = {
                 status: newStatus,
                 phase: newPhase,
-                currentBalance: equity.toString(),
+                currentBalance: startingBalance.toString(),
+                highWaterMark: startingBalance.toString(),
+                profitSplit: tierRules.profitSplit.toString(),
+                payoutCap: tierRules.payoutCap.toString(),
+                payoutCycleStart: new Date(),
+                activeTradingDays: 0,
+                lastActivityAt: new Date(),
+                endsAt: null,
             };
-
-            // AUDIT FIX: If transitioning TO funded, do full reset (match evaluator.ts)
-            if (newPhase === 'funded') {
-                const tier = startingBalance >= 25000 ? '25k' as const
-                    : startingBalance >= 10000 ? '10k' as const
-                        : '5k' as const;
-                const tierRules = FUNDED_RULES[tier];
-                Object.assign(updatePayload, {
-                    currentBalance: startingBalance.toString(),
-                    highWaterMark: startingBalance.toString(),
-                    profitSplit: tierRules.profitSplit.toString(),
-                    payoutCap: tierRules.payoutCap.toString(),
-                    payoutCycleStart: new Date(),
-                    activeTradingDays: 0,
-                    lastActivityAt: new Date(),
-                    endsAt: null,
-                });
-            }
 
             // AUDIT FIX: Status guard prevents race with evaluator
             const result = await db.update(challenges)
@@ -291,6 +283,9 @@ export class RiskMonitor {
                 return;
             }
 
+            // Close all open positions for clean funded transition
+            await this.closeAllPositions(challenge.id);
+
             // Log to audit
             await db.insert(auditLogs).values({
                 adminId: 'SYSTEM:RiskMonitor',
@@ -305,10 +300,59 @@ export class RiskMonitor {
                 }
             });
 
-            console.log(`[RiskMonitor] ✅ Challenge ${challenge.id} PASSED (${currentPhase} → ${newPhase})`);
+            console.log(`[RiskMonitor] ✅ Challenge ${challenge.id} PASSED (${currentPhase} → funded)`);
 
         } catch (error: unknown) {
             console.error(`[RiskMonitor] Failed to trigger pass:`, error instanceof Error ? error.message : error);
+        }
+    }
+
+    /**
+     * Close all open positions for a challenge (used on both breach and pass)
+     */
+    private async closeAllPositions(challengeId: string): Promise<void> {
+        try {
+            const openPositions = await db.query.positions.findMany({
+                where: and(
+                    eq(positions.challengeId, challengeId),
+                    eq(positions.status, 'OPEN')
+                )
+            });
+
+            if (openPositions.length === 0) return;
+
+            const livePrices = await this.batchFetchPrices(
+                openPositions.map(p => p.marketId)
+            );
+
+            const now = new Date();
+            for (const pos of openPositions) {
+                const livePrice = livePrices.get(pos.marketId);
+                const entryPrice = parseFloat(pos.entryPrice);
+                const shares = parseFloat(pos.shares);
+                const isNo = pos.direction === 'NO';
+
+                // Live price is raw YES — adjust for NO direction
+                const closePrice = livePrice !== undefined
+                    ? (isNo ? 1 - livePrice : livePrice)
+                    : parseFloat(pos.currentPrice || pos.entryPrice);
+
+                const pnl = shares * (closePrice - entryPrice);
+
+                await db.update(positions)
+                    .set({
+                        status: 'CLOSED',
+                        shares: '0',
+                        closedAt: now,
+                        closedPrice: closePrice.toString(),
+                        pnl: pnl.toFixed(2),
+                    })
+                    .where(eq(positions.id, pos.id));
+            }
+
+            console.log(`[RiskMonitor] 🧹 Closed ${openPositions.length} position(s) for challenge ${challengeId.slice(0, 8)}`);
+        } catch (error: unknown) {
+            console.error(`[RiskMonitor] Failed to close positions:`, error instanceof Error ? error.message : error);
         }
     }
 

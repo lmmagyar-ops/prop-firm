@@ -6,6 +6,161 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ## 2026-02-08
 
+### 9:25 PM - Anthropic-Grade Codebase Hardening (In Progress)
+
+**Context:** After completing the Risk/Evaluation Engine rewrite and achieving 550 tests, audited the full codebase for remaining gaps. Identified 5 areas a senior Anthropic engineer would address:
+
+1. **PayoutService** — `payout-logic.test.ts` tests inline helpers, NOT the actual `PayoutService` class (zero coverage on real money logic)
+2. **market.ts** — 777 lines, 3 concerns mixed (Redis, price fetching, order book math). `calculateImpact` etc. are pure functions trapped in a class with Redis deps
+3. **Ingestion worker** — 995 lines, zero unit tests on data processing functions
+4. **Money-math integration** — `verify-engine.ts` is a script, not a vitest suite
+5. **Result pattern** — no consistent error handling convention
+
+**Plan:** 5-phase hardening to add ~68 tests and decompose `market.ts`.
+
+---
+
+### 9:00 PM - Risk/Evaluation Engine Rewrite + A+ Test Coverage ✅
+
+**Context:** Full audit and surgical rewrite of the Risk/Evaluation Engine — same approach as the trade engine rewrite. Zero business logic changes. Same 9 risk rules, same challenge lifecycle, same dashboard data shape.
+
+#### Code Reduction
+
+| File | Before | After | Change |
+|------|--------|-------|--------|
+| `position-utils.ts` | 63 lines | 170 lines | +107 (new `getPortfolioValue()`) |
+| `risk.ts` | 476 lines | 261 lines | **−45%** |
+| `evaluator.ts` | 212 lines | ~165 lines | **−22%** |
+| `dashboard-service.ts` | 418 lines (1 fn) | ~290 lines (7 fns) | **−31%** |
+
+#### Key Changes
+
+1. **`getPortfolioValue()`** — Single source of truth for position valuation. Direction adjustment, NaN guards, price fallbacks, sanity bounds (reject ≤0.01/≥0.99). Called by `risk.ts`, `evaluator.ts`, `dashboard-service.ts`.
+
+2. **Structured logging** — Replaced ~100 lines of `console.log` debug spam with single-line JSON:
+   - `[RISK_AUDIT]` — trade validation decisions
+   - `[EVALUATOR_FORENSIC]` — challenge lifecycle transitions
+   - `[TRADE_AUDIT]` — already existed from trade engine rewrite
+
+3. **Dead code removed** — `getOpenPositionCount()`, `getCategoryExposure()`, `updateHighWaterMark()` all removed.
+
+4. **God function decomposed** — `dashboard-service.ts` went from 1 monolithic function to 7 focused exported functions: `mapChallengeHistory`, `getPositionsWithPnL`, `getEquityStats`, `getFundedStats`, etc.
+
+#### Test Coverage Push (54 new tests)
+
+| File | Tests | Time | Notes |
+|------|:-----:|:----:|-------|
+| `tests/lib/position-utils.test.ts` | **25** | 3ms | NEW — NaN guards, boundaries, direction, multi-position |
+| `tests/lib/dashboard-service.test.ts` | **29** | 16ms | NEW — equity stats, drawdown, funded payout, history |
+| `tests/lib/risk.test.ts` | 12 | **19ms** | FIX — added MarketService mock (was 44s due to Redis) |
+
+**Full suite: 550 passed, 3 skipped, 0 failures** (up from 496).
+
+#### Browser Verification
+
+- Dashboard loads correctly: equity ($9,997.45), drawdown bars, positions
+- BUY YES trade ($5 on NBA Champion) executes successfully
+- Trade history reflects all transactions
+- Structured logs confirmed in server output
+
+**Files:** `src/lib/position-utils.ts`, `src/lib/risk.ts`, `src/lib/evaluator.ts`, `src/lib/dashboard-service.ts`, `tests/lib/position-utils.test.ts`, `tests/lib/dashboard-service.test.ts`, `tests/lib/risk.test.ts`
+
+---
+
+### 8:20 PM - Trade Engine Rewrite: Surgical Simplification ✅
+
+**Context:** The trade engine had been accumulating reactive patches (5 different price sources, 4 conflicting guard layers, fragile Redis complement lookups) that made every bug fix break something else. User asked: "Is this how Anthropic would have built it?" — honest answer was no. Decided to do a surgical rewrite of just the price pipeline, keeping all the solid DB/position/balance logic.
+
+**The Core Insight:** We're a **B-Book** — we don't route orders to Polymarket. The Gamma API event list already returns the correct aggregated price for every market. There's zero reason to:
+- Fetch from the CLOB API (live order books we never trade against)
+- Look up complement NO tokens in Redis (fragile, often missing)
+- Run 4 layers of price deviation guards that fight each other
+- Cache stale prices that then cause "Market Nearly Resolved" errors
+
+---
+
+#### ✅ What Was Done (Code Changes Complete)
+
+**1. Added `getCanonicalPrice()` to `MarketService`** (`src/lib/market.ts`, ~line 108)
+- Single source of truth for trade execution prices
+- Searches Kalshi events → Polymarket events → binary market list (fallback)
+- Returns `number | null` — rejects prices ≤0 or ≥1 (resolved/invalid)
+- This is the ONLY price method the trade engine should ever call
+
+**2. Rewrote `trade.ts` price pipeline** (~lines 66-135)
+
+| Before (143 lines) | After (~40 lines) |
+|--------------------|--------------------|
+| `getLatestPrice()` → check demo → staleness check → price guards | `getCanonicalPrice()` → null check |
+| `getOrderBookFresh()` → Redis complement lookup → CLOB API → synthetic fallback | `buildSyntheticOrderBookPublic(canonicalPrice)` |
+| Layer 2: 3% deviation guard comparing CLOB vs event list | *(removed — single source, no deviation possible)* |
+| Layer 3: Resolution territory check on execution price | Resolution guard: reject ≥95¢ or ≤5¢ on canonical price |
+| `lookupPriceFromEvents()` cross-check | *(removed — canonical price IS the event list price)* |
+
+**New flow is 5 steps:**
+```
+1. getCanonicalPrice(marketId)  → null = reject
+2. Resolution guard (≥95¢ or ≤5¢) → reject
+3. Risk check (balance + RiskEngine)
+4. buildSyntheticOrderBookPublic(price) → calculate impact
+5. Execute trade in DB (unchanged)
+```
+
+**3. Cleaned up `trade.ts` imports**
+- Removed: `TRADING_CONFIG`, `PriceStaleError`, `MarketClosedError`
+- Removed: `// Force recompile: ...` comment
+- Fixed: `marketData` references in audit log → now uses `canonicalPrice`
+- Fixed: Return value — `priceSource: 'canonical'` instead of `marketData.source`
+
+**4. Rewrote unit tests** (`tests/lib/trade.test.ts`)
+- Mocks now use `getCanonicalPrice` instead of `getLatestPrice` + `isPriceFresh` + `getOrderBookFresh` + `lookupPriceFromEvents`
+- Added: Resolution threshold tests (97¢ rejects, 3¢ rejects, 94¢ allows)
+- Added: Market not found test (null canonical price)
+- Kept: BUY NO order book side bug fix tests (critical regression guards)
+- Kept: Insufficient funds + risk check failure tests
+
+---
+
+#### ✅ Verification Complete (Feb 8, 8:32 PM)
+
+| Check | Result | Details |
+|-------|--------|---------|
+| Unit tests | ✅ **11/11 passed** | `npx vitest run tests/lib/trade.test.ts` (519ms) |
+| TypeScript build | ✅ **Zero errors** | `npx tsc --noEmit` — clean |
+| Full test suite | ✅ **497 passed, 3 skipped** | `npx vitest run` — 37 test files, 84s |
+
+All canonical price pipeline, resolution guards, NO direction order book side, and regression tests green. No build errors, no type errors, no regressions in any of the 37 test files.
+
+---
+
+#### Files Changed
+
+| File | Change |
+|------|--------|
+| `src/lib/market.ts` | Added `getCanonicalPrice()` static method (~55 lines) |
+| `src/lib/trade.ts` | Rewrote lines 66-135 (price pipeline), fixed lines 355-380 (audit log + return) |
+| `tests/lib/trade.test.ts` | Full rewrite to mock `getCanonicalPrice` instead of old methods |
+
+---
+
+### 7:55 PM - Stale Market 99¢ Root Cause Found and Fixed ✅
+
+**Symptom:** User couldn't trade on markets showing 63.5¢ in UI — trade execution threw "Market Nearly Resolved (99¢)".
+
+**Root Cause Chain:**
+1. `getOrderBookFresh()` fetches YES token CLOB book → dead (99¢ asks, no real liquidity)
+2. Tries complement NO token from Redis → mapping doesn't exist (ingestion never stored it)
+3. Falls back to stale cached book → also 99¢
+4. Trade simulates against 99¢ book → Layer 3 throws "Market Nearly Resolved"
+
+**Temporary Fix** (in `market.ts` `getOrderBookFresh()`): When complement lookup fails, build synthetic book from Gamma API event list price instead of falling back to dead cached book.
+
+**Note:** This fix was superseded by the full trade engine rewrite above, which eliminates all CLOB/complement/cache logic entirely.
+
+**Files:** `src/lib/market.ts` (~line 494), `src/hooks/useTradeExecution.ts`, `src/components/trading/EventDetailModal.tsx`
+
+---
+
 ### 1:50 PM - Market Detail Page Fixes (Chart, Sell Toggle, Outcome Selection) 🔧
 
 **3 fixes implemented from Polymarket comparison audit:**

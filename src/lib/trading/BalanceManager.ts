@@ -71,9 +71,11 @@ export class BalanceManager {
         // Forensic logging
         this.formatLog('DEDUCT', challengeId, currentBalance, newBalance, amount, source);
 
-        // VALIDATION: Prevent negative balance (should be caught earlier but double-check)
-        if (newBalance < 0) {
-            console.error(`[BALANCE_ALERT] ⚠️ Negative balance would result: $${newBalance.toFixed(2)}`);
+        // HARD GUARD: Prevent negative balance from being written to DB
+        // Allow tiny floating-point dust (< 1 cent) but reject real negatives
+        if (newBalance < -0.01) {
+            console.error(`[BALANCE_CORRUPTION] 🚨 BLOCKED negative balance: $${newBalance.toFixed(2)} on challenge ${challengeId}`);
+            throw new Error(`Balance would go negative: $${newBalance.toFixed(2)}. Trade rejected.`);
         }
 
         await tx.update(challenges)
@@ -105,7 +107,7 @@ export class BalanceManager {
         this.formatLog('CREDIT', challengeId, currentBalance, newBalance, amount, source);
 
         // VALIDATION: Check for suspiciously large credits
-        const startingBalance = (challenge.rulesConfig as any)?.startingBalance || 10000;
+        const startingBalance = parseFloat(challenge.startingBalance || '10000');
         if (amount > startingBalance) {
             console.error(`[BALANCE_ALERT] ⚠️ Credit larger than starting balance!`);
             console.error(`[BALANCE_ALERT] Credit: $${amount.toFixed(2)}, Starting: $${startingBalance}`);

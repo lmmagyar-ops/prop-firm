@@ -56,6 +56,7 @@ export async function GET() {
                 status: challenges.status,
                 phase: challenges.phase,
                 currentBalance: challenges.currentBalance,
+                startingBalance: challenges.startingBalance,
                 platform: challenges.platform,
                 startedAt: challenges.startedAt,
                 rulesConfig: challenges.rulesConfig,
@@ -89,7 +90,7 @@ export async function GET() {
             const user = userMap.get(row.userId);
 
             if (row.challengeId) {
-                const startingBalance = (row.rulesConfig as any)?.startingBalance || 10000;
+                const startingBalance = Number(row.startingBalance || 10000);
                 const cashBalance = Number(row.currentBalance || 0);
 
                 // Note: Full P&L with position values will be calculated after positions query

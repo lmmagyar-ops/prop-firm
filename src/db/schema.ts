@@ -211,6 +211,7 @@ export const trades = pgTable("trades", {
     marketId: text("market_id").notNull(),
 
     type: varchar("type", { length: 10 }).notNull(), // 'BUY', 'SELL'
+    direction: varchar("direction", { length: 10 }), // 'YES', 'NO' — nullable for backward compat with existing rows
     price: decimal("price", { precision: 10, scale: 4 }).notNull(),
     amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
     shares: decimal("shares", { precision: 12, scale: 2 }).notNull(),

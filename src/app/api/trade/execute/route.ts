@@ -8,6 +8,7 @@ import { createLogger } from "@/lib/logger";
 import { checkIdempotency, cacheIdempotencyResult } from "@/lib/trade-idempotency";
 
 const log = createLogger("TradeAPI");
+// Force recompile: 2026-02-08T19:27Z — picks up dual-token trade.ts fixes
 
 export async function POST(req: NextRequest) {
     const session = await auth();

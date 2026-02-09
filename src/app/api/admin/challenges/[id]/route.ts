@@ -60,6 +60,21 @@ export async function PATCH(
             updates.phase = body.phase;
         }
 
+        // Balance override (admin testing only)
+        if (body.currentBalance !== undefined) {
+            const balance = parseFloat(body.currentBalance);
+            if (isNaN(balance) || balance < 0) {
+                return NextResponse.json({ error: "Invalid currentBalance" }, { status: 400 });
+            }
+            updates.currentBalance = String(balance.toFixed(2));
+        }
+        if (body.highWaterMark !== undefined) {
+            updates.highWaterMark = String(parseFloat(body.highWaterMark).toFixed(2));
+        }
+        if (body.startOfDayBalance !== undefined) {
+            updates.startOfDayBalance = String(parseFloat(body.startOfDayBalance).toFixed(2));
+        }
+
         if (Object.keys(updates).length === 0) {
             return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
         }
@@ -69,12 +84,20 @@ export async function PATCH(
             .set(updates)
             .where(eq(challenges.id, challengeId));
 
+        // Optionally trigger the evaluator after balance update
+        let evaluatorResult = null;
+        if (body.triggerEvaluator) {
+            const { ChallengeEvaluator } = await import("@/lib/evaluator");
+            evaluatorResult = await ChallengeEvaluator.evaluate(challengeId);
+        }
+
         const [updatedChallenge] = await db
             .select({
                 id: challenges.id,
                 status: challenges.status,
                 phase: challenges.phase,
                 currentBalance: challenges.currentBalance,
+                highWaterMark: challenges.highWaterMark,
                 userId: challenges.userId,
             })
             .from(challenges)
@@ -85,7 +108,8 @@ export async function PATCH(
 
         return NextResponse.json({
             success: true,
-            challenge: updatedChallenge
+            challenge: updatedChallenge,
+            evaluatorResult
         });
 
     } catch (error) {

@@ -98,7 +98,7 @@ export class ActivityTracker {
             )
         });
 
-        // If less than minTradesForFlag trades today, it's likely skill not gambling
+        // If ≥ minTradesForFlag trades today, it's active trading — skip gambling check
         if (todaysTrades.length >= CONSISTENCY_CONFIG.minTradesForFlag) {
             return { flagged: false };
         }
@@ -164,7 +164,7 @@ export class ActivityTracker {
             await db.update(challenges)
                 .set({
                     status: "failed",
-                    // Store failure reason in rulesConfig or a new field
+                    endsAt: new Date(),
                 })
                 .where(eq(challenges.id, account.id));
 

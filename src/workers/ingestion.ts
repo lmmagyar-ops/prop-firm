@@ -556,6 +556,7 @@ class IngestionWorker {
                         seenQuestions.add(normalizedQ);
 
                         const tokenId = clobTokens[0];
+                        const complementToken = clobTokens.length > 1 ? clobTokens[1] : null;
                         const yesPrice = parseFloat(prices[0] || "0");
 
                         // Skip markets with very low prices (≤1%) - these are either
@@ -572,6 +573,12 @@ class IngestionWorker {
                         // dropping legitimate new markets near 50%.
 
                         allEventTokenIds.push(tokenId);
+
+                        // DUAL-TOKEN FIX: Store complement mapping (YES→NO)
+                        // Critical for markets where liquidity is on the NO token
+                        if (complementToken) {
+                            await this.redis.hset('market:complements', tokenId, complementToken);
+                        }
 
                         subMarkets.push({
                             id: tokenId,
@@ -720,7 +727,13 @@ class IngestionWorker {
                     } else {
                         // BINARY MARKET: Process as before
                         const yesToken = clobTokens[0];
+                        const noToken = clobTokens.length > 1 ? clobTokens[1] : null;
                         if (!yesToken || seenIds.has(yesToken)) continue;
+
+                        // DUAL-TOKEN FIX: Store complement mapping
+                        if (noToken) {
+                            await this.redis.hset('market:complements', yesToken, noToken);
+                        }
 
                         const categories = getCategories(m.category, m.question, m.tags, m.image);
 

@@ -3,11 +3,11 @@
 This document contains visual state machine diagrams for the core business logic. Use these to understand how money flows through the system and how users progress from evaluation to funded trader.
 
 > [!IMPORTANT]
-> **3-Phase Model:** Propshot uses Challenge → Verification → Funded (not 2-phase)
+> **1-Step Model:** Propshot uses Challenge → Funded (no verification phase). Hit profit target once, get funded instantly.
 
 ---
 
-## 1. Challenge Lifecycle (Full 3-Phase Model)
+## 1. Challenge Lifecycle (1-Step Model)
 
 The complete journey from purchase to funded trader status.
 
@@ -21,17 +21,11 @@ stateDiagram-v2
         Challenge_Active --> Challenge_Active: Trade executed
         Challenge_Active --> Failed: Max drawdown breached
         Challenge_Active --> Failed: Daily loss breached
-        Challenge_Active --> Failed: Time limit (30 days)
-        Challenge_Active --> Verification_Active: Profit target hit
+        Challenge_Active --> Failed: Time limit (60 days)
+        Challenge_Active --> Funded_Active: Profit target hit ✅
     }
 
-    state "Phase 2: Verification" as Verification_Phase {
-        Verification_Active --> Verification_Active: Trade executed
-        Verification_Active --> Failed: Any breach
-        Verification_Active --> Funded_Active: Profit target hit (2nd time)
-    }
-
-    state "Phase 3: Funded" as Funded_Phase {
+    state "Phase 2: Funded" as Funded_Phase {
         Funded_Active --> Funded_Active: Trade executed
         Funded_Active --> Failed: Total drawdown breached
         Funded_Active --> Failed: Daily loss breached
@@ -48,15 +42,12 @@ stateDiagram-v2
 ### Plain English:
 
 1. **Phase 1: Challenge**
-   - Hit profit target → Advance to Verification
+   - Hit profit target → Instantly FUNDED (no verification step)
+   - All open positions auto-closed on transition
+   - Balance resets to starting balance for funded phase
    - Any breach (drawdown, daily loss, time) → Fail
 
-2. **Phase 2: Verification**
-   - Same rules, prove it wasn't luck
-   - Hit target again → Become FUNDED
-   - Any breach → Fail
-
-3. **Phase 3: Funded**
+2. **Phase 2: Funded**
    - No profit target - trade and earn
    - Can request payouts after 5+ trading days
    - 30 days inactivity → Automatic termination
@@ -274,8 +265,7 @@ flowchart TD
     M -->|Yes| FAIL3[❌ FAILED: Daily Drawdown]
     M -->|No| R{Profit Target Hit?}
     
-    R -->|Yes, Challenge| PASS1[🎉 → Verification]
-    R -->|Yes, Verification| PASS2[🎉 → Funded]
+    R -->|Yes, Challenge| PASS1["🎉 → Funded (instant)"]
     R -->|Funded Phase| S[No target, stay active]
     R -->|No| S
     
@@ -288,7 +278,6 @@ flowchart TD
     style FAIL2 fill:#ff6666
     style FAIL3 fill:#ff6666
     style PASS1 fill:#66ff66
-    style PASS2 fill:#66ff66
     style ACTIVE fill:#66ccff
 ```
 
@@ -301,13 +290,13 @@ flowchart TD
 
 Different account sizes have different limits:
 
-### Challenge & Verification Phase
+### Challenge Phase
 
 | Tier | Starting Balance | Profit Target | Max Drawdown | Daily Loss | Time Limit |
 |------|------------------|---------------|--------------|------------|------------|
-| **5K** | $5,000 | $500 (10%) | $500 trailing | $250 (5%) | 30 days |
-| **10K** | $10,000 | $1,000 (10%) | $1,000 trailing | $500 (5%) | 30 days |
-| **25K** | $25,000 | $2,500 (10%) | $2,500 trailing | $1,250 (5%) | 30 days |
+| **5K** | $5,000 | $500 (10%) | $500 trailing | $250 (5%) | 60 days |
+| **10K** | $10,000 | $1,000 (10%) | $1,000 trailing | $500 (5%) | 60 days |
+| **25K** | $25,000 | $2,500 (10%) | $2,500 trailing | $1,250 (5%) | 60 days |
 
 ### Funded Phase
 
@@ -319,12 +308,12 @@ Different account sizes have different limits:
 
 ### Key Differences: Challenge vs Funded
 
-| Rule | Challenge/Verification | Funded |
-|------|------------------------|--------|
+| Rule | Challenge | Funded |
+|------|-----------|--------|
 | **Drawdown Type** | Trailing (from High Water Mark) | Static (from initial balance) |
 | **Daily Loss** | Hard breach (instant fail) | Hard breach (instant fail) |
 | **Profit Target** | Yes - hit to advance | None |
-| **Time Limit** | 30 days | None |
+| **Time Limit** | 60 days | None |
 | **Payout** | Not eligible | Eligible after 5 days |
 
 ---
@@ -356,5 +345,6 @@ flowchart TD
 
 ---
 
-*Last Updated: January 10, 2026*
+*Last Updated: February 8, 2026*
 *Source of Truth: Actual codebase implementation*
+*Phase Model: 1-Step (Challenge → Funded)*

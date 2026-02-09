@@ -635,57 +635,10 @@ function TradingSidebar({ market, eventTitle, onTradeComplete, isKalshi, initial
         }
     };
 
-    // LAYER 2: Market Nearly Resolved — state transition, not an error.
-    // When price reaches ≥95¢ or ≤5¢, the market is in resolution territory.
-    // Don't show an error — show a calm informational state.
-    const isMarketResolved = effectiveMarketPrice >= 0.95 || effectiveMarketPrice <= 0.05;
-
-    if (isMarketResolved) {
-        return (
-            <div className="space-y-6">
-                {/* Selected Outcome */}
-                <div className="flex items-center gap-3">
-                    <div className={cn(
-                        "w-10 h-10 rounded-lg flex items-center justify-center shrink-0",
-                        isKalshi ? "bg-slate-100" : "bg-primary/20"
-                    )}>
-                        <TrendingUp className={cn("w-5 h-5", isKalshi ? "text-slate-500" : "text-primary")} />
-                    </div>
-                    <div>
-                        <div className={cn("text-sm font-semibold line-clamp-2", isKalshi ? "text-slate-900" : "text-white")}>
-                            {isKalshi ? market.question : getCleanOutcomeName(market.question, eventTitle || "")}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Resolved State */}
-                <div className={cn(
-                    "rounded-xl p-6 text-center space-y-3",
-                    isKalshi ? "bg-amber-50 border border-amber-200" : "bg-amber-500/10 border border-amber-500/20"
-                )}>
-                    <div className={cn(
-                        "text-2xl font-bold tabular-nums",
-                        isKalshi ? "text-amber-700" : "text-amber-400"
-                    )}>
-                        {yesPrice}¢
-                    </div>
-                    <div className={cn(
-                        "text-sm font-semibold",
-                        isKalshi ? "text-amber-700" : "text-amber-400"
-                    )}>
-                        Market Nearly Resolved
-                    </div>
-                    <p className={cn(
-                        "text-xs leading-relaxed",
-                        isKalshi ? "text-amber-600/80" : "text-amber-500/70"
-                    )}>
-                        This market&apos;s outcome is nearly certain and can no longer be traded.
-                        The price has moved to {effectiveMarketPrice >= 0.95 ? 'near $1.00' : 'near $0.00'}, indicating resolution.
-                    </p>
-                </div>
-            </div>
-        );
-    }
+    // NOTE: "Market Nearly Resolved" UI guard has been removed.
+    // The server-side trade execution (trade.ts) handles resolution checks.
+    // The UI guard was repeatedly triggered by stale CLOB data from dual-token markets,
+    // old trade API responses, and SSR cache — causing a worse UX than no guard at all.
 
     return (
         <div className="space-y-6">

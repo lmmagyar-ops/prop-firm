@@ -1,4 +1,5 @@
 import Redis from "ioredis";
+import { isBookDead as _isBookDead, invertOrderBook as _invertOrderBook, buildSyntheticOrderBook, calculateImpact as _calculateImpact } from "./order-book-engine";
 
 // Priority: REDIS_URL (Railway) > REDIS_HOST/PASSWORD (legacy Upstash) > localhost
 function createRedisClient(): Redis {
@@ -105,6 +106,62 @@ async function getParsedEventLists(): Promise<{ kalshiEvents: any[]; polyEvents:
 }
 
 export class MarketService {
+
+    /**
+     * CANONICAL PRICE — Single source of truth for trade execution.
+     * 
+     * Returns the Gamma API event list price, which correctly aggregates
+     * both YES and NO token liquidity into one accurate price.
+     * 
+     * This is the ONLY price source the trade engine should use.
+     * Returns null if the market isn't found in any event list.
+     */
+    static async getCanonicalPrice(marketId: string): Promise<number | null> {
+        try {
+            const { kalshiEvents, polyEvents } = await getParsedEventLists();
+
+            // Search Kalshi events
+            for (const event of kalshiEvents) {
+                const market = event.markets?.find((m: any) => m.id === marketId);
+                if (market) {
+                    const price = parseFloat(market.price);
+                    if (Number.isFinite(price) && price > 0 && price < 1) {
+                        return price;
+                    }
+                }
+            }
+
+            // Search Polymarket events
+            for (const event of polyEvents) {
+                const market = event.markets?.find((m: any) => m.id === marketId);
+                if (market) {
+                    const price = parseFloat(market.price);
+                    if (Number.isFinite(price) && price > 0 && price < 1) {
+                        return price;
+                    }
+                }
+            }
+
+            // Fallback: binary market list
+            const redis = getRedis();
+            const binaryData = await redis.get('market:active_list');
+            if (binaryData) {
+                const markets = JSON.parse(binaryData);
+                const market = markets.find((m: any) => m.id === marketId);
+                if (market) {
+                    const price = market.currentPrice ?? market.basePrice;
+                    if (Number.isFinite(price) && price > 0 && price < 1) {
+                        return price;
+                    }
+                }
+            }
+
+            return null;
+        } catch (error) {
+            console.error('[MarketService] getCanonicalPrice error:', error);
+            return null;
+        }
+    }
 
     /**
      * Demo mode fallback data - used when Redis is unavailable
@@ -457,31 +514,53 @@ export class MarketService {
      * Bypasses Redis cache entirely — used exclusively for trade execution.
      * This guarantees the execution price matches current market conditions.
      * 
+     * DUAL-TOKEN FIX: If the YES token's book is dead (huge spread),
+     * falls back to the complement (NO) token and inverts its book.
+     * This handles markets where all liquidity is on the NO side.
+     * 
      * Falls back to cached order book if the fresh fetch fails.
      */
     static async getOrderBookFresh(tokenId: string): Promise<OrderBook | null> {
         try {
-            const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 3000); // 3s hard timeout
+            const book = await this.fetchClobBook(tokenId);
 
-            const res = await fetch(
-                `https://clob.polymarket.com/book?token_id=${tokenId}`,
-                { signal: controller.signal }
-            );
-            clearTimeout(timeout);
-
-            if (!res.ok) {
-                console.warn(`[MarketService] Fresh book fetch failed (${res.status}) for ${tokenId.slice(0, 12)}...`);
-                // Fall back to cached
+            if (!book) {
                 return this.getOrderBook(tokenId);
             }
 
-            const book: OrderBook = await res.json();
+            // Check if this book is "dead" — huge spread or asks far from reasonable
+            if (this.isBookDead(book)) {
+                console.warn(`[MarketService] YES book dead for ${tokenId.slice(0, 12)}... — trying complement (NO) token`);
 
-            // Validate book has meaningful data
-            if (!book.bids?.length && !book.asks?.length) {
-                console.warn(`[MarketService] Fresh book empty for ${tokenId.slice(0, 12)}..., using cached`);
-                return this.getOrderBook(tokenId);
+                // Look up the complement (NO) token from Redis
+                const complementTokenId = await getRedis().hget('market:complements', tokenId);
+
+                if (complementTokenId) {
+                    const noBook = await this.fetchClobBook(complementTokenId);
+
+                    if (noBook && !this.isBookDead(noBook)) {
+                        // Invert the NO book to create a valid YES book:
+                        // NO bids (someone buys NO at X) → YES asks (sell YES at 1-X)
+                        // NO asks (someone sells NO at X) → YES bids (buy YES at 1-X)
+                        const invertedBook = this.invertOrderBook(noBook);
+                        console.log(`[MarketService] ✅ Using INVERTED complement book for ${tokenId.slice(0, 12)}... (${invertedBook.bids?.length || 0} bids, ${invertedBook.asks?.length || 0} asks)`);
+                        return { ...invertedBook, source: 'live' as const };
+                    }
+                }
+
+                console.warn(`[MarketService] Complement book also unavailable for ${tokenId.slice(0, 12)}...`);
+
+                // CRITICAL FIX: Don't return the dead YES book or stale cached book.
+                // Instead, build a synthetic book from the EVENT LIST price (Gamma API),
+                // which correctly aggregates both YES and NO token prices.
+                const eventPrice = await this.lookupPriceFromEvents(tokenId);
+                if (eventPrice) {
+                    const price = parseFloat(eventPrice.price);
+                    console.log(`[MarketService] 🔧 Building SYNTHETIC book from event list price (${price}) for ${tokenId.slice(0, 12)}...`);
+                    return { ...this.buildSyntheticOrderBookPublic(price), source: 'synthetic' as const };
+                }
+
+                console.warn(`[MarketService] No event list price either — returning dead book for ${tokenId.slice(0, 12)}...`);
             }
 
             console.log(`[MarketService] ✅ Fresh order book fetched for ${tokenId.slice(0, 12)}... (${book.bids?.length || 0} bids, ${book.asks?.length || 0} asks)`);
@@ -498,114 +577,45 @@ export class MarketService {
     }
 
     /**
-     * Build a synthetic order book from a known price.
-     * Simulates REALISTIC liquidity around the current price.
-     * Public for use by TradeExecutor price integrity checks.
-     * 
-     * PARITY FIX (Jan 2026): Reduced from 50K to 5K shares per level
-     * and widened spread from 1¢ to 2¢ to match typical Polymarket depth.
+     * Fetch a single CLOB order book with timeout.
      */
-    static buildSyntheticOrderBookPublic(price: number): OrderBook {
-        // PARITY: Real Polymarket spreads are 0.5%-10%, we use 2¢
-        const spread = 0.02; // 2 cent spread (was 1¢)
-        // PARITY: Real Polymarket depth is ~1K-10K per level
-        const depthPerLevel = "5000"; // (was 50000)
+    private static async fetchClobBook(tokenId: string): Promise<OrderBook | null> {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 3000);
 
-        return {
-            bids: [
-                { price: Math.max(0.01, price - spread).toFixed(2), size: depthPerLevel },
-                { price: Math.max(0.01, price - spread * 2).toFixed(2), size: depthPerLevel },
-                { price: Math.max(0.01, price - spread * 3).toFixed(2), size: depthPerLevel }
-            ],
-            asks: [
-                { price: Math.min(0.99, price + spread).toFixed(2), size: depthPerLevel },
-                { price: Math.min(0.99, price + spread * 2).toFixed(2), size: depthPerLevel },
-                { price: Math.min(0.99, price + spread * 3).toFixed(2), size: depthPerLevel }
-            ]
-        };
-    }
+        try {
+            const res = await fetch(
+                `https://clob.polymarket.com/book?token_id=${tokenId}`,
+                { signal: controller.signal }
+            );
+            clearTimeout(timeout);
 
-    /**
-     * Calculates the "Weighted Average Price" for a trade size.
-     * Walks the book to simulate real impact cost.
-     * 
-     * @param book Source Order Book
-     * @param side "BUY" (takes Asks) or "SELL" (hits Bids)
-     * @param notionalAmount Dollar amount to trade
-     */
-    static calculateImpact(book: OrderBook, side: "BUY" | "SELL", notionalAmount: number): ExecutionSimulation {
-        // 1. Select the side of the book to consume
-        // BUY -> Consume Asks
-        // SELL -> Consume Bids
-        const levels = side === "BUY" ? book.asks : book.bids;
-
-        if (!levels || levels.length === 0) {
-            return { executedPrice: 0, totalShares: 0, slippagePercent: 0, filled: false, reason: "No Liquidity" };
-        }
-
-        let remainingAmount = notionalAmount;
-        let totalSharesObj = 0;
-        let totalCostObj = 0;
-
-        // 2. Walk the Book
-        for (const level of levels) {
-            if (remainingAmount <= 0) break;
-
-            const levelPrice = parseFloat(level.price);
-            const levelSize = parseFloat(level.size); // Available shares
-
-            if (levelPrice <= 0 || levelSize <= 0) continue;
-
-            // Logic diff for BUY vs SELL if input is "Amount" ($).
-            // Usually: 
-            // BUY $1000 -> We need to spend $1000. 
-            //   Level 1: 0.50, Size 1000 shares. Cost = $500. We take all. rem = 500.
-            //   Level 2: 0.55, Size 1000 shares. Cost = $550. We take partial (500 / 0.55 = 909 shares).
-
-            // SELL $1000 (Notional value of shares? Or assuming user specifies shares?)
-            // In our `executeTrade` API, `amount` is Notional ($). 
-            // So if I SELL $1000 worth of shares... wait. usually sell is "Sell 1000 shares".
-            // Our Schema says `amount` is logic. Let's assume Input is Notional Dollars for simplicity of MVP.
-            // Actually, in `trade.ts`, we calculate `shares = amount / price`.
-
-            // For this Engine, let's strictly handle "DOLLAR AMOUNT SPENT (BUY)" or "SHARES SOLD (SELL)".
-            // But `trade.ts` currently takes "amount" as dollar value for both.
-            // Let's stick to Notional Walking for both for consistency with existing MVP.
-
-            const levelCost = levelPrice * levelSize;
-
-            if (remainingAmount >= levelCost) {
-                // Consume entire level
-                totalCostObj += levelCost;
-                totalSharesObj += levelSize;
-                remainingAmount -= levelCost;
-            } else {
-                // Partial fill
-                const sharesToTake = remainingAmount / levelPrice;
-                totalCostObj += remainingAmount;
-                totalSharesObj += sharesToTake;
-                remainingAmount = 0;
+            if (!res.ok) {
+                console.warn(`[MarketService] CLOB fetch failed (${res.status}) for ${tokenId.slice(0, 12)}...`);
+                return null;
             }
+
+            const book: OrderBook = await res.json();
+
+            if (!book.bids?.length && !book.asks?.length) {
+                return null;
+            }
+
+            return book;
+        } catch (error: any) {
+            clearTimeout(timeout);
+            if (error.name === 'AbortError') {
+                console.warn(`[MarketService] CLOB fetch TIMED OUT for ${tokenId.slice(0, 12)}...`);
+            }
+            return null;
         }
-
-        // 3. Validation
-        if (remainingAmount > 1) { // Allow $1 dust tolerance
-            return { executedPrice: 0, totalShares: 0, slippagePercent: 0, filled: false, reason: `Insufficient Depth (Unfilled: $${remainingAmount.toFixed(2)})` };
-        }
-
-        const avgPrice = totalCostObj / totalSharesObj;
-
-        // Slippage calc: Compare Avg vs Top of Book
-        const topPrice = parseFloat(levels[0].price);
-        const slippage = Math.abs((avgPrice - topPrice) / topPrice);
-
-        return {
-            executedPrice: avgPrice,
-            totalShares: totalSharesObj,
-            slippagePercent: slippage,
-            filled: true
-        };
     }
+
+    // ── Delegators to order-book-engine.ts (pure functions) ─────────
+    private static isBookDead(book: OrderBook): boolean { return _isBookDead(book); }
+    private static invertOrderBook(noBook: OrderBook): OrderBook { return _invertOrderBook(noBook); }
+    static buildSyntheticOrderBookPublic(price: number): OrderBook { return buildSyntheticOrderBook(price); }
+    static calculateImpact(book: OrderBook, side: "BUY" | "SELL", notionalAmount: number): ExecutionSimulation { return _calculateImpact(book, side, notionalAmount); }
 
     static isPriceFresh(priceData: MarketPrice, maxAgeMs = 60000): boolean {
         // Increased to 60s for demo mode with auto-provisioned data
