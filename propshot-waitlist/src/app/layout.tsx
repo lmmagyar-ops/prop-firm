@@ -9,11 +9,11 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Predictions Firm - The World's First Prediction Market Prop Firm",
-  description: "A skill-based evaluation platform for prediction market traders. Demonstrate your abilities, access funded trading opportunities.",
+  title: "Predictions Firm — Skill Evaluation for Prediction Market Traders",
+  description: "The world's first skill evaluation platform for prediction markets. Demonstrate your ability trading Polymarket & Kalshi data, earn up to 90% performance payouts.",
   openGraph: {
-    title: "Predictions Firm - The World's First Prediction Market Prop Firm",
-    description: "A skill-based evaluation platform for prediction market traders seeking funded opportunities.",
+    title: "Predictions Firm — Prove Your Edge. Earn Your Account.",
+    description: "The world's first skill evaluation platform for prediction market traders. Demonstrate your ability, earn performance payouts.",
     type: "website",
   },
 };
