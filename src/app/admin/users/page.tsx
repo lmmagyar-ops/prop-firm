@@ -157,6 +157,7 @@ export default function UsersPage() {
     );
 
     const [resettingChallengeId, setResettingChallengeId] = useState<string | null>(null);
+    const [deletingChallengeId, setDeletingChallengeId] = useState<string | null>(null);
 
     const resetChallenge = async (challengeId: string, userId: string) => {
         setResettingChallengeId(challengeId);
@@ -190,6 +191,39 @@ export default function UsersPage() {
             toast.error("Failed to reset challenge");
         } finally {
             setResettingChallengeId(null);
+        }
+    };
+
+    const deleteChallenge = async (challengeId: string, userId: string) => {
+        setDeletingChallengeId(challengeId);
+        try {
+            const res = await fetch(`/api/admin/challenges/${challengeId}`, {
+                method: "DELETE",
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                toast.success(`Evaluation deleted (${data.deleted.trades} trades, ${data.deleted.positions} positions removed)`);
+                // Refresh user data
+                const usersRes = await fetch("/api/admin/users");
+                if (usersRes.ok) {
+                    const usersData = await usersRes.json();
+                    setUsers(usersData.users || []);
+                    setSummary(usersData.summary || null);
+                    if (selectedUser?.id === userId) {
+                        const freshUser = (usersData.users || []).find((u: UserData) => u.id === userId);
+                        if (freshUser) setSelectedUser(freshUser);
+                    }
+                }
+            } else {
+                const data = await res.json();
+                toast.error(data.error || "Failed to delete evaluation");
+            }
+        } catch (error) {
+            console.error("Delete challenge error:", error);
+            toast.error("Failed to delete evaluation");
+        } finally {
+            setDeletingChallengeId(null);
         }
     };
 
@@ -820,6 +854,51 @@ export default function UsersPage() {
                                                                                         <>
                                                                                             <RotateCcw className="h-4 w-4 mr-2" />
                                                                                             Reset Challenge
+                                                                                        </>
+                                                                                    )}
+                                                                                </AlertDialogAction>
+                                                                            </AlertDialogFooter>
+                                                                        </AlertDialogContent>
+                                                                    </AlertDialog>
+                                                                    <AlertDialog>
+                                                                        <AlertDialogTrigger asChild>
+                                                                            <DropdownMenuItem
+                                                                                onSelect={(e) => e.preventDefault()}
+                                                                                className="cursor-pointer text-red-400 focus:text-red-400 focus:bg-red-500/10"
+                                                                            >
+                                                                                <Trash2 className="h-3 w-3 mr-2" />
+                                                                                Delete Evaluation
+                                                                            </DropdownMenuItem>
+                                                                        </AlertDialogTrigger>
+                                                                        <AlertDialogContent className="bg-zinc-900 border-zinc-700">
+                                                                            <AlertDialogHeader>
+                                                                                <AlertDialogTitle className="text-red-400">Delete Evaluation?</AlertDialogTitle>
+                                                                                <AlertDialogDescription className="text-zinc-400">
+                                                                                    This will permanently delete this evaluation and all associated data:
+                                                                                    <ul className="list-disc list-inside mt-2 space-y-1">
+                                                                                        <li>{challenge.tradeCount} trade(s)</li>
+                                                                                        <li>All open positions</li>
+                                                                                        <li>Balance: ${parseFloat(challenge.balance || '0').toFixed(2)}</li>
+                                                                                    </ul>
+                                                                                    <p className="mt-3 text-red-400 font-medium">This action cannot be undone.</p>
+                                                                                </AlertDialogDescription>
+                                                                            </AlertDialogHeader>
+                                                                            <AlertDialogFooter>
+                                                                                <AlertDialogCancel className="bg-zinc-800 border-zinc-700 text-zinc-300 hover:bg-zinc-700">Cancel</AlertDialogCancel>
+                                                                                <AlertDialogAction
+                                                                                    onClick={() => deleteChallenge(challenge.id, selectedUser.id)}
+                                                                                    disabled={deletingChallengeId === challenge.id}
+                                                                                    className="bg-red-600 hover:bg-red-700 text-white"
+                                                                                >
+                                                                                    {deletingChallengeId === challenge.id ? (
+                                                                                        <>
+                                                                                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                                                                            Deleting...
+                                                                                        </>
+                                                                                    ) : (
+                                                                                        <>
+                                                                                            <Trash2 className="h-4 w-4 mr-2" />
+                                                                                            Yes, Delete Evaluation
                                                                                         </>
                                                                                     )}
                                                                                 </AlertDialogAction>

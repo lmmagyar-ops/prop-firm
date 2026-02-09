@@ -1,8 +1,77 @@
 import { db } from "@/db";
-import { challenges } from "@/db/schema";
+import { challenges, trades, positions } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-auth";
+
+/**
+ * DELETE /api/admin/challenges/[id]
+ * Delete a single challenge and all its associated trades + positions.
+ * Keeps the user account intact — useful for cleaning up test data.
+ */
+export async function DELETE(
+    request: Request,
+    { params }: { params: Promise<{ id: string }> }
+) {
+    const { isAuthorized, response } = await requireAdmin();
+    if (!isAuthorized) return response;
+
+    const { id: challengeId } = await params;
+
+    if (!challengeId) {
+        return NextResponse.json({ error: "Challenge ID is required" }, { status: 400 });
+    }
+
+    try {
+        // Verify challenge exists
+        const [challenge] = await db
+            .select({ id: challenges.id, userId: challenges.userId, startingBalance: challenges.startingBalance })
+            .from(challenges)
+            .where(eq(challenges.id, challengeId))
+            .limit(1);
+
+        if (!challenge) {
+            return NextResponse.json({ error: "Challenge not found" }, { status: 404 });
+        }
+
+        // Cascade delete in FK order: trades → positions → challenge
+        const deletedTrades = await db
+            .delete(trades)
+            .where(eq(trades.challengeId, challengeId))
+            .returning({ id: trades.id });
+
+        const deletedPositions = await db
+            .delete(positions)
+            .where(eq(positions.challengeId, challengeId))
+            .returning({ id: positions.id });
+
+        await db
+            .delete(challenges)
+            .where(eq(challenges.id, challengeId));
+
+        console.log(`[Admin] Deleted challenge ${challengeId}:`, {
+            trades: deletedTrades.length,
+            positions: deletedPositions.length,
+        });
+
+        return NextResponse.json({
+            success: true,
+            message: `Challenge deleted successfully`,
+            deleted: {
+                trades: deletedTrades.length,
+                positions: deletedPositions.length,
+            }
+        });
+
+    } catch (error) {
+        console.error("Delete Challenge Error:", error);
+        return NextResponse.json(
+            { error: "Failed to delete challenge" },
+            { status: 500 }
+        );
+    }
+}
+
 
 /**
  * PATCH /api/admin/challenges/[id]
