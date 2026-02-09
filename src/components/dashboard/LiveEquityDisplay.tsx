@@ -12,6 +12,7 @@ interface LiveEquityDisplayProps {
 /**
  * LiveEquityDisplay - Self-updating equity display with 30s polling.
  * Enhanced with SpotlightCard for premium cursor-following glow.
+ * Anti-flicker: renders SSR value immediately, smooth-transitions on updates.
  */
 export function LiveEquityDisplay({ initialBalance, initialDailyPnL }: LiveEquityDisplayProps) {
     const { equity, lastUpdated } = useEquityPolling(initialBalance);
@@ -31,10 +32,13 @@ export function LiveEquityDisplay({ initialBalance, initialDailyPnL }: LiveEquit
             )}
 
             <div className="text-sm text-zinc-400 mb-2 uppercase tracking-wider font-bold">Current Equity</div>
-            <BigNumberDisplay value={equity} suffix="USD" className="text-5xl md:text-6xl font-medium text-white" />
-            <div className={`text-lg font-mono mt-4 font-bold ${initialDailyPnL >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+            <div className="transition-opacity duration-300">
+                <BigNumberDisplay value={equity} suffix="USD" className="text-5xl md:text-6xl font-medium text-white" />
+            </div>
+            <div className={`text-lg font-mono mt-4 font-bold transition-opacity duration-300 ${initialDailyPnL >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                 {initialDailyPnL >= 0 ? '+' : ''}${initialDailyPnL.toFixed(2)} Today
             </div>
         </SpotlightCard>
     );
 }
+

@@ -12,10 +12,14 @@ interface EquityData {
 /**
  * useEquityPolling — Polls /api/user/balance every `intervalMs` for live equity.
  * 
- * Anthropic pattern: simple polling, no WebSocket overhead.
- * Falls back gracefully to initial values on error.
+ * Anti-flicker: uses the server-rendered initial value until a poll returns
+ * a meaningfully different equity (>$1 delta), preventing the jarring
+ * flash-to-zero on initial hydration.
  */
 export function useEquityPolling(initialEquity: number, intervalMs = 30_000) {
+    const initialRef = useRef(initialEquity);
+    const hasReceivedRealUpdate = useRef(false);
+
     const [data, setData] = useState<EquityData>({
         balance: initialEquity,
         equity: initialEquity,
@@ -31,9 +35,22 @@ export function useEquityPolling(initialEquity: number, intervalMs = 30_000) {
             if (!res.ok) return;
 
             const json = await res.json();
+            const newEquity = json.equity ?? initialRef.current;
+
+            // Anti-flicker: if the polled value is within $1 of the server-rendered
+            // initial value and we haven't had a real update yet, skip the update
+            // to prevent the visual "reset" flash during hydration.
+            const delta = Math.abs(newEquity - initialRef.current);
+            if (!hasReceivedRealUpdate.current && delta < 1) {
+                // Values are essentially the same — keep the SSR value, just mark as live
+                setLastUpdated(new Date());
+                return;
+            }
+
+            hasReceivedRealUpdate.current = true;
             setData({
-                balance: json.balance ?? initialEquity,
-                equity: json.equity ?? initialEquity,
+                balance: json.balance ?? initialRef.current,
+                equity: newEquity,
                 positionValue: json.positionValue ?? 0,
                 positionCount: json.positionCount ?? 0,
             });
@@ -41,7 +58,7 @@ export function useEquityPolling(initialEquity: number, intervalMs = 30_000) {
         } catch {
             // Silently fail — keep displaying last known value
         }
-    }, [initialEquity]);
+    }, []);
 
     useEffect(() => {
         // Initial fetch after a short delay (let SSR data render first)
@@ -52,6 +69,8 @@ export function useEquityPolling(initialEquity: number, intervalMs = 30_000) {
 
         // Also listen for trade events (immediate update after trade)
         const handleTradeUpdate = () => {
+            // Force accept next update (trade just happened — value SHOULD change)
+            hasReceivedRealUpdate.current = true;
             // Slight delay to let DB settle after trade
             setTimeout(fetchEquity, 500);
         };
