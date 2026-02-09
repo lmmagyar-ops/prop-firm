@@ -279,7 +279,7 @@ export default function FAQPage() {
                 <div className="space-y-3">
                     {filteredFAQs.length === 0 ? (
                         <div className="text-center py-16">
-                            <p className="text-zinc-500 text-lg">No questions found matching "{searchQuery}"</p>
+                            <p className="text-zinc-500 text-lg">No questions found matching &quot;{searchQuery}&quot;</p>
                             <p className="text-zinc-600 text-sm mt-2">
                                 Try a different search term or{" "}
                                 <button

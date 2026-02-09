@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Briefcase, TrendingUp, TrendingDown, ArrowRight, X, Loader2 } from "lucide-react";
+import { Briefcase, ArrowRight, X, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -25,7 +25,7 @@ export function PortfolioDropdown() {
     const router = useRouter();
     const [isOpen, setIsOpen] = useState(false);
     const [positions, setPositions] = useState<Position[]>([]);
-    const [loading, setLoading] = useState(false); // Init false to avoid layout shift, fetch on mount
+
     const [closingId, setClosingId] = useState<string | null>(null);
 
     // Navigate to trade page with market

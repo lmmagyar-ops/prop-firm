@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { Briefcase, X, TrendingUp, TrendingDown, ExternalLink, RefreshCw } from "lucide-react";
+import { Briefcase, X, RefreshCw } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";

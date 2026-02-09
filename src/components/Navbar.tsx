@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Menu, X, ChevronRight } from "lucide-react";
@@ -263,10 +264,13 @@ export function Navbar() {
 
                     {/* Logo */}
                     <Link href="/" className="flex items-center group cursor-pointer">
-                        <img
+                        <Image
                             src="/logo-wordmark-white.png"
                             alt="Predictions Firm"
+                            width={180}
+                            height={32}
                             className="h-8 w-auto group-hover:opacity-80 transition-opacity duration-300"
+                            priority
                         />
                     </Link>
 
