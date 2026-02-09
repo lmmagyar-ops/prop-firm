@@ -82,18 +82,46 @@ These are leftover from the resolution-detector and evaluator refactors. Bypasse
 
 ---
 
+### 1:50 PM — Lint Cleanup + TypeScript Test Fixes + Deploy ✅
+
+**Context:** Pre-commit hooks were failing due to 10 eslint warnings and 9 pre-existing TypeScript errors in test files. Cleaned up both, enabling clean commits without `HUSKY=0`.
+
+#### Lint Warnings Fixed (10 total)
+
+| File | Warning | Fix |
+|------|---------|-----|
+| `faq/page.tsx` | 2× unescaped `"` in JSX | Escaped with `&quot;` |
+| `Navbar.tsx` | `<img>` instead of `next/image` | Replaced with `<Image>` component + added `next/image` import |
+| `PortfolioDropdown.tsx` | 2× unused imports (`TrendingUp`, `TrendingDown`), 2× unused state (`loading`, `setLoading`) | Removed all 4 |
+| `PortfolioPanel.tsx` | 3× unused imports (`TrendingUp`, `TrendingDown`, `ExternalLink`) | Removed all 3 |
+
+**Commit:** `1669c70`
+
+#### TypeScript Test Errors Fixed (9 total)
+
+| File | Errors | Root Cause | Fix |
+|------|:------:|------------|-----|
+| `resolution-detector.test.ts` | 8 | Mock data used `source: "oracle"` but `MarketResolution` type only allows `"api" \| "cache" \| "fallback"`. Also missing required `marketId` and `isClosed` fields. | Changed to `source: "api"`, added missing fields to all 6 mock objects |
+| `evaluator.test.ts` | 1 | `mockResolvedValue(null)` but Drizzle's `findFirst` returns `T \| undefined` | Changed to `undefined` |
+
+Both files also had 32 `no-explicit-any` warnings from `as any` casts on mock data. Added `eslint-disable @typescript-eslint/no-explicit-any` at top of each test file — standard practice for test mocks.
+
+**Commit:** `1942e8b` — pre-commit hooks now pass cleanly ✅
+
+**Files:** `src/app/faq/page.tsx`, `src/components/Navbar.tsx`, `src/components/dashboard/PortfolioDropdown.tsx`, `src/components/dashboard/PortfolioPanel.tsx`, `tests/lib/resolution-detector.test.ts`, `tests/lib/evaluator.test.ts`
+
+---
+
 ### Main App Deployment Status
 
-The main app (`prop-firmx` on Vercel) is deployed at commit `71744fb` which includes:
-- ✅ 1-step phase model alignment (challenge → funded)
-- ✅ Negative balance guard (throw instead of log)
-- ✅ Breach handling fixes (don't overwrite balance with equity)
-- ✅ Position cleanup on breach AND pass
-- ✅ Daily drawdown base alignment
-- ✅ Direction column added to trades table
-- ✅ All previous hardening (CSP, audit logging, rate limiter split, risk/eval rewrite, 550 tests)
+The main app is deployed at commit `1942e8b` on `main`. All smoke test fixes, new pages, lint cleanup, and test type fixes are **live in production**.
 
-`develop` has 9 unreleased commits (smoke test fixes below). `main` is at `30131c8`. **Not yet pushed to production.**
+Current `main` includes:
+- ✅ Mat's smoke test bug fixes (PnL sign, risk cap UX, profit target display, equity sync, grid layout)
+- ✅ New pages (About, Blog, How It Works) + Navbar overhaul
+- ✅ 10 lint warnings resolved
+- ✅ 9 TypeScript test errors resolved — pre-commit hooks pass cleanly
+- ✅ All previous hardening (1-step model, negative balance guard, breach handling, CSP, audit logging, rate limiter split, risk/eval rewrite, 550 tests)
 
 ---
 
@@ -156,7 +184,7 @@ The main app (`prop-firmx` on Vercel) is deployed at commit `71744fb` which incl
 | **Testing Guide for Mat** [NEW] | `docs/TESTING_GUIDE_MAT.md` |
 | **CLAUDE.md updates** — 1-step model, negative balance guard, daily drawdown base, position cleanup on breach/pass | `CLAUDE.md` |
 
-**Status:** All uncommitted. Recovered from IDE crash — committing now.
+**Status:** Recovered from IDE crash — committed and deployed to production (`50f2b3f` on `main`).
 
 ---
 
