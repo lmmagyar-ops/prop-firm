@@ -13,6 +13,7 @@ import { db } from "../db";
 import { challenges, positions, auditLogs } from "../db/schema";
 import { eq, and } from "drizzle-orm";
 import { FUNDED_RULES } from "../lib/funded-rules";
+import { normalizeRulesConfig } from "../lib/normalize-rules";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ChallengeRecord = Record<string, any>;
@@ -145,10 +146,9 @@ export class RiskMonitor {
         // Calculate equity (current balance + unrealized P&L)
         const equity = currentBalance + unrealizedPnL;
 
-        // AUDIT FIX: rules.maxDrawdown is stored as ABSOLUTE DOLLAR value (e.g., 800)
-        // NOT a whole-number percentage. Fallback to percentage-based calc if missing.
-        const maxDrawdown = (rules.maxDrawdown as number)
-            || ((rules.maxTotalDrawdownPercent as number) || 0.08) * startingBalance;
+        // DEFENSE-IN-DEPTH: Normalize to guard against decimal-vs-absolute bug.
+        const normalized = normalizeRulesConfig(rules as Record<string, unknown>, startingBalance);
+        const maxDrawdown = normalized.maxDrawdown;
         const maxDrawdownLimit = startingBalance - maxDrawdown;
 
         // Check Max Drawdown (HARD BREACH)
@@ -169,8 +169,8 @@ export class RiskMonitor {
             return;
         }
 
-        // AUDIT FIX: rules.profitTarget is ABSOLUTE dollars (e.g., 1000), not percentage
-        const profitTarget = (rules.profitTarget as number) || startingBalance * 0.10;
+        // DEFENSE-IN-DEPTH: Use normalized value (guards against decimal-vs-absolute bug)
+        const profitTarget = normalized.profitTarget;
         const targetBalance = startingBalance + profitTarget;
 
         // Check Profit Target (PASS condition) — only for non-funded phases
