@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { ChallengeEvaluator } from "@/lib/evaluator";
 import { db } from "@/db";
@@ -613,7 +614,7 @@ describe("ChallengeEvaluator - Early Returns", () => {
     });
 
     it("returns active when challenge not found in DB", async () => {
-        vi.mocked(db.query.challenges.findFirst).mockResolvedValue(null);
+        vi.mocked(db.query.challenges.findFirst).mockResolvedValue(undefined);
 
         const result = await ChallengeEvaluator.evaluate("nonexistent-challenge");
 

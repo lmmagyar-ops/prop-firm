@@ -8,6 +8,7 @@
  * 3. Error handling returns safe "not resolved" defaults
  * 4. Excluded P&L calculation is correct for payout fairness
  */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ResolutionDetector } from "@/lib/resolution-detector";
 
@@ -50,9 +51,11 @@ describe("ResolutionDetector.isResolutionEvent", () => {
 
     it("uses oracle as primary source when available", async () => {
         vi.mocked(PolymarketOracle.getResolutionStatus).mockResolvedValue({
+            marketId: "mkt-1",
             isResolved: true,
+            isClosed: true,
             resolutionPrice: 1.0,
-            source: "oracle",
+            source: "api",
             checkedAt: new Date("2024-01-15"),
             winningOutcome: "YES",
         });
@@ -66,8 +69,10 @@ describe("ResolutionDetector.isResolutionEvent", () => {
 
     it("returns not resolved when oracle says market is active", async () => {
         vi.mocked(PolymarketOracle.getResolutionStatus).mockResolvedValue({
+            marketId: "mkt-active",
             isResolved: false,
-            source: "oracle",
+            isClosed: false,
+            source: "api",
             checkedAt: new Date(),
         });
 
@@ -79,7 +84,9 @@ describe("ResolutionDetector.isResolutionEvent", () => {
 
     it("falls back to heuristic when oracle returns fallback source", async () => {
         vi.mocked(PolymarketOracle.getResolutionStatus).mockResolvedValue({
+            marketId: "mkt-fallback",
             isResolved: false,
+            isClosed: false,
             source: "fallback",
             checkedAt: new Date(),
         });
@@ -131,15 +138,19 @@ describe("ResolutionDetector.getExcludedPnL", () => {
         // Oracle: first market resolved, second active
         vi.mocked(PolymarketOracle.getResolutionStatus)
             .mockResolvedValueOnce({
+                marketId: "resolved-mkt",
                 isResolved: true,
+                isClosed: true,
                 resolutionPrice: 1.0,
-                source: "oracle",
+                source: "api",
                 checkedAt: new Date(),
                 winningOutcome: "YES",
             })
             .mockResolvedValueOnce({
+                marketId: "normal-mkt",
                 isResolved: false,
-                source: "oracle",
+                isClosed: false,
+                source: "api",
                 checkedAt: new Date(),
             });
 
@@ -158,8 +169,10 @@ describe("ResolutionDetector.getExcludedPnL", () => {
         ] as any);
 
         vi.mocked(PolymarketOracle.getResolutionStatus).mockResolvedValue({
+            marketId: "mkt-1",
             isResolved: false,
-            source: "oracle",
+            isClosed: false,
+            source: "api",
             checkedAt: new Date(),
         });
 
@@ -210,15 +223,19 @@ describe("ResolutionDetector.getResolutionEventsForChallenge", () => {
 
         vi.mocked(PolymarketOracle.getResolutionStatus)
             .mockResolvedValueOnce({
+                marketId: "mkt-shared",
                 isResolved: true,
+                isClosed: true,
                 resolutionPrice: 1.0,
-                source: "oracle",
+                source: "api",
                 checkedAt: new Date(),
                 winningOutcome: "YES",
             })
             .mockResolvedValueOnce({
+                marketId: "mkt-other",
                 isResolved: false,
-                source: "oracle",
+                isClosed: false,
+                source: "api",
                 checkedAt: new Date(),
             });
 
