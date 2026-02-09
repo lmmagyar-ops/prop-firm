@@ -93,7 +93,70 @@ The main app (`prop-firmx` on Vercel) is deployed at commit `71744fb` which incl
 - ✅ Direction column added to trades table
 - ✅ All previous hardening (CSP, audit logging, rate limiter split, risk/eval rewrite, 550 tests)
 
-`develop` and `main` are in sync — no unreleased main app changes. **Mat can start trading and testing.**
+`develop` has 9 unreleased commits (smoke test fixes below). `main` is at `30131c8`. **Not yet pushed to production.**
+
+---
+
+### Post-Smoke Test Bug Fix Sprint (Feb 7–8) — Mat's Issues ⏳ NOT LIVE
+
+**Context:** Mat ran the smoke test on the live app and hit a cascade of issues. All fixes are committed to `develop` but **have not been merged to `main` or deployed to production yet**.
+
+#### Critical Fixes (App-Breaking)
+
+| # | Commit | Bug | Root Cause | Fix |
+|---|--------|-----|------------|-----|
+| 1 | `0ec982e` | **Entire trade page returns HTTP 500** | `next/image` crashed because `polymarket-upload.s3.us-east-2.amazonaws.com` wasn't in `remotePatterns` — crashes the full page, not just the image | Added `**.amazonaws.com` wildcard + `polymarket.com` domains to `next.config.ts` |
+| 2 | `645b56e` | **Market cards render but clicking does nothing** (zero console errors) | `lightweight-charts` uses `canvas`/`document`/`window` APIs → direct import poisoned the entire module tree during SSR, silently breaking ALL React event handlers | Switched to `next/dynamic({ ssr: false })` for `ProbabilityChart` with skeleton loading + `ChartErrorBoundary` |
+| 3 | `d51a032` | **Zero interactivity on entire page** (SSR HTML renders, no handlers) | CSP header had `script-src 'self'` which blocked ALL Next.js inline scripts (hydration, `__NEXT_DATA__`, chunk loading) — React never hydrated | Added `'unsafe-inline'` to `script-src` + Polymarket CDN domains to `img-src` |
+| 4 | `2150b8e` | **Modal crash — clicking market locks page** (overlay applied, dialog never renders) | `React.lazy` silently crashed `EventDetailModal` in Next.js — no console errors | Replaced with direct import + `ChartErrorBoundary` (class component) for graceful fallback |
+
+#### UX Fixes
+
+| # | Commit | Bug | Fix |
+|---|--------|-----|-----|
+| 5 | `0bb4f5e` | Breadcrumb always shows "Economics / Politics" regardless of category | Dynamically render from `event.categories` array — NBA games now show "Sports" |
+| 6 | `856ac32` | Sports events show POLITICS/BUSINESS in breadcrumb; $0 vol markets at top of list; no market counts | Breadcrumb fix, `$0 vol` sorts to bottom, added LIVE badges on cards, per-category count badges on tabs |
+| 7 | `ffd5f90` | Balance doesn't update after trading (Mat's question) | New `useEquityPolling` hook — polls `/api/user/balance` every 30s + immediate refresh on `balance-updated` event after trades |
+| 8 | `d4d643b` | Cards overflow sidebar on trade page at xl viewport | Changed grid from `xl:grid-cols-4` → `2xl:grid-cols-4` (sidebar eats 256px); removed duplicate padding; added `overflow-x-hidden` |
+
+#### Feature Addition
+
+| # | Commit | What |
+|---|--------|------|
+| 9 | `2dea481` | Wired `ProbabilityChart` + `RecentActivityFeed` into `EventDetailModal` (Polymarket-only) |
+
+**Files Modified:** `next.config.ts`, `src/middleware.ts`, `src/components/trading/EventDetailModal.tsx`, `src/components/trading/ProbabilityChart.tsx`, `src/components/trading/MarketGridWithTabs.tsx`, `src/components/dashboard/LiveEquityDisplay.tsx`, `src/hooks/useEquityPolling.ts` [NEW], `src/app/trade/page.tsx`
+
+**Status:** All on `develop` (`d4d643b`). **Needs merge to `main` and deploy.**
+
+---
+
+### Feb 9 AM — Mat's Remaining Fixes + New Pages (IDE Crashed — Reconstructed)
+
+**Context:** Follow-up session fixing remaining issues from Mat's Google Doc screenshots + adding marketing pages. IDE crashed before saving journal entry or committing.
+
+#### Bug Fixes from Mat's Screenshots
+
+| # | Bug (from Google Doc) | Fix | Files |
+|---|----------------------|-----|-------|
+| 1 | **Negative PnL shows as plus** (e.g. `$-0.98` instead of `-$0.98`) | Fixed sign formatting: `{pnl >= 0 ? "+$" : "-$"}{Math.abs(pnl).toFixed(2)}` | `OpenPositions.tsx`, `PortfolioDropdown.tsx`, `PortfolioPanel.tsx` |
+| 2 | **Risk cap confusion** — $500 trade blocked saying "5% cap ($250)", then $250 blocked saying "2.5% ($125)" — cascading confusing errors | Combined Rules 3 (per-event) + 5 (volume-tiered) into single check: show the **tighter** of both limits with correct % in one clear message | `risk.ts` |
+| 3 | **Profit target shows $500 instead of $5,500** — should show ceiling (equity target) not delta | Changed display to `startingBalance + profitTarget` (e.g. `$5,000 + $500 = $5,500`) | `ProfitProgress.tsx`, `dashboard/page.tsx` |
+| 4 | **Equity mismatch** between dashboard and top-right corner | `PortfolioPanel` now uses server-computed equity from `/api/user/balance` instead of client-side `shares × currentPrice` calculation | `PortfolioPanel.tsx` |
+| 5 | **Buy Evaluation grid broken** — grid had 5 columns but only 3 tiers | Changed `grid-cols-[240px_repeat(5,1fr)]` → `repeat(3,1fr)` | `BuyEvaluationClient.tsx` |
+
+#### New Pages + Features
+
+| What | Files |
+|------|-------|
+| **Navbar overhaul** — announcement bar, mobile hamburger menu, How It Works / FAQ / About / Blog nav links, countdown timer hook, DecryptedText integration | `Navbar.tsx` (full rewrite), `DecryptedText.tsx` [NEW] |
+| **About page redesign** — client-side with ScrollReveal, SpotlightCard, SplitText animations | `about/page.tsx`, `about/layout.tsx` [NEW] |
+| **Blog page** [NEW] | `blog/page.tsx`, `blog/layout.tsx` |
+| **How It Works page** [NEW] | `how-it-works/page.tsx`, `how-it-works/layout.tsx` |
+| **Testing Guide for Mat** [NEW] | `docs/TESTING_GUIDE_MAT.md` |
+| **CLAUDE.md updates** — 1-step model, negative balance guard, daily drawdown base, position cleanup on breach/pass | `CLAUDE.md` |
+
+**Status:** All uncommitted. Recovered from IDE crash — committing now.
 
 ---
 

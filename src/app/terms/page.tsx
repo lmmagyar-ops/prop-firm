@@ -1,28 +1,15 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, FileText, Scale, Shield, AlertTriangle } from "lucide-react";
+import { Navbar } from "@/components/Navbar";
 
 export default function TermsPage() {
     return (
         <div className="min-h-screen bg-black text-white">
-            {/* Header */}
-            <header className="border-b border-white/10 bg-black/80 backdrop-blur-xl sticky top-0 z-50">
-                <div className="max-w-4xl mx-auto px-4 py-4 flex items-center gap-4">
-                    <Link href="/signup">
-                        <Button variant="ghost" size="sm" className="text-zinc-400 hover:text-white">
-                            <ArrowLeft className="h-4 w-4 mr-2" />
-                            Back to Sign Up
-                        </Button>
-                    </Link>
-                    <div className="flex-1" />
-                    <Link href="/" className="inline-block">
-                        <img src="/logo-wordmark-white.png" alt="Predictions Firm" className="h-8 w-auto" />
-                    </Link>
-                </div>
-            </header>
+            <Navbar />
 
             {/* Content */}
-            <main className="max-w-4xl mx-auto px-4 py-12">
+            <main className="max-w-4xl mx-auto px-4 pt-24 pb-12">
                 <div className="space-y-8">
                     {/* Title */}
                     <div className="text-center space-y-4">

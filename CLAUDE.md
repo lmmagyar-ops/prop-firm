@@ -146,14 +146,17 @@ propshot-waitlist/          # Landing Page (Standalone Next.js)
 | Grinder | $10K | $149 | 10% ($1,000) | 10% |
 | Executive | $25K | $299 | 12% ($3,000) | 10% |
 
-### Challenge Flow
+### Challenge Flow (1-Step Model)
 
 ```
-Payment → Challenge Phase → Verification Phase → Funded Phase
-              ↓                    ↓                  ↓
-        Hit profit target    Same rules again    80-90% split
-        Don't breach DD      Prove consistency   Bi-weekly payouts
+Payment → Challenge Phase → Funded Phase
+              ↓                  ↓
+        Hit profit target    80-90% split
+        Don't breach DD      Bi-weekly payouts
 ```
+
+> [!IMPORTANT]
+> **No verification phase.** Pass the challenge once → instant funding. All open positions are auto-closed on transition. See `docs/STATE_MACHINES.md` for details.
 
 ### Discount Codes
 
@@ -195,7 +198,9 @@ Trade Request → RiskEngine.validate() → MarketService.calculateImpact()
 
 **Runtime invariants** (enforced in TradeExecutor):
 - `shares > 0`, `entryPrice ∈ (0.01, 0.99)`, `amount > 0`, `newBalance ≥ 0`
+- **Negative balance throws** — `BalanceManager` will hard-error if a trade would produce a negative balance (data corruption guard)
 - Trades blocked when `currentPrice ≤ 0.01` or `≥ 0.99` (market effectively resolved)
+- `direction` (YES/NO) recorded on every trade for audit trail
 - Warning logged when executing against synthetic order book
 
 > [!CAUTION]
@@ -217,7 +222,7 @@ Pre-trade validation in `RiskEngine.validateTrade()`:
 | # | Rule | Limit | Notes |
 |---|------|-------|-------|
 | 1 | Max Total Drawdown | 8-10% of start | Equity-based (cash + positions) |
-| 2 | Daily Drawdown | 4-5% of SOD | Resets at midnight UTC |
+| 2 | Daily Drawdown | 4-5% of starting balance | Consistent base across risk.ts, evaluator.ts, risk-monitor.ts |
 | 3 | Per-Event Exposure | 5% of start | **Sibling markets aggregated** |
 | 4 | Category Exposure | 10% per category | 8 categories tracked |
 | 5 | Volume-Tiered Exposure | Varies | >$10M→5%, $1-10M→2.5%, $100k-1M→2% |
@@ -236,7 +241,10 @@ Runs every 5 seconds in the ingestion worker:
 1. Fetches all active challenges
 2. Gets live prices from Redis
 3. Calculates equity (cash + unrealized P&L)
-4. **Max Drawdown breach** → HARD FAIL | **Daily Drawdown breach** → HARD FAIL | **Profit Target hit** → PASS
+4. **Max Drawdown breach** → HARD FAIL (closes all positions) | **Daily Drawdown breach** → HARD FAIL (closes all positions) | **Profit Target hit** → PASS (closes all positions, transitions to funded)
+
+> [!IMPORTANT]
+> On breach, `currentBalance` is stored as-is — equity is **not** written to currentBalance (prevents double-counting unrealized P&L).
 
 **File:** `src/workers/risk-monitor.ts`
 

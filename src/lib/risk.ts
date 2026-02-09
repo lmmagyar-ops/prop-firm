@@ -109,12 +109,7 @@ export class RiskEngine {
             .filter(p => marketIdsToCheck.includes(p.marketId))
             .reduce((sum, p) => sum + parseFloat(p.sizeAmount), 0);
 
-        if (currentExposure + tradeAmount > maxPerEvent) {
-            const eventLabel = eventInfo?.eventTitle
-                ? `"${eventInfo.eventTitle.slice(0, 30)}..."`
-                : "this market";
-            return this.deny(`Max exposure for ${eventLabel} (5%) exceeded. Current: $${currentExposure.toFixed(2)}, Limit: $${maxPerEvent.toFixed(2)}`, audit);
-        }
+        const remainingEventCapacity = maxPerEvent - currentExposure;
 
         // Fail-safe: block large trades when event lookup fails
         if (!eventInfo && tradeAmount > maxPerEvent) {
@@ -149,11 +144,21 @@ export class RiskEngine {
         const marketVolume = typeof rawVolume === "string" ? parseFloat(rawVolume) : (rawVolume || 0);
         audit.marketVolume = marketVolume;
 
-        // RULE 5: Volume-tiered exposure
-        const exposureLimit = this.getExposureLimitByVolume(startBalance, marketVolume);
-        if (tradeAmount > exposureLimit && exposureLimit > 0) {
-            const limitPercent = marketVolume >= 10_000_000 ? "5%" : marketVolume >= 1_000_000 ? "2.5%" : "2%";
-            return this.deny(`Max single trade: $${exposureLimit.toFixed(0)} (${limitPercent} per-trade limit for your account). Enter a smaller amount.`, audit);
+        // RULE 3+5 COMBINED: Show user the tighter of per-event remaining capacity
+        // and volume-tiered single-trade limit to avoid cascading confusing errors
+        const volumeExposureLimit = this.getExposureLimitByVolume(startBalance, marketVolume);
+        const effectiveMax = volumeExposureLimit > 0
+            ? Math.min(remainingEventCapacity, volumeExposureLimit)
+            : remainingEventCapacity;
+
+        if (tradeAmount > effectiveMax && effectiveMax > 0) {
+            const limitPercent = ((effectiveMax / startBalance) * 100).toFixed(1);
+            return this.deny(`Max single trade for this market: $${effectiveMax.toFixed(0)} (${limitPercent}% of account). Enter a smaller amount.`, audit);
+        }
+
+        // Edge case: both limits are 0 or negative (fully allocated)
+        if (effectiveMax <= 0 && tradeAmount > 0) {
+            return this.deny(`You've reached max exposure for this event. Close existing positions to open new ones.`, audit);
         }
 
         // RULE 6: Liquidity enforcement (10% of 24h volume)

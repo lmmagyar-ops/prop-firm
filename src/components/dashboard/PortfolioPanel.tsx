@@ -49,17 +49,12 @@ export function PortfolioPanel() {
                 const data = await positionsRes.json();
                 setPositions(data.positions || []);
 
-                const positionValue = (data.positions || []).reduce(
-                    (acc: number, p: Position) => acc + (p.shares * p.currentPrice), 0
-                );
-
                 if (balanceRes.ok) {
                     const balanceData = await balanceRes.json();
-                    const cash = parseFloat(balanceData.balance || "0");
                     setSummary({
-                        cash,
-                        positionValue,
-                        equity: cash + positionValue
+                        cash: balanceData.balance ?? 0,
+                        positionValue: balanceData.positionValue ?? 0,
+                        equity: balanceData.equity ?? 0,
                     });
                 }
             }
@@ -208,7 +203,7 @@ export function PortfolioPanel() {
                                     "text-sm font-mono font-bold",
                                     totalPnL >= 0 ? "text-green-400" : "text-red-400"
                                 )}>
-                                    {totalPnL >= 0 ? "+" : ""}${totalPnL.toFixed(2)}
+                                    {totalPnL >= 0 ? "+$" : "-$"}{Math.abs(totalPnL).toFixed(2)}
                                 </span>
                             </div>
 
@@ -252,7 +247,7 @@ export function PortfolioPanel() {
                                                                 "text-sm font-bold font-mono",
                                                                 isUp ? "text-green-400" : "text-red-400"
                                                             )}>
-                                                                {isUp ? "+" : ""}${pos.unrealizedPnL.toFixed(2)}
+                                                                {isUp ? "+$" : "-$"}{Math.abs(pos.unrealizedPnL).toFixed(2)}
                                                             </p>
                                                             <p className={cn(
                                                                 "text-xs font-mono",

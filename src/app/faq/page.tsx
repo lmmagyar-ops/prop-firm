@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
-import { Search, ChevronDown, Rocket, TrendingUp, DollarSign, Shield, CheckCircle, CreditCard, Headphones, ArrowLeft } from "lucide-react";
+import { Search, ChevronDown, Rocket, TrendingUp, DollarSign, Shield, CheckCircle, CreditCard, Headphones } from "lucide-react";
 import Link from "next/link";
+import { Navbar } from "@/components/Navbar";
+import ScrollReveal from "@/components/reactbits/ScrollReveal";
 
 interface FAQItem {
     question: string;
@@ -221,19 +223,14 @@ export default function FAQPage() {
 
     return (
         <div className="min-h-screen bg-[#0D1117] text-white">
+            <Navbar />
+
             {/* Header */}
             <div className="border-b border-white/5 bg-gradient-to-b from-[#1A232E] to-[#0D1117]">
-                <div className="max-w-5xl mx-auto px-6 py-16">
-                    <Link
-                        href="/dashboard"
-                        className="inline-flex items-center gap-2 text-zinc-400 hover:text-white transition-colors mb-6 group"
-                    >
-                        <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-                        Back to Dashboard
-                    </Link>
+                <div className="max-w-5xl mx-auto px-6 pt-28 pb-16">
                     <h1 className="text-5xl font-bold mb-4">Frequently Asked Questions</h1>
                     <p className="text-xl text-zinc-400">
-                        Everything you need to know about trading with us. Can't find an answer?{" "}
+                        Everything you need to know about trading with us. Can&apos;t find an answer?{" "}
                         <Link href="/contact" className="text-primary hover:text-primary/80 underline">
                             Hit up support
                         </Link>
@@ -297,31 +294,32 @@ export default function FAQPage() {
                         filteredFAQs.map((faq, index) => {
                             const isOpen = openIndex === index;
                             return (
-                                <div
-                                    key={index}
-                                    className="bg-[#1A232E] border border-[#2E3A52] rounded-xl overflow-hidden hover:border-primary/30 transition-all"
-                                >
-                                    <button
-                                        onClick={() => setOpenIndex(isOpen ? null : index)}
-                                        className="w-full px-6 py-5 flex items-start justify-between gap-4 text-left"
+                                <ScrollReveal key={index} delay={Math.min(index * 0.04, 0.3)}>
+                                    <div
+                                        className="bg-[#1A232E] border border-[#2E3A52] rounded-xl overflow-hidden hover:border-primary/30 transition-all"
                                     >
-                                        <div className="flex-1">
-                                            <span className="text-xs text-primary font-medium mb-1 block">
-                                                {faq.category}
-                                            </span>
-                                            <h3 className="text-lg font-semibold text-white">{faq.question}</h3>
-                                        </div>
-                                        <ChevronDown
-                                            className={`w-5 h-5 text-zinc-500 flex-shrink-0 mt-1 transition-transform ${isOpen ? "rotate-180" : ""
-                                                }`}
-                                        />
-                                    </button>
-                                    {isOpen && (
-                                        <div className="px-6 pb-6 pt-2 border-t border-white/5">
-                                            <p className="text-zinc-300 leading-relaxed">{faq.answer}</p>
-                                        </div>
-                                    )}
-                                </div>
+                                        <button
+                                            onClick={() => setOpenIndex(isOpen ? null : index)}
+                                            className="w-full px-6 py-5 flex items-start justify-between gap-4 text-left"
+                                        >
+                                            <div className="flex-1">
+                                                <span className="text-xs text-primary font-medium mb-1 block">
+                                                    {faq.category}
+                                                </span>
+                                                <h3 className="text-lg font-semibold text-white">{faq.question}</h3>
+                                            </div>
+                                            <ChevronDown
+                                                className={`w-5 h-5 text-zinc-500 flex-shrink-0 mt-1 transition-transform ${isOpen ? "rotate-180" : ""
+                                                    }`}
+                                            />
+                                        </button>
+                                        {isOpen && (
+                                            <div className="px-6 pb-6 pt-2 border-t border-white/5">
+                                                <p className="text-zinc-300 leading-relaxed">{faq.answer}</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </ScrollReveal>
                             );
                         })
                     )}

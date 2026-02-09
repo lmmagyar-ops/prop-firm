@@ -6,9 +6,10 @@ interface ProfitProgressProps {
     totalPnL: number;
     profitTarget: number;
     profitProgress: number;
+    startingBalance: number;
 }
 
-export function ProfitProgress({ totalPnL, profitTarget, profitProgress }: ProfitProgressProps) {
+export function ProfitProgress({ totalPnL, profitTarget, profitProgress, startingBalance }: ProfitProgressProps) {
     const clampedProgress = Math.max(0, profitProgress);
 
     return (
@@ -27,7 +28,7 @@ export function ProfitProgress({ totalPnL, profitTarget, profitProgress }: Profi
                 </div>
                 <div className="text-right">
                     <span className="text-xs text-zinc-500 block mb-0.5">Target</span>
-                    <span className="text-sm font-mono text-zinc-400 bg-zinc-800 px-2 py-0.5 rounded">${profitTarget.toFixed(2)}</span>
+                    <span className="text-sm font-mono text-zinc-400 bg-zinc-800 px-2 py-0.5 rounded">${(startingBalance + profitTarget).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                 </div>
             </div>
 

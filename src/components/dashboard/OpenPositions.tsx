@@ -141,7 +141,7 @@ export function OpenPositions({ positions: initialPositions }: OpenPositionsProp
                                             : "bg-gradient-to-r from-red-400 to-rose-300 bg-clip-text text-transparent"
                                         }
                                     >
-                                        {pos.unrealizedPnL >= 0 ? "+" : ""}${pos.unrealizedPnL.toFixed(2)}
+                                        {pos.unrealizedPnL >= 0 ? "+$" : "-$"}{Math.abs(pos.unrealizedPnL).toFixed(2)}
                                     </span>
                                 </TableCell>
                                 <TableCell className="text-right">

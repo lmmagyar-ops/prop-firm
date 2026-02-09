@@ -203,6 +203,7 @@ export default async function DashboardPage() {
                                         totalPnL={stats.totalPnL}
                                         profitTarget={(activeChallenge.rulesConfig as Record<string, number>)?.profitTarget ?? 0}
                                         profitProgress={stats.profitProgress}
+                                        startingBalance={typeof activeChallenge.startingBalance === 'string' ? parseFloat(activeChallenge.startingBalance) : activeChallenge.startingBalance}
                                     />
                                 </div>
                             </div>
@@ -251,7 +252,7 @@ export default async function DashboardPage() {
                                 <EquityDisplay currentBalance={104250.00} dailyPnL={1250.50} />
                             </div>
                             <div>
-                                <ProfitProgress totalPnL={4250.00} profitTarget={10000} profitProgress={42.5} />
+                                <ProfitProgress totalPnL={4250.00} profitTarget={10000} profitProgress={42.5} startingBalance={100000} />
                             </div>
                         </div>
                         <RiskMeters drawdownUsage={1.2} dailyDrawdownUsage={0.8} startOfDayBalance={103000} startingBalance={100000} />

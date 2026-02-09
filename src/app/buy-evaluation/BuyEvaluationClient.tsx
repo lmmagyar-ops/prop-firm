@@ -50,7 +50,7 @@ export default function BuyEvaluationClient({ hasActiveChallenge }: BuyEvaluatio
                 {/* Comparison Table */}
                 <div className="bg-zinc-900/30 border border-white/5 rounded-2xl">
                     {/* Header Row */}
-                    <div className="grid grid-cols-[240px_repeat(5,1fr)] bg-zinc-900/80 border-b border-white/5 rounded-t-2xl">
+                    <div className="grid grid-cols-[240px_repeat(3,1fr)] bg-zinc-900/80 border-b border-white/5 rounded-t-2xl">
                         <div className="p-6 flex items-center gap-2 text-sm font-bold text-zinc-300">
                             Account Details
                         </div>
@@ -127,7 +127,7 @@ export default function BuyEvaluationClient({ hasActiveChallenge }: BuyEvaluatio
                     />
 
                     {/* Pricing Row */}
-                    <div className="grid grid-cols-[240px_repeat(5,1fr)] bg-zinc-900/50 border-t border-white/5 p-6 items-center rounded-b-2xl">
+                    <div className="grid grid-cols-[240px_repeat(3,1fr)] bg-zinc-900/50 border-t border-white/5 p-6 items-center rounded-b-2xl">
                         <div className="font-bold text-white flex items-center gap-2">
                             Evaluation Fee
                             <TooltipProvider>
@@ -197,7 +197,7 @@ function MetricRow({
     highlight?: "blue" | "green";
 }) {
     return (
-        <div className="grid grid-cols-[240px_repeat(5,1fr)] border-b border-white/5 hover:bg-white/[0.02] transition-colors">
+        <div className="grid grid-cols-[240px_repeat(3,1fr)] border-b border-white/5 hover:bg-white/[0.02] transition-colors">
             <div className="p-6 flex items-center gap-2 text-sm font-medium text-white">
                 {label}
                 <TooltipProvider>

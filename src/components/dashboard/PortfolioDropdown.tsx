@@ -133,7 +133,7 @@ export function PortfolioDropdown() {
                         <div className="p-4 border-b border-zinc-800 flex justify-between items-center">
                             <h4 className="text-sm font-bold text-white">Active Positions</h4>
                             <span className={cn("text-xs font-mono font-bold", totalPnL >= 0 ? "text-green-400" : "text-red-400")}>
-                                {totalPnL >= 0 ? "+" : ""}${totalPnL.toFixed(2)}
+                                {totalPnL >= 0 ? "+$" : "-$"}{Math.abs(totalPnL).toFixed(2)}
                             </span>
                         </div>
 
@@ -164,7 +164,7 @@ export function PortfolioDropdown() {
                                                     {pos.marketTitle}
                                                 </span>
                                                 <span className={cn("text-xs font-mono", pos.unrealizedPnL >= 0 ? "text-green-400" : "text-red-400")}>
-                                                    {pos.unrealizedPnL >= 0 ? "+" : ""}${pos.unrealizedPnL.toFixed(2)}
+                                                    {pos.unrealizedPnL >= 0 ? "+$" : "-$"}{Math.abs(pos.unrealizedPnL).toFixed(2)}
                                                 </span>
                                             </div>
                                             <div className="flex justify-between items-center text-[10px] text-zinc-500">
