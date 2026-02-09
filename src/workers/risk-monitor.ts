@@ -126,14 +126,24 @@ export class RiskMonitor {
         let unrealizedPnL = 0;
         for (const pos of openPositions) {
             const livePrice = livePrices.get(pos.marketId);
-            if (livePrice === undefined) continue;
 
             const entryPrice = parseFloat(pos.entryPrice);
             const shares = parseFloat(pos.shares);
             const isNo = pos.direction === 'NO';
 
-            // Current price from live feed is raw YES price - needs direction adjustment
-            const effectiveCurrentValue = isNo ? (1 - livePrice) : livePrice;
+            // CRITICAL FIX: When live price is unavailable from Redis, fall back to
+            // stored entry price instead of skipping the position (which treats it as $0).
+            // Skipping positions makes equity = cash-only, causing instant false breaches.
+            // This matches evaluator.ts fallback behavior.
+            let effectiveCurrentValue: number;
+            if (livePrice !== undefined) {
+                // Current price from live feed is raw YES price - needs direction adjustment
+                effectiveCurrentValue = isNo ? (1 - livePrice) : livePrice;
+            } else {
+                // Fallback: use stored price (already direction-adjusted)
+                effectiveCurrentValue = entryPrice;
+                console.warn(`[RiskMonitor] ⚠️ No live price for ${pos.marketId.slice(0, 12)}, using entry price $${entryPrice.toFixed(4)}`);
+            }
 
             // Entry price is ALREADY direction-adjusted when stored in DB (see trade.ts line 175-177)
             // DO NOT adjust it again - that causes double-adjustment bug!
