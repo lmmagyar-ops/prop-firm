@@ -80,7 +80,12 @@ export default async function DashboardPage() {
     // Reserved for future KYC and passed challenge checks
 
     // Calculate true equity = Cash + Position Value
-    const positionValue = positions?.reduce((sum, pos) => sum + (pos.shares * pos.currentPrice), 0) ?? 0;
+    // Defense: positions from getDashboardData should be numeric, but guard against NaN
+    const positionValue = positions?.reduce((sum, pos) => {
+        const shares = Number(pos.shares) || 0;
+        const price = Number(pos.currentPrice) || 0;
+        return sum + (shares * price);
+    }, 0) ?? 0;
     const trueEquity = (activeChallenge?.currentBalance ?? 0) + positionValue;
 
     return (
