@@ -82,6 +82,63 @@ These are leftover from the resolution-detector and evaluator refactors. Bypasse
 
 ---
 
+### 2:30 PM — Defense-in-Depth Fix: Corrupt RulesConfig (Instant Challenge Failure) ✅
+
+**Context:** Mat's 10k eval account instantly failed after one trade. Investigation traced the bug to legacy challenges storing `maxDrawdown` as `0.08` (decimal percentage) instead of `$800` (absolute dollars). When the evaluator checks `drawdownAmount >= maxDrawdown` and `maxDrawdown = 0.08`, any $0.09 unrealized loss triggers instant failure.
+
+#### Root Cause
+
+Early challenge-provisioning code stored percentage values directly (`maxDrawdown: 0.08`) instead of computing absolute dollars (`startingBalance * 0.08 = $800`). This was fixed in newer code paths (Confirmo webhook, `fix-rules` endpoint), but Mat's account predated those fixes — his `rulesConfig` still had the corrupt decimal values.
+
+Three independent code paths all consumed these values without sanitization:
+- **`evaluator.ts`** — post-trade check (this killed Mat's account)
+- **`risk-monitor.ts`** — 30-second equity loop
+- **`dashboard-service.ts`** — progress bar rendering
+
+#### Fix: `normalizeRulesConfig()` Guard
+
+| File | Change |
+|------|--------|
+| `src/lib/normalize-rules.ts` **[NEW]** | Single utility: if `maxDrawdown < 1` or `profitTarget < 1`, treat as percentage and multiply by `startingBalance`. Logs warning when auto-correcting. |
+| `src/lib/evaluator.ts` | Lines 38-45: replaced raw `rules.profitTarget \|\| 1000` / `rules.maxDrawdown \|\| 1000` with `normalizeRulesConfig()` |
+| `src/workers/risk-monitor.ts` | Lines 148-173: replaced raw reads with `normalizeRulesConfig()` for both breach detection and profit target |
+| `src/lib/dashboard-service.ts` | Lines 294-313: replaced raw reads for drawdown/profit progress bars |
+
+#### Admin Tools
+
+| File | Purpose |
+|------|---------|
+| `src/app/api/admin/resurrect-challenge/route.ts` **[NEW]** | Admin endpoint to restore falsely-failed challenges + fix corrupt rules in one operation. Writes to `audit_logs`. |
+| `scripts/resurrect-challenge.ts` **[NEW]** | CLI script: `npx tsx scripts/resurrect-challenge.ts user@email.com` — finds failed challenges, shows corruption status, fixes and restores. |
+
+#### Tests
+
+| File | Result |
+|------|--------|
+| `tests/lib/normalize-rules.test.ts` **[NEW]** | **13/13 passed** — correct passthrough, decimal conversion, null/missing defaults, edge cases |
+| Full suite (`npm run test`) | **741/748 passed** — 4 pre-existing failures unrelated (risk message format mismatch, balance-manager behavior) |
+| Engine verification (`npm run test:engine`) | **52/53 passed** — 1 pre-existing failure (SELL-without-position error code) |
+
+#### Lint Fixes (during commit)
+
+| File | Issue | Fix |
+|------|-------|-----|
+| `dashboard-service.ts` | Unused `DEFAULT_MAX_DRAWDOWN` import | Removed (normalizeRulesConfig handles defaults now) |
+| `evaluator.ts` | Unused `businessRules` import | Removed |
+
+#### Deployment
+
+```
+3b6a17c → develop (staging)
+61ef724 → main (production via merge)
+```
+
+E2E smoke test: 3 passed, 1 false positive (homepage body contains "$500" in pricing copy, tripping the `not.toContainText('500')` assertion — pre-existing test bug), 8 skipped (no E2E credentials).
+
+**Files:** `src/lib/normalize-rules.ts`, `src/lib/evaluator.ts`, `src/workers/risk-monitor.ts`, `src/lib/dashboard-service.ts`, `src/app/api/admin/resurrect-challenge/route.ts`, `scripts/resurrect-challenge.ts`, `tests/lib/normalize-rules.test.ts`
+
+---
+
 ### 1:50 PM — Lint Cleanup + TypeScript Test Fixes + Deploy ✅
 
 **Context:** Pre-commit hooks were failing due to 10 eslint warnings and 9 pre-existing TypeScript errors in test files. Cleaned up both, enabling clean commits without `HUSKY=0`.
