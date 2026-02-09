@@ -1,10 +1,11 @@
 import { db } from "@/db";
-import { challenges, positions, businessRules } from "@/db/schema";
+import { challenges, positions } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { publishAdminEvent } from "./events";
 import { ChallengeRules } from "@/types/trading";
 import { MarketService } from "./market";
 import { FUNDED_RULES, FundedTier } from "./funded-rules";
+import { normalizeRulesConfig } from "./normalize-rules";
 
 interface EvaluationResult {
     status: 'active' | 'passed' | 'failed' | 'pending_failure';
@@ -35,14 +36,16 @@ export class ChallengeEvaluator {
         const fundedTier = this.getFundedTier(startingBalance);
         const fundedRules = FUNDED_RULES[fundedTier];
 
-        // Default rules (absolute dollar amounts or percentages)
-        const profitTarget = rules.profitTarget || 1000;       // $1000 profit target
+        // DEFENSE-IN-DEPTH: Normalize rulesConfig to guard against decimal-vs-absolute bug.
+        // Legacy challenges may have maxDrawdown=0.08 instead of $800.
+        const normalized = normalizeRulesConfig(rules as unknown as Record<string, unknown>, startingBalance);
+        const profitTarget = normalized.profitTarget;
 
         // FUNDED PHASE: Use static drawdown from initial balance (not HWM-based trailing)
         // This is more lenient - a trader can profit, give some back, and not fail
         const maxDrawdown = isFunded
             ? fundedRules.maxTotalDrawdown  // Static: e.g. $1000 for 10k tier
-            : (rules.maxDrawdown || 1000);  // Trailing for challenge phase
+            : normalized.maxDrawdown;  // Trailing for challenge phase
 
         // Daily loss limit from percentage
         const maxDailyLoss = isFunded

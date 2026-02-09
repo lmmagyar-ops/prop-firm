@@ -2,7 +2,8 @@ import { db } from "@/db";
 import { challenges, positions, trades, users } from "@/db/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { FUNDED_RULES, type FundedTier } from "@/lib/funded-rules";
-import { calculatePositionMetrics, DEFAULT_MAX_DRAWDOWN } from "@/lib/position-utils";
+import { calculatePositionMetrics } from "@/lib/position-utils";
+import { normalizeRulesConfig } from "@/lib/normalize-rules";
 import { safeParseFloat } from "./safe-parse";
 
 export async function getDashboardData(userId: string) {
@@ -291,11 +292,11 @@ export async function getDashboardData(userId: string) {
     const cashBalance = safeParseFloat(activeChallenge.currentBalance);
     const startingBalance = safeParseFloat(activeChallenge.startingBalance);
 
-    // CRITICAL: Defensive fallback for rulesConfig to prevent server crash on malformed data
+    // DEFENSE-IN-DEPTH: Normalize to guard against decimal-vs-absolute bug
     const rawRules = activeChallenge.rulesConfig as Record<string, unknown> | null;
     const rules = rawRules || {};
-    const defaultProfitTarget = startingBalance * 0.10; // 10% of starting balance
-    const profitTarget = (rules.profitTarget as number) ?? defaultProfitTarget;
+    const normalized = normalizeRulesConfig(rules, startingBalance);
+    const profitTarget = normalized.profitTarget;
 
     // Safe fallbacks: ensure HWM and SOD are valid (not 0 or missing)
     const hwmParsed = safeParseFloat(activeChallenge.highWaterMark);
@@ -310,7 +311,7 @@ export async function getDashboardData(userId: string) {
     const totalPnL = equity - startingBalance;
     const dailyPnL = equity - startOfDayBalance;
 
-    const maxDrawdownLimit = (rules.maxDrawdown as number) || DEFAULT_MAX_DRAWDOWN;
+    const maxDrawdownLimit = normalized.maxDrawdown;
     // CRITICAL FIX: DB stores maxDailyDrawdownPercent (e.g. 0.04), NOT absolute dollars.
     // Previously read `maxDailyDrawdown` which would be 0.04 instead of $400,
     // causing drawdown bar to show 2500%+ usage on any small loss.
