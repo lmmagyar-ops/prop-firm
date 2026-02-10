@@ -102,6 +102,9 @@ vi.mock("@/app/actions/market", () => ({
     getActiveMarkets: vi.fn().mockResolvedValue([
         { id: "market-1", volume: 15_000_000, categories: ["Crypto"] }
     ]),
+    getAllMarketsFlat: vi.fn().mockResolvedValue([
+        { id: "market-1", volume: 15_000_000, categories: ["Crypto"] }
+    ]),
     getEventInfoForMarket: vi.fn().mockResolvedValue(null) // Standalone market
 }));
 

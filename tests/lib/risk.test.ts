@@ -20,6 +20,7 @@ vi.mock("@/db", () => ({
 
 vi.mock("@/app/actions/market", () => ({
     getActiveMarkets: vi.fn(),
+    getAllMarketsFlat: vi.fn(),
     getMarketById: vi.fn(),
     getEventInfoForMarket: vi.fn(() => null) // Returns null = standalone market (uses per-market fallback)
 }));
@@ -34,7 +35,7 @@ vi.mock("@/lib/market", () => ({
 // Import after mocking
 import { db } from "@/db";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars -- imported to verify mock exists
-import { getActiveMarkets, getMarketById, getEventInfoForMarket } from "@/app/actions/market";
+import { getActiveMarkets, getAllMarketsFlat, getMarketById, getEventInfoForMarket } from "@/app/actions/market";
 
 describe("RiskEngine.validateTrade", () => {
     beforeEach(() => {
@@ -72,6 +73,7 @@ describe("RiskEngine.validateTrade", () => {
 
         vi.mocked(getMarketById).mockResolvedValue(mockMarket as any);
         vi.mocked(getActiveMarkets).mockResolvedValue([mockMarket] as any);
+        vi.mocked(getAllMarketsFlat).mockResolvedValue([mockMarket] as any);
         vi.mocked(db.query.positions.findMany).mockResolvedValue([]); // No existing positions
 
         const result = await RiskEngine.validateTrade("challenge-1", "market-1", 100);
@@ -100,6 +102,7 @@ describe("RiskEngine.validateTrade", () => {
     });
 
     it("should reject when max total drawdown would be exceeded", async () => {
+        // Equity ($9100) is below floor ($9200 = $10k * 0.92), so trade is hard-blocked
         const mockChallenge = {
             id: "challenge-1",
             status: "active",
@@ -117,23 +120,23 @@ describe("RiskEngine.validateTrade", () => {
             })
         } as any);
 
-        // Trade with $200 estimated loss would bring balance below floor
         const result = await RiskEngine.validateTrade("challenge-1", "market-1", 100, 200);
 
         expect(result.allowed).toBe(false);
-        expect(result.reason).toContain("Max Total Drawdown");
+        expect(result.reason).toContain("breached max drawdown");
     });
 
     it("should reject when max daily drawdown would be exceeded", async () => {
+        // Equity ($9500) is below daily floor ($9600 = $10k SOD - $400 daily limit)
         const mockChallenge = {
             id: "challenge-1",
             status: "active",
-            currentBalance: "9700", // $300 down from SOD
+            currentBalance: "9500", // $500 down from SOD (exceeds 4% = $400 limit)
             startingBalance: "10000",
             startOfDayBalance: "10000", // SOD was $10k
             rulesConfig: {
-                maxTotalDrawdownPercent: 0.10,
-                maxDailyDrawdownPercent: 0.04, // 4% = $400 daily limit
+                maxTotalDrawdownPercent: 0.10, // 10% = $1000 total floor at $9000
+                maxDailyDrawdownPercent: 0.04, // 4% = $400 daily limit → floor at $9600
             }
         };
 
@@ -143,11 +146,10 @@ describe("RiskEngine.validateTrade", () => {
             })
         } as any);
 
-        // Trade with $200 estimated loss would exceed daily limit
-        const result = await RiskEngine.validateTrade("challenge-1", "market-1", 100, 200);
+        const result = await RiskEngine.validateTrade("challenge-1", "market-1", 100);
 
         expect(result.allowed).toBe(false);
-        expect(result.reason).toContain("Max Daily Loss");
+        expect(result.reason).toContain("Daily loss limit breached");
     });
 
     it("should reject when per-market exposure exceeded", async () => {
@@ -177,6 +179,7 @@ describe("RiskEngine.validateTrade", () => {
 
         vi.mocked(db.query.positions.findMany).mockResolvedValue(existingPositions as any);
         vi.mocked(getActiveMarkets).mockResolvedValue([]);
+        vi.mocked(getAllMarketsFlat).mockResolvedValue([]);
 
         // New $150 trade would bring total to $550 > $500 limit
         const result = await RiskEngine.validateTrade("challenge-1", "market-1", 150);
@@ -213,6 +216,7 @@ describe("RiskEngine.validateTrade", () => {
         vi.mocked(db.query.positions.findMany).mockResolvedValue([]);
         vi.mocked(getMarketById).mockResolvedValue(lowVolumeMarket as any);
         vi.mocked(getActiveMarkets).mockResolvedValue([lowVolumeMarket] as any);
+        vi.mocked(getAllMarketsFlat).mockResolvedValue([lowVolumeMarket] as any);
 
         const result = await RiskEngine.validateTrade("challenge-1", "market-1", 100);
 
@@ -253,6 +257,9 @@ describe("RiskEngine.validateTrade", () => {
             { id: "new-market", volume: 15_000_000, categories: [] } as any
         );
         vi.mocked(getActiveMarkets).mockResolvedValue([
+            { id: "new-market", volume: 15_000_000, categories: [] }
+        ] as any);
+        vi.mocked(getAllMarketsFlat).mockResolvedValue([
             { id: "new-market", volume: 15_000_000, categories: [] }
         ] as any);
 
@@ -300,6 +307,7 @@ describe("RiskEngine.validateTrade", () => {
             { id: "politics-2", volume: 15_000_000, categories: ["Politics"] } as any
         );
         vi.mocked(getActiveMarkets).mockResolvedValue(markets as any);
+        vi.mocked(getAllMarketsFlat).mockResolvedValue(markets as any);
 
         // New $300 trade in Politics would bring category total to $1100 > $1000 limit
         const result = await RiskEngine.validateTrade("challenge-1", "politics-2", 300);
@@ -344,6 +352,7 @@ describe("RiskEngine - Volume and Liquidity Rules", () => {
         vi.mocked(db.query.positions.findMany).mockResolvedValue([]);
         vi.mocked(getMarketById).mockResolvedValue(mediumVolumeMarket as any);
         vi.mocked(getActiveMarkets).mockResolvedValue([mediumVolumeMarket] as any);
+        vi.mocked(getAllMarketsFlat).mockResolvedValue([mediumVolumeMarket] as any);
 
         // $700 trade should be blocked (limit is $625 for 2.5% tier)
         const result = await RiskEngine.validateTrade("challenge-1", "market-1", 700);
@@ -385,6 +394,7 @@ describe("RiskEngine - Volume and Liquidity Rules", () => {
         vi.mocked(db.query.positions.findMany).mockResolvedValue([]);
         vi.mocked(getMarketById).mockResolvedValue(highVolumeMarket as any);
         vi.mocked(getActiveMarkets).mockResolvedValue([highVolumeMarket] as any);
+        vi.mocked(getAllMarketsFlat).mockResolvedValue([highVolumeMarket] as any);
 
         // $1000 trade - passes RULE 3 ($1000 < $1250), passes RULE 5 (high vol = $1250 limit),
         // and passes RULE 6 ($1000 < $1.5M)
@@ -415,6 +425,7 @@ describe("RiskEngine - Volume and Liquidity Rules", () => {
         vi.mocked(db.query.positions.findMany).mockResolvedValue([]);
         vi.mocked(getMarketById).mockResolvedValue(null); // Market data unavailable!
         vi.mocked(getActiveMarkets).mockResolvedValue([]);
+        vi.mocked(getAllMarketsFlat).mockResolvedValue([]);
 
         const result = await RiskEngine.validateTrade("challenge-1", "unknown-market", 100);
 
@@ -459,6 +470,9 @@ describe("RiskEngine - Position Tier Limits", () => {
             { id: "new-market", volume: 15_000_000, categories: [] } as any
         );
         vi.mocked(getActiveMarkets).mockResolvedValue([
+            { id: "new-market", volume: 15_000_000, categories: [] }
+        ] as any);
+        vi.mocked(getAllMarketsFlat).mockResolvedValue([
             { id: "new-market", volume: 15_000_000, categories: [] }
         ] as any);
 

@@ -320,7 +320,11 @@ export class RiskMonitor {
     }
 
     /**
-     * Close all open positions for a challenge (used on both breach and pass)
+     * Close all open positions for a challenge and settle PnL to balance.
+     * Used on both breach and pass transitions.
+     * 
+     * CRITICAL: Previously this only marked positions CLOSED without updating
+     * currentBalance, causing orphaned PnL. Now it atomically settles proceeds.
      */
     private async closeAllPositions(challengeId: string): Promise<void> {
         try {
@@ -338,6 +342,8 @@ export class RiskMonitor {
             );
 
             const now = new Date();
+            let totalProceeds = 0;
+
             for (const pos of openPositions) {
                 const livePrice = livePrices.get(pos.marketId);
                 const entryPrice = parseFloat(pos.entryPrice);
@@ -350,6 +356,8 @@ export class RiskMonitor {
                     : parseFloat(pos.currentPrice || pos.entryPrice);
 
                 const pnl = shares * (closePrice - entryPrice);
+                const proceeds = shares * closePrice;
+                totalProceeds += proceeds;
 
                 await db.update(positions)
                     .set({
@@ -362,7 +370,31 @@ export class RiskMonitor {
                     .where(eq(positions.id, pos.id));
             }
 
-            logger.info('Closed positions', { challengeId: challengeId.slice(0, 8), count: openPositions.length });
+            // CRITICAL: Settle proceeds to currentBalance
+            // Cash was deducted when positions were opened (BUY → deductCost).
+            // Now we credit back the liquidation value (shares × closePrice).
+            if (totalProceeds > 0) {
+                const [challenge] = await db.select()
+                    .from(challenges)
+                    .where(eq(challenges.id, challengeId));
+
+                if (challenge) {
+                    const currentBalance = parseFloat(challenge.currentBalance);
+                    const newBalance = currentBalance + totalProceeds;
+                    await db.update(challenges)
+                        .set({ currentBalance: newBalance.toFixed(2) })
+                        .where(eq(challenges.id, challengeId));
+
+                    logger.info('Settled PnL to balance', {
+                        challengeId: challengeId.slice(0, 8),
+                        cashBefore: currentBalance.toFixed(2),
+                        proceeds: totalProceeds.toFixed(2),
+                        cashAfter: newBalance.toFixed(2),
+                    });
+                }
+            }
+
+            logger.info('Closed positions', { challengeId: challengeId.slice(0, 8), count: openPositions.length, totalProceeds: totalProceeds.toFixed(2) });
         } catch (error: unknown) {
             logger.error('Failed to close positions', error instanceof Error ? error : null, { challengeId: challengeId.slice(0, 8) });
         }

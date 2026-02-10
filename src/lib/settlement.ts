@@ -1,0 +1,185 @@
+/**
+ * SETTLEMENT SERVICE — P0.3
+ * 
+ * Detects resolved markets and settles open positions:
+ * 1. Scans all OPEN positions across active challenges
+ * 2. Checks each position's market resolution via PolymarketOracle
+ * 3. If resolved: closes position at resolution price, credits proceeds to balance
+ * 
+ * This fills the critical gap where markets resolve but positions remain
+ * orphaned with no price feed and no balance update.
+ * 
+ * Designed to be called from a cron endpoint or worker loop.
+ */
+
+import { db } from "@/db";
+import { positions, challenges } from "@/db/schema";
+import { eq, and } from "drizzle-orm";
+import { PolymarketOracle } from "@/lib/polymarket-oracle";
+import { createLogger } from "@/lib/logger";
+
+const logger = createLogger("Settlement");
+
+export interface SettlementResult {
+    positionsChecked: number;
+    positionsSettled: number;
+    totalPnLSettled: number;
+    errors: string[];
+}
+
+/**
+ * Settle all resolved positions across all active challenges.
+ */
+export async function settleResolvedPositions(): Promise<SettlementResult> {
+    const result: SettlementResult = {
+        positionsChecked: 0,
+        positionsSettled: 0,
+        totalPnLSettled: 0,
+        errors: [],
+    };
+
+    try {
+        // 1. Get ALL open positions across active challenges
+        const openPositions = await db.query.positions.findMany({
+            where: eq(positions.status, "OPEN"),
+        });
+
+        if (openPositions.length === 0) {
+            logger.info("No open positions to check");
+            return result;
+        }
+
+        // 2. Get unique market IDs
+        const uniqueMarketIds = [...new Set(openPositions.map(p => p.marketId))];
+        result.positionsChecked = openPositions.length;
+
+        logger.info("Settlement scan started", {
+            openPositions: openPositions.length,
+            uniqueMarkets: uniqueMarketIds.length,
+        });
+
+        // 3. Batch check resolution status
+        const resolutions = await PolymarketOracle.batchGetResolutionStatus(uniqueMarketIds);
+
+        // 4. Process resolved markets
+        // Group positions by challenge for batch balance updates
+        const challengeSettlements = new Map<string, { proceeds: number; pnl: number; positions: typeof openPositions }>();
+
+        for (const pos of openPositions) {
+            const resolution = resolutions.get(pos.marketId);
+            if (!resolution || !resolution.isResolved) continue;
+
+            // Calculate settlement price
+            const entryPrice = parseFloat(pos.entryPrice);
+            const shares = parseFloat(pos.shares);
+            const isNo = pos.direction === "NO";
+
+            // Resolution price: 1 if YES won, 0 if NO won
+            let settlementPrice: number;
+            if (resolution.resolutionPrice !== undefined) {
+                // Direct resolution price from oracle (0 or 1 for binary markets)
+                settlementPrice = isNo ? 1 - resolution.resolutionPrice : resolution.resolutionPrice;
+            } else if (resolution.winningOutcome) {
+                // Infer from winning outcome string
+                const yesWon = resolution.winningOutcome.toLowerCase() === "yes";
+                settlementPrice = isNo ? (yesWon ? 0 : 1) : (yesWon ? 1 : 0);
+            } else {
+                // Can't determine resolution price — skip
+                logger.warn("Resolved market but unknown outcome", {
+                    marketId: pos.marketId.slice(0, 12),
+                    resolution,
+                });
+                continue;
+            }
+
+            const pnl = shares * (settlementPrice - entryPrice);
+            const proceeds = shares * settlementPrice;
+
+            // Close the position
+            const now = new Date();
+            await db.update(positions)
+                .set({
+                    status: "CLOSED",
+                    shares: "0",
+                    closedAt: now,
+                    closedPrice: settlementPrice.toString(),
+                    pnl: pnl.toFixed(2),
+                })
+                .where(eq(positions.id, pos.id));
+
+            // Accumulate challenge balance updates
+            const challengeId = pos.challengeId;
+            if (challengeId) {
+                const existing = challengeSettlements.get(challengeId) || { proceeds: 0, pnl: 0, positions: [] };
+                existing.proceeds += proceeds;
+                existing.pnl += pnl;
+                existing.positions.push(pos);
+                challengeSettlements.set(challengeId, existing);
+            }
+
+            result.positionsSettled++;
+            result.totalPnLSettled += pnl;
+
+            logger.info("Position settled", {
+                positionId: pos.id.slice(0, 8),
+                challengeId: challengeId?.slice(0, 8),
+                marketId: pos.marketId.slice(0, 12),
+                direction: pos.direction,
+                entryPrice: entryPrice.toFixed(4),
+                settlementPrice: settlementPrice.toFixed(4),
+                shares: shares.toFixed(2),
+                pnl: pnl.toFixed(2),
+                proceeds: proceeds.toFixed(2),
+                winningOutcome: resolution.winningOutcome,
+            });
+        }
+
+        // 5. Apply balance updates per challenge
+        for (const [challengeId, settlement] of challengeSettlements) {
+            try {
+                const [challenge] = await db.select()
+                    .from(challenges)
+                    .where(eq(challenges.id, challengeId));
+
+                if (!challenge) {
+                    result.errors.push(`Challenge ${challengeId.slice(0, 8)} not found`);
+                    continue;
+                }
+
+                const currentBalance = parseFloat(challenge.currentBalance);
+                const newBalance = currentBalance + settlement.proceeds;
+
+                await db.update(challenges)
+                    .set({ currentBalance: newBalance.toFixed(2) })
+                    .where(eq(challenges.id, challengeId));
+
+                logger.info("Challenge balance settled", {
+                    challengeId: challengeId.slice(0, 8),
+                    positionsSettled: settlement.positions.length,
+                    cashBefore: currentBalance.toFixed(2),
+                    proceeds: settlement.proceeds.toFixed(2),
+                    totalPnL: settlement.pnl.toFixed(2),
+                    cashAfter: newBalance.toFixed(2),
+                });
+            } catch (error: unknown) {
+                const msg = `Failed to settle balance for challenge ${challengeId.slice(0, 8)}: ${error instanceof Error ? error.message : 'Unknown error'}`;
+                logger.error(msg);
+                result.errors.push(msg);
+            }
+        }
+
+        logger.info("Settlement scan complete", {
+            checked: result.positionsChecked,
+            settled: result.positionsSettled,
+            totalPnL: result.totalPnLSettled.toFixed(2),
+            errors: result.errors.length,
+        });
+
+    } catch (error: unknown) {
+        const msg = `Settlement service error: ${error instanceof Error ? error.message : 'Unknown error'}`;
+        logger.error(msg);
+        result.errors.push(msg);
+    }
+
+    return result;
+}

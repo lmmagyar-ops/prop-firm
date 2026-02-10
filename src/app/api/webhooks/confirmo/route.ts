@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { challenges } from "@/db/schema";
 import { eq, and, gte } from "drizzle-orm";
 import crypto from "crypto";
+import { buildRulesConfig, getTierConfig } from "@/config/tiers";
 
 /**
  * Verify Confirmo webhook signature using HMAC-SHA256
@@ -25,42 +26,6 @@ function verifySignature(payload: string, signature: string | null, secret: stri
     } catch {
         return false;
     }
-}
-
-/**
- * Get rules config for a given tier
- * Matches the logic in create-confirmo-invoice
- */
-function getRulesConfig(tier: string) {
-    const tierBalances: Record<string, number> = {
-        "5k": 5000, "10k": 10000, "25k": 25000,
-        "50k": 50000, "100k": 100000, "200k": 200000
-    };
-    const startingBalance = tierBalances[tier] || 10000;
-
-    return {
-        startingBalance,
-        rulesConfig: {
-            // Include startingBalance in rulesConfig for consistency with legacy challenges
-            startingBalance,
-            // CRITICAL: profitTarget and maxDrawdown must be ABSOLUTE DOLLAR VALUES
-            profitTarget: startingBalance * 0.10, // 10% in absolute $
-            maxDrawdown: startingBalance * 0.08, // 8% in absolute $
-            maxTotalDrawdownPercent: 0.08, // 8%
-            maxDailyDrawdownPercent: 0.04, // 4%
-
-            // Position Sizing
-            maxPositionSizePercent: 0.05, // 5% per market
-            maxCategoryExposurePercent: 0.10, // 10% per category
-            lowVolumeThreshold: 10_000_000, // $10M
-            lowVolumeMaxPositionPercent: 0.025, // 2.5%
-
-            // Liquidity
-            maxVolumeImpactPercent: 0.10, // 10% of 24h volume
-            minMarketVolume: 100_000, // $100k
-        }
-    };
-
 }
 
 export async function POST(req: NextRequest) {
@@ -91,8 +56,10 @@ export async function POST(req: NextRequest) {
             const tier = refParts[1] || "10k"; // Default to 10k if not specified
             const platform = refParts[2] || "polymarket";
 
-            // Get tier-specific config
-            const { startingBalance, rulesConfig } = getRulesConfig(tier);
+            // Get tier-specific config from canonical source
+            const tierConfig = getTierConfig(tier);
+            const startingBalance = tierConfig.startingBalance;
+            const rulesConfig = buildRulesConfig(tier);
 
             // Validate payment amount matches tier
             const tierPrices: Record<string, number> = {

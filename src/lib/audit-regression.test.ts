@@ -31,17 +31,18 @@ describe("REGRESSION: createChallengeAction rulesConfig", () => {
         );
     });
 
-    it("should use maxDrawdown of 800 (8%), NOT 500 (5%)", () => {
-        // The file should contain maxDrawdown: 800
-        expect(fileContent).toContain("maxDrawdown: 800");
-        // And should NOT contain the old buggy value
+    it("should delegate rulesConfig to buildRulesConfig (not hardcode values)", () => {
+        // challenges.ts must import and call buildRulesConfig — NOT hardcode maxDrawdown/profitTarget
+        expect(fileContent).toContain("buildRulesConfig");
+        expect(fileContent).toContain("getTierConfig");
+        // Should NOT contain the old buggy hardcoded value
         expect(fileContent).not.toContain("maxDrawdown: 500");
     });
 
-    it("should use 60-day duration, NOT 30-day", () => {
-        // Should contain 60 * 24 * 60 * 60 * 1000
-        expect(fileContent).toContain("60 * 24 * 60 * 60 * 1000");
-        // Should NOT contain 30-day
+    it("should use durationDays from rulesConfig (not hardcode duration)", () => {
+        // Should reference rulesConfig.durationDays for computing endsAt
+        expect(fileContent).toContain("rulesConfig.durationDays");
+        // Should NOT contain the old hardcoded 30-day or 60-day arithmetic
         expect(fileContent).not.toContain("30 * 24 * 60 * 60 * 1000");
     });
 
@@ -49,11 +50,18 @@ describe("REGRESSION: createChallengeAction rulesConfig", () => {
         expect(fileContent).toContain("highWaterMark:");
     });
 
-    it("should include percentage-based risk rules", () => {
-        expect(fileContent).toContain("maxTotalDrawdownPercent: 0.08");
-        expect(fileContent).toContain("maxDailyDrawdownPercent: 0.04");
-        expect(fileContent).toContain("maxPositionSizePercent: 0.05");
-        expect(fileContent).toContain("maxCategoryExposurePercent: 0.10");
+    it("should produce correct 10k tier values via buildRulesConfig", async () => {
+        // Directly verify the canonical config produces the right values
+        const { buildRulesConfig } = await import("@/config/tiers");
+        const rules = buildRulesConfig("10k");
+
+        expect(rules.maxDrawdown).toBe(1000);           // 10% of $10k = $1000
+        expect(rules.profitTarget).toBe(1000);           // 10% of $10k = $1000
+        expect(rules.maxTotalDrawdownPercent).toBe(0.10);
+        expect(rules.maxDailyDrawdownPercent).toBe(0.05);
+        expect(rules.maxPositionSizePercent).toBe(0.05);
+        expect(rules.maxCategoryExposurePercent).toBe(0.10);
+        expect(rules.durationDays).toBe(60);
     });
 });
 

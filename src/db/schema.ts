@@ -10,7 +10,9 @@ import {
     primaryKey,
     uuid,
     index,
+    uniqueIndex,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import type { AdapterAccount } from "next-auth/adapters";
 
 // --- NextAuth Tables ---
@@ -176,6 +178,11 @@ export const challenges = pgTable("challenges", {
 }, (table) => ({
     // Dashboard queries: WHERE userId = ? AND status = ?
     challengeUserStatusIdx: index("challenges_user_status_idx").on(table.userId, table.status),
+    // HARD CONSTRAINT: Only one active challenge per user.
+    // Prevents race conditions where two concurrent requests both pass the findFirst check.
+    uniqueActiveChallenge: uniqueIndex("challenges_unique_active_per_user")
+        .on(table.userId)
+        .where(sql`status = 'active'`),
 }));
 
 export const positions = pgTable("positions", {

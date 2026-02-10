@@ -128,9 +128,9 @@ export class RiskEngine {
             openPositions: allOpenPositions.length,
         };
 
-        // ── DRAWDOWN INFO (logged but NOT blocking) ────────────────
-        // Drawdown is evaluated post-resolution by the evaluator, not pre-trade.
-        // Traders can trade up to the per-event cap regardless of drawdown room.
+        // ── RULES 1-2: DRAWDOWN CHECK (HARD BLOCK) ─────────────────
+        // Instantly reject trades if trader is already in drawdown breach.
+        // This closes the 30s window that existed when only the risk-monitor checked.
         const MAX_TOTAL_DD_PERCENT = rules.maxTotalDrawdownPercent || 0.08;
         const totalEquityFloor = startBalance * (1 - MAX_TOTAL_DD_PERCENT);
         const MAX_DAILY_DD_PERCENT = rules.maxDailyDrawdownPercent || 0.04;
@@ -139,6 +139,22 @@ export class RiskEngine {
 
         audit.drawdownRoom = currentEquity - totalEquityFloor;
         audit.dailyLossRoom = currentEquity - dailyEquityFloor;
+
+        // RULE 1: Total drawdown hard block
+        if (currentEquity <= totalEquityFloor) {
+            return this.deny(
+                `Account breached max drawdown. Equity: $${currentEquity.toFixed(0)}, Floor: $${totalEquityFloor.toFixed(0)}. Trading disabled.`,
+                audit
+            );
+        }
+
+        // RULE 2: Daily drawdown hard block
+        if (currentEquity <= dailyEquityFloor) {
+            return this.deny(
+                `Daily loss limit breached. Equity: $${currentEquity.toFixed(0)}, Daily floor: $${dailyEquityFloor.toFixed(0)}. Trading disabled until tomorrow.`,
+                audit
+            );
+        }
 
         // ── RULE 3: PER-EVENT EXPOSURE (5%) ───────────────────────
         const { getEventInfoForMarket } = await import("@/app/actions/market");
@@ -165,11 +181,17 @@ export class RiskEngine {
             ? market.categories
             : this.inferCategoriesFromTitle(market?.question || "");
 
-        if (marketCategories.length > 0) {
+        // Fallback: uncategorized markets count against an "other" catch-all
+        // This prevents uncategorized markets from bypassing category exposure limits
+        const effectiveCategories = marketCategories.length > 0
+            ? marketCategories
+            : ["other"];
+
+        {
             const maxPerCategory = startBalance * (rules.maxCategoryExposurePercent || 0.10);
             const allMarkets = await getAllMarketsFlat();
 
-            for (const category of marketCategories) {
+            for (const category of effectiveCategories) {
                 const categoryExposure = this.getCategoryExposureFromCache(allOpenPositions, category, allMarkets);
                 if (categoryExposure + tradeAmount > maxPerCategory) {
                     return this.deny(`Max ${category} exposure (10%) exceeded. Current: $${categoryExposure.toFixed(2)}, Limit: $${maxPerCategory.toFixed(2)}`, audit);
