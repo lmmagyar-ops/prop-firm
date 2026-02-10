@@ -68,11 +68,16 @@ export async function POST(req: NextRequest) {
             profitTarget: normalized.profitTarget,
         };
 
-        // Resurrect: set status back to active, fix rules
+        // Resurrect: set status back to active, fix rules, reset daily baseline
+        // CRITICAL: Also reset startOfDayBalance to currentBalance. Without this,
+        // the daily drawdown check uses the old startOfDayBalance ($5000), and since
+        // the buggy breach already closed positions (crystallizing ~$300 loss),
+        // equity ($4700) < daily limit ($4800) → instant re-failure.
         await db.update(challenges)
             .set({
                 status: "active",
                 rulesConfig: fixedRules,
+                startOfDayBalance: challenge.currentBalance, // Reset daily baseline
             })
             .where(eq(challenges.id, challengeId));
 
