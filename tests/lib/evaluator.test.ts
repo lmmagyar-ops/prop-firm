@@ -766,22 +766,15 @@ describe("ChallengeEvaluator - Position Closure on Phase Transition", () => {
 
         expect(result.status).toBe("passed");
 
-        // db.update should be called 3 times:
-        // 1. Close position pos-1
-        // 2. Close position pos-2
-        // 3. Update challenge to funded phase
-        expect(db.update).toHaveBeenCalledTimes(3);
+        // db.update should be called 1 time:
+        // Phase transition to funded (position closure now handled by risk-monitor)
+        expect(db.update).toHaveBeenCalledTimes(1);
 
-        // Verify the set calls include CLOSED status for positions
+        // Verify the set call transitions to funded
         const setCalls = vi.mocked(db.update).mock.results.map(
             (r: any) => r.value.set.mock.calls[0][0]
         );
-
-        // First two calls should close positions
-        expect(setCalls[0]).toMatchObject({ status: "CLOSED", shares: "0" });
-        expect(setCalls[1]).toMatchObject({ status: "CLOSED", shares: "0" });
-        // Third call should transition to funded
-        expect(setCalls[2]).toMatchObject({ phase: "funded", status: "active" });
+        expect(setCalls[0]).toMatchObject({ phase: "funded", status: "active" });
     });
 
     it("should skip position closure if no open positions exist", async () => {

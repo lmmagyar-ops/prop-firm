@@ -182,7 +182,7 @@ describe("RiskEngine.validateTrade", () => {
         const result = await RiskEngine.validateTrade("challenge-1", "market-1", 150);
 
         expect(result.allowed).toBe(false);
-        expect(result.reason).toContain("exposure"); // Changed from "per-market" to "per-event" after RULE 3 update
+        expect(result.reason).toContain("Max single trade"); // Unified message from RULE 3+5
     });
 
     it("should reject when market volume too low", async () => {

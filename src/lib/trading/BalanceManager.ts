@@ -1,6 +1,10 @@
 import { db } from '@/db';
 import { challenges } from '@/db/schema';
 import { eq } from 'drizzle-orm';
+import { createLogger } from '@/lib/logger';
+import { invariant, softInvariant } from '@/lib/invariant';
+
+const logger = createLogger('BalanceManager');
 
 /**
  * FORENSIC BALANCE MANAGER
@@ -10,7 +14,6 @@ import { eq } from 'drizzle-orm';
  * - Operation type (DEDUCT/CREDIT)
  * - Before/After balance
  * - Amount changed
- * - Stack trace (for debugging)
  * - Validation checks
  */
 export class BalanceManager {
@@ -24,7 +27,6 @@ export class BalanceManager {
         source?: string
     ): void {
         const logEntry = {
-            timestamp: new Date().toISOString(),
             operation,
             challengeId: challengeId.slice(0, 8),
             before: `$${before.toFixed(2)}`,
@@ -33,20 +35,18 @@ export class BalanceManager {
             source: source || 'unknown'
         };
 
-        console.log(`[BALANCE_FORENSIC] ${JSON.stringify(logEntry)}`);
+        logger.info('Balance update', logEntry);
 
         // VALIDATION: Check for suspicious large changes
-        if (amount > 10000) {
-            console.error(`[BALANCE_ALERT] ⚠️ LARGE TRANSACTION: $${amount.toFixed(2)} on challenge ${challengeId.slice(0, 8)}`);
-            console.error(`[BALANCE_ALERT] Stack trace:`, new Error().stack);
-        }
+        softInvariant(amount <= 10000, 'Large balance transaction detected', {
+            amount, challengeId, operation, source,
+        });
 
         // VALIDATION: Check for unexpected balance increases on DEDUCT
         if (operation === 'DEDUCT' && after > before) {
-            console.error(`[BALANCE_CORRUPTION] 🚨 CRITICAL: Balance INCREASED on DEDUCT operation!`);
-            console.error(`[BALANCE_CORRUPTION] Before: $${before}, After: $${after}, Amount: $${amount}`);
-            console.error(`[BALANCE_CORRUPTION] Challenge: ${challengeId}`);
-            console.error(`[BALANCE_CORRUPTION] Stack trace:`, new Error().stack);
+            invariant(false, 'Balance INCREASED on DEDUCT operation', {
+                before, after, amount, challengeId, source,
+            });
         }
     }
 
@@ -74,7 +74,9 @@ export class BalanceManager {
         // HARD GUARD: Prevent negative balance from being written to DB
         // Allow tiny floating-point dust (< 1 cent) but reject real negatives
         if (newBalance < -0.01) {
-            console.error(`[BALANCE_CORRUPTION] 🚨 BLOCKED negative balance: $${newBalance.toFixed(2)} on challenge ${challengeId}`);
+            logger.error('BLOCKED negative balance', null, {
+                newBalance, challengeId, currentBalance, amount, source,
+            });
             throw new Error(`Balance would go negative: $${newBalance.toFixed(2)}. Trade rejected.`);
         }
 
@@ -108,12 +110,9 @@ export class BalanceManager {
 
         // VALIDATION: Check for suspiciously large credits
         const startingBalance = parseFloat(challenge.startingBalance || '10000');
-        if (amount > startingBalance) {
-            console.error(`[BALANCE_ALERT] ⚠️ Credit larger than starting balance!`);
-            console.error(`[BALANCE_ALERT] Credit: $${amount.toFixed(2)}, Starting: $${startingBalance}`);
-            console.error(`[BALANCE_ALERT] Challenge: ${challengeId}`);
-            console.error(`[BALANCE_ALERT] Stack trace:`, new Error().stack);
-        }
+        softInvariant(amount <= startingBalance, 'Credit larger than starting balance', {
+            amount, startingBalance, challengeId, source,
+        });
 
         await tx.update(challenges)
             .set({ currentBalance: newBalance.toString() })

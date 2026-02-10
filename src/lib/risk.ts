@@ -6,6 +6,9 @@ import { getActiveMarkets, getMarketById, MarketMetadata } from "@/app/actions/m
 import { ArbitrageDetector } from "./arbitrage-detector";
 import { MarketService } from "./market";
 import { getPortfolioValue } from "./position-utils";
+import { createLogger } from "./logger";
+
+const logger = createLogger('RiskEngine');
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -189,7 +192,7 @@ export class RiskEngine {
 
         // ── ALL RULES PASSED ──────────────────────────────────────
         audit.result = "ALLOWED";
-        console.log(`[RISK_AUDIT] ${JSON.stringify(audit)}`);
+        logger.info('Risk check passed', audit);
         return { allowed: true };
     }
 
@@ -198,7 +201,7 @@ export class RiskEngine {
     private static deny(reason: string, audit: Record<string, unknown>): RiskResult {
         audit.result = "BLOCKED";
         audit.reason = reason;
-        console.log(`[RISK_AUDIT] ${JSON.stringify(audit)}`);
+        logger.warn('Risk check blocked', audit);
         return { allowed: false, reason };
     }
 

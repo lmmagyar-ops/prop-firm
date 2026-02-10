@@ -14,6 +14,9 @@ import { challenges, positions, auditLogs } from "../db/schema";
 import { eq, and } from "drizzle-orm";
 import { FUNDED_RULES } from "../lib/funded-rules";
 import { normalizeRulesConfig } from "../lib/normalize-rules";
+import { createLogger } from "../lib/logger";
+
+const logger = createLogger('RiskMonitor');
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ChallengeRecord = Record<string, any>;
@@ -39,18 +42,18 @@ export class RiskMonitor {
     start(): void {
         if (this.isRunning) return;
 
-        console.log('[RiskMonitor] 🛡️ Starting real-time breach monitoring (30s interval)...');
+        logger.info('Starting real-time breach monitoring (30s interval)');
         this.isRunning = true;
 
         // Initial check (catch to prevent unhandled rejection)
         this.checkAllChallenges().catch(err => {
-            console.error('[RiskMonitor] ❌ CRITICAL: Initial check failed:', err instanceof Error ? err.message : err);
+            logger.error('Initial check failed', err instanceof Error ? err : null, { message: err instanceof Error ? err.message : String(err) });
         });
 
         // Continuous monitoring (wrapped to prevent silent failures)
         this.checkInterval = setInterval(() => {
             this.checkAllChallenges().catch(err => {
-                console.error('[RiskMonitor] ❌ CRITICAL: Monitoring cycle failed:', err instanceof Error ? err.message : err);
+                logger.error('Monitoring cycle failed', err instanceof Error ? err : null, { message: err instanceof Error ? err.message : String(err) });
             });
         }, this.CHECK_INTERVAL_MS);
     }
@@ -64,7 +67,7 @@ export class RiskMonitor {
             this.checkInterval = null;
         }
         this.isRunning = false;
-        console.log('[RiskMonitor] Stopped.');
+        logger.info('Stopped');
     }
 
     /**
@@ -105,7 +108,7 @@ export class RiskMonitor {
             }
 
         } catch (error: unknown) {
-            console.error('[RiskMonitor] Check error:', error instanceof Error ? error.message : error);
+            logger.error('Check error', error instanceof Error ? error : null, { message: error instanceof Error ? error.message : String(error) });
         }
     }
 
@@ -145,7 +148,7 @@ export class RiskMonitor {
             } else {
                 // Fallback: use stored entry price (already direction-adjusted)
                 effectivePrice = entryPrice;
-                console.warn(`[RiskMonitor] ⚠️ No live price for ${pos.marketId.slice(0, 12)}, using entry price $${entryPrice.toFixed(4)}`);
+                logger.warn('No live price, using entry price', { marketId: pos.marketId.slice(0, 12), entryPrice });
             }
 
             positionValue += shares * effectivePrice;
@@ -162,7 +165,7 @@ export class RiskMonitor {
 
         // Check Max Drawdown (HARD BREACH)
         if (equity < maxDrawdownLimit) {
-            console.log(`[RiskMonitor] 🔴 HARD BREACH: Challenge ${challenge.id} equity $${equity.toFixed(2)} < limit $${maxDrawdownLimit.toFixed(2)}`);
+            logger.warn('HARD BREACH: max drawdown', { challengeId: challenge.id, equity, limit: maxDrawdownLimit });
             await this.triggerBreach(challenge, 'max_drawdown', equity, maxDrawdownLimit);
             return;
         }
@@ -173,7 +176,7 @@ export class RiskMonitor {
 
         // Check Daily Drawdown (HARD BREACH - per cofounder request)
         if (equity < dailyDrawdownLimit) {
-            console.log(`[RiskMonitor] 🔴 DAILY BREACH: Challenge ${challenge.id} equity $${equity.toFixed(2)} < daily limit $${dailyDrawdownLimit.toFixed(2)}`);
+            logger.warn('DAILY BREACH: daily drawdown', { challengeId: challenge.id, equity, limit: dailyDrawdownLimit });
             await this.triggerBreach(challenge, 'daily_drawdown', equity, dailyDrawdownLimit);
             return;
         }
@@ -185,7 +188,7 @@ export class RiskMonitor {
         // Check Profit Target (PASS condition) — only for non-funded phases
         const isFunded = challenge.phase === 'funded';
         if (!isFunded && equity >= targetBalance) {
-            console.log(`[RiskMonitor] 🟢 TARGET HIT: Challenge ${challenge.id} equity $${equity.toFixed(2)} >= target $${targetBalance.toFixed(2)}`);
+            logger.info('TARGET HIT: profit target', { challengeId: challenge.id, equity, target: targetBalance });
             await this.triggerPass(challenge, equity, targetBalance);
         }
     }
@@ -214,7 +217,7 @@ export class RiskMonitor {
 
             // If no rows updated, challenge was already failed/passed
             if (!result.rowCount || result.rowCount === 0) {
-                console.log(`[RiskMonitor] Challenge ${challenge.id} already transitioned, skipping breach`);
+                logger.info('Challenge already transitioned, skipping breach', { challengeId: challenge.id });
                 return;
             }
 
@@ -235,10 +238,10 @@ export class RiskMonitor {
                 }
             });
 
-            console.log(`[RiskMonitor] ❌ Challenge ${challenge.id} FAILED (${breachType})`);
+            logger.warn('Challenge FAILED', { challengeId: challenge.id, breachType, equity, limit });
 
         } catch (error: unknown) {
-            console.error(`[RiskMonitor] Failed to trigger breach:`, error instanceof Error ? error.message : error);
+            logger.error('Failed to trigger breach', error instanceof Error ? error : null, { challengeId: challenge.id, breachType });
         }
     }
 
@@ -288,7 +291,7 @@ export class RiskMonitor {
 
             // If no rows updated, challenge was already transitioned
             if (!result.rowCount || result.rowCount === 0) {
-                console.log(`[RiskMonitor] Challenge ${challenge.id} already transitioned, skipping pass`);
+                logger.info('Challenge already transitioned, skipping pass', { challengeId: challenge.id });
                 return;
             }
 
@@ -309,10 +312,10 @@ export class RiskMonitor {
                 }
             });
 
-            console.log(`[RiskMonitor] ✅ Challenge ${challenge.id} PASSED (${currentPhase} → funded)`);
+            logger.info('Challenge PASSED', { challengeId: challenge.id, fromPhase: currentPhase, toPhase: 'funded' });
 
         } catch (error: unknown) {
-            console.error(`[RiskMonitor] Failed to trigger pass:`, error instanceof Error ? error.message : error);
+            logger.error('Failed to trigger pass', error instanceof Error ? error : null, { challengeId: challenge.id });
         }
     }
 
@@ -359,9 +362,9 @@ export class RiskMonitor {
                     .where(eq(positions.id, pos.id));
             }
 
-            console.log(`[RiskMonitor] 🧹 Closed ${openPositions.length} position(s) for challenge ${challengeId.slice(0, 8)}`);
+            logger.info('Closed positions', { challengeId: challengeId.slice(0, 8), count: openPositions.length });
         } catch (error: unknown) {
-            console.error(`[RiskMonitor] Failed to close positions:`, error instanceof Error ? error.message : error);
+            logger.error('Failed to close positions', error instanceof Error ? error : null, { challengeId: challengeId.slice(0, 8) });
         }
     }
 
@@ -386,7 +389,7 @@ export class RiskMonitor {
                 }
             }
         } catch (error: unknown) {
-            console.error('[RiskMonitor] Price fetch error:', error instanceof Error ? error.message : error);
+            logger.error('Price fetch error', error instanceof Error ? error : null);
         }
 
         return prices;

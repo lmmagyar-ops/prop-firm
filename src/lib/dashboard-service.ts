@@ -5,6 +5,8 @@ import { FUNDED_RULES, type FundedTier } from "@/lib/funded-rules";
 import { calculatePositionMetrics } from "@/lib/position-utils";
 import { normalizeRulesConfig } from "@/lib/normalize-rules";
 import { safeParseFloat } from "./safe-parse";
+import { softInvariant } from "./invariant";
+import { createLogger } from "./logger";
 
 // ─── Pure functions (extracted for independent testability) ─────────
 
@@ -382,6 +384,11 @@ export async function getDashboardData(userId: string) {
 
     // 7. Calculate stats using extracted pure functions
     const stats = getEquityStats(activeChallenge, equity, startingBalance);
+
+    // Runtime invariants — catch impossible states at the source
+    softInvariant(equity >= 0, "Negative equity in dashboard", { userEmail: user.email, equity, cashBalance, totalPositionValue });
+    softInvariant(!isNaN(stats.totalPnL), "PnL is NaN", { userEmail: user.email, equity, startingBalance });
+    softInvariant(stats.drawdownUsage <= 200, "Impossible drawdown percentage", { userEmail: user.email, drawdownUsage: stats.drawdownUsage });
 
     // Safe fallbacks (needed for return object)
     const hwmParsed = safeParseFloat(activeChallenge.highWaterMark);

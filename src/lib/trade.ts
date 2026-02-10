@@ -356,7 +356,7 @@ export class TradeExecutor {
         logger.info(`Trade Complete: ${tradeResult.id}`, { tradeId: tradeResult.id });
 
         // STRUCTURED AUDIT LOG
-        console.log(`[TRADE_AUDIT] ${JSON.stringify({
+        logger.info('Trade audit', {
             tradeId: tradeResult.id,
             userId: userId.slice(0, 8),
             challengeId: challengeId.slice(0, 8),
@@ -369,8 +369,7 @@ export class TradeExecutor {
             canonicalPrice,
             bookSource: 'synthetic',
             slippagePct: parseFloat(simulation.slippagePercent.toFixed(4)),
-            timestamp: new Date().toISOString(),
-        })}`);
+        });
 
         return {
             ...tradeResult,

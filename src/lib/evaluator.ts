@@ -6,6 +6,9 @@ import { ChallengeRules } from "@/types/trading";
 import { MarketService } from "./market";
 import { FUNDED_RULES, FundedTier } from "./funded-rules";
 import { normalizeRulesConfig } from "./normalize-rules";
+import { createLogger } from "./logger";
+
+const logger = createLogger('Evaluator');
 
 interface EvaluationResult {
     status: 'active' | 'passed' | 'failed' | 'pending_failure';
@@ -92,7 +95,7 @@ export class ChallengeEvaluator {
 
         // === CHECK TIME EXPIRY ===
         if (challenge.endsAt && new Date() > new Date(challenge.endsAt)) {
-            console.log(`[Evaluator] ⏰ Challenge ${challengeId.slice(0, 8)} FAILED. Time Limit Exceeded.`);
+            logger.info('Challenge failed: time limit', { challengeId: challengeId.slice(0, 8), equity });
             await db.update(challenges)
                 .set({ status: 'failed', endsAt: new Date() })
                 .where(eq(challenges.id, challengeId));
@@ -108,7 +111,7 @@ export class ChallengeEvaluator {
         const drawdownType = isFunded ? 'Total' : 'Trailing';
 
         if (drawdownAmount >= maxDrawdown) {
-            console.log(`[Evaluator] ❌ ${isFunded ? 'Funded' : 'Challenge'} ${challengeId.slice(0, 8)} FAILED. ${drawdownType} Drawdown $${drawdownAmount.toFixed(2)} >= max $${maxDrawdown}`);
+            logger.info('Challenge failed: drawdown breach', { challengeId: challengeId.slice(0, 8), phase: isFunded ? 'funded' : 'challenge', drawdownType, drawdownAmount, maxDrawdown });
             await db.update(challenges)
                 .set({ status: 'failed', endsAt: new Date() })
                 .where(eq(challenges.id, challengeId));
@@ -121,7 +124,7 @@ export class ChallengeEvaluator {
         if (dailyLoss >= maxDailyLoss) {
             // Set pending failure (user can recover if they profit back before end of day)
             if (!challenge.pendingFailureAt) {
-                console.log(`[Evaluator] ⚠️ Challenge ${challengeId.slice(0, 8)} PENDING FAILURE. Daily loss $${dailyLoss.toFixed(2)} >= max $${maxDailyLoss}`);
+                logger.warn('Challenge pending failure: daily loss', { challengeId: challengeId.slice(0, 8), dailyLoss, maxDailyLoss });
                 await db.update(challenges)
                     .set({ pendingFailureAt: new Date() })
                     .where(eq(challenges.id, challengeId));
@@ -139,7 +142,7 @@ export class ChallengeEvaluator {
         const profit = equity - startingBalance;
 
         // FORENSIC LOGGING: Always log evaluation state for debugging
-        console.log(`[EVALUATOR_FORENSIC] ${JSON.stringify({
+        logger.info('Evaluation state', {
             challengeId: challengeId.slice(0, 8),
             phase: challenge.phase,
             isFunded,
@@ -151,12 +154,12 @@ export class ChallengeEvaluator {
             profit: profit.toFixed(2),
             profitTarget,
             wouldTransition: !isFunded && profit >= profitTarget,
-        })}`);
+        });
 
         if (!isFunded && profit >= profitTarget) {
-            // FORENSIC: Log detailed transition info
-            console.log(`[EVALUATOR_FORENSIC] ⚠️ FUNDED TRANSITION TRIGGERED`, {
+            logger.info('Funded transition triggered', {
                 challengeId: challengeId.slice(0, 8),
+                profit: profit.toFixed(2),
                 positions: openPositions.map(p => ({
                     marketId: p.marketId.slice(0, 12),
                     shares: p.shares,
@@ -164,9 +167,6 @@ export class ChallengeEvaluator {
                     entryPrice: p.entryPrice,
                 })),
             });
-
-            // Transition to funded phase
-            console.log(`[Evaluator] 🎉 Challenge ${challengeId.slice(0, 8)} PASSED! Transitioning to FUNDED. Profit: $${profit.toFixed(2)}`);
 
             const now = new Date();
             const tier = this.getFundedTier(startingBalance);
@@ -197,7 +197,7 @@ export class ChallengeEvaluator {
             await db.update(challenges)
                 .set({ highWaterMark: equity.toString() })
                 .where(eq(challenges.id, challengeId));
-            console.log(`[Evaluator] 📈 New high water mark: $${equity.toFixed(2)}`);
+            logger.info('New high water mark', { challengeId: challengeId.slice(0, 8), equity: equity.toFixed(2) });
         }
 
         return { status: 'active', equity };

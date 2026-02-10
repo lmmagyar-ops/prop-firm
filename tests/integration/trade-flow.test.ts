@@ -216,7 +216,7 @@ describe("Trade Flow Integration", () => {
             );
 
             expect(result.allowed).toBe(false);
-            expect(result.reason).toContain("Max exposure");
+            expect(result.reason).toContain("exceeds max per-market");
         });
 
         it("should track cumulative exposure across trades", async () => {
@@ -253,7 +253,7 @@ describe("Trade Flow Integration", () => {
             );
 
             expect(result2.allowed).toBe(false);
-            expect(result2.reason).toContain("exceeded");
+            expect(result2.reason).toContain("Max single trade");
         });
     });
 
