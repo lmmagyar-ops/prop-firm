@@ -148,9 +148,9 @@ const OutcomeRow = memo(function OutcomeRow({ market, label, onTrade }: OutcomeR
     };
 
     return (
-        <div className="px-4 py-2.5 flex items-center justify-between hover:bg-white/5 transition-colors group border-b border-white/5 last:border-0">
+        <div className="px-4 py-2.5 flex items-center gap-2 hover:bg-white/5 transition-colors group border-b border-white/5 last:border-0">
             {/* Outcome Label + Probability */}
-            <div className="flex items-center gap-3 flex-1 min-w-0 mr-4">
+            <div className="flex items-center gap-2 flex-1 min-w-0 overflow-hidden">
                 <span className="text-[13px] font-medium text-zinc-300 group-hover:text-primary truncate transition-colors">
                     {label}
                 </span>
@@ -163,13 +163,13 @@ const OutcomeRow = memo(function OutcomeRow({ market, label, onTrade }: OutcomeR
             <div className="flex gap-1.5 shrink-0">
                 <button
                     onClick={(e) => { e.stopPropagation(); onTrade(market.id, 'yes'); }}
-                    className="px-3 py-1 text-xs font-bold rounded bg-transparent hover:bg-[#00C896]/10 text-[#00C896] border border-[#00C896]/40 hover:border-[#00C896] transition-all"
+                    className="px-2.5 py-1 text-xs font-bold rounded bg-transparent hover:bg-[#00C896]/10 text-[#00C896] border border-[#00C896]/40 hover:border-[#00C896] transition-all"
                 >
                     Yes
                 </button>
                 <button
                     onClick={(e) => { e.stopPropagation(); onTrade(market.id, 'no'); }}
-                    className="px-3 py-1 text-xs font-bold rounded bg-transparent hover:bg-[#E63E5D]/10 text-[#E63E5D] border border-[#E63E5D]/40 hover:border-[#E63E5D] transition-all"
+                    className="px-2.5 py-1 text-xs font-bold rounded bg-transparent hover:bg-[#E63E5D]/10 text-[#E63E5D] border border-[#E63E5D]/40 hover:border-[#E63E5D] transition-all"
                 >
                     No
                 </button>

@@ -30,7 +30,7 @@ export function DashboardShell({
             />
 
             <main
-                className={`flex-1 flex flex-col min-h-screen transition-[margin] duration-200 ease-out ${isCollapsed ? "ml-0 md:ml-16" : "ml-0 md:ml-64"
+                className={`flex-1 min-w-0 flex flex-col min-h-screen transition-[margin] duration-200 ease-out ${isCollapsed ? "ml-0 md:ml-16" : "ml-0 md:ml-64"
                     }`}
             >
                 <TopNav userId={userId} />

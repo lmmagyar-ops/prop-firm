@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ChevronRight, ArrowRight } from "lucide-react";
 import { PLANS } from "@/config/plans";
 import { Navbar } from "@/components/Navbar";
-import { UrgencyTimer } from "@/components/landing/UrgencyTimer";
+
 import Aurora from "@/components/reactbits/Aurora";
 import SplitText from "@/components/reactbits/SplitText";
 import ShinyText from "@/components/reactbits/ShinyText";
@@ -109,10 +109,7 @@ export function LandingHero() {
                     <span className="text-[var(--vapi-gray-text)] text-lg">/one-time</span>
                 </div>
 
-                {/* Urgency Timer - FOMO */}
-                <div className="animate-slide-up-delay-2 mb-8">
-                    <UrgencyTimer hoursToExpire={24} label="Launch pricing ends in" />
-                </div>
+
 
                 {/* CTA Button — with ClickSpark micro-interaction */}
                 <div className="animate-slide-up-delay-3 flex flex-col items-center gap-4">

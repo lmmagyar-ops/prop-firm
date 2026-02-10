@@ -6,6 +6,16 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ## 2026-02-10
 
+### 5:25 PM — UI Visual Audit Fixes ✅
+
+Three fixes from the visual audit pass:
+
+1. **Removed "Offer expired" badge** from landing page (`LandingHero.tsx`). The `UrgencyTimer` component set a 24h countdown via localStorage — once expired, it permanently showed "Offer expired" which is a conversion killer. Removed the component entirely for now.
+
+2. **Fixed missing "No" buttons** on trade page cards. The real root cause was the `<main>` element in `DashboardShell.tsx` using `flex-1` without `min-w-0` — CSS flexbox items default to `min-width: auto`, so the grid content pushed the rightmost column past the viewport edge, clipping the No buttons off-screen. Fixed via `min-w-0` on `<main>`. Also improved `MultiRunnerCard.tsx` button layout with `overflow-hidden` on label container and tighter button padding as a secondary safeguard.
+
+3. **Fixed "Portfolio" text truncation** in top nav (`PortfolioPanel.tsx`). The trigger button was getting squeezed by the flex layout when the ChallengeSelector took up space. Added `shrink-0` to prevent compression.
+
 ### 4:55 PM — Open Positions UI Polish + Drawdown Formatting Fix ✅
 
 **Bug fix**: Max Drawdown and Daily Loss Limit percentages in `RiskMeters.tsx` displayed 14+ floating-point decimals (e.g., `0.5210624999999970%`). Root cause: `CountUp` component's `getDecimalPlaces()` counted all float decimals. Fixed by rounding values to 2dp before passing to `CountUp`.
