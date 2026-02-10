@@ -6,7 +6,6 @@ import { calculatePositionMetrics } from "@/lib/position-utils";
 import { normalizeRulesConfig } from "@/lib/normalize-rules";
 import { safeParseFloat } from "./safe-parse";
 import { softInvariant } from "./invariant";
-import { createLogger } from "./logger";
 
 // ─── Pure functions (extracted for independent testability) ─────────
 
@@ -37,7 +36,6 @@ export function mapChallengeHistory(challengesList: any[]) {
  * Enrich raw DB positions with live prices, market titles, and calculated PnL.
  * Pure function — receives pre-fetched data, does no I/O.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function getPositionsWithPnL(
     openPositions: any[],
     livePrices: Map<string, { price: string; source?: string }>,

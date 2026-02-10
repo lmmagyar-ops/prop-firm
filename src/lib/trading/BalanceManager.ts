@@ -1,4 +1,3 @@
-import { db } from '@/db';
 import { challenges } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { createLogger } from '@/lib/logger';

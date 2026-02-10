@@ -6,7 +6,7 @@ import { RiskEngine } from "./risk";
 import { PositionManager } from "./trading/PositionManager";
 import { BalanceManager } from "./trading/BalanceManager";
 import { createLogger } from "./logger";
-import { invariant, softInvariant } from "./invariant";
+import { invariant } from "./invariant";
 import {
     TradingError,
     InsufficientFundsError,
