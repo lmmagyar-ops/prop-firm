@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main, master, develop]
+    branches: [main, develop]
   pull_request:
-    branches: [main, master]
+    branches: [main, develop]
   # Nightly run for simulation tests
   schedule:
     - cron: '0 6 * * *'  # 6 AM UTC daily
@@ -16,6 +16,11 @@ on:
         type: boolean
         default: false
 
+# Cancel in-progress runs for the same branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   NODE_VERSION: '20'
 
@@ -23,6 +28,7 @@ jobs:
   quality:
     name: Code Quality
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     
     steps:
       - name: Checkout code
