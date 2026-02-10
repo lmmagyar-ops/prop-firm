@@ -6,6 +6,7 @@ import { RiskEngine } from "./risk";
 import { PositionManager } from "./trading/PositionManager";
 import { BalanceManager } from "./trading/BalanceManager";
 import { createLogger } from "./logger";
+import { invariant, softInvariant } from "./invariant";
 import {
     TradingError,
     InsufficientFundsError,
@@ -175,55 +176,36 @@ export class TradeExecutor {
         });
 
         // ================================================
-        // INVARIANT ASSERTIONS - Catch impossible states
-        // These guards ensure no corrupted data enters the DB
+        // INVARIANT ASSERTIONS — Catch impossible states
+        // These guards ensure no corrupted data enters the DB.
+        // invariant() throws in dev, fires Sentry + logs in prod.
         // ================================================
 
-        // Shares must be positive and finite
-        if (!Number.isFinite(shares) || shares <= 0) {
-            logger.error('INVARIANT VIOLATION: Invalid shares', { shares, amount, executionPrice });
-            throw new TradingError(
-                'Trade calculation error: invalid share count',
-                'INVARIANT_VIOLATION',
-                500
-            );
-        }
+        invariant(
+            Number.isFinite(shares) && shares > 0,
+            'Invalid shares: must be positive and finite',
+            { shares, amount, executionPrice }
+        );
 
-        // Execution price must be valid (between 0 and 1 for prediction markets)
-        if (!Number.isFinite(executionPrice) || executionPrice <= 0 || executionPrice >= 1) {
-            logger.error('INVARIANT VIOLATION: Invalid execution price', { executionPrice });
-            throw new TradingError(
-                'Trade calculation error: invalid execution price',
-                'INVARIANT_VIOLATION',
-                500
-            );
-        }
+        invariant(
+            Number.isFinite(executionPrice) && executionPrice > 0 && executionPrice < 1,
+            'Invalid execution price: must be 0 < p < 1',
+            { executionPrice }
+        );
 
-        // Amount must be positive and finite
-        if (!Number.isFinite(finalAmount) || finalAmount <= 0) {
-            logger.error('INVARIANT VIOLATION: Invalid amount', { finalAmount });
-            throw new TradingError(
-                'Trade calculation error: invalid trade amount',
-                'INVARIANT_VIOLATION',
-                500
-            );
-        }
+        invariant(
+            Number.isFinite(finalAmount) && finalAmount > 0,
+            'Invalid trade amount: must be positive and finite',
+            { finalAmount }
+        );
 
-        // For BUY: ensure we won't create negative balance
         if (side === 'BUY') {
             const preTradeBalance = parseFloat(challenge.currentBalance);
-            if (!Number.isFinite(preTradeBalance) || preTradeBalance < finalAmount) {
-                logger.error('INVARIANT VIOLATION: Would create negative balance', {
-                    preTradeBalance,
-                    finalAmount,
-                    difference: preTradeBalance - finalAmount,
-                });
-                throw new TradingError(
-                    'Trade would result in negative balance',
-                    'INVARIANT_VIOLATION',
-                    500
-                );
-            }
+            invariant(
+                Number.isFinite(preTradeBalance) && preTradeBalance >= finalAmount,
+                'Would create negative balance',
+                { preTradeBalance, finalAmount, difference: preTradeBalance - finalAmount }
+            );
         }
 
         // 5. DB Transaction (with Row Lock for Race Condition Prevention)

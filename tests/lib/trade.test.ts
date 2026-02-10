@@ -315,7 +315,7 @@ describe("TradeExecutor - Invariant Assertions", () => {
 
         await expect(
             TradeExecutor.executeTrade("user-1", "challenge-123", "mkt-1", "BUY", 1000)
-        ).rejects.toThrow("invalid");
+        ).rejects.toThrow("INVARIANT VIOLATION");
     });
 
     it("rejects zero shares (INVARIANT_VIOLATION)", async () => {
@@ -329,7 +329,7 @@ describe("TradeExecutor - Invariant Assertions", () => {
 
         await expect(
             TradeExecutor.executeTrade("user-1", "challenge-123", "mkt-1", "BUY", 1000)
-        ).rejects.toThrow("invalid share count");
+        ).rejects.toThrow("Invalid shares");
     });
 
     it("rejects executionPrice = 0 (INVARIANT_VIOLATION)", async () => {
@@ -343,7 +343,7 @@ describe("TradeExecutor - Invariant Assertions", () => {
 
         await expect(
             TradeExecutor.executeTrade("user-1", "challenge-123", "mkt-1", "BUY", 1000)
-        ).rejects.toThrow("invalid");
+        ).rejects.toThrow("INVARIANT VIOLATION");
     });
 
     it("rejects executionPrice = 1 (INVARIANT_VIOLATION)", async () => {
@@ -357,7 +357,7 @@ describe("TradeExecutor - Invariant Assertions", () => {
 
         await expect(
             TradeExecutor.executeTrade("user-1", "challenge-123", "mkt-1", "BUY", 1000)
-        ).rejects.toThrow("invalid execution price");
+        ).rejects.toThrow("Invalid execution price");
     });
 
     it("rejects BUY that would create negative balance (INVARIANT_VIOLATION)", async () => {
