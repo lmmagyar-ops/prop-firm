@@ -22,7 +22,7 @@ const COUNTRIES = [
     // Add more as needed
 ];
 
-export function AddressTab({ user }: { user: any }) {
+export function AddressTab({ user }: { user: User }) {
     const [isSaving, setIsSaving] = useState(false);
     const [formData, setFormData] = useState({
         addressStreet: user?.addressStreet || "",

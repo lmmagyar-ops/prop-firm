@@ -2,6 +2,46 @@ import { NextResponse } from "next/server";
 import { getRedisClient } from "@/lib/redis-client";
 import { requireAdmin } from "@/lib/admin-auth";
 
+interface PolyMarket {
+    question?: string;
+    closed?: boolean;
+    archived?: boolean;
+    outcomePrices?: string;
+    clobTokenIds?: string;
+    outcomes?: string;
+    volume?: string;
+}
+
+interface PolyEvent {
+    id?: string;
+    slug: string;
+    title: string;
+    description?: string;
+    image?: string;
+    volume?: number;
+    markets?: PolyMarket[];
+}
+
+interface ProcessedMarket {
+    id: string;
+    question: string;
+    outcomes: string[];
+    price: number;
+    volume: number;
+}
+
+interface ProcessedEvent {
+    id: string;
+    title: string;
+    slug: string;
+    description?: string;
+    image?: string;
+    volume: number;
+    categories: string[];
+    markets: ProcessedMarket[];
+    isMultiOutcome: boolean;
+}
+
 /**
  * POST /api/admin/force-sync-market
  * 
@@ -35,7 +75,7 @@ export async function POST(req: Request) {
         // Fetch current events from Redis
         const redis = getRedisClient();
         const currentEventsRaw = await redis.get("event:active_list");
-        const currentEvents: any[] = currentEventsRaw ?
+        const currentEvents: ProcessedEvent[] = currentEventsRaw ?
             (typeof currentEventsRaw === 'string' ? JSON.parse(currentEventsRaw) : currentEventsRaw) : [];
 
         let updatedCount = 0;
@@ -76,7 +116,7 @@ export async function POST(req: Request) {
 
                 // Find existing event in Redis list
                 const existingIndex = currentEvents.findIndex(
-                    (e: any) => e.slug === freshEvent.slug || e.id === freshEvent.id
+                    (e: ProcessedEvent) => e.slug === freshEvent.slug || e.id === freshEvent.id
                 );
 
                 if (existingIndex >= 0) {
@@ -127,10 +167,10 @@ export async function POST(req: Request) {
 /**
  * Process a single event from Polymarket API into our Redis format
  */
-async function processEvent(event: any): Promise<any | null> {
+async function processEvent(event: PolyEvent): Promise<ProcessedEvent | null> {
     if (!event.markets || event.markets.length === 0) return null;
 
-    const subMarkets: any[] = [];
+    const subMarkets: ProcessedMarket[] = [];
     const seenQuestions = new Set<string>();
 
     for (const market of event.markets) {
@@ -160,7 +200,7 @@ async function processEvent(event: any): Promise<any | null> {
 
         subMarkets.push({
             id: tokenId,
-            question: cleanOutcomeName(market.question),
+            question: cleanOutcomeName(market.question || ""),
             outcomes: outcomes,
             price: Math.max(yesPrice, 0.01),
             volume: parseFloat(market.volume || "0"),
@@ -188,14 +228,14 @@ async function processEvent(event: any): Promise<any | null> {
 /**
  * Fetch and process events from Polymarket
  */
-async function fetchAndProcessEvents(limit: number): Promise<any[]> {
+async function fetchAndProcessEvents(limit: number): Promise<ProcessedEvent[]> {
     const url = `https://gamma-api.polymarket.com/events?active=true&closed=false&limit=${limit}&order=volume24hr&ascending=false`;
     const res = await fetch(url);
     const events = await res.json();
 
     if (!Array.isArray(events)) return [];
 
-    const processed: any[] = [];
+    const processed: ProcessedEvent[] = [];
     const seenSlugs = new Set<string>();
 
     for (const event of events) {
@@ -273,7 +313,7 @@ export async function GET(req: Request) {
     // Get current Redis state
     const redis = getRedisClient();
     const currentEventsRaw = await redis.get("event:active_list");
-    const currentEvents: any[] = currentEventsRaw ?
+    const currentEvents: ProcessedEvent[] = currentEventsRaw ?
         (typeof currentEventsRaw === 'string' ? JSON.parse(currentEventsRaw) : currentEventsRaw) : [];
 
     return NextResponse.json({

@@ -20,6 +20,7 @@ export async function GET(req: NextRequest) {
         let query = db.select().from(affiliates);
 
         if (status) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Drizzle query builder type narrowing
             query = query.where(eq(affiliates.status, status)) as any;
         }
 
@@ -45,9 +46,9 @@ export async function GET(req: NextRequest) {
                     stats: {
                         totalReferrals: Number(stat?.totalReferrals || 0),
                         conversions: Number(stat?.conversions || 0),
-                        totalCommission: parseFloat(stat?.totalCommission as any || "0"),
-                        paidCommission: parseFloat(stat?.paidCommission as any || "0"),
-                        pendingCommission: parseFloat(stat?.totalCommission as any || "0") - parseFloat(stat?.paidCommission as any || "0")
+                        totalCommission: parseFloat(String(stat?.totalCommission ?? 0)),
+                        paidCommission: parseFloat(String(stat?.paidCommission ?? 0)),
+                        pendingCommission: parseFloat(String(stat?.totalCommission ?? 0)) - parseFloat(String(stat?.paidCommission ?? 0))
                     }
                 };
             })

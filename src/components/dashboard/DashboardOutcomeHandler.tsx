@@ -5,7 +5,7 @@ import { ChallengeFailedModal } from "@/components/dashboard/ChallengeFailedModa
 import { ChallengePassedModal } from "@/components/dashboard/ChallengePassedModal";
 
 interface DashboardOutcomeHandlerProps {
-    challengeHistory: any[];
+    challengeHistory: Array<{ id: string; status: string; balance?: string; startingBalance?: string; phase?: string; createdAt?: string }>;
 }
 
 export function DashboardOutcomeHandler({ challengeHistory = [] }: DashboardOutcomeHandlerProps) {

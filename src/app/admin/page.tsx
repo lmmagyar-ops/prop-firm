@@ -251,7 +251,7 @@ function OverviewTab() {
     );
 }
 
-function MetricCard({ title, value, icon: Icon, trend, sub, data, checkColor = "#22c55e" }: { title: string; value: string | number; icon: React.ElementType; trend?: string; sub?: string; data?: any[]; checkColor?: string }) {
+function MetricCard({ title, value, icon: Icon, trend, sub, data, checkColor = "#22c55e" }: { title: string; value: string | number; icon: React.ElementType; trend?: string; sub?: string; data?: Array<{ val: number }>; checkColor?: string }) {
     return (
         <Card className="bg-zinc-900/40 border-white/5 backdrop-blur-md relative overflow-hidden group hover:border-white/10 transition-all duration-500 shadow-lg hover:shadow-indigo-500/10">
             {/* Gloss Effect */}
@@ -524,10 +524,11 @@ function ConfigurationTab() {
         fetchRules();
     }, []);
 
-    const handleUpdate = (section: string, field: string, value: any) => {
+    const handleUpdate = (section: string, field: string, value: string | number | string[]) => {
         setRules((prev) => {
             if (!prev) return null;
-            const newRules: any = cloneDeep(prev); // Deep copy for safety
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any -- deeply dynamic config structure with nested string indexing
+            const newRules = cloneDeep(prev) as Record<string, any>;
 
             if (activeKey === "challenge_config") {
                 if (newRules[activeKey][section]) {
@@ -615,43 +616,43 @@ function ConfigurationTab() {
                                         <TabsTrigger key={tier} value={tier} className="uppercase">{tier}</TabsTrigger>
                                     ))}
                                 </TabsList>
-                                {Object.entries(dataContent).map(([tier, fields]: any) => (
+                                {(Object.entries(dataContent) as [string, Record<string, number | string>][]).map(([tier, fields]) => (
                                     <TabsContent key={tier} value={tier} className="space-y-6">
                                         <div className="grid grid-cols-2 gap-6">
                                             <ConfigField
                                                 label="Challenge Fee ($)"
-                                                value={fields.challenge_fees}
+                                                value={fields.challenge_fees as number}
                                                 onChange={(v) => handleUpdate(tier, "challenge_fees", v)}
                                                 type="number"
                                             />
                                             <ConfigField
                                                 label="Duration (Days)"
-                                                value={fields.duration_days}
+                                                value={fields.duration_days as number}
                                                 onChange={(v) => handleUpdate(tier, "duration_days", v)}
                                                 type="number"
                                             />
                                             <ConfigField
                                                 label="Profit Target (%)"
-                                                value={fields.profit_target_percent}
+                                                value={fields.profit_target_percent as number}
                                                 onChange={(v) => handleUpdate(tier, "profit_target_percent", v)}
                                                 type="percent"
                                             />
                                             <ConfigField
                                                 label="Max Drawdown (%)"
-                                                value={fields.max_drawdown_percent}
+                                                value={fields.max_drawdown_percent as number}
                                                 onChange={(v) => handleUpdate(tier, "max_drawdown_percent", v)}
                                                 type="percent"
                                             />
                                             <ConfigField
                                                 label="Profit Split (Trader %)"
-                                                value={fields.profit_split}
+                                                value={fields.profit_split as number}
                                                 onChange={(v) => handleUpdate(tier, "profit_split", v)}
                                                 type="percent"
                                             />
                                             <div className="space-y-2">
                                                 <Label>Payout Frequency</Label>
                                                 <Select
-                                                    value={fields.payout_frequency}
+                                                    value={fields.payout_frequency as string}
                                                     onValueChange={(v) => handleUpdate(tier, "payout_frequency", v)}
                                                 >
                                                     <SelectTrigger><SelectValue /></SelectTrigger>

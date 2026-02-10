@@ -19,7 +19,7 @@ interface DashboardViewProps {
     initialBalance?: number | null;
     demoMode?: boolean;
     userId?: string;
-    challengeHistory?: any[]; // Passed from server
+    challengeHistory?: Array<{ id: string; status: string; balance?: string; startingBalance?: string; phase?: string; createdAt?: string }>;
 }
 
 export function DashboardView({ initialBalance = null, demoMode = false, userId = "demo-user-1", challengeHistory = [] }: DashboardViewProps) {

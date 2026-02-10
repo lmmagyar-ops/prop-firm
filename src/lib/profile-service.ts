@@ -16,6 +16,7 @@ export async function getPrivateProfileData(userId: string) {
                 createdAt: new Date(),
                 emailVerified: new Date(),
                 showOnLeaderboard: true,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any -- demo mock data bypass
             } as any, // Cast to avoid full type matching for demo
             metrics: {
                 lifetimeTradingVolume: 1500000,
@@ -153,7 +154,7 @@ function calculateMetrics(challenges: Challenge[], lifetimeProfitWithdrawn: numb
 
     const currentWithdrawableProfit = activeFundedChallenges.reduce((sum, c) => {
         const profit = parseFloat(c.currentBalance) - parseFloat(c.startingBalance);
-        const profitSplit = parseFloat((c as any).profitSplit || "0.80");
+        const profitSplit = parseFloat((c as unknown as Record<string, string>).profitSplit || "0.80");
         const withdrawable = Math.max(0, profit * profitSplit);
         return sum + withdrawable;
     }, 0);

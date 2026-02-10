@@ -27,6 +27,7 @@ interface MobileTradeSheetProps {
     noPrice: number;
     balance: number;
     onTrade: (outcome: "YES" | "NO", amount: number) => Promise<void>;
+    maxPerEvent?: number;
 }
 
 const QUICK_AMOUNTS = [10, 25, 50, 100, 250];
@@ -39,6 +40,7 @@ export function MobileTradeSheet({
     noPrice,
     balance,
     onTrade,
+    maxPerEvent,
 }: MobileTradeSheetProps) {
     const [outcome, setOutcome] = useState<"YES" | "NO">("YES");
     const [amount, setAmount] = useState(50);
@@ -86,8 +88,12 @@ export function MobileTradeSheet({
         try { haptics.light(); } catch (e) { }
     };
 
+    // Effective max is the lesser of balance and per-event limit
+    const effectiveMax = maxPerEvent ? Math.min(balance, maxPerEvent) : balance;
+    const exceedsLimit = maxPerEvent ? amount > maxPerEvent : false;
+
     const handleTrade = async () => {
-        if (amount <= 0 || amount > balance || loading) return;
+        if (amount <= 0 || amount > effectiveMax || loading) return;
 
         setLoading(true);
         try {
@@ -237,10 +243,10 @@ export function MobileTradeSheet({
                                         </button>
                                     ))}
                                     <button
-                                        onClick={() => handleAmountSelect(Math.floor(balance))}
+                                        onClick={() => handleAmountSelect(Math.floor(effectiveMax))}
                                         className={cn(
                                             "px-4 py-3 rounded-xl text-sm font-bold transition-all flex-1 min-w-[60px]",
-                                            amount === Math.floor(balance)
+                                            amount === Math.floor(effectiveMax)
                                                 ? "bg-[#29af73] text-white"
                                                 : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
                                         )}
@@ -276,13 +282,13 @@ export function MobileTradeSheet({
                             {/* Trade Button */}
                             <button
                                 onClick={handleTrade}
-                                disabled={loading || amount <= 0 || amount > balance}
+                                disabled={loading || amount <= 0 || amount > effectiveMax}
                                 className={cn(
                                     "w-full py-5 rounded-2xl text-lg font-black uppercase tracking-wide transition-all active:scale-[0.98]",
                                     outcome === "YES"
                                         ? "bg-emerald-500 hover:bg-emerald-400 text-white"
                                         : "bg-rose-500 hover:bg-rose-400 text-white",
-                                    (loading || amount > balance) && "opacity-50 cursor-not-allowed"
+                                    (loading || amount > effectiveMax) && "opacity-50 cursor-not-allowed"
                                 )}
                             >
                                 {loading ? (
@@ -290,6 +296,8 @@ export function MobileTradeSheet({
                                         <Loader2 className="w-5 h-5 animate-spin" />
                                         Processing...
                                     </span>
+                                ) : exceedsLimit ? (
+                                    `Exceeds Event Limit ($${maxPerEvent?.toLocaleString()})`
                                 ) : amount > balance ? (
                                     "Insufficient Balance"
                                 ) : (
@@ -300,6 +308,9 @@ export function MobileTradeSheet({
                             {/* Balance */}
                             <p className="text-center text-sm text-zinc-500">
                                 Balance: <span className="font-mono text-zinc-400">${balance.toLocaleString()}</span>
+                                {maxPerEvent && (
+                                    <span className="ml-2">• Max/event: <span className="font-mono text-zinc-400">${maxPerEvent.toLocaleString()}</span></span>
+                                )}
                             </p>
                         </div>
                     </motion.div>

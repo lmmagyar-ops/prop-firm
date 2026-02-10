@@ -19,6 +19,7 @@ interface CategoryTabsProps {
     userId: string;
     platform?: "polymarket" | "kalshi";
     challengeId?: string;
+    maxPerEvent?: number;
 }
 
 
@@ -38,7 +39,7 @@ const CATEGORIES = [
     { id: 'Other', label: 'World' },
 ];
 
-export function MarketGridWithTabs({ events = [], balance, platform = "polymarket" }: CategoryTabsProps) {
+export function MarketGridWithTabs({ events = [], balance, platform = "polymarket", maxPerEvent }: CategoryTabsProps) {
     const [activeTab, setActiveTab] = useState('trending');
     const [selectedEvent, setSelectedEvent] = useState<EventMetadata | null>(null);
     const [detailModalOpen, setDetailModalOpen] = useState(false);
@@ -283,6 +284,7 @@ export function MarketGridWithTabs({ events = [], balance, platform = "polymarke
                 onClose={() => setDetailModalOpen(false)}
                 onTrade={handleTrade}
                 platform={platform}
+                maxPerEvent={maxPerEvent}
             />
 
             {/* Mobile Trade Sheet - Opens on mobile when Yes/No tapped */}
@@ -298,6 +300,7 @@ export function MarketGridWithTabs({ events = [], balance, platform = "polymarke
                     noPrice={quickTradeMarket.noPrice}
                     balance={balance}
                     onTrade={handleMobileTradeExecute}
+                    maxPerEvent={maxPerEvent}
                 />
             )}
         </div>

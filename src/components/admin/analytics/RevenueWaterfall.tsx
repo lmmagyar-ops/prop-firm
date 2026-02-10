@@ -14,18 +14,19 @@ export function RevenueWaterfall() {
         { name: "Total Revenue", value: 13500, cumulative: 13500, fill: "#eab308", isTotal: true },
     ];
 
-    const CustomTooltip = ({ active, payload }: any) => {
+    const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: Array<{ payload?: Record<string, unknown>; value?: number }> }) => {
         if (active && payload && payload.length) {
-            const data = payload[0].payload;
+            const data = payload[0].payload as Record<string, number | string | boolean | null> | undefined;
+            if (!data) return null;
             return (
                 <div className="bg-zinc-900 border border-white/10 rounded-lg p-3 shadow-xl">
-                    <p className="text-sm font-medium text-white">{data.name}</p>
+                    <p className="text-sm font-medium text-white">{String(data.name)}</p>
                     <p className="text-lg font-bold text-emerald-400">
-                        ${data.value.toLocaleString()}
+                        ${Number(data.value).toLocaleString()}
                     </p>
                     {!data.isTotal && (
                         <p className="text-xs text-zinc-500">
-                            Cumulative: ${data.cumulative.toLocaleString()}
+                            Cumulative: ${Number(data.cumulative).toLocaleString()}
                         </p>
                     )}
                 </div>
@@ -78,7 +79,7 @@ export function RevenueWaterfall() {
                                 <LabelList
                                     dataKey="value"
                                     position="top"
-                                    formatter={(value: any) => `$${value.toLocaleString()}`}
+                                    formatter={(value: number | string | boolean | null | undefined) => `$${Number(value ?? 0).toLocaleString()}`}
                                     style={{ fill: '#fff', fontSize: 12, fontWeight: 600 }}
                                 />
                             </Bar>

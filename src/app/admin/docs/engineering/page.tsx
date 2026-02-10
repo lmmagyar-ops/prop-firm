@@ -500,7 +500,7 @@ export default function EngineeringDocPage() {
 
 // --- Helper Components ---
 
-function QuickStat({ icon: Icon, label, value }: { icon: any; label: string; value: string }) {
+function QuickStat({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string }) {
     return (
         <div className="bg-zinc-900/40 border border-white/5 rounded-lg p-4">
             <div className="flex items-center gap-2 text-zinc-500 mb-1">
@@ -512,7 +512,7 @@ function QuickStat({ icon: Icon, label, value }: { icon: any; label: string; val
     );
 }
 
-function TOCSection({ sections }: { sections: { num: string; title: string; icon: any }[] }) {
+function TOCSection({ sections }: { sections: { num: string; title: string; icon: React.ElementType }[] }) {
     return (
         <div className="space-y-2">
             {sections.map((s) => (
@@ -526,7 +526,7 @@ function TOCSection({ sections }: { sections: { num: string; title: string; icon
     );
 }
 
-function SectionHeader({ number, title, icon: Icon, color, desc }: any) {
+function SectionHeader({ number, title, icon: Icon, color, desc }: { number: string; title: string; icon: React.ElementType; color: string; desc?: string }) {
     return (
         <div className="flex items-start gap-4 border-b border-white/5 pb-4">
             <span className="text-4xl font-black text-zinc-800 tracking-tighter select-none">{number}</span>
@@ -540,7 +540,7 @@ function SectionHeader({ number, title, icon: Icon, color, desc }: any) {
     );
 }
 
-function FeatureCard({ title, desc, children, icon: Icon, color }: any) {
+function FeatureCard({ title, desc, children, icon: Icon, color }: { title: string; desc: string; children: React.ReactNode; icon: React.ElementType; color: string }) {
     return (
         <Card className="bg-zinc-900/40 border-white/5 backdrop-blur-sm hover:border-white/10 transition-colors">
             <CardHeader className="pb-2">
@@ -562,7 +562,7 @@ function FeatureCard({ title, desc, children, icon: Icon, color }: any) {
 }
 
 function RuleItem({ level, color, title, desc }: { level: string; color: string; title: string; desc: string }) {
-    const colors: any = {
+    const colors: Record<string, string> = {
         red: "bg-red-500/20 text-red-400 border-red-500/30",
         orange: "bg-orange-500/20 text-orange-400 border-orange-500/30",
         green: "bg-green-500/20 text-green-400 border-green-500/30",

@@ -445,7 +445,7 @@ export default function MasterDocPage() {
 
 // --- Components ---
 
-function SectionHeader({ number, title, icon: Icon, color, desc }: any) {
+function SectionHeader({ number, title, icon: Icon, color, desc }: { number: string; title: string; icon: React.ElementType; color: string; desc?: string }) {
     return (
         <div className="flex items-start gap-4 border-b border-white/5 pb-4">
             <span className="text-4xl font-black text-zinc-800 tracking-tighter select-none">{number}</span>
@@ -459,7 +459,7 @@ function SectionHeader({ number, title, icon: Icon, color, desc }: any) {
     )
 }
 
-function FeatureCard({ title, desc, children, icon: Icon, color }: any) {
+function FeatureCard({ title, desc, children, icon: Icon, color }: { title: string; desc: string; children: React.ReactNode; icon: React.ElementType; color: string }) {
     return (
         <Card className="bg-zinc-900/40 border-white/5 backdrop-blur-sm hover:border-white/10 transition-colors">
             <CardHeader>
@@ -496,8 +496,8 @@ function ChecklistItem({ text, desc }: { text: string, desc: string }) {
     )
 }
 
-function StepNode({ number, title, children, color, icon: Icon }: any) {
-    const colors: any = {
+function StepNode({ number, title, children, color, icon: Icon }: { number: string; title: string; children: React.ReactNode; color: string; icon: React.ElementType }) {
+    const colors: Record<string, string> = {
         blue: "bg-primary border-primary",
         purple: "bg-purple-500 border-purple-400",
         orange: "bg-orange-500 border-orange-400",

@@ -11,10 +11,32 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { generateTraderReport } from "@/lib/generate-report";
 
+interface TraderDetailData {
+    challenge: {
+        userName: string;
+        email: string;
+        status: string;
+        phase: string;
+        startDate: string;
+        currentBalance: string | number;
+        rulesConfig?: Record<string, string | number>;
+    };
+    stats: { totalTrades: number; winRate: number };
+    timeline: Array<{ balance: number; date: string }>;
+    trades: Array<{
+        id: string;
+        createdAt: string;
+        type: string;
+        side: string;
+        marketId: string;
+        pnl: string | number;
+    }>;
+}
+
 export default function TraderDeepDivePage() {
     const { id } = useParams();
     const router = useRouter();
-    const [data, setData] = useState<any>(null);
+    const [data, setData] = useState<TraderDetailData | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -107,7 +129,7 @@ export default function TraderDeepDivePage() {
                             <TrendingUp className="h-4 w-4 text-zinc-400" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold">${Math.max(...timeline.map((t: any) => t.balance)).toFixed(2)}</div>
+                            <div className="text-2xl font-bold">${Math.max(...timeline.map((t) => t.balance)).toFixed(2)}</div>
                             <p className="text-xs text-zinc-400">High Water Mark</p>
                         </CardContent>
                     </Card>
@@ -153,7 +175,7 @@ export default function TraderDeepDivePage() {
                             </CardHeader>
                             <CardContent>
                                 <div className="space-y-1">
-                                    {trades.map((trade: any) => (
+                                    {trades.map((trade) => (
                                         <div key={trade.id} className="grid grid-cols-5 gap-4 p-3 hover:bg-zinc-800/50 rounded text-sm items-center border-b border-zinc-800/50 last:border-0">
                                             <div className="text-zinc-400">
                                                 {format(new Date(trade.createdAt), 'MMM d, h:mm a')}

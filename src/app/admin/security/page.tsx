@@ -48,7 +48,7 @@ export default function SecurityPage() {
     );
 }
 
-function StatsCard({ title, value, sub, icon: Icon, color, gradient }: any) {
+function StatsCard({ title, value, sub, icon: Icon, color, gradient }: { title: string; value: string | number; sub: string; icon: React.ElementType; color: string; gradient: string }) {
     return (
         <Card className="bg-zinc-900/40 border-white/5 backdrop-blur-xl relative overflow-hidden group">
             <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-20`} />

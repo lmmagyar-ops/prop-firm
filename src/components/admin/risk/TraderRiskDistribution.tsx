@@ -28,24 +28,25 @@ export function TraderRiskDistribution() {
         return "#22c55e"; // Green
     };
 
-    const CustomTooltip = ({ active, payload }: any) => {
+    const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: Array<{ payload?: Record<string, unknown>; value?: number }> }) => {
         if (active && payload && payload.length) {
-            const data = payload[0].payload;
+            const data = payload[0].payload as Record<string, number | string | null> | undefined;
+            if (!data) return null;
             return (
                 <div className="bg-zinc-900 border border-white/10 rounded-lg p-3 shadow-xl">
-                    <p className="text-sm font-medium text-white mb-2">{data.name}</p>
+                    <p className="text-sm font-medium text-white mb-2">{String(data.name)}</p>
                     <div className="space-y-1">
                         <div className="flex items-center justify-between gap-4">
                             <span className="text-xs text-zinc-400">Drawdown:</span>
-                            <span className="text-sm font-bold text-red-400">{data.drawdown}%</span>
+                            <span className="text-sm font-bold text-red-400">{String(data.drawdown)}%</span>
                         </div>
                         <div className="flex items-center justify-between gap-4">
                             <span className="text-xs text-zinc-400">Position Size:</span>
-                            <span className="text-sm font-bold text-primary">${data.positionSize.toLocaleString()}</span>
+                            <span className="text-sm font-bold text-primary">${Number(data.positionSize).toLocaleString()}</span>
                         </div>
                         <div className="flex items-center justify-between gap-4">
                             <span className="text-xs text-zinc-400">Risk Score:</span>
-                            <span className="text-sm font-bold text-amber-400">{data.riskScore}/10</span>
+                            <span className="text-sm font-bold text-amber-400">{String(data.riskScore)}/10</span>
                         </div>
                     </div>
                 </div>

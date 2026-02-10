@@ -22,8 +22,10 @@ export async function GET(req: NextRequest) {
 
         // Filter by status if provided
         if (status === "active") {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Drizzle query builder type narrowing
             query = query.where(eq(discountCodes.active, true)) as any;
         } else if (status === "inactive") {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Drizzle query builder type narrowing
             query = query.where(eq(discountCodes.active, false)) as any;
         }
 
@@ -46,8 +48,8 @@ export async function GET(req: NextRequest) {
                 return {
                     ...code,
                     redemptionCount: Number(stats?.count || 0),
-                    totalRevenue: parseFloat(stats?.totalRevenue as any || "0"),
-                    totalSavings: parseFloat(stats?.totalSavings as any || "0")
+                    totalRevenue: parseFloat(String(stats?.totalRevenue ?? 0)),
+                    totalSavings: parseFloat(String(stats?.totalSavings ?? 0))
                 };
             })
         );

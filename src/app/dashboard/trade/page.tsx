@@ -1,6 +1,6 @@
 import { auth } from "@/auth";
 import { getDashboardData } from "@/lib/dashboard-service";
-import { getActiveMarkets, getActiveEvents } from "@/app/actions/market";
+import { getActiveMarkets, getActiveEvents, type MarketMetadata } from "@/app/actions/market";
 import { MarketGridWithPolling } from "@/components/trading/MarketGridWithPolling";
 import { ThemedTradeLayout } from "@/components/trading/ThemedTradeLayout";
 import type { MockMarket } from "@/lib/mock-markets";
@@ -11,12 +11,12 @@ import { eq, and } from "drizzle-orm";
 import type { Platform } from "@/lib/platform-theme";
 
 // Map live market data to the shape expected by MarketCardClient
-function mapToMarketShape(liveMarket: any): MockMarket & { categories?: string[] } {
+function mapToMarketShape(liveMarket: MarketMetadata): MockMarket & { categories?: string[] } {
     const categories = liveMarket.categories || ['Other'];
     return {
         id: liveMarket.id,
         question: liveMarket.question,
-        category: categories[0] || 'Other', // Primary category for backward compat
+        category: (categories[0] || 'Other') as MockMarket['category'], // Primary category for backward compat
         categories: categories, // Full array for multi-category filtering
         icon: '📊',
         imageUrl: liveMarket.image,
@@ -56,7 +56,7 @@ export default async function TradePage() {
         }
     } else if (data?.activeChallenge) {
         // Fallback: use the first active challenge
-        platform = ((data.activeChallenge as any)?.platform || "polymarket") as "polymarket" | "kalshi";
+        platform = (String((data.activeChallenge as Record<string, unknown>)?.platform || "polymarket")) as "polymarket" | "kalshi";
     }
 
     // Parallelize remaining data fetches
@@ -68,6 +68,14 @@ export default async function TradePage() {
     const balance = data?.activeChallenge
         ? Number(data.activeChallenge.currentBalance)
         : 10000;
+
+    // Compute per-event trade limit from challenge rules
+    const startingBalance = data?.activeChallenge
+        ? Number(data.activeChallenge.startingBalance)
+        : 10000;
+    const rulesConfig = data?.activeChallenge?.rulesConfig as Record<string, number> | null;
+    const maxPositionSizePercent = rulesConfig?.maxPositionSizePercent ?? 0.05;
+    const maxPerEvent = startingBalance * maxPositionSizePercent;
 
     const hasActiveChallenge = !!data?.activeChallenge;
 
@@ -151,6 +159,7 @@ export default async function TradePage() {
                         userId={userId}
                         platform={platform}
                         challengeId={data?.activeChallenge?.id}
+                        maxPerEvent={maxPerEvent}
                     />
                 )}
             </div>

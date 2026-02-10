@@ -51,23 +51,23 @@ export function MarketExposureHeatmap() {
         low: "#22c55e",       // Green
     };
 
-    const CustomTooltip = ({ active, payload }: any) => {
+    const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: Array<{ payload?: Record<string, unknown>; value?: number }> }) => {
         if (active && payload && payload.length) {
-            const data = payload[0].payload;
-            if (data.size) {
+            const data = payload[0].payload as Record<string, number | string | null> | undefined;
+            if (data?.size) {
                 return (
                     <div className="bg-zinc-900 border border-white/10 rounded-lg p-3 shadow-xl">
-                        <p className="text-sm font-medium text-white">{data.name}</p>
+                        <p className="text-sm font-medium text-white">{String(data.name)}</p>
                         <p className="text-lg font-bold text-emerald-400">
-                            ${data.size.toLocaleString()}
+                            ${Number(data.size).toLocaleString()}
                         </p>
                         <div className="flex items-center gap-2 mt-1">
                             <div
                                 className="h-2 w-2 rounded-full"
-                                style={{ backgroundColor: COLORS[data.exposure] }}
+                                style={{ backgroundColor: COLORS[String(data.exposure) as keyof typeof COLORS] }}
                             />
                             <span className="text-xs text-zinc-400 capitalize">
-                                {data.exposure} Risk
+                                {String(data.exposure)} Risk
                             </span>
                         </div>
                     </div>
@@ -77,12 +77,18 @@ export function MarketExposureHeatmap() {
         return null;
     };
 
-    const CustomContent = (props: any) => {
-        const { x, y, width, height, name, size, exposure } = props;
+    const CustomContent = (props: Record<string, unknown>) => {
+        const x = Number(props.x ?? 0);
+        const y = Number(props.y ?? 0);
+        const width = Number(props.width ?? 0);
+        const height = Number(props.height ?? 0);
+        const name = String(props.name ?? "");
+        const size = Number(props.size ?? 0);
+        const exposure = String(props.exposure ?? "low");
 
         if (!size) return null;
 
-        const color = COLORS[exposure] || "#71717a";
+        const color = COLORS[exposure as keyof typeof COLORS] || "#71717a";
 
         return (
             <g>

@@ -33,12 +33,13 @@ export function OutcomeExposure() {
         setData(generateMockExposure());
     }, []);
 
-    const CustomTooltip = ({ active, payload, label }: any) => {
+    const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: Array<{ payload?: Record<string, unknown>; value?: number }> }) => {
         if (active && payload && payload.length) {
-            const d = payload[0].payload;
+            const d = payload[0].payload as Record<string, number | string | null> | undefined;
+            if (!d) return null;
             return (
                 <div className="bg-zinc-950/90 border border-zinc-800 p-3 rounded-lg shadow-2xl backdrop-blur-xl ring-1 ring-white/10">
-                    <p className="font-medium text-white mb-2 text-sm">{d.eventName}</p>
+                    <p className="font-medium text-white mb-2 text-sm">{String(d.eventName)}</p>
                     <div className="space-y-1 text-xs">
                         <div className="flex justify-between gap-6 items-center">
                             <span className="text-zinc-400">Position</span>
@@ -48,13 +49,13 @@ export function OutcomeExposure() {
                         </div>
                         <div className="flex justify-between gap-6 items-center">
                             <span className="text-zinc-400">Net Liability</span>
-                            <span className="font-mono text-white text-lg tracking-tight font-light">${d.liability.toLocaleString()}</span>
+                            <span className="font-mono text-white text-lg tracking-tight font-light">${Number(d.liability).toLocaleString()}</span>
                         </div>
                         <div className="h-px bg-zinc-800 my-1" />
                         <div className="flex justify-between gap-6">
                             <span className="text-zinc-500">Cap Usage</span>
-                            <span className={`font-mono ${d.liability > maxLiabilityCap ? "text-red-400" : "text-zinc-400"}`}>
-                                {((d.liability / maxLiabilityCap) * 100).toFixed(1)}%
+                            <span className={`font-mono ${Number(d.liability) > maxLiabilityCap ? "text-red-400" : "text-zinc-400"}`}>
+                                {((Number(d.liability) / maxLiabilityCap) * 100).toFixed(1)}%
                             </span>
                         </div>
                     </div>

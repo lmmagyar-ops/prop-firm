@@ -30,7 +30,7 @@ interface DiscountPerformance {
 interface GrowthData {
     kpis: GrowthKPIs;
     discountPerformance: DiscountPerformance[];
-    discountLeaderboard: any[];
+    discountLeaderboard: Array<{ code: string; name: string; type: string; value: number; redemptions: number; revenue: number; savings: number; active: boolean }>;
 }
 
 export default function GrowthPage() {
@@ -159,7 +159,7 @@ export default function GrowthPage() {
     );
 }
 
-function StatsCard({ title, value, sub, icon: Icon, color, loading, detail }: any) {
+function StatsCard({ title, value, sub, icon: Icon, color, loading, detail }: { title: string; value: string | number; sub: string; icon: React.ElementType; color: string; loading?: boolean; detail?: string }) {
     return (
         <Card className="bg-zinc-900 border-zinc-800 backdrop-blur-xl">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

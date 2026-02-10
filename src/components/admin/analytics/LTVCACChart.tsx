@@ -44,13 +44,13 @@ export function LTVCACChart() {
         fetchData();
     }, []);
 
-    const CustomTooltip = ({ active, payload }: any) => {
+    const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: Array<{ payload?: Record<string, unknown>; value?: number }> }) => {
         if (active && payload && payload.length >= 2) {
             const ltv = payload[0]?.value || 0;
             const cac = payload[1]?.value || 1;
             return (
                 <div className="bg-zinc-900 border border-white/10 rounded-lg p-3 shadow-xl">
-                    <p className="text-xs text-zinc-400 mb-2">{payload[0]?.payload?.month}</p>
+                    <p className="text-xs text-zinc-400 mb-2">{String(payload[0]?.payload?.month ?? "")}</p>
                     <div className="space-y-1">
                         <div className="flex items-center justify-between gap-4">
                             <span className="text-xs text-emerald-400">LTV:</span>

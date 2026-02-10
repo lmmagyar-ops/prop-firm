@@ -22,7 +22,7 @@ interface Affiliate {
     referralCode: string;
     referralLink: string;
     monthlyEarningCap: string | null;
-    applicationData: any;
+    applicationData: { audienceSize?: string; website?: string; socialLinks?: string[]; strategy?: string } | null;
     createdAt: string;
     approvedAt: string | null;
     approvedBy: string | null;

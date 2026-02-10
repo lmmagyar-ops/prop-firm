@@ -21,13 +21,14 @@ const trades = [
 ];
 
 export function ArbitrageScanner() {
-    const CustomTooltip = ({ active, payload }: any) => {
+    const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: Array<{ payload?: Record<string, unknown>; value?: number }> }) => {
         if (active && payload && payload.length) {
-            const data = payload[0].payload;
-            const diff = data.time - timeBase;
+            const data = payload[0].payload as Record<string, number | string | null> | undefined;
+            if (!data) return null;
+            const diff = Number(data.time) - timeBase;
             return (
                 <div className="bg-zinc-950/90 border border-zinc-800 p-3 rounded-lg text-xs shadow-2xl backdrop-blur-xl ring-1 ring-white/10">
-                    <p className="font-bold text-white mb-1">{data.trader}</p>
+                    <p className="font-bold text-white mb-1">{String(data.trader)}</p>
                     <div className="flex justify-between gap-4 text-zinc-400">
                         <span>Offset</span>
                         <span className="font-mono text-white">{diff > 0 ? `+${diff}ms` : `${diff}ms`}</span>
@@ -35,7 +36,7 @@ export function ArbitrageScanner() {
                     <div className="flex justify-between gap-4 mt-1">
                         <span>Status</span>
                         <span className={`font-bold ${data.type === "Toxic" ? "text-red-500" : "text-green-500"}`}>
-                            {data.type}
+                            {String(data.type)}
                         </span>
                     </div>
                 </div>

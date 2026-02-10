@@ -69,13 +69,14 @@ interface EventDetailModalProps {
     onClose: () => void;
     onTrade: (marketId: string, side: 'yes' | 'no', question: string) => void;
     platform?: "polymarket" | "kalshi";
+    maxPerEvent?: number;
 }
 
 /**
  * EventDetailModal - Full event detail view
  * Supports both Polymarket (Dark) and Kalshi (Light) themes
  */
-export function EventDetailModal({ event, open, onClose, onTrade, platform = "polymarket" }: EventDetailModalProps) {
+export function EventDetailModal({ event, open, onClose, onTrade, platform = "polymarket", maxPerEvent }: EventDetailModalProps) {
     const isMobile = useMediaQuery("(max-width: 768px)");
     const [selectedMarketId, setSelectedMarketId] = useState<string | null>(null);
     const [selectedSide, setSelectedSide] = useState<'yes' | 'no'>('yes');
@@ -341,6 +342,7 @@ export function EventDetailModal({ event, open, onClose, onTrade, platform = "po
                         onTradeComplete={onClose}
                         isKalshi={isKalshi}
                         initialSide={selectedSide}
+                        maxPerEvent={maxPerEvent}
                     />
                 </div>
             </div>
@@ -525,9 +527,10 @@ interface TradingSidebarProps {
     onTradeComplete?: () => void;
     isKalshi?: boolean;
     initialSide?: 'yes' | 'no';
+    maxPerEvent?: number;
 }
 
-function TradingSidebar({ market, eventTitle, onTradeComplete, isKalshi, initialSide = 'yes' }: TradingSidebarProps) {
+function TradingSidebar({ market, eventTitle, onTradeComplete, isKalshi, initialSide = 'yes', maxPerEvent }: TradingSidebarProps) {
     const [side, setSide] = useState<'yes' | 'no'>(initialSide);
     const [mode, setMode] = useState<'buy' | 'sell'>('buy');
     const [amount, setAmount] = useState(0); // Dollar amount
@@ -800,7 +803,13 @@ function TradingSidebar({ market, eventTitle, onTradeComplete, isKalshi, initial
                     <div className="space-y-2">
                         <div className="flex justify-between text-sm">
                             <span className={cn(isKalshi ? "text-slate-500" : "text-zinc-400")}>Amount ($)</span>
-                            <span className={cn(isKalshi ? "text-slate-400" : "text-zinc-500")}>Max</span>
+                            {maxPerEvent ? (
+                                <span className={cn("text-xs", isKalshi ? "text-slate-400" : "text-zinc-500")}>
+                                    Max/event: <span className="font-mono">${maxPerEvent.toLocaleString()}</span>
+                                </span>
+                            ) : (
+                                <span className={cn(isKalshi ? "text-slate-400" : "text-zinc-500")}>Max</span>
+                            )}
                         </div>
                         <div className="relative">
                             <input

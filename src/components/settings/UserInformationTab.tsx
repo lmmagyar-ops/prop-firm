@@ -186,7 +186,7 @@ export function UserInformationTab({ user, onTabChange }: UserInformationTabProp
                 </div>
 
                 <KYCStatusCard
-                    status={(user.kycStatus || 'not_started') as any}
+                    status={(user.kycStatus || 'not_started') as 'not_started' | 'in_progress' | 'under_review' | 'approved' | 'rejected'}
                     onStartVerification={() => onTabChange?.('kyc')}
                 />
             </div>

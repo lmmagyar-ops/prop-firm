@@ -15,11 +15,11 @@ export function BehavioralFingerprint() {
         { metric: "Adaptability", value: 68, fullMark: 100 },
     ];
 
-    const CustomTooltip = ({ active, payload }: any) => {
+    const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: Array<{ payload?: Record<string, unknown>; value?: number }> }) => {
         if (active && payload && payload.length) {
             return (
                 <div className="bg-zinc-900 border border-white/10 rounded-lg p-3 shadow-xl">
-                    <p className="text-sm font-medium text-white">{payload[0].payload.metric}</p>
+                    <p className="text-sm font-medium text-white">{String(payload[0].payload?.metric ?? "")}</p>
                     <p className="text-lg font-bold text-emerald-400">{payload[0].value}/100</p>
                 </div>
             );

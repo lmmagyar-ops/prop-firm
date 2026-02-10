@@ -15,19 +15,20 @@ export function DrawdownWaterfall() {
         { name: "Current Balance", value: 92000, cumulative: 92000, isEnd: true },
     ];
 
-    const CustomTooltip = ({ active, payload }: any) => {
+    const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: Array<{ payload?: Record<string, unknown>; value?: number }> }) => {
         if (active && payload && payload.length) {
-            const data = payload[0].payload;
+            const data = payload[0].payload as Record<string, number | string | boolean | null> | undefined;
+            if (!data) return null;
             return (
                 <div className="bg-zinc-900 border border-white/10 rounded-lg p-3 shadow-xl">
-                    <p className="text-sm font-medium text-white">{data.name}</p>
+                    <p className="text-sm font-medium text-white">{String(data.name)}</p>
                     {!data.isStart && !data.isEnd && (
-                        <p className={`text-lg font-bold ${data.value >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                            {data.value >= 0 ? '+' : ''}${data.value.toLocaleString()}
+                        <p className={`text-lg font-bold ${Number(data.value) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                            {Number(data.value) >= 0 ? '+' : ''}${Number(data.value).toLocaleString()}
                         </p>
                     )}
                     <p className="text-xs text-zinc-500 mt-1">
-                        Balance: ${data.cumulative.toLocaleString()}
+                        Balance: ${Number(data.cumulative).toLocaleString()}
                     </p>
                 </div>
             );
@@ -35,7 +36,7 @@ export function DrawdownWaterfall() {
         return null;
     };
 
-    const getColor = (item: any) => {
+    const getColor = (item: { isStart?: boolean; isEnd?: boolean; value: number }) => {
         if (item.isStart || item.isEnd) return "#3b82f6"; // Blue
         return item.value >= 0 ? "#22c55e" : "#ef4444"; // Green or Red
     };

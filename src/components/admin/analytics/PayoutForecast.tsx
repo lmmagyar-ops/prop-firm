@@ -18,9 +18,10 @@ export function PayoutForecast() {
         { week: "W8", actual: null, forecast: 38000 },
     ];
 
-    const CustomTooltip = ({ active, payload }: any) => {
+    const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: Array<{ payload?: Record<string, unknown>; value?: number }> }) => {
         if (active && payload && payload.length) {
-            const data = payload[0].payload;
+            const data = payload[0].payload as Record<string, number | string | null> | undefined;
+            if (!data) return null;
             const value = data.actual || data.forecast;
             const isActual = data.actual !== null;
 
@@ -28,7 +29,7 @@ export function PayoutForecast() {
                 <div className="bg-zinc-900 border border-white/10 rounded-lg p-3 shadow-xl">
                     <p className="text-xs text-zinc-400 mb-1">{data.week}</p>
                     <p className="text-lg font-bold text-white">
-                        ${value.toLocaleString()}
+                        ${typeof value === 'number' ? value.toLocaleString() : value}
                     </p>
                     <p className="text-xs text-zinc-500">
                         {isActual ? "Actual" : "Forecast"}

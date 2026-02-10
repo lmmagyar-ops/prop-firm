@@ -59,7 +59,7 @@ export default function AnalyticsPage() {
     );
 }
 
-function StatsCard({ title, value, sub, icon: Icon, trend, gradient, text }: any) {
+function StatsCard({ title, value, sub, icon: Icon, trend, gradient, text }: { title: string; value: string | number; sub: string; icon: React.ElementType; trend?: string; gradient: string; text: string }) {
     return (
         <Card className="bg-zinc-900/40 border-white/5 backdrop-blur-xl relative overflow-hidden group">
             <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-20`} />

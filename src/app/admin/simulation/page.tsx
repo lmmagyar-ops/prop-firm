@@ -1,10 +1,59 @@
 'use client';
 
-import { useState } from 'react';
-import { runMonteCarloSimulation, generateSummaryReport, exportToCSV, type MonteCarloResults } from '@/lib/simulation/monte-carlo';
+import { useState, type Dispatch, type SetStateAction } from 'react';
+import { runMonteCarloSimulation, generateSummaryReport, exportToCSV, type MonteCarloResults, type SimulationRun } from '@/lib/simulation/monte-carlo';
 import { calculateRealWorldProjection, type AttritionConfig } from '@/lib/simulation/attrition-model';
-import { compareAllTiers, exportTierComparisonCSV, type MultiTierComparison } from '@/lib/simulation/multi-tier-analysis';
+import { compareAllTiers, exportTierComparisonCSV, type MultiTierComparison, type TierAnalysisResult } from '@/lib/simulation/multi-tier-analysis';
 import { FIRM_CONFIG, type FirmConfig } from '@/lib/simulation/config';
+
+interface RealWorldModelTabProps {
+    traderCount: number;
+    setTraderCount: Dispatch<SetStateAction<number>>;
+    evalMultiplier: number;
+    setEvalMultiplier: Dispatch<SetStateAction<number>>;
+    evaluationPassRate: number;
+    setEvaluationPassRate: Dispatch<SetStateAction<number>>;
+    fundedToPayoutRate: number;
+    setFundedToPayoutRate: Dispatch<SetStateAction<number>>;
+    firstPayoutCap: number;
+    setFirstPayoutCap: Dispatch<SetStateAction<number>>;
+    challengeFee: number;
+    setChallengeFee: Dispatch<SetStateAction<number>>;
+    payoutSplit: number;
+    setPayoutSplit: Dispatch<SetStateAction<number>>;
+    runSimulation: () => void;
+    results: ReturnType<typeof calculateRealWorldProjection> | null;
+}
+
+interface MonteCarloTabProps {
+    iterations: number;
+    setIterations: Dispatch<SetStateAction<number>>;
+    traderCount: number;
+    setTraderCount: Dispatch<SetStateAction<number>>;
+    challengeFee: number;
+    setChallengeFee: Dispatch<SetStateAction<number>>;
+    maxDrawdown: number;
+    setMaxDrawdown: Dispatch<SetStateAction<number>>;
+    profitTarget: number;
+    setProfitTarget: Dispatch<SetStateAction<number>>;
+    payoutSplit: number;
+    setPayoutSplit: Dispatch<SetStateAction<number>>;
+    runSimulation: () => void;
+    isRunning: boolean;
+    results: MonteCarloResults | null;
+    handleExportCSV: () => void;
+    handleExportReport: () => void;
+}
+
+interface MultiTierTabProps {
+    traderCount: number;
+    setTraderCount: Dispatch<SetStateAction<number>>;
+    evalMultiplier: number;
+    setEvalMultiplier: Dispatch<SetStateAction<number>>;
+    runAnalysis: () => void;
+    results: MultiTierComparison | null;
+    handleExportCSV: () => void;
+}
 
 export default function SimulationPage() {
     const [activeTab, setActiveTab] = useState<'attrition' | 'monte-carlo' | 'multi-tier'>('attrition');
@@ -220,7 +269,7 @@ export default function SimulationPage() {
 }
 
 // Real-World Model Tab Component
-function RealWorldModelTab({ traderCount, setTraderCount, evalMultiplier, setEvalMultiplier, evaluationPassRate, setEvaluationPassRate, fundedToPayoutRate, setFundedToPayoutRate, firstPayoutCap, setFirstPayoutCap, challengeFee, setChallengeFee, payoutSplit, setPayoutSplit, runSimulation, results }: any) {
+function RealWorldModelTab({ traderCount, setTraderCount, evalMultiplier, setEvalMultiplier, evaluationPassRate, setEvaluationPassRate, fundedToPayoutRate, setFundedToPayoutRate, firstPayoutCap, setFirstPayoutCap, challengeFee, setChallengeFee, payoutSplit, setPayoutSplit, runSimulation, results }: RealWorldModelTabProps) {
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Left Panel */}
@@ -379,7 +428,7 @@ function RealWorldModelTab({ traderCount, setTraderCount, evalMultiplier, setEva
 }
 
 // Monte Carlo Tab Component (simplified for brevity)
-function MonteCarloTab({ iterations, setIterations, traderCount, setTraderCount, challengeFee, setChallengeFee, maxDrawdown, setMaxDrawdown, profitTarget, setProfitTarget, payoutSplit, setPayoutSplit, runSimulation, isRunning, results, handleExportCSV, handleExportReport }: any) {
+function MonteCarloTab({ iterations, setIterations, traderCount, setTraderCount, challengeFee, setChallengeFee, maxDrawdown, setMaxDrawdown, profitTarget, setProfitTarget, payoutSplit, setPayoutSplit, runSimulation, isRunning, results, handleExportCSV, handleExportReport }: MonteCarloTabProps) {
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-1 space-y-4">
@@ -477,12 +526,12 @@ function MonteCarloTab({ iterations, setIterations, traderCount, setTraderCount,
                             <div className="bg-white rounded-lg shadow p-6">
                                 <div className="text-sm text-gray-600 mb-1">Insolvency Risk</div>
                                 <div className={`text-3xl font-bold tabular-nums ${results.statistics.insolvencyProbability < 25 ? 'text-green-600' : results.statistics.insolvencyProbability < 50 ? 'text-yellow-600' : 'text-red-600'}`}>{results.statistics.insolvencyProbability.toFixed(1)}%</div>
-                                <div className="text-xs text-gray-500 mt-1">{results.runs.filter((r: any) => r.netCashFlow < 0).length}/{results.runs.length} runs</div>
+                                <div className="text-xs text-gray-500 mt-1">{results.runs.filter((r: SimulationRun) => r.netCashFlow < 0).length}/{results.runs.length} runs</div>
                             </div>
                             <div className="bg-white rounded-lg shadow p-6">
                                 <div className="text-sm text-gray-600 mb-1">Break-Even Probability</div>
                                 <div className={`text-3xl font-bold tabular-nums ${results.statistics.breakEvenProbability >= 75 ? 'text-green-600' : results.statistics.breakEvenProbability >= 50 ? 'text-yellow-600' : 'text-red-600'}`}>{results.statistics.breakEvenProbability.toFixed(1)}%</div>
-                                <div className="text-xs text-gray-500 mt-1">{results.runs.filter((r: any) => r.netCashFlow >= 0).length}/{results.runs.length} runs</div>
+                                <div className="text-xs text-gray-500 mt-1">{results.runs.filter((r: SimulationRun) => r.netCashFlow >= 0).length}/{results.runs.length} runs</div>
                             </div>
                         </div>
 
@@ -506,7 +555,7 @@ function MonteCarloTab({ iterations, setIterations, traderCount, setTraderCount,
 }
 
 // Multi-Tier Analysis Tab Component
-function MultiTierTab({ traderCount, setTraderCount, evalMultiplier, setEvalMultiplier, runAnalysis, results, handleExportCSV }: any) {
+function MultiTierTab({ traderCount, setTraderCount, evalMultiplier, setEvalMultiplier, runAnalysis, results, handleExportCSV }: MultiTierTabProps) {
     return (
         <div className="space-y-6">
             {/* Controls */}
@@ -606,7 +655,7 @@ function MultiTierTab({ traderCount, setTraderCount, evalMultiplier, setEvalMult
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
-                                    {results.tiers.map((tier: any) => (
+                                    {results.tiers.map((tier: TierAnalysisResult) => (
                                         <tr
                                             key={tier.tier}
                                             className={`hover:bg-gray-50 transition ${tier.tierLabel === results.bestByAbsoluteProfit ? 'bg-primary/5' : ''
@@ -637,7 +686,7 @@ function MultiTierTab({ traderCount, setTraderCount, evalMultiplier, setEvalMult
 
                     {/* Detailed Metrics */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        {results.tiers.map((tier: any) => (
+                        {results.tiers.map((tier: TierAnalysisResult) => (
                             <div key={tier.tier} className="bg-white rounded-lg shadow p-6">
                                 <h3 className="text-lg font-semibold mb-4">{tier.tierLabel} Tier Details</h3>
                                 <div className="space-y-3">

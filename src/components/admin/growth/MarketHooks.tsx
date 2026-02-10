@@ -13,14 +13,15 @@ const hooks = [
 ];
 
 export function MarketHooks() {
-    const CustomTooltip = ({ active, payload }: any) => {
+    const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: Array<{ payload?: Record<string, unknown>; value?: number }> }) => {
         if (active && payload && payload.length) {
-            const d = payload[0].payload;
+            const d = payload[0].payload as Record<string, number | string | null> | undefined;
+            if (!d) return null;
             return (
                 <div className="bg-zinc-900 border border-zinc-800 p-2 rounded text-xs shadow-xl">
-                    <p className="font-bold text-white mb-1">{d.market}</p>
-                    <p className="text-zinc-400">New Users: <span className="text-white">{d.users}</span></p>
-                    <p className="text-zinc-400">LTV Multiplier: <span className="text-green-400">{d.ltvMultiplier}x</span></p>
+                    <p className="font-bold text-white mb-1">{String(d.market)}</p>
+                    <p className="text-zinc-400">New Users: <span className="text-white">{String(d.users)}</span></p>
+                    <p className="text-zinc-400">LTV Multiplier: <span className="text-green-400">{String(d.ltvMultiplier)}x</span></p>
                 </div>
             );
         }

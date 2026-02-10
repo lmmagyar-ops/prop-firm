@@ -1,6 +1,20 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-auth";
 
+interface PolyMarketResult {
+    id?: string;
+    question?: string;
+    groupItemTitle?: string;
+    active?: boolean;
+    closed?: boolean;
+    volume?: string;
+    outcomePrices?: string;
+    clobTokenIds?: string;
+    outcomes?: string;
+    endDate?: string;
+    slug?: string;
+}
+
 /**
  * POST /api/admin/refresh-market
  * 
@@ -23,7 +37,7 @@ export async function POST(req: Request) {
             );
         }
 
-        let targetMarket: any = null;
+        let targetMarket: PolyMarketResult | null = null;
 
         if (query) {
             // Search for market by query
@@ -34,7 +48,7 @@ export async function POST(req: Request) {
 
             if (Array.isArray(markets)) {
                 const q = query.toLowerCase();
-                targetMarket = markets.find((m: any) =>
+                targetMarket = markets.find((m: PolyMarketResult) =>
                     m.question?.toLowerCase().includes(q) ||
                     m.groupItemTitle?.toLowerCase().includes(q)
                 );
@@ -120,7 +134,7 @@ export async function GET(req: Request) {
         console.log(`[Admin] Searching Polymarket for: "${query}"`);
 
         const q = query.toLowerCase();
-        const matchingEvents: any[] = [];
+        const matchingEvents: Array<{ title: string; slug: string; volume: number; markets: Array<{ question: string; yesPrice: string; volume: string; closed: boolean }> }> = [];
         const seenSlugs = new Set<string>();
 
         // Method 1: Targeted search using title_like parameter (most accurate)
@@ -156,7 +170,7 @@ export async function GET(req: Request) {
 
         // Process all combined events into the response format
         for (const event of combinedEvents) {
-            const markets: any[] = [];
+            const markets: Array<{ question: string; yesPrice: string; volume: string; closed: boolean }> = [];
 
             for (const market of (event.markets || [])) {
                 let prices: number[] = [];

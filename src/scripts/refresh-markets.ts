@@ -24,8 +24,29 @@ const getRedisConfig = () => {
     return process.env.REDIS_URL || "redis://localhost:6380";
 };
 
+interface PolyEvent {
+    slug: string;
+    title: string;
+    description?: string;
+    image?: string;
+    id?: string;
+    volume?: number;
+    endDate?: string;
+    end_date_iso?: string;
+    markets?: Array<{
+        question: string;
+        closed?: boolean;
+        archived?: boolean;
+        outcomePrices?: string;
+        clobTokenIds?: string;
+        outcomes?: string;
+        volume?: string;
+    }>;
+}
+
 async function refreshMarkets() {
     console.log("[Refresh] Connecting to Redis...");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ioredis config union type
     const redis = new Redis(getRedisConfig() as any);
 
     try {
@@ -46,13 +67,13 @@ async function refreshMarkets() {
         const breakingEvents = await breakingRes.json();
 
         if (Array.isArray(breakingEvents)) {
-            const seenSlugs = new Set(events.map((e: any) => e.slug));
+            const seenSlugs = new Set(events.map((e: PolyEvent) => e.slug));
             for (const be of breakingEvents) {
                 if (!seenSlugs.has(be.slug)) {
                     events.push(be);
                 }
             }
-            console.log(`[Refresh] Added ${breakingEvents.filter((be: any) => !seenSlugs.has(be.slug)).length} breaking events.`);
+            console.log(`[Refresh] Added ${breakingEvents.filter((be: PolyEvent) => !seenSlugs.has(be.slug)).length} breaking events.`);
         }
 
         const processedEvents = [];
@@ -129,6 +150,7 @@ async function refreshMarkets() {
 
         // Validate all events before storing
         console.log("\n[Refresh] Running data quality validation...");
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- validateEventBatch expects internal type
         const { validEvents, invalidEvents, totalWarnings, summary } = validateEventBatch(processedEvents as any);
         console.log(summary);
         logValidationIssues(invalidEvents, "[Refresh]");
@@ -139,7 +161,7 @@ async function refreshMarkets() {
 
         // Verify
         const stored = JSON.parse(await redis.get("event:active_list") || "[]");
-        const fedChair = stored.find((e: any) => e.title?.toLowerCase().includes("fed chair"));
+        const fedChair = stored.find((e: PolyEvent) => e.title?.toLowerCase().includes("fed chair"));
 
         if (fedChair) {
             console.log("\n[Refresh] ✅ Fed Chair Event Verification:");

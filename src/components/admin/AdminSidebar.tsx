@@ -30,7 +30,7 @@ export function AdminSidebar() {
     const pathname = usePathname();
     const [mobileOpen, setMobileOpen] = useState(false);
 
-    const NavItem = ({ item, onClick }: { item: { name: string, href: string, icon: any }, onClick?: () => void }) => {
+    const NavItem = ({ item, onClick }: { item: { name: string, href: string, icon: React.ElementType }, onClick?: () => void }) => {
         const Icon = item.icon;
         const isActive = item.href === "/admin"
             ? pathname === "/admin"

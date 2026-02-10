@@ -179,12 +179,7 @@ export function ChallengeSelector({ challenges, selectedChallengeId, onSelect }:
                                                         setIsOpen(false);
                                                         // Reload page to fetch correct platform markets (only if switching)
                                                         if (!wasAlreadySelected) {
-                                                            // Verify storage was set before reload
-                                                            setTimeout(() => {
-                                                                const stored = localStorage.getItem("selectedChallengeId");
-                                                                console.log("[ChallengeSelector] Before reload - localStorage:", stored);
-                                                                window.location.reload();
-                                                            }, 300);
+                                                            window.location.reload();
                                                         }
                                                     }}
                                                     className={cn(
@@ -307,11 +302,7 @@ export function ChallengeSelector({ challenges, selectedChallengeId, onSelect }:
                                                         setIsOpen(false);
                                                         // Reload page to fetch correct platform markets (only if switching)
                                                         if (!wasAlreadySelected) {
-                                                            setTimeout(() => {
-                                                                const stored = localStorage.getItem("selectedChallengeId");
-                                                                console.log("[ChallengeSelector] Before reload - localStorage:", stored);
-                                                                window.location.reload();
-                                                            }, 300);
+                                                            window.location.reload();
                                                         }
                                                     }}
                                                     className={cn(

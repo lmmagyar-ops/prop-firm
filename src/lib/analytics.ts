@@ -1,12 +1,18 @@
 // Analytics tracking helper for Vercel Analytics
 // This ensures analytics is available before tracking
 
-export const trackEvent = (eventName: string, data?: Record<string, any>) => {
-    if (typeof window !== 'undefined' && (window as any).va) {
-        (window as any).va('event', {
-            name: eventName,
-            data: data || {}
-        });
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Vercel Analytics injects window.va dynamically
+const getVA = (): ((event: string, props: Record<string, unknown>) => void) | undefined => (window as unknown as Record<string, unknown>).va as ((event: string, props: Record<string, unknown>) => void) | undefined;
+
+export const trackEvent = (eventName: string, data?: Record<string, string | number | boolean>) => {
+    if (typeof window !== 'undefined') {
+        const va = getVA();
+        if (va) {
+            va('event', {
+                name: eventName,
+                data: data || {}
+            });
+        }
     }
 };
 

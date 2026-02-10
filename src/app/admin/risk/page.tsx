@@ -159,7 +159,7 @@ export default function RiskDeskPage() {
     );
 }
 
-function RiskMetricCard({ title, value, icon: Icon, status, sub, loading }: any) {
+function RiskMetricCard({ title, value, icon: Icon, status, sub, loading }: { title: string; value: string | number; icon: React.ElementType; status: string; sub: string; loading?: boolean }) {
     const statusColors = {
         critical: "text-red-500",
         high: "text-red-500",
@@ -178,7 +178,7 @@ function RiskMetricCard({ title, value, icon: Icon, status, sub, loading }: any)
                     {loading ? (
                         <Loader2 className="h-4 w-4 text-zinc-500 animate-spin" />
                     ) : (
-                        <Icon className={`h-4 w-4 ${(statusColors as any)[status] || statusColors.neutral}`} />
+                        <Icon className={`h-4 w-4 ${statusColors[status as keyof typeof statusColors] || statusColors.neutral}`} />
                     )}
                 </div>
                 <div className="space-y-1">

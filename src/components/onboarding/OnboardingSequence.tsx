@@ -235,7 +235,7 @@ function Counter({ from, to, duration }: { from: number, to: number, duration: n
     return <span>{count.toLocaleString()}</span>;
 }
 
-function BriefCard({ icon: Icon, color, label, value, sub, delay }: any) {
+function BriefCard({ icon: Icon, color, label, value, sub, delay }: { icon: React.ElementType; color: string; label: string; value: React.ReactNode; sub: string; delay: number }) {
     const colorClass = color === "blue" ? "text-primary" : color === "red" ? "text-red-400" : "text-zinc-400";
     return (
         <motion.div

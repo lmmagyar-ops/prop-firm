@@ -32,7 +32,7 @@ export function RiskMatrix() {
                         // Transform challenge data for the matrix
                         // Assuming the API returns: balance, status, etc.
                         // We simulate percent calculations if raw fields aren't perfect
-                        const transformed = json.challenges.map((c: any) => {
+                        const transformed = json.challenges.map((c: Record<string, string>) => {
                             const startBalance = 10000; // Simplified assumption or need to fetch
                             const currentBalance = parseFloat(c.balance);
                             const profit = ((currentBalance - startBalance) / startBalance) * 100;
@@ -66,7 +66,7 @@ export function RiskMatrix() {
         return "#3b82f6"; // Neutral (Blue)
     };
 
-    const CustomTooltip = ({ active, payload }: any) => {
+    const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: Array<{ payload?: TraderRiskData; value?: number }> }) => {
         if (active && payload && payload.length) {
             const d = payload[0].payload;
             // Guard against reference line tooltips or malformed data
