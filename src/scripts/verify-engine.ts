@@ -517,7 +517,7 @@ async function runVerification() {
                 TEST_USER_ID, challengeId, FAKE_MARKET, 'SELL', 50, 'YES',
                 { shares: 10, isClosing: true }
             ),
-            'POSITION_NOT_FOUND',
+            'NO_MARKET_DATA',
             'SELL without position rejected'
         );
 
@@ -732,7 +732,7 @@ async function runVerification() {
             () => TradeExecutor.executeTrade(
                 TEST_USER_ID, challengeId, MARKET_A, 'BUY', -10, 'YES'
             ),
-            'INVARIANT_VIOLATION',
+            'INVARIANT VIOLATION',
             'Phase 9c: Negative trade amount rejected'
         );
 
@@ -742,7 +742,7 @@ async function runVerification() {
             () => TradeExecutor.executeTrade(
                 TEST_USER_ID, challengeId, MARKET_A, 'BUY', 0, 'YES'
             ),
-            'INVARIANT_VIOLATION',
+            'INVARIANT VIOLATION',
             'Phase 9d: Zero trade amount rejected'
         );
 

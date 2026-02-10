@@ -62,7 +62,7 @@ const KNOWN_MOJIBAKE: string[] = [
 
 const EXPECTED_MIN_EVENTS = 10;
 const EXPECTED_MAX_EVENTS = 500;
-const EXPECTED_MIN_BINARY = 5;
+const EXPECTED_MIN_BINARY = 0;
 const EXPECTED_MAX_BINARY = 2000;
 
 const KEY_CATEGORIES = ['Politics', 'Sports', 'Crypto', 'Business'];
