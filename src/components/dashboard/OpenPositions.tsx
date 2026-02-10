@@ -11,7 +11,13 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { X, Loader2 } from "lucide-react";
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Loader2, TrendingUp, TrendingDown } from "lucide-react";
 import { toast } from "sonner";
 import SpotlightCard from "@/components/reactbits/SpotlightCard";
 
@@ -64,6 +70,7 @@ export function OpenPositions({ positions: initialPositions }: OpenPositionsProp
             }
 
             setPositions(prev => prev.filter(p => p.id !== positionId));
+            window.dispatchEvent(new Event("balance-updated"));
             router.refresh();
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Failed to close position';
@@ -83,87 +90,140 @@ export function OpenPositions({ positions: initialPositions }: OpenPositionsProp
     }
 
     return (
-        <SpotlightCard
-            className="bg-zinc-900/50 border border-white/10 rounded-2xl overflow-hidden"
-            spotlightColor="rgba(0, 255, 178, 0.06)"
-            spotlightSize={600}
-        >
-            <div className="flex items-center justify-between p-6 border-b border-white/5">
-                <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider">
-                    Open Positions
-                </h3>
-            </div>
+        <TooltipProvider delayDuration={300}>
+            <SpotlightCard
+                className="bg-zinc-900/50 border border-white/10 rounded-2xl overflow-hidden"
+                spotlightColor="rgba(0, 255, 178, 0.06)"
+                spotlightSize={600}
+            >
+                <div className="flex items-center justify-between p-6 border-b border-white/5">
+                    <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider">
+                        Open Positions
+                    </h3>
+                </div>
 
-            <div className="overflow-x-auto">
-                <Table>
-                    <TableHeader>
-                        <TableRow className="border-white/5 hover:bg-transparent">
-                            <TableHead className="text-xs text-zinc-500 uppercase">Market</TableHead>
-                            <TableHead className="text-xs text-zinc-500 uppercase text-center">Side</TableHead>
-                            <TableHead className="text-xs text-zinc-500 uppercase text-right">Size</TableHead>
-                            <TableHead className="text-xs text-zinc-500 uppercase text-right">Entry</TableHead>
-                            <TableHead className="text-xs text-zinc-500 uppercase text-right">Current</TableHead>
-                            <TableHead className="text-xs text-zinc-500 uppercase text-right">P&L</TableHead>
-                            <TableHead className="text-xs text-zinc-500 uppercase text-right">Action</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {positions.map((pos) => (
-                            <TableRow key={pos.id} className="border-white/5 hover:bg-white/5 h-12">
-                                <TableCell className="text-sm font-medium text-white max-w-[200px] truncate">
-                                    {pos.marketTitle}
-                                </TableCell>
-                                <TableCell>
-                                    <div className="flex justify-center">
-                                        <div className={`
-                                            flex items-center justify-center w-10 h-5 rounded text-[10px] font-black tracking-wider border
-                                            ${pos.direction === "YES"
-                                                ? "bg-green-500/20 text-green-400 border-green-500/30 shadow-[0_0_10px_rgba(34,197,94,0.1)]"
-                                                : "bg-red-500/20 text-red-500 border-red-500/30 shadow-[0_0_10px_rgba(239,68,68,0.1)]"}
-                                        `}>
-                                            {pos.direction}
-                                        </div>
-                                    </div>
-                                </TableCell>
-                                <TableCell className="text-right font-mono text-sm text-zinc-300">
-                                    {pos.shares}
-                                </TableCell>
-                                <TableCell className="text-right font-mono text-sm text-zinc-400">
-                                    {(pos.entryPrice * 100).toFixed(2)}¢
-                                </TableCell>
-                                <TableCell className="text-right font-mono text-sm text-white">
-                                    {(pos.currentPrice * 100).toFixed(2)}¢
-                                </TableCell>
-                                <TableCell className="text-right font-mono text-sm font-bold">
-                                    <span
-                                        className={pos.unrealizedPnL >= 0
-                                            ? "bg-gradient-to-r from-green-400 to-emerald-300 bg-clip-text text-transparent"
-                                            : "bg-gradient-to-r from-red-400 to-rose-300 bg-clip-text text-transparent"
-                                        }
-                                    >
-                                        {pos.unrealizedPnL >= 0 ? "+$" : "-$"}{Math.abs(pos.unrealizedPnL).toFixed(2)}
-                                    </span>
-                                </TableCell>
-                                <TableCell className="text-right">
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => handleClosePosition(pos.id)}
-                                        disabled={closingId === pos.id}
-                                        className="h-7 w-7 p-0 text-zinc-500 hover:text-red-500 hover:bg-red-500/10"
-                                    >
-                                        {closingId === pos.id ? (
-                                            <Loader2 className="w-4 h-4 animate-spin" />
-                                        ) : (
-                                            <X className="w-4 h-4" />
-                                        )}
-                                    </Button>
-                                </TableCell>
+                <div className="overflow-x-auto">
+                    <Table>
+                        <TableHeader>
+                            <TableRow className="border-white/5 hover:bg-transparent">
+                                <TableHead className="text-xs text-zinc-500 uppercase">Market</TableHead>
+                                <TableHead className="text-xs text-zinc-500 uppercase text-center">Side</TableHead>
+                                <TableHead className="text-xs text-zinc-500 uppercase text-right">Shares</TableHead>
+                                <TableHead className="text-xs text-zinc-500 uppercase text-right">Entry</TableHead>
+                                <TableHead className="text-xs text-zinc-500 uppercase text-right">Current</TableHead>
+                                <TableHead className="text-xs text-zinc-500 uppercase text-right">Value</TableHead>
+                                <TableHead className="text-xs text-zinc-500 uppercase text-right">Return</TableHead>
+                                <TableHead className="text-xs text-zinc-500 uppercase text-right">Action</TableHead>
                             </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            </div>
-        </SpotlightCard>
+                        </TableHeader>
+                        <TableBody>
+                            {positions.map((pos) => {
+                                const cost = pos.shares * pos.entryPrice;
+                                const currentValue = pos.shares * pos.currentPrice;
+                                const returnPct = cost > 0 ? (pos.unrealizedPnL / cost) * 100 : 0;
+                                const isPositive = pos.unrealizedPnL >= 0;
+
+                                return (
+                                    <TableRow key={pos.id} className="border-white/5 hover:bg-white/5 h-12">
+                                        {/* Market — with tooltip for full title */}
+                                        <TableCell className="text-sm font-medium text-white max-w-[200px]">
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <span className="truncate block cursor-default">
+                                                        {pos.marketTitle}
+                                                    </span>
+                                                </TooltipTrigger>
+                                                <TooltipContent side="top" className="max-w-xs">
+                                                    <p>{pos.marketTitle}</p>
+                                                </TooltipContent>
+                                            </Tooltip>
+                                        </TableCell>
+
+                                        {/* Side */}
+                                        <TableCell>
+                                            <div className="flex justify-center">
+                                                <div className={`
+                                                    flex items-center justify-center w-10 h-5 rounded text-[10px] font-black tracking-wider border
+                                                    ${pos.direction === "YES"
+                                                        ? "bg-green-500/20 text-green-400 border-green-500/30 shadow-[0_0_10px_rgba(34,197,94,0.1)]"
+                                                        : "bg-red-500/20 text-red-500 border-red-500/30 shadow-[0_0_10px_rgba(239,68,68,0.1)]"}
+                                                `}>
+                                                    {pos.direction}
+                                                </div>
+                                            </div>
+                                        </TableCell>
+
+                                        {/* Shares — consistent 2dp */}
+                                        <TableCell className="text-right font-mono text-sm text-zinc-300">
+                                            {pos.shares.toFixed(2)}
+                                        </TableCell>
+
+                                        {/* Entry */}
+                                        <TableCell className="text-right font-mono text-sm text-zinc-400">
+                                            {(pos.entryPrice * 100).toFixed(1)}¢
+                                        </TableCell>
+
+                                        {/* Current */}
+                                        <TableCell className="text-right font-mono text-sm text-white">
+                                            {(pos.currentPrice * 100).toFixed(1)}¢
+                                        </TableCell>
+
+                                        {/* Value — current value with cost subtext */}
+                                        <TableCell className="text-right">
+                                            <div className="font-mono text-sm text-white font-medium">
+                                                ${currentValue.toFixed(2)}
+                                            </div>
+                                            <div className="font-mono text-[10px] text-zinc-500">
+                                                Cost ${cost.toFixed(2)}
+                                            </div>
+                                        </TableCell>
+
+                                        {/* Return — P&L with percentage */}
+                                        <TableCell className="text-right">
+                                            <div className={`flex items-center justify-end gap-1 font-mono text-sm font-bold ${isPositive ? '' : ''}`}>
+                                                {isPositive ? (
+                                                    <TrendingUp className="w-3 h-3 text-green-400 flex-shrink-0" />
+                                                ) : (
+                                                    <TrendingDown className="w-3 h-3 text-red-400 flex-shrink-0" />
+                                                )}
+                                                <span
+                                                    className={isPositive
+                                                        ? "bg-gradient-to-r from-green-400 to-emerald-300 bg-clip-text text-transparent"
+                                                        : "bg-gradient-to-r from-red-400 to-rose-300 bg-clip-text text-transparent"
+                                                    }
+                                                >
+                                                    {isPositive ? "+$" : "-$"}{Math.abs(pos.unrealizedPnL).toFixed(2)}
+                                                </span>
+                                            </div>
+                                            <div className={`font-mono text-[10px] ${isPositive ? 'text-green-500/60' : 'text-red-500/60'}`}>
+                                                {isPositive ? "+" : ""}{returnPct.toFixed(1)}%
+                                            </div>
+                                        </TableCell>
+
+                                        {/* Sell Button — clear label */}
+                                        <TableCell className="text-right">
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => handleClosePosition(pos.id)}
+                                                disabled={closingId === pos.id}
+                                                className="h-7 px-3 text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 font-bold"
+                                            >
+                                                {closingId === pos.id ? (
+                                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                                ) : (
+                                                    "Sell"
+                                                )}
+                                            </Button>
+                                        </TableCell>
+                                    </TableRow>
+                                );
+                            })}
+                        </TableBody>
+                    </Table>
+                </div>
+            </SpotlightCard>
+        </TooltipProvider>
     );
 }
+

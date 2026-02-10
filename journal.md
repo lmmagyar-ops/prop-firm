@@ -6,6 +6,22 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ## 2026-02-10
 
+### 4:55 PM — Open Positions UI Polish + Drawdown Formatting Fix ✅
+
+**Bug fix**: Max Drawdown and Daily Loss Limit percentages in `RiskMeters.tsx` displayed 14+ floating-point decimals (e.g., `0.5210624999999970%`). Root cause: `CountUp` component's `getDecimalPlaces()` counted all float decimals. Fixed by rounding values to 2dp before passing to `CountUp`.
+
+**Open Positions improvements** (`OpenPositions.tsx`):
+- Added **Value column** showing current dollar value with cost subtext (was only shares + prices)
+- Added **Return %** under P&L dollar amount (e.g., `-8.3%`)
+- Added **TrendingUp/TrendingDown** icons on P&L for quick visual scanning
+- Changed close button from ambiguous **X icon** to clear **"Sell" label** with red styling
+- Added **tooltip** on hover for truncated market titles
+- Consistent **2dp share formatting** (was showing raw floats like `83.33`)
+- Column header renamed **Size → Shares**, added **Value** and **Return** columns
+- Also fixed missing `balance-updated` event dispatch on position close
+
+---
+
 ### 3:40 PM — Equity Display Flashing Bug Fix ✅
 
 **Symptom**: Main equity display flashed to $10,000 (stale) while nav bar correctly showed $9,992.50. This bug persisted across many fix attempts.
