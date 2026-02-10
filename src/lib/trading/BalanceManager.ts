@@ -120,5 +120,76 @@ export class BalanceManager {
 
         return newBalance;
     }
+
+    /**
+     * Resets balance to a specific value (e.g., funded transition resets to starting balance).
+     * Unlike deduct/credit, this is an absolute set — used for phase transitions only.
+     */
+    static async resetBalance(
+        tx: Transaction,
+        challengeId: string,
+        newBalance: number,
+        source: string = 'funded_transition'
+    ): Promise<number> {
+        const challenge = await tx.query.challenges.findFirst({
+            where: eq(challenges.id, challengeId)
+        });
+
+        if (!challenge) throw new Error('Challenge not found');
+
+        const currentBalance = parseFloat(challenge.currentBalance);
+
+        logger.info('Balance RESET', {
+            challengeId: challengeId.slice(0, 8),
+            before: `$${currentBalance.toFixed(2)}`,
+            after: `$${newBalance.toFixed(2)}`,
+            delta: `${(newBalance - currentBalance) >= 0 ? '+' : ''}$${(newBalance - currentBalance).toFixed(2)}`,
+            source,
+        });
+
+        await tx.update(challenges)
+            .set({ currentBalance: newBalance.toString() })
+            .where(eq(challenges.id, challengeId));
+
+        return newBalance;
+    }
+
+    /**
+     * Adjusts balance by a delta (positive = credit, negative = debit).
+     * Used for settlement proceeds, fee charges, and other non-trade balance changes.
+     */
+    static async adjustBalance(
+        tx: Transaction,
+        challengeId: string,
+        delta: number,
+        source: string
+    ): Promise<number> {
+        const challenge = await tx.query.challenges.findFirst({
+            where: eq(challenges.id, challengeId)
+        });
+
+        if (!challenge) throw new Error('Challenge not found');
+
+        const currentBalance = parseFloat(challenge.currentBalance);
+        const newBalance = currentBalance + delta;
+
+        // Use existing forensic logging
+        const operation = delta >= 0 ? 'CREDIT' : 'DEDUCT';
+        this.formatLog(operation, challengeId, currentBalance, newBalance, Math.abs(delta), source);
+
+        // HARD GUARD: Prevent negative balance (same guard as deductCost)
+        if (newBalance < -0.01) {
+            logger.error('BLOCKED negative balance', null, {
+                newBalance, challengeId, currentBalance, delta, source,
+            });
+            throw new Error(`Balance would go negative: $${newBalance.toFixed(2)}. Operation rejected.`);
+        }
+
+        await tx.update(challenges)
+            .set({ currentBalance: newBalance.toString() })
+            .where(eq(challenges.id, challengeId));
+
+        return newBalance;
+    }
 }
 

@@ -5,11 +5,12 @@
 ## 🧠 New Agent? Start Here
 
 1. **Read this file** — full architecture, risk rules, debugging protocols
-2. **Run `npm run test:engine`** — 32 assertions across 7 phases prove the trading engine works
-3. **If debugging**, follow the "Number Discrepancy Audit" section — step-by-step protocol with symptom → cause lookup
-4. **If data looks wrong**, run `npx tsx scripts/reconcile-positions.ts` to validate positions against trade history
-5. **For manual testing**, see `docs/SMOKE_TEST.md` — 15-minute end-to-end checklist
-6. **For history**, see `journal.md` — daily changelog with root causes, commits, and verification results
+2. **Run `npm run test:engine`** — 53 assertions across 11 phases prove the trading engine works
+3. **Run `npm run test:lifecycle`** — 73 assertions across 7 phases prove the full challenge lifecycle
+4. **If debugging**, follow the "Number Discrepancy Audit" section — step-by-step protocol with symptom → cause lookup
+5. **If data looks wrong**, run `npx tsx scripts/reconcile-positions.ts` to validate positions against trade history
+6. **For manual testing**, see `docs/SMOKE_TEST.md` — 15-minute end-to-end checklist
+7. **For history**, see `journal.md` — daily changelog with root causes, commits, and verification results
 
 | Symptom | First Action | Key File |
 |---------|-------------|----------|
@@ -37,8 +38,10 @@ npm run db:push      # Push Drizzle schema to PostgreSQL (no migration files)
 
 # Testing
 npm run test                                    # All Vitest unit tests
-npm run test:engine                             # Trading engine verification (32 assertions)
+npm run test:engine                             # Trading engine verification (53 assertions)
+npm run test:lifecycle                          # Full lifecycle simulator (73 assertions)
 npm run test:markets                            # Market data quality audit (22 assertions)
+npm run test:balances                           # Balance integrity verification
 npm run test:e2e                                # Playwright smoke tests (10 tests)
 
 # Workers (local)
@@ -126,7 +129,8 @@ src/
 │   └── health-server.ts    # HTTP health endpoint for Railway
 └── scripts/
     ├── grant-admin.ts      # Grant admin role
-    ├── verify-engine.ts    # 32-assertion trade engine test
+    ├── verify-engine.ts    # 53-assertion trade engine test
+    ├── verify-lifecycle.ts # 73-assertion challenge lifecycle test
     ├── verify-markets.ts   # Market data quality audit (22 assertions)
     ├── verify-prices.ts    # Live price drift audit (cached vs API)
     └── reconcile-positions.ts  # Position vs trade history audit
@@ -199,6 +203,9 @@ Trade Request → RiskEngine.validate() → MarketService.calculateImpact()
 **Runtime invariants** (enforced in TradeExecutor):
 - `shares > 0`, `entryPrice ∈ (0.01, 0.99)`, `amount > 0`, `newBalance ≥ 0`
 - **Negative balance throws** — `BalanceManager` will hard-error if a trade would produce a negative balance (data corruption guard)
+
+> [!IMPORTANT]
+> **All balance mutations route through `BalanceManager`** — `deductCost`, `creditProceeds`, `resetBalance`, `adjustBalance`. Every call requires a transaction handle (`tx`), enforces negative-balance guards, and produces forensic before/after logging with a source tag (`'trade'`, `'position_liquidation'`, `'funded_transition'`, `'market_settlement'`, `'carry_fee'`). Raw SQL balance updates are banned.
 - Trades blocked when `currentPrice ≤ 0.01` or `≥ 0.99` (market effectively resolved)
 - `direction` (YES/NO) recorded on every trade for audit trail
 - Warning logged when executing against synthetic order book
@@ -242,6 +249,9 @@ Runs every 5 seconds in the ingestion worker:
 2. Gets live prices from Redis
 3. Calculates equity (cash + unrealized P&L)
 4. **Max Drawdown breach** → HARD FAIL (closes all positions) | **Daily Drawdown breach** → HARD FAIL (closes all positions) | **Profit Target hit** → PASS (closes all positions, transitions to funded)
+
+> [!IMPORTANT]
+> **Transaction safety:** `triggerBreach`, `triggerPass`, and `closeAllPositions` run inside `db.transaction()`. Status update + position closes + balance credit + audit log are fully atomic — if any step crashes, everything rolls back. Redis reads happen before the transaction (not transactional).
 
 > [!IMPORTANT]
 > On breach, `currentBalance` is stored as-is — equity is **not** written to currentBalance (prevents double-counting unrealized P&L).
@@ -403,7 +413,9 @@ See `.agent/workflows/deploy.md` for the full deployment workflow.
 | **Trade Flow** | `src/lib/trade-flow.integration.test.ts` | 6 integration tests |
 | **Discount Security** | `tests/discount-security.test.ts` | 47 tests |
 | **Payout Logic** | `tests/payout-logic.test.ts` | Profit splits, eligibility |
-| **Trade Engine** | `npm run test:engine` | 32 assertions, 7 phases |
+| **Trade Engine** | `npm run test:engine` | 53 assertions, 11 phases |
+| **Lifecycle** | `npm run test:lifecycle` | 73 assertions, 7 phases (full user journey) |
+| **Balance Integrity** | `npm run test:balances` | Balance audit checks |
 | **Market Quality** | `npm run test:markets` | 22 assertions vs live Redis |
 | **E2E Smoke** | `npm run test:e2e` | 10 Playwright browser tests |
 

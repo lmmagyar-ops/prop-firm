@@ -12,9 +12,9 @@ interface EquityData {
 /**
  * useEquityPolling — Polls /api/user/balance every `intervalMs` for live equity.
  * 
- * Anti-flicker: uses the server-rendered initial value until a poll returns
- * a meaningfully different equity (>$1 delta), preventing the jarring
- * flash-to-zero on initial hydration.
+ * The API is the source of truth. SSR value is just a placeholder until the
+ * first poll returns. Only guard: reject $0 equity on first load when SSR
+ * showed a real balance (protects against cookie → wrong challenge edge case).
  */
 export function useEquityPolling(initialEquity: number, intervalMs = 30_000) {
     const initialRef = useRef(initialEquity);
@@ -38,7 +38,7 @@ export function useEquityPolling(initialEquity: number, intervalMs = 30_000) {
             const newEquity = json.equity ?? initialRef.current;
             const initial = initialRef.current;
 
-            // Guard 1: Reject $0 equity when SSR showed a real balance.
+            // Guard: Reject $0 equity when SSR showed a real balance.
             // This happens when the cookie points to a deleted/wrong challenge
             // and the API falls back to "no active challenge" → returns 0.
             if (!hasReceivedRealUpdate.current && newEquity === 0 && initial > 100) {
@@ -47,13 +47,9 @@ export function useEquityPolling(initialEquity: number, intervalMs = 30_000) {
                 return;
             }
 
-            // Guard 2: Anti-flicker — if within $1 of SSR value, keep SSR value
-            const delta = Math.abs(newEquity - initial);
-            if (!hasReceivedRealUpdate.current && delta < 1) {
-                setLastUpdated(new Date());
-                return;
-            }
-
+            // Accept the poll result — API is the source of truth.
+            // (Old anti-flicker guard removed: it suppressed valid updates
+            //  within $1 of SSR value, causing equity to stick at stale values.)
             hasReceivedRealUpdate.current = true;
             setData({
                 balance: json.balance ?? initial,
@@ -68,18 +64,17 @@ export function useEquityPolling(initialEquity: number, intervalMs = 30_000) {
     }, []);
 
     useEffect(() => {
-        // Initial fetch after a short delay (let SSR data render first)
-        const initialDelay = setTimeout(fetchEquity, 2000);
+        // Fast first fetch — SSR value is just a placeholder, correct it ASAP
+        const initialDelay = setTimeout(fetchEquity, 300);
 
         // Set up polling interval
         intervalRef.current = setInterval(fetchEquity, intervalMs);
 
-        // Also listen for trade events (immediate update after trade)
+        // Listen for trade events — immediate re-fetch after trade execution
         const handleTradeUpdate = () => {
-            // Force accept next update (trade just happened — value SHOULD change)
             hasReceivedRealUpdate.current = true;
-            // Slight delay to let DB settle after trade
-            setTimeout(fetchEquity, 500);
+            // Short delay to let DB commit settle
+            setTimeout(fetchEquity, 200);
         };
         window.addEventListener("balance-updated", handleTradeUpdate);
 

@@ -7,6 +7,7 @@ import { MarketService } from "./market";
 import { FUNDED_RULES, FundedTier } from "./funded-rules";
 import { normalizeRulesConfig } from "./normalize-rules";
 import { createLogger } from "./logger";
+import { BalanceManager } from "./trading/BalanceManager";
 
 const logger = createLogger('Evaluator');
 
@@ -172,21 +173,27 @@ export class ChallengeEvaluator {
             const tier = this.getFundedTier(startingBalance);
             const tierRules = FUNDED_RULES[tier];
 
-            await db.update(challenges)
-                .set({
-                    phase: 'funded',
-                    status: 'active', // Stay active in funded phase
-                    // Reset for funded phase
-                    currentBalance: startingBalance.toString(), // Reset to starting balance
-                    highWaterMark: startingBalance.toString(),
-                    profitSplit: tierRules.profitSplit.toString(), // From tier config
-                    payoutCap: tierRules.payoutCap.toString(), // Max payout = tier cap
-                    payoutCycleStart: now,
-                    activeTradingDays: 0,
-                    lastActivityAt: now,
-                    endsAt: null, // No time limit for funded
-                })
-                .where(eq(challenges.id, challengeId));
+            // TRANSACTION SAFETY: phase change + balance reset are atomic
+            await db.transaction(async (tx) => {
+                await tx.update(challenges)
+                    .set({
+                        phase: 'funded',
+                        status: 'active',
+                        highWaterMark: startingBalance.toString(),
+                        profitSplit: tierRules.profitSplit.toString(),
+                        payoutCap: tierRules.payoutCap.toString(),
+                        payoutCycleStart: now,
+                        activeTradingDays: 0,
+                        lastActivityAt: now,
+                        endsAt: null,
+                    })
+                    .where(eq(challenges.id, challengeId));
+
+                // Use BalanceManager for forensic-logged balance reset
+                await BalanceManager.resetBalance(
+                    tx, challengeId, startingBalance, 'funded_transition'
+                );
+            });
 
             await publishAdminEvent("CHALLENGE_FUNDED", { challengeId, reason: "Profit Target Hit - Now Funded" });
             return { status: 'passed', reason: `Congratulations! You are now FUNDED. Profit: $${profit.toFixed(0)}`, equity };

@@ -80,14 +80,10 @@ export default async function DashboardPage() {
     // Logic for Verification Status (Winner-Only Flow)
     // Reserved for future KYC and passed challenge checks
 
-    // Calculate true equity = Cash + Position Value
-    // Defense: positions from getDashboardData should be numeric, but guard against NaN
-    const positionValue = positions?.reduce((sum, pos) => {
-        const shares = Number(pos.shares) || 0;
-        const price = Number(pos.currentPrice) || 0;
-        return sum + (shares * price);
-    }, 0) ?? 0;
-    const trueEquity = (activeChallenge?.currentBalance ?? 0) + positionValue;
+    // Use the pre-computed equity from getDashboardData (uses live Redis prices).
+    // Previously this was recomputed from pos.currentPrice (stale DB column),
+    // which caused the equity display to flash to the wrong value on load.
+    const trueEquity = activeChallenge?.equity ?? (activeChallenge?.currentBalance ?? 0);
 
     return (
         <div className="space-y-6">

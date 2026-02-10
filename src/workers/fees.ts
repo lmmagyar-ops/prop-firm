@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { positions, challenges, businessRules } from "@/db/schema";
 import { eq, and, lte, isNull } from "drizzle-orm";
 import { TRADING_CONFIG } from "@/config/trading";
+import { BalanceManager } from "@/lib/trading/BalanceManager";
 
 // Configuration from centralized config
 const FEE_RATE = TRADING_CONFIG.fees.carryFeeRate;
@@ -73,19 +74,8 @@ async function chargeFee(position: any) {
         const notional = entryPrice * shares;
         const fee = notional * FEE_RATE;
 
-        // 2. Deduct from Challenge Balance
-        const challenge = await tx.query.challenges.findFirst({
-            where: eq(challenges.id, position.challengeId)
-        });
-
-        if (!challenge) return; // Should not happen
-
-        const currentBalance = parseFloat(challenge.currentBalance);
-        const newBalance = currentBalance - fee;
-
-        await tx.update(challenges)
-            .set({ currentBalance: newBalance.toString() })
-            .where(eq(challenges.id, challenge.id));
+        // 2. Deduct from Challenge Balance via BalanceManager (forensic logging)
+        await BalanceManager.deductCost(tx, position.challengeId, fee, 'carry_fee');
 
         // 3. Update Position Metadata
         const currentFees = parseFloat(position.feesPaid || "0");
@@ -96,7 +86,7 @@ async function chargeFee(position: any) {
             })
             .where(eq(positions.id, position.id));
 
-        console.log(`   💸 Charged $${fee.toFixed(2)} on Position ${position.id} (Challenge ${challenge.id})`);
+        console.log(`   💸 Charged $${fee.toFixed(2)} on Position ${position.id} (Challenge ${position.challengeId})`);
     });
 }
 

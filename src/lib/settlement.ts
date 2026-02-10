@@ -17,6 +17,7 @@ import { positions, challenges } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { PolymarketOracle } from "@/lib/polymarket-oracle";
 import { createLogger } from "@/lib/logger";
+import { BalanceManager } from "@/lib/trading/BalanceManager";
 
 const logger = createLogger("Settlement");
 
@@ -137,29 +138,18 @@ export async function settleResolvedPositions(): Promise<SettlementResult> {
         // 5. Apply balance updates per challenge
         for (const [challengeId, settlement] of challengeSettlements) {
             try {
-                const [challenge] = await db.select()
-                    .from(challenges)
-                    .where(eq(challenges.id, challengeId));
-
-                if (!challenge) {
-                    result.errors.push(`Challenge ${challengeId.slice(0, 8)} not found`);
-                    continue;
-                }
-
-                const currentBalance = parseFloat(challenge.currentBalance);
-                const newBalance = currentBalance + settlement.proceeds;
-
-                await db.update(challenges)
-                    .set({ currentBalance: newBalance.toFixed(2) })
-                    .where(eq(challenges.id, challengeId));
+                // TRANSACTION SAFETY: balance adjustment is atomic
+                await db.transaction(async (tx) => {
+                    await BalanceManager.adjustBalance(
+                        tx, challengeId, settlement.proceeds, 'market_settlement'
+                    );
+                });
 
                 logger.info("Challenge balance settled", {
                     challengeId: challengeId.slice(0, 8),
                     positionsSettled: settlement.positions.length,
-                    cashBefore: currentBalance.toFixed(2),
                     proceeds: settlement.proceeds.toFixed(2),
                     totalPnL: settlement.pnl.toFixed(2),
-                    cashAfter: newBalance.toFixed(2),
                 });
             } catch (error: unknown) {
                 const msg = `Failed to settle balance for challenge ${challengeId.slice(0, 8)}: ${error instanceof Error ? error.message : 'Unknown error'}`;

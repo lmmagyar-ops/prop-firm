@@ -15,6 +15,8 @@ import { eq, and } from "drizzle-orm";
 import { FUNDED_RULES } from "../lib/funded-rules";
 import { normalizeRulesConfig } from "../lib/normalize-rules";
 import { createLogger } from "../lib/logger";
+import { BalanceManager } from "../lib/trading/BalanceManager";
+import { type Transaction } from "../db/types";
 
 const logger = createLogger('RiskMonitor');
 
@@ -195,6 +197,8 @@ export class RiskMonitor {
 
     /**
      * Trigger a breach (fail the challenge)
+     * TRANSACTION SAFETY: status update + position closes + audit log are atomic.
+     * If any step fails, everything rolls back — no orphaned states.
      */
     private async triggerBreach(
         challenge: ChallengeRecord,
@@ -203,39 +207,45 @@ export class RiskMonitor {
         limit: number
     ): Promise<void> {
         try {
-            // AUDIT FIX: Status guard prevents double-firing on already-failed challenges
-            // NOTE: Do NOT overwrite currentBalance with equity — that double-counts
-            // unrealized P&L since positions still exist. Keep cash balance as-is.
-            const result = await db.update(challenges)
-                .set({
-                    status: 'failed',
-                })
-                .where(and(
-                    eq(challenges.id, challenge.id),
-                    eq(challenges.status, 'active')
-                ));
+            // Fetch live prices BEFORE the transaction (Redis is not transactional)
+            const openPositions = await db.query.positions.findMany({
+                where: and(
+                    eq(positions.challengeId, challenge.id),
+                    eq(positions.status, 'OPEN')
+                )
+            });
+            const livePrices = await this.batchFetchPrices(openPositions.map(p => p.marketId));
 
-            // If no rows updated, challenge was already failed/passed
-            if (!result.rowCount || result.rowCount === 0) {
-                logger.info('Challenge already transitioned, skipping breach', { challengeId: challenge.id });
-                return;
-            }
+            await db.transaction(async (tx) => {
+                // 1. Status guard prevents double-firing on already-failed challenges
+                const result = await tx.update(challenges)
+                    .set({ status: 'failed' })
+                    .where(and(
+                        eq(challenges.id, challenge.id),
+                        eq(challenges.status, 'active')
+                    ));
 
-            // Close all open positions to prevent orphans
-            await this.closeAllPositions(challenge.id);
-
-            // Log to audit
-            await db.insert(auditLogs).values({
-                adminId: 'SYSTEM:RiskMonitor',
-                action: 'CHALLENGE_FAILED',
-                targetId: challenge.id,
-                details: {
-                    reason: breachType,
-                    equity: equity,
-                    limit: limit,
-                    timestamp: new Date().toISOString(),
-                    detectionMethod: 'real_time_monitoring'
+                if (!result.rowCount || result.rowCount === 0) {
+                    logger.info('Challenge already transitioned, skipping breach', { challengeId: challenge.id });
+                    return;
                 }
+
+                // 2. Close all positions + settle proceeds (atomic)
+                await this.closeAllPositions(tx, challenge.id, openPositions, livePrices);
+
+                // 3. Audit log
+                await tx.insert(auditLogs).values({
+                    adminId: 'SYSTEM:RiskMonitor',
+                    action: 'CHALLENGE_FAILED',
+                    targetId: challenge.id,
+                    details: {
+                        reason: breachType,
+                        equity: equity,
+                        limit: limit,
+                        timestamp: new Date().toISOString(),
+                        detectionMethod: 'real_time_monitoring'
+                    }
+                });
             });
 
             logger.warn('Challenge FAILED', { challengeId: challenge.id, breachType, equity, limit });
@@ -247,6 +257,7 @@ export class RiskMonitor {
 
     /**
      * Trigger a pass (advance to next phase)
+     * TRANSACTION SAFETY: status update + position closes + audit log are atomic.
      */
     private async triggerPass(
         challenge: ChallengeRecord,
@@ -256,60 +267,65 @@ export class RiskMonitor {
         try {
             const currentPhase = challenge.phase;
 
-            // 1-STEP MODEL: challenge → funded directly (no verification phase)
-            // This matches the evaluator and the marketing promise.
-            const newPhase = 'funded';
-            const newStatus = 'active';
+            // Fetch live prices BEFORE the transaction (Redis is not transactional)
+            const openPositions = await db.query.positions.findMany({
+                where: and(
+                    eq(positions.challengeId, challenge.id),
+                    eq(positions.status, 'OPEN')
+                )
+            });
+            const livePrices = await this.batchFetchPrices(openPositions.map(p => p.marketId));
 
-            // Build update payload — full funded reset
+            // 1-STEP MODEL: challenge → funded directly (no verification phase)
             const startingBalance = parseFloat(challenge.startingBalance);
             const tier = startingBalance >= 25000 ? '25k' as const
                 : startingBalance >= 10000 ? '10k' as const
                     : '5k' as const;
             const tierRules = FUNDED_RULES[tier];
 
-            const updatePayload: Record<string, unknown> = {
-                status: newStatus,
-                phase: newPhase,
-                currentBalance: startingBalance.toString(),
-                highWaterMark: startingBalance.toString(),
-                profitSplit: tierRules.profitSplit.toString(),
-                payoutCap: tierRules.payoutCap.toString(),
-                payoutCycleStart: new Date(),
-                activeTradingDays: 0,
-                lastActivityAt: new Date(),
-                endsAt: null,
-            };
+            await db.transaction(async (tx) => {
+                const updatePayload: Record<string, unknown> = {
+                    status: 'active',
+                    phase: 'funded',
+                    currentBalance: startingBalance.toString(),
+                    highWaterMark: startingBalance.toString(),
+                    profitSplit: tierRules.profitSplit.toString(),
+                    payoutCap: tierRules.payoutCap.toString(),
+                    payoutCycleStart: new Date(),
+                    activeTradingDays: 0,
+                    lastActivityAt: new Date(),
+                    endsAt: null,
+                };
 
-            // AUDIT FIX: Status guard prevents race with evaluator
-            const result = await db.update(challenges)
-                .set(updatePayload)
-                .where(and(
-                    eq(challenges.id, challenge.id),
-                    eq(challenges.status, 'active')
-                ));
+                // Status guard prevents race with evaluator
+                const result = await tx.update(challenges)
+                    .set(updatePayload)
+                    .where(and(
+                        eq(challenges.id, challenge.id),
+                        eq(challenges.status, 'active')
+                    ));
 
-            // If no rows updated, challenge was already transitioned
-            if (!result.rowCount || result.rowCount === 0) {
-                logger.info('Challenge already transitioned, skipping pass', { challengeId: challenge.id });
-                return;
-            }
-
-            // Close all open positions for clean funded transition
-            await this.closeAllPositions(challenge.id);
-
-            // Log to audit
-            await db.insert(auditLogs).values({
-                adminId: 'SYSTEM:RiskMonitor',
-                action: 'CHALLENGE_PASSED',
-                targetId: challenge.id,
-                details: {
-                    fromPhase: currentPhase,
-                    toPhase: newPhase,
-                    equity: equity,
-                    target: target,
-                    timestamp: new Date().toISOString()
+                if (!result.rowCount || result.rowCount === 0) {
+                    logger.info('Challenge already transitioned, skipping pass', { challengeId: challenge.id });
+                    return;
                 }
+
+                // Close all positions + settle proceeds (atomic)
+                await this.closeAllPositions(tx, challenge.id, openPositions, livePrices);
+
+                // Audit log
+                await tx.insert(auditLogs).values({
+                    adminId: 'SYSTEM:RiskMonitor',
+                    action: 'CHALLENGE_PASSED',
+                    targetId: challenge.id,
+                    details: {
+                        fromPhase: currentPhase,
+                        toPhase: 'funded',
+                        equity: equity,
+                        target: target,
+                        timestamp: new Date().toISOString()
+                    }
+                });
             });
 
             logger.info('Challenge PASSED', { challengeId: challenge.id, fromPhase: currentPhase, toPhase: 'funded' });
@@ -323,81 +339,57 @@ export class RiskMonitor {
      * Close all open positions for a challenge and settle PnL to balance.
      * Used on both breach and pass transitions.
      * 
-     * CRITICAL: Previously this only marked positions CLOSED without updating
-     * currentBalance, causing orphaned PnL. Now it atomically settles proceeds.
+     * TRANSACTION SAFETY: Runs inside the caller's transaction.
+     * All position closes + balance credit are atomic — if any step fails,
+     * everything rolls back. Uses BalanceManager for forensic logging.
      */
-    private async closeAllPositions(challengeId: string): Promise<void> {
-        try {
-            const openPositions = await db.query.positions.findMany({
-                where: and(
-                    eq(positions.challengeId, challengeId),
-                    eq(positions.status, 'OPEN')
-                )
-            });
+    private async closeAllPositions(
+        tx: Transaction,
+        challengeId: string,
+        openPositions: PositionRecord[],
+        livePrices: Map<string, number>
+    ): Promise<void> {
+        if (openPositions.length === 0) return;
 
-            if (openPositions.length === 0) return;
+        const now = new Date();
+        let totalProceeds = 0;
 
-            const livePrices = await this.batchFetchPrices(
-                openPositions.map(p => p.marketId)
-            );
+        for (const pos of openPositions) {
+            const livePrice = livePrices.get(pos.marketId);
+            const entryPrice = parseFloat(pos.entryPrice);
+            const shares = parseFloat(pos.shares);
+            const isNo = pos.direction === 'NO';
 
-            const now = new Date();
-            let totalProceeds = 0;
+            // Live price is raw YES — adjust for NO direction
+            const closePrice = livePrice !== undefined
+                ? (isNo ? 1 - livePrice : livePrice)
+                : parseFloat(pos.currentPrice || pos.entryPrice);
 
-            for (const pos of openPositions) {
-                const livePrice = livePrices.get(pos.marketId);
-                const entryPrice = parseFloat(pos.entryPrice);
-                const shares = parseFloat(pos.shares);
-                const isNo = pos.direction === 'NO';
+            const pnl = shares * (closePrice - entryPrice);
+            const proceeds = shares * closePrice;
+            totalProceeds += proceeds;
 
-                // Live price is raw YES — adjust for NO direction
-                const closePrice = livePrice !== undefined
-                    ? (isNo ? 1 - livePrice : livePrice)
-                    : parseFloat(pos.currentPrice || pos.entryPrice);
-
-                const pnl = shares * (closePrice - entryPrice);
-                const proceeds = shares * closePrice;
-                totalProceeds += proceeds;
-
-                await db.update(positions)
-                    .set({
-                        status: 'CLOSED',
-                        shares: '0',
-                        closedAt: now,
-                        closedPrice: closePrice.toString(),
-                        pnl: pnl.toFixed(2),
-                    })
-                    .where(eq(positions.id, pos.id));
-            }
-
-            // CRITICAL: Settle proceeds to currentBalance
-            // Cash was deducted when positions were opened (BUY → deductCost).
-            // Now we credit back the liquidation value (shares × closePrice).
-            if (totalProceeds > 0) {
-                const [challenge] = await db.select()
-                    .from(challenges)
-                    .where(eq(challenges.id, challengeId));
-
-                if (challenge) {
-                    const currentBalance = parseFloat(challenge.currentBalance);
-                    const newBalance = currentBalance + totalProceeds;
-                    await db.update(challenges)
-                        .set({ currentBalance: newBalance.toFixed(2) })
-                        .where(eq(challenges.id, challengeId));
-
-                    logger.info('Settled PnL to balance', {
-                        challengeId: challengeId.slice(0, 8),
-                        cashBefore: currentBalance.toFixed(2),
-                        proceeds: totalProceeds.toFixed(2),
-                        cashAfter: newBalance.toFixed(2),
-                    });
-                }
-            }
-
-            logger.info('Closed positions', { challengeId: challengeId.slice(0, 8), count: openPositions.length, totalProceeds: totalProceeds.toFixed(2) });
-        } catch (error: unknown) {
-            logger.error('Failed to close positions', error instanceof Error ? error : null, { challengeId: challengeId.slice(0, 8) });
+            await tx.update(positions)
+                .set({
+                    status: 'CLOSED',
+                    shares: '0',
+                    closedAt: now,
+                    closedPrice: closePrice.toString(),
+                    pnl: pnl.toFixed(2),
+                })
+                .where(eq(positions.id, pos.id));
         }
+
+        // CRITICAL: Settle proceeds to currentBalance via BalanceManager
+        // Cash was deducted when positions were opened (BUY → deductCost).
+        // Now we credit back the liquidation value (shares × closePrice).
+        if (totalProceeds > 0) {
+            await BalanceManager.creditProceeds(
+                tx, challengeId, totalProceeds, 'position_liquidation'
+            );
+        }
+
+        logger.info('Closed positions', { challengeId: challengeId.slice(0, 8), count: openPositions.length, totalProceeds: totalProceeds.toFixed(2) });
     }
 
     /**

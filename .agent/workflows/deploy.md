@@ -44,11 +44,23 @@ PLAYWRIGHT_BASE_URL=https://prop-firmx-git-develop-oversightresearch-4292s-proje
 ```
 // turbo
 
-### 4. Manual Verification on Staging
+### 4. Run Integration Tests Against Live DB
+```bash
+# Risk engine lifecycle: challenge creation → drawdown breach → funded transition → data integrity
+npm run test:lifecycle
+
+# Trade engine: BUY → SELL → PnL → Balance conservation
+npm run test:engine
+```
+// turbo
+
+**If either test fails, DO NOT promote to production. Fix the issue and redeploy to staging.**
+
+### 5. Manual Verification on Staging
 - Preview URL: `https://prop-firmx-git-develop-oversightresearch-4292s-projects.vercel.app`
 - Also visible in Vercel dashboard under Deployments
 
-### 5. Promote to Production
+### 6. Promote to Production
 ```bash
 # After testing on staging, merge to main
 git checkout main
@@ -56,7 +68,7 @@ git merge develop
 git push origin main
 ```
 
-### 6. Verify Production
+### 7. Verify Production
 - Check https://prop-firmx.vercel.app
 - Monitor Vercel deployment status
 

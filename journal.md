@@ -6,6 +6,80 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ## 2026-02-10
 
+### 3:40 PM — Equity Display Flashing Bug Fix ✅
+
+**Symptom**: Main equity display flashed to $10,000 (stale) while nav bar correctly showed $9,992.50. This bug persisted across many fix attempts.
+
+**Root cause — 3 compounding bugs:**
+
+1. **SSR recalculated equity with stale DB prices** (`page.tsx` line 87 used `pos.currentPrice` from DB instead of the pre-computed `activeChallenge.equity` from `getDashboardData` which uses live Redis prices)
+2. **Anti-flicker guard suppressed correct poll results** (`useEquityPolling.ts` rejected updates within $1 of SSR value — so $7.50 difference was suppressed)
+3. **`/api/user/balance` used stale DB prices** (same `pos.currentPrice` problem as SSR)
+
+**Fixes:**
+- `useEquityPolling.ts`: Removed anti-flicker Guard 2 entirely, reduced initial delay 2000ms → 300ms, post-trade delay 500ms → 200ms
+- `page.tsx`: Use `activeChallenge.equity` (live Redis prices) instead of recomputing from stale `pos.currentPrice`
+- `/api/user/balance/route.ts`: Added `MarketService.getBatchOrderBookPrices()` + `calculatePositionMetrics()` for live position valuation
+
+**Build**: `tsc --noEmit` clean.
+
+---
+
+### 3:00 PM — Deploy Workflow: Integration Test Gate ✅
+
+Added `test:lifecycle` and `test:engine` as **step 4** in the `/deploy` workflow (`.agent/workflows/deploy.md`). Runs after staging deploys, before manual verification. If either fails, deployment stops — no promotion to production. Marked `// turbo` for auto-run.
+
+Deploy steps are now: pre-deploy checks → push staging → E2E smoke → **integration tests** → manual verify → promote → verify prod.
+
+---
+
+### 2:00 PM — Lifecycle Simulator (`test:lifecycle`) ✅
+
+Built `src/scripts/verify-lifecycle.ts` — a 7-phase integration test that runs a full user journey against the live database without mocks:
+
+| Phase | Tests | What It Verifies |
+|-------|-------|-----------------|
+| 1. Challenge Creation | 15 | RulesConfig canonical values per tier ($5K, $10K, $25K) |
+| 2. Drawdown Breach | 3 | Evaluator correctly fails on max drawdown violation |
+| 3. Profit Target → Funded | 7 | Phase transition, balance reset, profitSplit, no time limit |
+| 4. Trade → Evaluator Breach | 6 | BUY execution + evaluator breach detection on funded account |
+| 5. Trade → Evaluator Funded | 7 | Profit target hit triggers funded transition with correct params |
+| 6. Daily Reset | 2 | Daily drawdown blocks trades, reset restores allowance |
+| 7. Data Integrity | 33 | No orphaned positions, negative balances, or missing PnL |
+
+**Key debugging fixes during build:**
+- Phase 3: Used `parseFloat()` for monetary comparisons (string `'0.80'` vs `'0.8'` was failing)
+- Phases 4 & 5: Rewrote to use `ChallengeEvaluator.evaluate()` directly instead of private `RiskMonitor.checkAllChallenges()` — safer and tests the same code path
+- Phase 5: Increased simulated balance to ensure profit target met
+
+**Result: 73 passed, 0 failed.** Added as `npm run test:lifecycle` in `package.json`.
+
+---
+
+### 2:49 PM — BalanceManager Expansion + Transaction Safety (P0/P1 Hardening) ✅
+
+**Problem**: 4 of 5 balance mutation sites bypassed `BalanceManager` (using raw SQL with no forensic logging or negative-balance guards). Risk monitor's `closeAllPositions` had no `db.transaction()` — if process crashed mid-operation, positions could close without balance credit (Mat's bug root cause class).
+
+**Fix**:
+- Added `resetBalance()` and `adjustBalance()` to `BalanceManager` — both enforce forensic logging + negative-balance guards
+- Wrapped `triggerBreach`, `triggerPass`, `closeAllPositions` in `db.transaction()` — status update + position closes + balance credit + audit log are fully atomic
+- Migrated `settlement.ts` → `BalanceManager.adjustBalance`
+- Migrated `fees.ts` → `BalanceManager.deductCost`
+- Migrated `evaluator.ts` funded transition → `BalanceManager.resetBalance`
+
+**Before/After**:
+| Site | Before | After |
+|------|--------|-------|
+| RiskMonitor closeAllPositions | Raw SQL, no tx | `db.transaction()` + `BalanceManager.creditProceeds` |
+| RiskMonitor triggerBreach/Pass | Raw SQL, no tx | `db.transaction()` (atomic) |
+| Evaluator funded transition | Raw SQL, no tx | `db.transaction()` + `BalanceManager.resetBalance` |
+| Settlement | Raw SQL, no tx | `db.transaction()` + `BalanceManager.adjustBalance` |
+| Fees | Raw SQL (had tx) | `BalanceManager.deductCost` (kept tx) |
+
+**Verified**: `test:lifecycle` 73/73 ✅, `test:engine` 53/53 ✅
+
+
+
 ### 9:30 AM — Frontend-Backend Sync Audit ✅
 
 **Context:** After confirming Mat's bugs were largely caused by the UI not keeping pace with the hardened backend (risk engine, trade limits), audited the entire frontend to ensure no other components suffer from the same anti-pattern.
