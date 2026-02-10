@@ -66,6 +66,88 @@ export async function getActiveMarkets(): Promise<MarketMetadata[]> {
 }
 
 /**
+ * Get ALL markets as a flat list — binary markets + event sub-markets combined.
+ * Used by the risk engine for category exposure lookups, where we need to find
+ * ANY position's market regardless of whether it's a standalone binary or a
+ * sub-market inside a multi-outcome event.
+ */
+export async function getAllMarketsFlat(): Promise<MarketMetadata[]> {
+    noStore();
+    const allMarkets: MarketMetadata[] = [];
+    const seenIds = new Set<string>();
+
+    try {
+        // 1. Binary/standalone markets
+        const marketData = await redis.get("market:active_list");
+        if (marketData) {
+            const markets = JSON.parse(marketData) as MarketMetadata[];
+            for (const m of markets) {
+                if (!seenIds.has(m.id)) {
+                    seenIds.add(m.id);
+                    allMarkets.push({
+                        ...m,
+                        currentPrice: m.currentPrice ?? m.basePrice ?? 0.5
+                    });
+                }
+            }
+        }
+
+        // 2. Event sub-markets (Polymarket)
+        const eventData = await redis.get("event:active_list");
+        if (eventData) {
+            const events = JSON.parse(eventData) as EventMetadata[];
+            for (const event of events) {
+                for (const sub of event.markets) {
+                    if (!seenIds.has(sub.id)) {
+                        seenIds.add(sub.id);
+                        allMarkets.push({
+                            id: sub.id,
+                            question: sub.question,
+                            description: event.description || "",
+                            image: event.image || "",
+                            volume: Math.max(sub.volume || 0, event.volume || 0),
+                            outcomes: sub.outcomes || ["Yes", "No"],
+                            end_date: event.endDate || "",
+                            categories: event.categories,
+                            currentPrice: sub.price,
+                        });
+                    }
+                }
+            }
+        }
+
+        // 3. Kalshi event sub-markets
+        const kalshiData = await redis.get("kalshi:active_list");
+        if (kalshiData) {
+            const events = JSON.parse(kalshiData) as EventMetadata[];
+            for (const event of events) {
+                for (const sub of event.markets) {
+                    if (!seenIds.has(sub.id)) {
+                        seenIds.add(sub.id);
+                        allMarkets.push({
+                            id: sub.id,
+                            question: sub.question,
+                            description: event.description || "",
+                            image: event.image || "",
+                            volume: Math.max(sub.volume || 0, event.volume || 0),
+                            outcomes: sub.outcomes || ["Yes", "No"],
+                            end_date: event.endDate || "",
+                            categories: event.categories,
+                            currentPrice: sub.price,
+                        });
+                    }
+                }
+            }
+        }
+
+        return allMarkets;
+    } catch (e) {
+        console.error("Failed to fetch all markets flat", e);
+        return [];
+    }
+}
+
+/**
  * Get a single market's metadata by ID - O(1) lookup
  * Avoids fetching all markets when only one is needed
  * 

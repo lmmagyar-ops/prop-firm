@@ -2,7 +2,7 @@ import { db } from "@/db";
 import { challenges, positions } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { ChallengeRules } from "@/types/trading";
-import { getActiveMarkets, getMarketById, MarketMetadata } from "@/app/actions/market";
+import { getActiveMarkets, getAllMarketsFlat, getMarketById, MarketMetadata } from "@/app/actions/market";
 import { ArbitrageDetector } from "./arbitrage-detector";
 import { MarketService } from "./market";
 import { getPortfolioValue } from "./position-utils";
@@ -167,7 +167,7 @@ export class RiskEngine {
 
         if (marketCategories.length > 0) {
             const maxPerCategory = startBalance * (rules.maxCategoryExposurePercent || 0.10);
-            const allMarkets = await getActiveMarkets();
+            const allMarkets = await getAllMarketsFlat();
 
             for (const category of marketCategories) {
                 const categoryExposure = this.getCategoryExposureFromCache(allOpenPositions, category, allMarkets);
@@ -269,7 +269,7 @@ export class RiskEngine {
         let perCategoryRemaining = perCategory;
 
         if (marketCategories.length > 0) {
-            const allMarkets = await getActiveMarkets();
+            const allMarkets = await getAllMarketsFlat();
             // Find the tightest category constraint
             for (const category of marketCategories) {
                 const catExposure = this.getCategoryExposureFromCache(allOpenPositions, category, allMarkets);
