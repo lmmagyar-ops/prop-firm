@@ -119,7 +119,7 @@ describe("getPositionsWithPnL", () => {
         expect(result[0].marketTitle).toBe("Will it rain?");
         expect(result[0].currentPrice).toBe(0.60);
         expect(result[0].unrealizedPnL).toBeCloseTo(2.0); // (0.60 - 0.40) * 10
-        expect(result[0].priceSource).toBe("live");
+        expect(result[0].priceSource).toBe("gamma");
     });
 
     it("uses truncated market ID as fallback title", () => {
