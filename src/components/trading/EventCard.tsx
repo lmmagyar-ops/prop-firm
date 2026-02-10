@@ -75,7 +75,7 @@ export function EventCard({ event, onSelectOutcome }: EventCardProps) {
                     <OutcomeRow
                         key={market.id}
                         market={market}
-                        label={getOutcomeLabel(market)}
+                        label={market.groupItemTitle || getOutcomeLabel(market)}
                         onSelect={() => onSelectOutcome(market.id, market.question)}
                     />
                 ))}
@@ -85,7 +85,7 @@ export function EventCard({ event, onSelectOutcome }: EventCardProps) {
                     <OutcomeRow
                         key={market.id}
                         market={market}
-                        label={getOutcomeLabel(market)}
+                        label={market.groupItemTitle || getOutcomeLabel(market)}
                         onSelect={() => onSelectOutcome(market.id, market.question)}
                     />
                 ))}

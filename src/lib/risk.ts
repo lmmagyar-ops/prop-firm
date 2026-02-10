@@ -128,24 +128,17 @@ export class RiskEngine {
             openPositions: allOpenPositions.length,
         };
 
-        // ── RULE 1: MAX TOTAL DRAWDOWN (8% static) ────────────────
+        // ── DRAWDOWN INFO (logged but NOT blocking) ────────────────
+        // Drawdown is evaluated post-resolution by the evaluator, not pre-trade.
+        // Traders can trade up to the per-event cap regardless of drawdown room.
         const MAX_TOTAL_DD_PERCENT = rules.maxTotalDrawdownPercent || 0.08;
         const totalEquityFloor = startBalance * (1 - MAX_TOTAL_DD_PERCENT);
-
-        if (currentEquity - estimatedLoss < totalEquityFloor) {
-            return this.deny(`Max Total Drawdown (8%) Reached. Floor: $${totalEquityFloor.toFixed(2)}, Equity: $${currentEquity.toFixed(2)}`, audit);
-        }
-
-        // ── RULE 2: MAX DAILY DRAWDOWN (4% of STARTING balance) ───
-        // AUDIT FIX: Use startBalance (not sodBalance) as base — aligns with
-        // evaluator.ts and risk-monitor.ts for consistent enforcement.
         const MAX_DAILY_DD_PERCENT = rules.maxDailyDrawdownPercent || 0.04;
         const maxDailyLoss = MAX_DAILY_DD_PERCENT * startBalance;
         const dailyEquityFloor = sodBalance - maxDailyLoss;
 
-        if (currentEquity - estimatedLoss < dailyEquityFloor) {
-            return this.deny(`Max Daily Loss (${(MAX_DAILY_DD_PERCENT * 100).toFixed(0)}%) Reached. Daily Floor: $${dailyEquityFloor.toFixed(2)}, Equity: $${currentEquity.toFixed(2)}`, audit);
-        }
+        audit.drawdownRoom = currentEquity - totalEquityFloor;
+        audit.dailyLossRoom = currentEquity - dailyEquityFloor;
 
         // ── RULE 3: PER-EVENT EXPOSURE (5%) ───────────────────────
         const { getEventInfoForMarket } = await import("@/app/actions/market");
@@ -308,12 +301,13 @@ export class RiskEngine {
         const positionsAtCap = allOpenPositions.length >= maxPositions;
 
         // ── Compute effective max ─────────────────────────────────
+        // Drawdown is NOT a pre-trade sizing constraint.
+        // Max is based on the per-event cap, not remaining drawdown room.
+        // Drawdown breach is evaluated post-resolution by the evaluator.
         const candidateLimits: { name: string; value: number }[] = [
             { name: 'balance', value: currentBalance },
             { name: 'per_event', value: perEventRemaining },
             { name: 'per_category', value: perCategoryRemaining },
-            { name: 'daily_loss', value: dailyLossRemaining },
-            { name: 'total_drawdown', value: drawdownRemaining },
         ];
 
         // Only include volume/liquidity if they're meaningful (> 0)

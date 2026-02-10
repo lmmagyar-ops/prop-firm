@@ -4,6 +4,59 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ---
 
+## 2026-02-10
+
+### 9:30 AM — Frontend-Backend Sync Audit ✅
+
+**Context:** After confirming Mat's bugs were largely caused by the UI not keeping pace with the hardened backend (risk engine, trade limits), audited the entire frontend to ensure no other components suffer from the same anti-pattern.
+
+**Scope:** 142 components, 11 hooks, 49 page routes.
+
+**What Was Checked:**
+
+| Anti-Pattern | Scan Method | Result |
+|-------------|-------------|--------|
+| Hardcoded business logic (limits, balances, %) | Grep for `0.05`, `maxPerEvent`, dollar amounts | ✅ None in live components |
+| Stale challenge context after switching | Review `useSelectedChallenge`, `ChallengeSelector` | ✅ Reactive — re-fetches on change |
+| Missing server-side error surfacing | Audit `useTradeExecution` catch blocks | ✅ Surfaces `PRICE_MOVED`, `MARKET_RESOLVED` |
+| `setTimeout` race conditions | Grep all 28 usages | ✅ All UI animations/reconnect — no data races |
+| `window.location.reload` patterns | Grep all 6 usages | ✅ ChallengeSelector fixed, others appropriate |
+| `balance-updated` event bus coverage | Trace all dispatchers + listeners | ✅ 6 components properly wired |
+
+**Live Dashboard (`/dashboard/page.tsx`):** Clean. `RiskMeters` receives `drawdownUsage`, `startingBalance`, `maxDrawdownPercent`, `dailyDrawdownPercent` from server-sourced `stats` and `rulesConfig` — no hardcoded defaults in the rendering path.
+
+**One Cosmetic Finding:** `DashboardView.tsx` (landing page demo only) has hardcoded `$10,000` starting balance, `$800` drawdown, `$400` daily loss limit, plus `MissionTracker.tsx` labels like "Profit Target ($500)". These only render on the unauthenticated landing page — not the real trading dashboard. No functional risk.
+
+**Verdict:** No urgent fixes needed. The patterns that caused Mat's bugs have been properly addressed and don't exist elsewhere in live user-facing code.
+
+---
+
+### 8:00 AM — Regression Verification: Mat's Bug Fixes ✅
+
+**Context:** Executed an 8-point regression test plan to verify all of Mat's previously reported issues are resolved. All fixes were deployed to production (commits `73f5f22`, `2ca53e3`, `78cceb5` on `main`).
+
+**Test Results:**
+
+| # | Test | Result | Evidence |
+|---|------|--------|----------|
+| T1 | Dashboard loads cleanly | ✅ Pass | Balance displayed as $5,000.00 |
+| T2 | Initial balance correct | ✅ Pass | $5,000.00 — no flash-to-zero |
+| T3 | Trade execution correct | ✅ Pass | BUY YES $25 → 83.33 shares @ 30¢ |
+| T4 | P&L accuracy | ✅ Pass | -$2.08 (-8.3%) — realistic, no wild numbers |
+| T5 | Trade limits + MAX button | ✅ Pass | "Max: $200 (Daily loss limit)" label + amber MAX button visible |
+| T6 | Challenge switching | ✅ Pass | Limits/balance update correctly after switch |
+| T7 | Dashboard stats update | ✅ Pass | Total Trades: 1, Win Rate: 0% — no stale data |
+| T8 | Position closing | ✅ Pass | Closed without errors, balance updated to $4,997.92 |
+
+**Key Fixes Verified:**
+- **Trade limits preflight system** — `/api/trade/limits` API + `useTradeLimits` hook + `RiskEngine.getPreflightLimits()`
+- **ChallengeSelector race condition** — Removed `setTimeout(() => window.location.reload(), 300)`
+- **Desktop MAX button** — Added to `TradingSidebar` for parity with mobile
+
+**Files (from previous sessions):** `src/app/api/trade/limits/route.ts`, `src/hooks/useTradeLimits.ts`, `src/lib/risk.ts`, `src/components/trading/TradingSidebar.tsx`, `src/components/trading/EventDetailModal.tsx`, `src/components/trading/MobileTradeSheet.tsx`, `src/components/dashboard/ChallengeSelector.tsx`
+
+---
+
 ## 2026-02-09
 
 ### 12:20 AM - Landing Page: Senior Designer Polish + Production Deploy ✅

@@ -116,7 +116,7 @@ export const MultiRunnerCard = memo(function MultiRunnerCard({ event, onTrade }:
                     <OutcomeRow
                         key={market.id}
                         market={market}
-                        label={getOutcomeLabel(market, event.title)}
+                        label={market.groupItemTitle || getOutcomeLabel(market, event.title)}
                         onTrade={onTrade}
                     />
                 ))}

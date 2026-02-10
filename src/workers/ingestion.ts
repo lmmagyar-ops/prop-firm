@@ -59,6 +59,7 @@ interface PolymarketMarket {
     tags?: string[];
     image?: string;
     accepting_orders?: boolean;
+    groupItemTitle?: string;
     [key: string]: unknown; // Allow extra fields
 }
 
@@ -82,6 +83,7 @@ interface ProcessedSubMarket {
     outcomes: string[];
     price: number;
     volume: number;
+    groupItemTitle?: string;
 }
 
 /** Processed event for Redis storage */
@@ -586,6 +588,7 @@ class IngestionWorker {
                             outcomes: outcomes,
                             price: Math.max(yesPrice, 0.01),
                             volume: parseFloat(market.volume || "0"),
+                            groupItemTitle: market.groupItemTitle || undefined,
                         });
                     }
 

@@ -212,6 +212,7 @@ export interface SubMarket {
     outcomes: string[];
     price: number;
     volume: number;
+    groupItemTitle?: string;
 }
 
 export interface EventMetadata {
