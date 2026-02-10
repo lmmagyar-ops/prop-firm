@@ -869,6 +869,21 @@ function TradingSidebar({ market, eventTitle, onTradeComplete, isKalshi, initial
                                     ${amt}
                                 </button>
                             ))}
+                            {limits && (
+                                <button
+                                    onClick={() => setAmount(Math.floor(limits.effectiveMax))}
+                                    className={cn(
+                                        "px-3 py-1.5 text-xs font-bold rounded-md transition-all",
+                                        amount === Math.floor(limits.effectiveMax)
+                                            ? (isKalshi ? "bg-[#00C896] text-white shadow-sm" : "bg-emerald-500 text-white")
+                                            : (isKalshi
+                                                ? "bg-amber-50 hover:bg-amber-100 text-amber-600 border border-amber-200"
+                                                : "bg-amber-500/20 hover:bg-amber-500/30 text-amber-400")
+                                    )}
+                                >
+                                    MAX
+                                </button>
+                            )}
                         </div>
                     </div>
 
