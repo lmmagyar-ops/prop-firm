@@ -78,17 +78,31 @@ export interface ExecutionSimulation {
     reason?: string;
 }
 
+// ── Types for Redis-cached event/market data (Gamma API format) ──
+interface EventMarket {
+    id: string;
+    price: string;
+    title?: string;
+    currentPrice?: number;
+    basePrice?: number;
+}
+
+interface EventData {
+    title?: string;
+    markets?: EventMarket[];
+}
+
 // PERF: Short-lived in-memory cache for parsed event lists.
 // Avoids re-parsing ~500KB JSON blobs multiple times per request cycle.
 interface EventListCache {
-    kalshiEvents: any[];
-    polyEvents: any[];
+    kalshiEvents: EventData[];
+    polyEvents: EventData[];
     timestamp: number;
 }
 let eventListCache: EventListCache | null = null;
 const EVENT_LIST_CACHE_TTL = 5000; // 5 seconds
 
-async function getParsedEventLists(): Promise<{ kalshiEvents: any[]; polyEvents: any[] }> {
+async function getParsedEventLists(): Promise<{ kalshiEvents: EventData[]; polyEvents: EventData[] }> {
     if (eventListCache && Date.now() - eventListCache.timestamp < EVENT_LIST_CACHE_TTL) {
         return eventListCache;
     }
@@ -123,7 +137,7 @@ export class MarketService {
 
             // Search Kalshi events
             for (const event of kalshiEvents) {
-                const market = event.markets?.find((m: any) => m.id === marketId);
+                const market = event.markets?.find((m: EventMarket) => m.id === marketId);
                 if (market) {
                     const price = parseFloat(market.price);
                     if (Number.isFinite(price) && price > 0 && price < 1) {
@@ -134,7 +148,7 @@ export class MarketService {
 
             // Search Polymarket events
             for (const event of polyEvents) {
-                const market = event.markets?.find((m: any) => m.id === marketId);
+                const market = event.markets?.find((m: EventMarket) => m.id === marketId);
                 if (market) {
                     const price = parseFloat(market.price);
                     if (Number.isFinite(price) && price > 0 && price < 1) {
@@ -148,7 +162,7 @@ export class MarketService {
             const binaryData = await redis.get('market:active_list');
             if (binaryData) {
                 const markets = JSON.parse(binaryData);
-                const market = markets.find((m: any) => m.id === marketId);
+                const market = markets.find((m: EventMarket) => m.id === marketId);
                 if (market) {
                     const price = market.currentPrice ?? market.basePrice;
                     if (Number.isFinite(price) && price > 0 && price < 1) {
@@ -243,8 +257,8 @@ export class MarketService {
             const { kalshiEvents, polyEvents } = await getParsedEventLists();
 
             // Build market lookup maps
-            const kalshiMarkets = new Map<string, any>();
-            const polyMarkets = new Map<string, any>();
+            const kalshiMarkets = new Map<string, EventMarket>();
+            const polyMarkets = new Map<string, EventMarket>();
 
             for (const event of kalshiEvents) {
                 for (const market of event.markets || []) {
@@ -377,7 +391,7 @@ export class MarketService {
             for (const event of kalshiEvents) {
                 for (const market of event.markets || []) {
                     if (marketIds.includes(market.id)) {
-                        results.set(market.id, market.title || event.title);
+                        results.set(market.id, market.title || event.title || market.id);
                     }
                 }
             }
@@ -385,7 +399,7 @@ export class MarketService {
             for (const event of polyEvents) {
                 for (const market of event.markets || []) {
                     if (marketIds.includes(market.id)) {
-                        results.set(market.id, market.title || event.title);
+                        results.set(market.id, market.title || event.title || market.id);
                     }
                 }
             }
@@ -408,7 +422,7 @@ export class MarketService {
 
             // Try Kalshi first (marketId might be a ticker like KXPREZ2028-28-JVAN)
             for (const event of kalshiEvents) {
-                const market = event.markets?.find((m: any) => m.id === marketId);
+                const market = event.markets?.find((m: EventMarket) => m.id === marketId);
                 if (market) {
                     const price = parseFloat(market.price);
                     // Skip invalid/stale prices that indicate resolved markets
@@ -425,7 +439,7 @@ export class MarketService {
 
             // Try Polymarket featured events
             for (const event of polyEvents) {
-                const market = event.markets?.find((m: any) => m.id === marketId);
+                const market = event.markets?.find((m: EventMarket) => m.id === marketId);
                 if (market) {
                     const price = parseFloat(market.price);
                     // Skip invalid/stale prices that indicate resolved markets
@@ -446,7 +460,7 @@ export class MarketService {
             const binaryData = await redis.get('market:active_list');
             if (binaryData) {
                 const markets = JSON.parse(binaryData);
-                const market = markets.find((m: any) => m.id === marketId);
+                const market = markets.find((m: EventMarket) => m.id === marketId);
                 if (market) {
                     const price = market.currentPrice ?? market.basePrice ?? 0.5;
                     // Skip invalid/stale prices that indicate resolved markets

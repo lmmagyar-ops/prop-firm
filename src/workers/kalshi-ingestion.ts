@@ -29,6 +29,30 @@ dotenv.config();
 const KALSHI_API_BASE = "https://api.elections.kalshi.com/trade-api/v2";
 const KALSHI_WS_URL = "wss://trading-api.kalshi.com/trade-api/ws/v2";
 
+// ── Types for Kalshi REST API response ──
+interface KalshiApiMarket {
+    ticker: string;
+    title: string;
+    subtitle?: string;
+    event_ticker?: string;
+    event_title?: string;
+    category?: string;
+    yes_bid?: number;
+    yes_ask?: number;
+    last_price?: number;
+    volume_24h?: number;
+    volume?: number;
+    expiration_time?: string;
+}
+
+interface KalshiSubMarket {
+    id: string;
+    question: string;
+    outcomes: string[];
+    price: number;
+    volume: number;
+}
+
 /**
  * Kalshi Ingestion Worker
  * 
@@ -151,17 +175,17 @@ class KalshiIngestionWorker {
 
             const data = await response.json();
             const markets = data.markets || [];
-            this.activeMarkets = markets.map((m: any) => m.ticker);
+            this.activeMarkets = markets.map((m: KalshiApiMarket) => m.ticker);
 
             console.log(`[Kalshi] Loaded ${this.activeMarkets.length} active markets`);
 
             // Store simple market list in Redis (for price lookups)
-            const processedMarkets = markets.map((m: any) => ({
+            const processedMarkets = markets.map((m: KalshiApiMarket) => ({
                 id: m.ticker,
                 title: m.title,
                 price: this.getKalshiMidPrice(m),
                 volume: m.volume_24h || 0,
-                category: this.mapCategory(m.category),
+                category: this.mapCategory(m.category || ''),
             }));
 
             await this.redis.set(
@@ -172,7 +196,7 @@ class KalshiIngestionWorker {
 
             // ALSO populate kalshi:active_list with EventMetadata format
             // Group markets by event_ticker
-            const marketsByEvent = new Map<string, any[]>();
+            const marketsByEvent = new Map<string, KalshiApiMarket[]>();
             for (const market of markets) {
                 const eventTicker = market.event_ticker || market.ticker;
                 const existing = marketsByEvent.get(eventTicker) || [];
@@ -181,7 +205,7 @@ class KalshiIngestionWorker {
             }
 
             // Convert to EventMetadata format
-            const events: any[] = [];
+            const events: { id: string; title: string; slug: string; description: string; image: undefined; volume: number; endDate?: string; categories: string[]; markets: KalshiSubMarket[]; isMultiOutcome: boolean }[] = [];
             const seenTitles = new Set<string>();
 
             for (const [eventTicker, eventMarkets] of marketsByEvent) {
@@ -196,15 +220,15 @@ class KalshiIngestionWorker {
 
                 // Convert markets to SubMarket format
                 const subMarkets = eventMarkets
-                    .filter((m: any) => this.getKalshiMidPrice(m) >= 0.001)
-                    .map((m: any) => ({
+                    .filter((m: KalshiApiMarket) => this.getKalshiMidPrice(m) >= 0.001)
+                    .map((m: KalshiApiMarket) => ({
                         id: m.ticker,
                         question: m.title || m.ticker,
                         outcomes: ["Yes", "No"],
                         price: this.getKalshiMidPrice(m),
                         volume: m.volume_24h || m.volume || 0,
                     }))
-                    .sort((a: any, b: any) => b.price - a.price);
+                    .sort((a: KalshiSubMarket, b: KalshiSubMarket) => b.price - a.price);
 
                 if (subMarkets.length === 0) continue;
 
@@ -214,9 +238,9 @@ class KalshiIngestionWorker {
                     slug: eventTicker.toLowerCase(),
                     description: primaryMarket.subtitle || eventTitle,
                     image: undefined, // Kalshi doesn't provide images
-                    volume: subMarkets.reduce((sum: number, m: any) => sum + m.volume, 0),
+                    volume: subMarkets.reduce((sum: number, m: KalshiSubMarket) => sum + m.volume, 0),
                     endDate: primaryMarket.expiration_time,
-                    categories: [this.mapCategory(primaryMarket.category), "Kalshi"],
+                    categories: [this.mapCategory(primaryMarket.category || ''), "Kalshi"],
                     markets: subMarkets,
                     isMultiOutcome: subMarkets.length > 1,
                 });
@@ -376,7 +400,7 @@ class KalshiIngestionWorker {
         }
     }
 
-    private getKalshiMidPrice(market: any): number {
+    private getKalshiMidPrice(market: KalshiApiMarket): number {
         if (market.yes_bid && market.yes_ask) {
             return ((market.yes_bid + market.yes_ask) / 2) / 100;
         }

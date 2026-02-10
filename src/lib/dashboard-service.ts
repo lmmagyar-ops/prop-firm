@@ -7,14 +7,45 @@ import { normalizeRulesConfig } from "@/lib/normalize-rules";
 import { safeParseFloat } from "./safe-parse";
 import { softInvariant } from "./invariant";
 
+// ── Lightweight DB row interfaces (fields accessed by pure functions) ──
+interface DbChallengeRow {
+    id: string;
+    startedAt: string | Date | null;
+    endsAt: string | Date | null;
+    startingBalance: string | number;
+    currentBalance: string | number;
+    highWaterMark: string | number | null;
+    startOfDayBalance: string | number | null;
+    phase: string;
+    status: string;
+    platform: string | null;
+    rulesConfig: unknown;
+    profitSplit?: string | number | null;
+    payoutCap?: string | number | null;
+    activeTradingDays?: number | null;
+    consistencyFlagged?: boolean | null;
+    lastActivityAt?: string | Date | null;
+    payoutCycleStart?: string | Date | null;
+}
+
+interface DbPositionRow {
+    id: string;
+    marketId: string;
+    direction: string;
+    entryPrice: string | number;
+    currentPrice: string | number | null;
+    shares: string | number;
+    sizeAmount: string | number;
+    openedAt: string | Date | null;
+}
+
 // ─── Pure functions (extracted for independent testability) ─────────
 
 /**
  * Map raw DB challenge rows into a UI-ready sorted array.
  * Pure function — no I/O.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function mapChallengeHistory(challengesList: any[]) {
+export function mapChallengeHistory(challengesList: DbChallengeRow[]) {
     return challengesList.map((c, idx) => ({
         id: c.id,
         accountNumber: `CH-${c.startedAt ? new Date(c.startedAt).getFullYear() : 'XXXX'}-${String(idx + 1).padStart(3, '0')}`,
@@ -37,7 +68,7 @@ export function mapChallengeHistory(challengesList: any[]) {
  * Pure function — receives pre-fetched data, does no I/O.
  */
 export function getPositionsWithPnL(
-    openPositions: any[],
+    openPositions: DbPositionRow[],
     livePrices: Map<string, { price: string; source?: string }>,
     marketTitles: Map<string, string>,
 ) {
@@ -104,8 +135,7 @@ export function getPositionsWithPnL(
  * Calculate equity stats (PnL, drawdown, profit progress) from challenge + equity.
  * Pure function — no I/O.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function getEquityStats(challenge: any, equity: number, startingBalance: number) {
+export function getEquityStats(challenge: DbChallengeRow, equity: number, startingBalance: number) {
     const hwmParsed = safeParseFloat(challenge.highWaterMark);
     const highWaterMark = hwmParsed > 0 ? hwmParsed : startingBalance;
     const sodParsed = safeParseFloat(challenge.startOfDayBalance);
@@ -138,8 +168,7 @@ export function getEquityStats(challenge: any, equity: number, startingBalance: 
  * Calculate funded account stats (tier, payout eligibility, cycle timing).
  * Pure function — no I/O.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function getFundedStats(challenge: any, equity: number, startingBalance: number) {
+export function getFundedStats(challenge: DbChallengeRow, equity: number, startingBalance: number) {
     let tier: FundedTier;
     if (startingBalance <= 5000) {
         tier = "5k";
@@ -154,8 +183,8 @@ export function getFundedStats(challenge: any, equity: number, startingBalance: 
     const payoutCap = safeParseFloat(challenge.payoutCap, fundedRules.payoutCap);
     const activeTradingDays = challenge.activeTradingDays || 0;
     const consistencyFlagged = challenge.consistencyFlagged || false;
-    const lastActivityAt = challenge.lastActivityAt;
-    const payoutCycleStart = challenge.payoutCycleStart;
+    const lastActivityAt = challenge.lastActivityAt ? new Date(challenge.lastActivityAt) : null;
+    const payoutCycleStart = challenge.payoutCycleStart ? new Date(challenge.payoutCycleStart) : null;
 
     const cycleLength = 14;
     const daysSinceCycleStart = payoutCycleStart

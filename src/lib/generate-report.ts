@@ -2,7 +2,25 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { format } from "date-fns";
 
-export const generateTraderReport = (data: any) => {
+interface TimelinePoint {
+    balance: number;
+}
+
+interface TradeRow {
+    createdAt: string | Date;
+    marketId: string;
+    side: string;
+    pnl: string | number;
+}
+
+interface ReportData {
+    challenge: { userName: string; email: string; status: string; currentBalance: string | number };
+    stats: { totalTrades: number; winRate: number };
+    timeline: TimelinePoint[];
+    trades: TradeRow[];
+}
+
+export const generateTraderReport = (data: ReportData) => {
     const { challenge, stats, trades } = data;
     const doc = new jsPDF();
 
@@ -27,7 +45,7 @@ export const generateTraderReport = (data: any) => {
     const statsData = [
         ["Total Trades", stats.totalTrades.toString()],
         ["Win Rate", `${stats.winRate.toFixed(1)}%`],
-        ["Equity Peak", `$${Math.max(...data.timeline.map((t: any) => t.balance)).toFixed(2)}`],
+        ["Equity Peak", `$${Math.max(...data.timeline.map((t: TimelinePoint) => t.balance)).toFixed(2)}`],
     ];
 
     autoTable(doc, {
@@ -40,11 +58,11 @@ export const generateTraderReport = (data: any) => {
     });
 
     // -- Trade History --
-    const finalY = (doc as any).lastAutoTable.finalY + 15;
+    const finalY = ((doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY) + 15;
     doc.setFontSize(14);
     doc.text("Trade History", 14, finalY);
 
-    const tradeRows = trades.map((t: any) => [
+    const tradeRows = trades.map((t: TradeRow) => [
         format(new Date(t.createdAt), "MMM d, HH:mm"),
         t.marketId,
         t.side,
