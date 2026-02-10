@@ -5,11 +5,57 @@ import { db } from "@/db";
 import { challenges } from "@/db/schema";
 import { revalidatePath } from "next/cache";
 
+// ── Tier configuration (single source of truth) ────────────────────
+const TIER_BALANCES: Record<string, number> = {
+    "5k": 5000, "10k": 10000, "25k": 25000,
+    "50k": 50000, "100k": 100000, "200k": 200000
+};
+
+function getRulesForTier(tier: string) {
+    const startingBalance = TIER_BALANCES[tier] || 10000;
+    return {
+        startingBalance,
+        rulesConfig: {
+            tier,
+            startingBalance,
+
+            // CRITICAL: These are ABSOLUTE DOLLAR VALUES computed from tier
+            profitTarget: startingBalance * 0.10,       // 10%
+            maxDrawdown: startingBalance * 0.08,        // 8%
+
+            // Percentage-based (used by risk engine)
+            maxTotalDrawdownPercent: 0.08,               // 8%
+            maxDailyDrawdownPercent: 0.04,               // 4%
+
+            // Position Sizing
+            maxPositionSizePercent: 0.05,                // 5% per market
+            maxCategoryExposurePercent: 0.10,             // 10% per category
+            lowVolumeThreshold: 10_000_000,              // $10M
+            lowVolumeMaxPositionPercent: 0.025,           // 2.5%
+
+            // Liquidity
+            maxVolumeImpactPercent: 0.10,                // 10% of 24h volume
+            minMarketVolume: 100_000,                    // $100k
+
+            // Legacy (backwards compatibility)
+            maxDrawdownPercent: 0.08,
+            dailyLossPercent: 0.04,
+            profitTargetPercent: 0.10,
+            durationDays: 60,
+            profitSplit: 0.7,                            // 70% to trader
+        }
+    };
+}
+
 export async function createChallengeAction(tierId: string = "10k_challenge") {
     const session = await auth();
     const userId = session?.user?.id || "demo-user-1"; // Fallback for your demo if auth fails
 
-    console.log(`[Action] Creating challenge for user: ${userId} (Tier: ${tierId})`);
+    // Parse tier from tierId (e.g. "25k_challenge" → "25k", or just "25k")
+    const tier = tierId.replace(/_challenge$/, "");
+    const { startingBalance, rulesConfig } = getRulesForTier(tier);
+
+    console.log(`[Action] Creating challenge for user: ${userId} (Tier: ${tier}, Balance: $${startingBalance})`);
 
     // AUTO-PROVISION USER (Self-Healing due to Stale Sessions or DB Resets)
     // If the user is authenticated (has session) but missing from DB, we seed them now 
@@ -57,44 +103,18 @@ export async function createChallengeAction(tierId: string = "10k_challenge") {
     }
 
     try {
+        const balStr = startingBalance.toFixed(2);
         const [newChallenge] = await db.insert(challenges).values({
             userId: userId,
             phase: "challenge",
             status: "active",
-            startingBalance: "10000.00",
-            currentBalance: "10000.00",
-            highWaterMark: "10000.00",
-            startOfDayBalance: "10000.00",
-            rulesConfig: {
-                tier: "10k",
-                startingBalance: 10000,
-
-                // CRITICAL: These are ABSOLUTE DOLLAR VALUES
-                profitTarget: 1000,               // 10% of $10k = $1,000
-                maxDrawdown: 800,                  // 8% of $10k = $800
-
-                // Percentage-based (used by risk engine)
-                maxTotalDrawdownPercent: 0.08,      // 8%
-                maxDailyDrawdownPercent: 0.04,      // 4%
-
-                // Position Sizing
-                maxPositionSizePercent: 0.05,       // 5% per market
-                maxCategoryExposurePercent: 0.10,    // 10% per category
-
-                // Liquidity
-                maxVolumeImpactPercent: 0.10,        // 10% of 24h volume
-                minMarketVolume: 100_000,            // $100k
-
-                // Legacy (backwards compatibility)
-                maxDrawdownPercent: 0.08,
-                dailyLossPercent: 0.04,
-                profitTargetPercent: 0.10,
-                durationDays: 60,
-                profitSplit: 0.7,                    // 70% to trader
-            },
+            startingBalance: balStr,
+            currentBalance: balStr,
+            highWaterMark: balStr,
+            startOfDayBalance: balStr,
+            rulesConfig,
             startedAt: new Date(),
-            // Set end date to 60 days from now (matches canonical rules)
-            endsAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000)
+            endsAt: new Date(Date.now() + rulesConfig.durationDays * 24 * 60 * 60 * 1000)
         }).returning();
 
         revalidatePath("/dashboard");
@@ -105,3 +125,4 @@ export async function createChallengeAction(tierId: string = "10k_challenge") {
         return { success: false, error: message };
     }
 }
+
