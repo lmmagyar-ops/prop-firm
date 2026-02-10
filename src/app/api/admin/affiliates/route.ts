@@ -55,7 +55,7 @@ export async function GET(req: NextRequest) {
 
         return NextResponse.json({ affiliates: affiliatesWithStats });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("[Admin Affiliates List Error]:", error);
         return NextResponse.json(
             { error: "Failed to fetch affiliates" },

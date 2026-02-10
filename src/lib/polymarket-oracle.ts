@@ -11,6 +11,7 @@
  */
 
 import { getRedisClient } from "./redis-client";
+import { getErrorMessage } from "./errors";
 
 const GAMMA_API_BASE = "https://gamma-api.polymarket.com";
 const CACHE_TTL_SECONDS = 300; // 5 minute cache for resolution status
@@ -73,9 +74,9 @@ export class PolymarketOracle {
 
             return resolution;
 
-        } catch (error: any) {
-            console.error(`[PolymarketOracle] Error fetching resolution for ${tokenId.slice(0, 12)}:`, error.message);
-            return this.buildFallback(tokenId, error.message);
+        } catch (error: unknown) {
+            console.error(`[PolymarketOracle] Error fetching resolution for ${tokenId.slice(0, 12)}:`, getErrorMessage(error));
+            return this.buildFallback(tokenId, getErrorMessage(error));
         }
     }
 
@@ -135,8 +136,8 @@ export class PolymarketOracle {
             }
 
             return null;
-        } catch (error: any) {
-            console.error(`[PolymarketOracle] Fetch error:`, error.message);
+        } catch (error: unknown) {
+            console.error(`[PolymarketOracle] Fetch error:`, getErrorMessage(error));
             return null;
         }
     }

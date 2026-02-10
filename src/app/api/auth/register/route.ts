@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { users } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { sendVerificationEmail } from "@/lib/email";
+import { getErrorMessage } from "@/lib/errors";
 
 export async function POST(req: Request) {
     try {
@@ -60,8 +61,8 @@ export async function POST(req: Request) {
 
         return NextResponse.json({ success: true });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Registration Error:", error);
-        return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 });
+        return NextResponse.json({ error: getErrorMessage(error) || "Internal Server Error" }, { status: 500 });
     }
 }

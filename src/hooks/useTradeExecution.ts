@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/errors";
 
 interface TradeResult {
     success: boolean;
@@ -123,8 +124,8 @@ export function useTradeExecution(options: UseTradeExecutionOptions = {}) {
             options.onSuccess?.(result);
             return result;
 
-        } catch (error: any) {
-            const errorMsg = error.message || "Network error";
+        } catch (error: unknown) {
+            const errorMsg = getErrorMessage(error) || "Network error";
             toast.error(errorMsg);
             options.onError?.(errorMsg);
             setLastResult({ success: false, error: errorMsg });

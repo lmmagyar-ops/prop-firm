@@ -40,7 +40,7 @@ export async function PATCH(
             discount: updated[0]
         });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("[Admin Deactivate Discount Error]:", error);
         return NextResponse.json(
             { error: "Failed to deactivate discount code" },

@@ -80,7 +80,7 @@ export async function GET(req: Request) {
             actionCounts,
         });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("[Admin Events API Error]:", error);
         return NextResponse.json(
             { error: "Failed to fetch event logs" },

@@ -104,7 +104,7 @@ export async function POST(req: NextRequest) {
             });
         }
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("[Affiliate Application Error]:", error);
         return NextResponse.json(
             { error: "Failed to submit application" },

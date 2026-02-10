@@ -6,6 +6,7 @@ import { challenges, positions } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { createLogger } from "@/lib/logger";
 import { checkIdempotency, cacheIdempotencyResult } from "@/lib/trade-idempotency";
+import { getErrorMessage } from "@/lib/errors";
 
 const log = createLogger("TradeAPI");
 // Force recompile: 2026-02-08T19:27Z — picks up dual-token trade.ts fixes
@@ -153,19 +154,19 @@ export async function POST(req: NextRequest) {
 
         return NextResponse.json(responsePayload);
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         // DEFENSE-IN-DEPTH: Structured error responses for client-side handling
-        const status = error.status || 500;
-        const code = error.code || 'UNKNOWN';
-        const data = error.data || {};
+        const status = (error instanceof Error && "status" in error ? (error as Record<string, unknown>).status : undefined) || 500;
+        const code = (error instanceof Error && "code" in error ? (error as Record<string, unknown>).code : undefined) || 'UNKNOWN';
+        const data = (error instanceof Error && "data" in error ? (error as Record<string, unknown>).data : {}) || {};
 
         log.error(`Trade execution failed [${code}]`, error);
 
         return NextResponse.json({
-            error: error.message || "Trade failed",
+            error: getErrorMessage(error) || "Trade failed",
             code,
-            ...data, // Spread freshPrice etc. for re-quote UI
-        }, { status });
+            ...(typeof data === 'object' && data !== null ? data : {}),
+        }, { status: typeof status === 'number' ? status : 500 });
     }
 }
 

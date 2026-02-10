@@ -52,7 +52,7 @@ export async function PATCH(
             affiliate: updated[0]
         });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("[Admin Reject Affiliate Error]:", error);
         return NextResponse.json(
             { error: "Failed to reject affiliate" },

@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { haptics } from "@/lib/haptics";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
+import { getErrorMessage } from "@/lib/errors";
 
 /**
  * MobileTradeSheet - Bottom sheet optimized for mobile trading
@@ -98,8 +99,8 @@ export function MobileTradeSheet({
                 origin: { y: 0.8 }
             });
             onClose();
-        } catch (error: any) {
-            const errorMessage = error?.message || "Trade failed";
+        } catch (error: unknown) {
+            const errorMessage = getErrorMessage(error);
             console.error("Trade failed:", errorMessage);
             toast.error(errorMessage);
             try { haptics.error(); } catch (e) { }

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { users, challenges, businessRules, positions } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { getErrorMessage } from "@/lib/errors";
 
 export async function GET() {
     try {
@@ -88,12 +89,12 @@ export async function GET() {
             message: "Demo environment reset and recreated successfully!",
             note: "Visit /dashboard to see your demo account"
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Reset error:", error);
         return NextResponse.json({
             success: false,
-            error: error.message,
-            stack: error.stack
+            error: getErrorMessage(error),
+            stack: error instanceof Error ? error.stack : undefined
         }, { status: 500 });
     }
 }

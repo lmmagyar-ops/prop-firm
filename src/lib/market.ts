@@ -1,5 +1,6 @@
 import Redis from "ioredis";
 import { isBookDead as _isBookDead, invertOrderBook as _invertOrderBook, buildSyntheticOrderBook, calculateImpact as _calculateImpact } from "./order-book-engine";
+import { getErrorMessage, getErrorName } from "./errors";
 
 // Priority: REDIS_URL (Railway) > REDIS_HOST/PASSWORD (legacy Upstash) > localhost
 function createRedisClient(): Redis {
@@ -44,7 +45,7 @@ function getRedis(): Redis {
         redisInstance = createRedisClient();
 
         redisInstance.on('error', (err) => {
-            console.error('[MarketService] Redis error:', err.message);
+            console.error('[MarketService] Redis error:', getErrorMessage(err));
         });
     }
     return redisInstance;
@@ -221,8 +222,8 @@ export class MarketService {
 
             console.log(`[MarketService] No price data for ${assetId}, using demo fallback`);
             return { ...this.getDemoPrice(assetId), source: 'demo' as const };
-        } catch (error: any) {
-            console.error(`[MarketService] Redis error, using demo fallback:`, error.message);
+        } catch (error: unknown) {
+            console.error(`[MarketService] Redis error, using demo fallback:`, getErrorMessage(error));
             return { ...this.getDemoPrice(assetId), source: 'demo' as const };
         }
     }
@@ -274,8 +275,8 @@ export class MarketService {
             }
 
             console.log(`[MarketService] Batch fetched ${results.size}/${marketIds.length} prices`);
-        } catch (error: any) {
-            console.error(`[MarketService] Batch price error:`, error.message);
+        } catch (error: unknown) {
+            console.error(`[MarketService] Batch price error:`, getErrorMessage(error));
             // Fallback to demo prices for all
             for (const marketId of marketIds) {
                 results.set(marketId, this.getDemoPrice(marketId));
@@ -344,8 +345,8 @@ export class MarketService {
             }
 
             console.log(`[MarketService] Batch fetched ${results.size}/${marketIds.length} order book prices`);
-        } catch (error: any) {
-            console.error(`[MarketService] Batch order book error:`, error.message);
+        } catch (error: unknown) {
+            console.error(`[MarketService] Batch order book error:`, getErrorMessage(error));
             // Fallback to event list prices
             for (const marketId of marketIds) {
                 const eventPrice = await this.lookupPriceFromEvents(marketId);
@@ -388,8 +389,8 @@ export class MarketService {
                     }
                 }
             }
-        } catch (error: any) {
-            console.error(`[MarketService] Batch titles error:`, error.message);
+        } catch (error: unknown) {
+            console.error(`[MarketService] Batch titles error:`, getErrorMessage(error));
         }
 
         return results;
@@ -503,8 +504,8 @@ export class MarketService {
             }
             console.log(`[MarketService] No Redis orderbook for ${assetId}, using demo fallback`);
             return { ...this.getDemoOrderBook(), source: 'demo' as const };
-        } catch (error: any) {
-            console.error(`[MarketService] Redis orderbook error, using demo fallback:`, error.message);
+        } catch (error: unknown) {
+            console.error(`[MarketService] Redis orderbook error, using demo fallback:`, getErrorMessage(error));
             return { ...this.getDemoOrderBook(), source: 'demo' as const };
         }
     }
@@ -565,11 +566,11 @@ export class MarketService {
 
             console.log(`[MarketService] ✅ Fresh order book fetched for ${tokenId.slice(0, 12)}... (${book.bids?.length || 0} bids, ${book.asks?.length || 0} asks)`);
             return { ...book, source: 'live' as const };
-        } catch (error: any) {
-            if (error.name === 'AbortError') {
+        } catch (error: unknown) {
+            if (getErrorName(error) === 'AbortError') {
                 console.warn(`[MarketService] Fresh book fetch TIMED OUT for ${tokenId.slice(0, 12)}..., using cached`);
             } else {
-                console.warn(`[MarketService] Fresh book fetch error for ${tokenId.slice(0, 12)}...:`, error.message);
+                console.warn(`[MarketService] Fresh book fetch error for ${tokenId.slice(0, 12)}...:`, getErrorMessage(error));
             }
             // Fall back to cached order book
             return this.getOrderBook(tokenId);
@@ -602,9 +603,9 @@ export class MarketService {
             }
 
             return book;
-        } catch (error: any) {
+        } catch (error: unknown) {
             clearTimeout(timeout);
-            if (error.name === 'AbortError') {
+            if (getErrorName(error) === 'AbortError') {
                 console.warn(`[MarketService] CLOB fetch TIMED OUT for ${tokenId.slice(0, 12)}...`);
             }
             return null;

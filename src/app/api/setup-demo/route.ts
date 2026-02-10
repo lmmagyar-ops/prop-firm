@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { users, challenges, businessRules } from "@/db/schema";
 import { sql } from "drizzle-orm";
+import { getErrorMessage } from "@/lib/errors";
 
 export async function GET() {
     try {
@@ -75,12 +76,12 @@ export async function GET() {
                 userId: "demo-user-1"
             }
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Setup error:", error);
         return NextResponse.json({
             success: false,
-            error: error.message,
-            stack: error.stack
+            error: getErrorMessage(error),
+            stack: error instanceof Error ? error.stack : undefined
         }, { status: 500 });
     }
 }

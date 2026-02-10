@@ -3,6 +3,7 @@ import { TradeExecutor } from "@/lib/trade";
 import { publishAdminEvent } from "@/lib/events";
 import { auth } from "@/auth";
 import { logTrade } from "@/lib/event-logger";
+import { getErrorMessage } from "@/lib/errors";
 
 export async function POST(req: Request) {
     try {
@@ -31,10 +32,10 @@ export async function POST(req: Request) {
         let trade;
         try {
             trade = await TradeExecutor.executeTrade(userId, challengeId, marketId, side, parseFloat(amount));
-        } catch (error: any) {
+        } catch (error: unknown) {
 
             // 1. AUTO-PROVISION CHALLENGE & USER (Fallback for demo mode)
-            if (error.code === "INVALID_CHALLENGE" && userId === "demo-user-1") {
+            if (error instanceof Error && "code" in error && error.code === "INVALID_CHALLENGE" && userId === "demo-user-1") {
                 console.log("[Auto-Provision] Creating new challenge for demo user...");
                 const { autoProvisionDemoChallenge } = await import("@/lib/dev-helpers");
                 const newChallengeId = await autoProvisionDemoChallenge(userId);
@@ -42,7 +43,7 @@ export async function POST(req: Request) {
             }
 
             // 2. AUTO-PROVISION MARKET DATA (Redis)
-            else if ((error.message === "Market data unavailable" || error.message.includes("Book Not Found")) && userId === "demo-user-1") {
+            else if ((getErrorMessage(error) === "Market data unavailable" || getErrorMessage(error).includes("Book Not Found")) && userId === "demo-user-1") {
                 const { autoProvisionMarketData } = await import("@/lib/dev-helpers");
                 await autoProvisionMarketData(marketId);
                 console.log("[Auto-Provision] Retrying execution...");
@@ -55,7 +56,7 @@ export async function POST(req: Request) {
                     side,
                     amount: parseFloat(amount),
                     success: false,
-                    error: error.message
+                    error: getErrorMessage(error)
                 });
                 throw error;
             }
@@ -83,9 +84,9 @@ export async function POST(req: Request) {
 
         return NextResponse.json({ success: true, trade });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Trade Execution Error:", error);
-        return NextResponse.json({ error: error.message || "Failed to execute trade" }, { status: 500 });
+        return NextResponse.json({ error: getErrorMessage(error) || "Failed to execute trade" }, { status: 500 });
     }
 }
 

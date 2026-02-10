@@ -70,7 +70,7 @@ export async function PATCH(
             affiliate: updated[0]
         });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("[Admin Approve Affiliate Error]:", error);
         return NextResponse.json(
             { error: "Failed to approve affiliate" },

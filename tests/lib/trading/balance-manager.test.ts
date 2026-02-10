@@ -9,6 +9,8 @@
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { BalanceManager } from "@/lib/trading/BalanceManager";
+import { type Transaction } from "@/db/types";
+import { type Mock } from "vitest";
 
 // ── Mock the logger module ──────────────────────────────────────
 const mockLogger = vi.hoisted(() => ({
@@ -46,7 +48,7 @@ function createMockTx(currentBalance: string = "10000", startingBalance: string 
             }),
         }),
     };
-    return tx;
+    return tx as unknown as Transaction;
 }
 
 // =====================================================================
@@ -65,7 +67,7 @@ describe("BalanceManager.deductCost", () => {
         expect(newBalance).toBe(9500);
 
         // Verify the DB update
-        const setCall = tx.update.mock.results[0].value.set.mock.calls[0][0];
+        const setCall = (tx.update as unknown as Mock).mock.results[0].value.set.mock.calls[0][0];
         expect(setCall.currentBalance).toBe("9500");
     });
 
@@ -127,7 +129,7 @@ describe("BalanceManager.deductCost", () => {
         };
 
         await expect(
-            BalanceManager.deductCost(tx, "nonexistent", 100)
+            BalanceManager.deductCost(tx as unknown as Transaction, "nonexistent", 100)
         ).rejects.toThrow("Challenge not found");
     });
 });
@@ -147,7 +149,7 @@ describe("BalanceManager.creditProceeds", () => {
 
         expect(newBalance).toBe(8500);
 
-        const setCall = tx.update.mock.results[0].value.set.mock.calls[0][0];
+        const setCall = (tx.update as unknown as Mock).mock.results[0].value.set.mock.calls[0][0];
         expect(setCall.currentBalance).toBe("8500");
     });
 
@@ -190,7 +192,7 @@ describe("BalanceManager.creditProceeds", () => {
         };
 
         await expect(
-            BalanceManager.creditProceeds(tx, "nonexistent", 100)
+            BalanceManager.creditProceeds(tx as unknown as Transaction, "nonexistent", 100)
         ).rejects.toThrow("Challenge not found");
     });
 });

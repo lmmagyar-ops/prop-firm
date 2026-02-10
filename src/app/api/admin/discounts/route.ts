@@ -54,7 +54,7 @@ export async function GET(req: NextRequest) {
 
         return NextResponse.json({ discounts: codesWithStats });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("[Admin Discounts List Error]:", error);
         return NextResponse.json(
             { error: "Failed to fetch discount codes" },
@@ -165,7 +165,7 @@ export async function POST(req: NextRequest) {
             discount: newDiscount[0]
         });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("[Admin Create Discount Error]:", error);
         return NextResponse.json(
             { error: "Failed to create discount code" },

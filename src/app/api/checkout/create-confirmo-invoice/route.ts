@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { db } from "@/db";
 import { challenges, users } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
+import { getErrorMessage } from "@/lib/errors";
 
 export async function POST(req: NextRequest) {
     const session = await auth();
@@ -152,10 +153,10 @@ export async function POST(req: NextRequest) {
             invoiceUrl: data.url,
             invoiceId: data.id
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Confirmo invoice creation failed:", error);
         return NextResponse.json(
-            { error: error.message || "Failed to create invoice" },
+            { error: getErrorMessage(error) || "Failed to create invoice" },
             { status: 500 }
         );
     }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { sql } from "drizzle-orm";
+import { getErrorMessage } from "@/lib/errors";
 
 export async function GET() {
     try {
@@ -23,11 +24,11 @@ export async function GET() {
                 hasDatabaseUrl: !!process.env.DATABASE_URL
             }
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         return NextResponse.json({
             success: false,
-            error: error.message,
-            stack: error.stack
+            error: getErrorMessage(error),
+            stack: error instanceof Error ? error.stack : undefined
         }, { status: 500 });
     }
 }

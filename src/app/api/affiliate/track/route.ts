@@ -74,7 +74,7 @@ export async function GET(req: NextRequest) {
 
         return response;
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("[Affiliate Track Error]:", error);
         return NextResponse.json(
             { error: "Failed to track referral" },

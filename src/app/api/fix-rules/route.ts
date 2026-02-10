@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { challenges } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { auth } from "@/auth";
+import { getErrorMessage } from "@/lib/errors";
 
 /**
  * API: Fix corrupted challenge rules
@@ -83,11 +84,11 @@ export async function POST(req: Request) {
                 }
             }
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("[Fix Rules] Error:", error);
         return NextResponse.json({
             success: false,
-            error: error.message
+            error: getErrorMessage(error)
         }, { status: 500 });
     }
 }

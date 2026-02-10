@@ -77,7 +77,7 @@ export async function GET(
             }
         });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("[Admin Discount Analytics Error]:", error);
         return NextResponse.json(
             { error: "Failed to fetch discount analytics" },

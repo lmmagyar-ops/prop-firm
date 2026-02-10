@@ -1,6 +1,7 @@
 import { challenges } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { createLogger } from '@/lib/logger';
+import { type Transaction } from '@/db/types';
 import { invariant, softInvariant } from '@/lib/invariant';
 
 const logger = createLogger('BalanceManager');
@@ -53,7 +54,7 @@ export class BalanceManager {
      * Deducts cost from challenge balance
      */
     static async deductCost(
-        tx: any,
+        tx: Transaction,
         challengeId: string,
         amount: number,
         source: string = 'trade'
@@ -90,7 +91,7 @@ export class BalanceManager {
      * Credits proceeds to challenge balance
      */
     static async creditProceeds(
-        tx: any,
+        tx: Transaction,
         challengeId: string,
         amount: number,
         source: string = 'trade'

@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
             }
         });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("[Affiliate Signup Error]:", error);
         return NextResponse.json(
             { error: "Failed to register as affiliate" },
@@ -107,7 +107,7 @@ export async function GET() {
             }
         });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("[Affiliate Status Error]:", error);
         return NextResponse.json(
             { error: "Failed to fetch affiliate status" },

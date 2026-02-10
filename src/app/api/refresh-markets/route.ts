@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import Redis from "ioredis";
+import { getErrorMessage } from "@/lib/errors";
 
 // Priority: REDIS_URL (Railway) > REDIS_HOST/PASSWORD (legacy Upstash) > localhost
 const getRedisConfig = () => {
@@ -101,11 +102,11 @@ export async function GET() {
             verification
         });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("[RefreshMarkets] Error:", error);
         return NextResponse.json({
             success: false,
-            error: error.message
+            error: getErrorMessage(error)
         }, { status: 500 });
     } finally {
         redis.disconnect();

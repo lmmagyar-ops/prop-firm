@@ -164,7 +164,7 @@ export async function POST(req: NextRequest) {
             }
         });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("[Discount Redemption Error]:", error);
         return NextResponse.json(
             { error: "Failed to redeem discount code" },
