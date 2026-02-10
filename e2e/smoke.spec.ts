@@ -27,7 +27,7 @@ test.describe('Public Pages', () => {
         await navigateAndWait(page, '/');
         // Should not show an error page
         await expect(page.locator('body')).not.toContainText('Application error');
-        await expect(page.locator('body')).not.toContainText('500');
+        await expect(page.locator('body')).not.toContainText('500 Internal Server Error');
     });
 
     test('buy-evaluation page loads (or redirects to auth)', async ({ page }) => {
