@@ -8,6 +8,7 @@ import { haptics } from "@/lib/haptics";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
 import { getErrorMessage } from "@/lib/errors";
+import { useTradeLimits } from "@/hooks/useTradeLimits";
 
 /**
  * MobileTradeSheet - Bottom sheet optimized for mobile trading
@@ -23,30 +24,51 @@ interface MobileTradeSheetProps {
     isOpen: boolean;
     onClose: () => void;
     marketTitle: string;
+    marketId: string;
+    challengeId?: string;
     yesPrice: number;
     noPrice: number;
     balance: number;
     onTrade: (outcome: "YES" | "NO", amount: number) => Promise<void>;
-    maxPerEvent?: number;
 }
 
 const QUICK_AMOUNTS = [10, 25, 50, 100, 250];
+
+function formatConstraint(key?: string): string {
+    const labels: Record<string, string> = {
+        balance: 'Balance',
+        per_event: 'Event limit',
+        per_category: 'Category limit',
+        daily_loss: 'Daily loss limit',
+        total_drawdown: 'Drawdown limit',
+        volume_tier: 'Volume limit',
+        liquidity: 'Liquidity limit',
+        max_positions: 'Position limit',
+    };
+    return labels[key || ''] || 'Limit reached';
+}
 
 export function MobileTradeSheet({
     isOpen,
     onClose,
     marketTitle,
+    marketId,
+    challengeId,
     yesPrice,
     noPrice,
     balance,
     onTrade,
-    maxPerEvent,
 }: MobileTradeSheetProps) {
     const [outcome, setOutcome] = useState<"YES" | "NO">("YES");
     const [amount, setAmount] = useState(50);
     const [loading, setLoading] = useState(false);
     const dragControls = useDragControls();
     const sheetRef = useRef<HTMLDivElement>(null);
+
+    // Preflight limits from server
+    const { limits } = useTradeLimits(isOpen ? challengeId : null, isOpen ? marketId : null);
+    const effectiveMax = limits ? Math.min(balance, limits.effectiveMax) : balance;
+    const exceedsLimit = limits ? amount > limits.effectiveMax : false;
 
     const currentPrice = outcome === "YES" ? yesPrice : noPrice;
     const shares = currentPrice > 0 ? amount / currentPrice : 0;
@@ -85,12 +107,8 @@ export function MobileTradeSheet({
 
     const handleAmountSelect = (value: number) => {
         setAmount(value);
-        try { haptics.light(); } catch (e) { }
+        try { haptics.light(); } catch (e) { };
     };
-
-    // Effective max is the lesser of balance and per-event limit
-    const effectiveMax = maxPerEvent ? Math.min(balance, maxPerEvent) : balance;
-    const exceedsLimit = maxPerEvent ? amount > maxPerEvent : false;
 
     const handleTrade = async () => {
         if (amount <= 0 || amount > effectiveMax || loading) return;
@@ -297,7 +315,7 @@ export function MobileTradeSheet({
                                         Processing...
                                     </span>
                                 ) : exceedsLimit ? (
-                                    `Exceeds Event Limit ($${maxPerEvent?.toLocaleString()})`
+                                    `Limit: $${limits?.effectiveMax.toLocaleString()} (${formatConstraint(limits?.bindingConstraint)})`
                                 ) : amount > balance ? (
                                     "Insufficient Balance"
                                 ) : (
@@ -305,11 +323,11 @@ export function MobileTradeSheet({
                                 )}
                             </button>
 
-                            {/* Balance */}
+                            {/* Balance & Limit Info */}
                             <p className="text-center text-sm text-zinc-500">
                                 Balance: <span className="font-mono text-zinc-400">${balance.toLocaleString()}</span>
-                                {maxPerEvent && (
-                                    <span className="ml-2">• Max/event: <span className="font-mono text-zinc-400">${maxPerEvent.toLocaleString()}</span></span>
+                                {limits && limits.effectiveMax < balance && (
+                                    <span className="ml-2">• Max: <span className="font-mono text-zinc-400">${limits.effectiveMax.toLocaleString()}</span></span>
                                 )}
                             </p>
                         </div>

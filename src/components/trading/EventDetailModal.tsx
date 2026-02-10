@@ -9,6 +9,7 @@ import dynamic from "next/dynamic";
 import { cn } from "@/lib/utils";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useTradeExecution } from "@/hooks/useTradeExecution";
+import { useTradeLimits } from "@/hooks/useTradeLimits";
 import type { EventMetadata, SubMarket } from "@/app/actions/market";
 import { getCleanOutcomeName } from "@/lib/market-utils";
 import { OrderBook } from "./OrderBook";
@@ -69,14 +70,14 @@ interface EventDetailModalProps {
     onClose: () => void;
     onTrade: (marketId: string, side: 'yes' | 'no', question: string) => void;
     platform?: "polymarket" | "kalshi";
-    maxPerEvent?: number;
+    challengeId?: string;
 }
 
 /**
  * EventDetailModal - Full event detail view
  * Supports both Polymarket (Dark) and Kalshi (Light) themes
  */
-export function EventDetailModal({ event, open, onClose, onTrade, platform = "polymarket", maxPerEvent }: EventDetailModalProps) {
+export function EventDetailModal({ event, open, onClose, onTrade, platform = "polymarket", challengeId }: EventDetailModalProps) {
     const isMobile = useMediaQuery("(max-width: 768px)");
     const [selectedMarketId, setSelectedMarketId] = useState<string | null>(null);
     const [selectedSide, setSelectedSide] = useState<'yes' | 'no'>('yes');
@@ -342,7 +343,7 @@ export function EventDetailModal({ event, open, onClose, onTrade, platform = "po
                         onTradeComplete={onClose}
                         isKalshi={isKalshi}
                         initialSide={selectedSide}
-                        maxPerEvent={maxPerEvent}
+                        challengeId={challengeId}
                     />
                 </div>
             </div>
@@ -527,10 +528,24 @@ interface TradingSidebarProps {
     onTradeComplete?: () => void;
     isKalshi?: boolean;
     initialSide?: 'yes' | 'no';
-    maxPerEvent?: number;
+    challengeId?: string;
 }
 
-function TradingSidebar({ market, eventTitle, onTradeComplete, isKalshi, initialSide = 'yes', maxPerEvent }: TradingSidebarProps) {
+function formatConstraint(key?: string): string {
+    const labels: Record<string, string> = {
+        balance: 'Balance',
+        per_event: 'Event limit',
+        per_category: 'Category limit',
+        daily_loss: 'Daily loss limit',
+        total_drawdown: 'Drawdown limit',
+        volume_tier: 'Volume limit',
+        liquidity: 'Liquidity limit',
+        max_positions: 'Position limit',
+    };
+    return labels[key || ''] || 'Limit reached';
+}
+
+function TradingSidebar({ market, eventTitle, onTradeComplete, isKalshi, initialSide = 'yes', challengeId }: TradingSidebarProps) {
     const [side, setSide] = useState<'yes' | 'no'>(initialSide);
     const [mode, setMode] = useState<'buy' | 'sell'>('buy');
     const [amount, setAmount] = useState(0); // Dollar amount
@@ -538,6 +553,9 @@ function TradingSidebar({ market, eventTitle, onTradeComplete, isKalshi, initial
     const [userPosition, setUserPosition] = useState<any>(null);
     const [positionLoading, setPositionLoading] = useState(false);
     const [requotePrice, setRequotePrice] = useState<number | null>(null);
+
+    // Preflight limits from server
+    const { limits } = useTradeLimits(challengeId, market?.id);
 
     // Sync side when parent changes it (e.g. clicking outcome YES/NO buttons)
     useEffect(() => {
@@ -803,9 +821,10 @@ function TradingSidebar({ market, eventTitle, onTradeComplete, isKalshi, initial
                     <div className="space-y-2">
                         <div className="flex justify-between text-sm">
                             <span className={cn(isKalshi ? "text-slate-500" : "text-zinc-400")}>Amount ($)</span>
-                            {maxPerEvent ? (
+                            {limits && limits.effectiveMax < Infinity ? (
                                 <span className={cn("text-xs", isKalshi ? "text-slate-400" : "text-zinc-500")}>
-                                    Max/event: <span className="font-mono">${maxPerEvent.toLocaleString()}</span>
+                                    Max: <span className="font-mono">${limits.effectiveMax.toLocaleString()}</span>
+                                    <span className="ml-1 opacity-70">({formatConstraint(limits.bindingConstraint)})</span>
                                 </span>
                             ) : (
                                 <span className={cn(isKalshi ? "text-slate-400" : "text-zinc-500")}>Max</span>
@@ -872,13 +891,13 @@ function TradingSidebar({ market, eventTitle, onTradeComplete, isKalshi, initial
                     {/* Submit Button */}
                     <button
                         onClick={handleSubmit}
-                        disabled={amount <= 0 || isLoading}
+                        disabled={amount <= 0 || isLoading || (limits ? amount > limits.effectiveMax : false)}
                         className={cn(
                             "w-full py-4 rounded-lg font-bold text-white transition-all flex items-center justify-center gap-2",
                             side === 'yes'
                                 ? (isKalshi ? "bg-[#00C896] hover:bg-[#00B88A]" : "bg-emerald-500 hover:bg-emerald-400 disabled:bg-emerald-500/50")
                                 : (isKalshi ? "bg-[#E63E5D] hover:bg-[#D43552]" : "bg-rose-500 hover:bg-rose-400 disabled:bg-rose-500/50"),
-                            (amount <= 0 || isLoading) && "opacity-50 cursor-not-allowed",
+                            (amount <= 0 || isLoading || (limits ? amount > limits.effectiveMax : false)) && "opacity-50 cursor-not-allowed",
                             isKalshi && (side === 'yes' ? "shadow-lg shadow-primary/10" : "shadow-lg shadow-pink-500/10")
                         )}
                     >
@@ -887,6 +906,8 @@ function TradingSidebar({ market, eventTitle, onTradeComplete, isKalshi, initial
                                 <Loader2 className="w-4 h-4 animate-spin" />
                                 Executing...
                             </>
+                        ) : limits && amount > limits.effectiveMax ? (
+                            `Limit: $${limits.effectiveMax.toLocaleString()} (${formatConstraint(limits.bindingConstraint)})`
                         ) : (
                             `Buy ${side === 'yes' ? 'Yes' : 'No'}`
                         )}

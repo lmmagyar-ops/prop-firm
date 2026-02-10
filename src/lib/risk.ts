@@ -17,6 +17,52 @@ interface RiskResult {
     reason?: string;
 }
 
+// ─── Preflight Types ────────────────────────────────────────────────
+
+export interface TradeLimits {
+    effectiveMax: number;
+    bindingConstraint: string;
+    limits: {
+        balance: number;
+        perEvent: number;
+        perEventRemaining: number;
+        perCategory: number;
+        perCategoryRemaining: number;
+        volumeLimit: number;
+        liquidityLimit: number;
+        dailyLossRemaining: number;
+        drawdownRemaining: number;
+    };
+    meta: {
+        openPositions: number;
+        maxPositions: number;
+        categories: string[];
+        startingBalance: number;
+        positionsAtCap: boolean;
+    };
+}
+
+// ─── Shared challenge context (reused by validate + preflight) ──────
+
+interface ChallengeContext {
+    challenge: {
+        id: string;
+        status: string;
+        currentBalance: string;
+        startingBalance: string;
+        startOfDayBalance: string | null;
+        rulesConfig: unknown;
+        platform: string | null;
+    };
+    rules: ChallengeRules;
+    currentBalance: number;
+    startBalance: number;
+    sodBalance: number;
+    allOpenPositions: { id: string; marketId: string; sizeAmount: string; challengeId: string | null; shares: string; direction: string; entryPrice: string; currentPrice: string | null; status: string | null }[];
+    currentEquity: number;
+    portfolioValue: number;
+}
+
 // ─── Risk Engine ────────────────────────────────────────────────────
 
 export class RiskEngine {
@@ -194,6 +240,175 @@ export class RiskEngine {
         audit.result = "ALLOWED";
         logger.info('Risk check passed', audit);
         return { allowed: true };
+    }
+
+    // ─── Preflight: Return all limits as structured data ─────────
+
+    static async getPreflightLimits(
+        challengeId: string,
+        marketId: string
+    ): Promise<TradeLimits> {
+        const ctx = await this.fetchChallengeContext(challengeId);
+
+        if (!ctx) {
+            return this.emptyLimits('No active challenge');
+        }
+
+        const { rules, currentBalance, startBalance, sodBalance, allOpenPositions, currentEquity } = ctx;
+
+        // ── Per-event limit ────────────────────────────────────────
+        const { getEventInfoForMarket } = await import("@/app/actions/market");
+        const eventInfo = await getEventInfoForMarket(marketId);
+        const perEvent = startBalance * (rules.maxPositionSizePercent || 0.05);
+        const marketIdsToCheck = eventInfo?.siblingMarketIds || [marketId];
+        const currentEventExposure = allOpenPositions
+            .filter(p => marketIdsToCheck.includes(p.marketId))
+            .reduce((sum, p) => sum + parseFloat(p.sizeAmount), 0);
+        const perEventRemaining = Math.max(0, perEvent - currentEventExposure);
+
+        // ── Per-category limit ─────────────────────────────────────
+        const market = await getMarketById(marketId);
+        const marketCategories = market?.categories?.length
+            ? market.categories
+            : this.inferCategoriesFromTitle(market?.question || "");
+
+        const perCategory = startBalance * (rules.maxCategoryExposurePercent || 0.10);
+        let perCategoryRemaining = perCategory;
+
+        if (marketCategories.length > 0) {
+            const allMarkets = await getActiveMarkets();
+            // Find the tightest category constraint
+            for (const category of marketCategories) {
+                const catExposure = this.getCategoryExposureFromCache(allOpenPositions, category, allMarkets);
+                const remaining = Math.max(0, perCategory - catExposure);
+                if (remaining < perCategoryRemaining) {
+                    perCategoryRemaining = remaining;
+                }
+            }
+        }
+
+        // ── Volume-based limits ────────────────────────────────────
+        const rawVolume = market?.volume ?? 0;
+        const marketVolume = typeof rawVolume === "string" ? parseFloat(rawVolume) : rawVolume;
+        const volumeLimit = this.getExposureLimitByVolume(startBalance, marketVolume);
+        const liquidityLimit = marketVolume * (rules.maxVolumeImpactPercent || 0.10);
+
+        // ── Drawdown limits ───────────────────────────────────────
+        const MAX_TOTAL_DD = rules.maxTotalDrawdownPercent || 0.08;
+        const totalEquityFloor = startBalance * (1 - MAX_TOTAL_DD);
+        const drawdownRemaining = Math.max(0, currentEquity - totalEquityFloor);
+
+        const MAX_DAILY_DD = rules.maxDailyDrawdownPercent || 0.04;
+        const maxDailyLoss = MAX_DAILY_DD * startBalance;
+        const dailyEquityFloor = sodBalance - maxDailyLoss;
+        const dailyLossRemaining = Math.max(0, currentEquity - dailyEquityFloor);
+
+        // ── Position count ────────────────────────────────────────
+        const maxPositions = this.getMaxPositionsForTier(startBalance);
+        const positionsAtCap = allOpenPositions.length >= maxPositions;
+
+        // ── Compute effective max ─────────────────────────────────
+        const candidateLimits: { name: string; value: number }[] = [
+            { name: 'balance', value: currentBalance },
+            { name: 'per_event', value: perEventRemaining },
+            { name: 'per_category', value: perCategoryRemaining },
+            { name: 'daily_loss', value: dailyLossRemaining },
+            { name: 'total_drawdown', value: drawdownRemaining },
+        ];
+
+        // Only include volume/liquidity if they're meaningful (> 0)
+        if (volumeLimit > 0) candidateLimits.push({ name: 'volume_tier', value: volumeLimit });
+        if (liquidityLimit > 0) candidateLimits.push({ name: 'liquidity', value: liquidityLimit });
+
+        // If positions are at cap, effective max is 0
+        if (positionsAtCap) candidateLimits.push({ name: 'max_positions', value: 0 });
+
+        const binding = candidateLimits.reduce((min, c) => c.value < min.value ? c : min, candidateLimits[0]);
+        const effectiveMax = Math.max(0, Math.floor(binding.value));
+
+        return {
+            effectiveMax,
+            bindingConstraint: binding.name,
+            limits: {
+                balance: Math.floor(currentBalance),
+                perEvent,
+                perEventRemaining: Math.floor(perEventRemaining),
+                perCategory,
+                perCategoryRemaining: Math.floor(perCategoryRemaining),
+                volumeLimit: Math.floor(volumeLimit),
+                liquidityLimit: Math.floor(liquidityLimit),
+                dailyLossRemaining: Math.floor(dailyLossRemaining),
+                drawdownRemaining: Math.floor(drawdownRemaining),
+            },
+            meta: {
+                openPositions: allOpenPositions.length,
+                maxPositions,
+                categories: marketCategories,
+                startingBalance: startBalance,
+                positionsAtCap,
+            },
+        };
+    }
+
+    // ─── Shared data fetch for challenge context ─────────────────
+
+    private static async fetchChallengeContext(challengeId: string): Promise<ChallengeContext | null> {
+        const [challenge] = await db
+            .select()
+            .from(challenges)
+            .where(eq(challenges.id, challengeId));
+
+        if (!challenge || challenge.status !== "active") return null;
+
+        const rules = challenge.rulesConfig as unknown as ChallengeRules;
+        const currentBalance = parseFloat(challenge.currentBalance);
+        const startBalance = parseFloat(challenge.startingBalance);
+        const sodBalance = parseFloat(challenge.startOfDayBalance || challenge.currentBalance);
+
+        const allOpenPositions = await db.query.positions.findMany({
+            where: and(
+                eq(positions.challengeId, challengeId),
+                eq(positions.status, "OPEN")
+            )
+        });
+
+        const positionMarketIds = allOpenPositions.map(p => p.marketId);
+        const livePrices = positionMarketIds.length > 0
+            ? await MarketService.getBatchOrderBookPrices(positionMarketIds)
+            : new Map();
+
+        const portfolio = getPortfolioValue(allOpenPositions, livePrices);
+        const currentEquity = currentBalance + portfolio.totalValue;
+
+        return {
+            challenge,
+            rules,
+            currentBalance,
+            startBalance,
+            sodBalance,
+            allOpenPositions,
+            currentEquity,
+            portfolioValue: portfolio.totalValue,
+        };
+    }
+
+    // ─── Empty limits fallback ───────────────────────────────────
+
+    private static emptyLimits(reason: string): TradeLimits {
+        return {
+            effectiveMax: 0,
+            bindingConstraint: reason,
+            limits: {
+                balance: 0, perEvent: 0, perEventRemaining: 0,
+                perCategory: 0, perCategoryRemaining: 0,
+                volumeLimit: 0, liquidityLimit: 0,
+                dailyLossRemaining: 0, drawdownRemaining: 0,
+            },
+            meta: {
+                openPositions: 0, maxPositions: 0,
+                categories: [], startingBalance: 0, positionsAtCap: true,
+            },
+        };
     }
 
     // ─── Helper: Deny trade with structured log ──────────────────

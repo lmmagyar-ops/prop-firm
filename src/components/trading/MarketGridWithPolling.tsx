@@ -12,7 +12,6 @@ interface MarketGridWithPollingProps {
     userId: string;
     platform: "polymarket" | "kalshi";
     challengeId?: string;
-    maxPerEvent?: number;
 }
 
 /**
@@ -27,7 +26,6 @@ export function MarketGridWithPolling({
     userId,
     platform,
     challengeId,
-    maxPerEvent,
 }: MarketGridWithPollingProps) {
     // Use polling hook with server-rendered initial data
     const { events, lastUpdated } = useMarketPolling(platform, {
@@ -45,7 +43,6 @@ export function MarketGridWithPolling({
             userId={userId}
             platform={platform}
             challengeId={challengeId}
-            maxPerEvent={maxPerEvent}
         />
     );
 }

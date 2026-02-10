@@ -69,13 +69,7 @@ export default async function TradePage() {
         ? Number(data.activeChallenge.currentBalance)
         : 10000;
 
-    // Compute per-event trade limit from challenge rules
-    const startingBalance = data?.activeChallenge
-        ? Number(data.activeChallenge.startingBalance)
-        : 10000;
-    const rulesConfig = data?.activeChallenge?.rulesConfig as Record<string, number> | null;
-    const maxPositionSizePercent = rulesConfig?.maxPositionSizePercent ?? 0.05;
-    const maxPerEvent = startingBalance * maxPositionSizePercent;
+
 
     const hasActiveChallenge = !!data?.activeChallenge;
 
@@ -159,7 +153,6 @@ export default async function TradePage() {
                         userId={userId}
                         platform={platform}
                         challengeId={data?.activeChallenge?.id}
-                        maxPerEvent={maxPerEvent}
                     />
                 )}
             </div>
