@@ -122,8 +122,14 @@ export class RiskMonitor {
         const startOfDayBalance = parseFloat(challenge.startOfDayBalance);
         const rules = challenge.rulesConfig as RulesConfig;
 
-        // Calculate unrealized P&L from open positions
-        let unrealizedPnL = 0;
+        // Calculate position value (NOT unrealized PnL!)
+        // CRITICAL FIX: Must use cash + positionValue, not cash + unrealizedPnL
+        // currentBalance already has trade costs deducted, so we need to add back
+        // the full position value (shares * price), not just the PnL delta.
+        // Example: $5k account, buy 200 shares at $0.50 for $100:
+        //   cash = $4,900, positionValue = 200 * $0.50 = $100, equity = $5,000 ✓
+        //   WRONG: unrealizedPnL = (0.50-0.50)*200 = $0, equity = $4,900 ✗
+        let positionValue = 0;
         for (const pos of openPositions) {
             const livePrice = livePrices.get(pos.marketId);
 
@@ -131,30 +137,23 @@ export class RiskMonitor {
             const shares = parseFloat(pos.shares);
             const isNo = pos.direction === 'NO';
 
-            // CRITICAL FIX: When live price is unavailable from Redis, fall back to
-            // stored entry price instead of skipping the position (which treats it as $0).
-            // Skipping positions makes equity = cash-only, causing instant false breaches.
-            // This matches evaluator.ts fallback behavior.
-            let effectiveCurrentValue: number;
+            // Get effective price for valuation
+            let effectivePrice: number;
             if (livePrice !== undefined) {
-                // Current price from live feed is raw YES price - needs direction adjustment
-                effectiveCurrentValue = isNo ? (1 - livePrice) : livePrice;
+                // Live price is raw YES price - apply direction adjustment
+                effectivePrice = isNo ? (1 - livePrice) : livePrice;
             } else {
-                // Fallback: use stored price (already direction-adjusted)
-                effectiveCurrentValue = entryPrice;
+                // Fallback: use stored entry price (already direction-adjusted)
+                effectivePrice = entryPrice;
                 console.warn(`[RiskMonitor] ⚠️ No live price for ${pos.marketId.slice(0, 12)}, using entry price $${entryPrice.toFixed(4)}`);
             }
 
-            // Entry price is ALREADY direction-adjusted when stored in DB (see trade.ts line 175-177)
-            // DO NOT adjust it again - that causes double-adjustment bug!
-            const effectiveEntryValue = entryPrice;
-
-            unrealizedPnL += (effectiveCurrentValue - effectiveEntryValue) * shares;
+            positionValue += shares * effectivePrice;
         }
 
 
-        // Calculate equity (current balance + unrealized P&L)
-        const equity = currentBalance + unrealizedPnL;
+        // Calculate equity (current cash balance + total position value)
+        const equity = currentBalance + positionValue;
 
         // DEFENSE-IN-DEPTH: Normalize to guard against decimal-vs-absolute bug.
         const normalized = normalizeRulesConfig(rules as Record<string, unknown>, startingBalance);
