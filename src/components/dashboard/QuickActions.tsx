@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { TrendingUp, X, Share2, BarChart3, Zap } from "lucide-react";
+import { TrendingUp, X, Share2, BarChart3, Zap, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
@@ -60,6 +60,16 @@ export function QuickActions({ hasActiveChallenge, hasPositions }: QuickActionsP
                             >
                                 <Share2 className="w-4 h-4 text-green-400" />
                                 <span className="text-sm">Share Performance</span>
+                            </Button>
+                        </Link>
+
+                        <Link href="/buy-evaluation">
+                            <Button
+                                variant="ghost"
+                                className="w-full justify-start gap-3 text-left hover:bg-[#29af73]/10 text-[#29af73]"
+                            >
+                                <Plus className="w-4 h-4" />
+                                <span className="text-sm">Add Account</span>
                             </Button>
                         </Link>
 

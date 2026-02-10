@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import { Plus } from "lucide-react";
 import {
     Table,
     TableBody,
@@ -144,6 +146,19 @@ export function ChallengeHistoryTable({ challenges }: ChallengeHistoryTableProps
                                     </TableCell>
                                 </TableRow>
                             ))}
+
+                            {/* Conversion CTA — ghost row */}
+                            <TableRow className="border-white/5 hover:bg-[#29af73]/5 transition-colors group cursor-pointer">
+                                <TableCell colSpan={8} className="py-0 px-0">
+                                    <Link
+                                        href="/buy-evaluation"
+                                        className="flex items-center justify-center gap-2 py-4 text-sm font-medium text-zinc-500 group-hover:text-[#29af73] transition-colors border-t border-dashed border-white/10 group-hover:border-[#29af73]/30"
+                                    >
+                                        <Plus className="w-4 h-4" />
+                                        Start New Evaluation
+                                    </Link>
+                                </TableCell>
+                            </TableRow>
                         </TableBody>
                     </Table>
                 </div>

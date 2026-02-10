@@ -25,6 +25,7 @@ import { WelcomeTour } from "@/components/dashboard/WelcomeTour";
 import { TraderSpotlight } from "@/components/dashboard/TraderSpotlight";
 import { QuickActions } from "@/components/dashboard/QuickActions";
 import { ActiveChallengeHeading } from "@/components/dashboard/ActiveChallengeHeading";
+import { ScaleUpBanner } from "@/components/dashboard/ScaleUpBanner";
 
 // Funded Account Components
 import {
@@ -350,6 +351,11 @@ export default async function DashboardPage() {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Scale Up Banner — contextual purchase CTA for active traders */}
+            {hasActiveChallenge && activeChallenge && (
+                <ScaleUpBanner currentTierSize={activeChallenge.startingBalance} />
             )}
 
             {/* Challenge History Table - ALWAYS VISIBLE */}
