@@ -12,6 +12,7 @@ import { ResolutionDetector } from "./resolution-detector";
 import { FUNDED_RULES, FundedTier } from "./funded-rules";
 import { nanoid } from "nanoid";
 import { safeParseFloat } from "./safe-parse";
+import { BalanceManager } from "./trading/BalanceManager";
 
 // Types
 export interface PayoutEligibility {
@@ -301,11 +302,24 @@ export class PayoutService {
 
     /**
      * Mark payout as completed (crypto transaction confirmed).
+     * 
+     * TRANSACTION SAFETY: All mutations (balance deduction, challenge update,
+     * payout status) are atomic. If any step fails, everything rolls back.
+     * 
+     * CRITICAL: Deducts the gross profit (cappedProfit = pre-split amount) from
+     * the trader's balance. Without this, the same profit could be paid out
+     * repeatedly — an infinite payout exploit.
+     * 
+     * We deduct cappedProfit (not netPayout) because:
+     * - netPayout = trader's share (e.g., 80%)
+     * - firmShare = firm's share (e.g., 20%)
+     * - cappedProfit = netPayout + firmShare
+     * The entire profit is removed from the trading balance on payout.
      */
     static async completePayout(payoutId: string, transactionHash: string): Promise<void> {
         const now = new Date();
 
-        // Get payout to update challenge totals
+        // Pre-fetch outside transaction (read-only)
         const [payout] = await db.select().from(payouts)
             .where(and(
                 eq(payouts.id, payoutId),
@@ -316,32 +330,54 @@ export class PayoutService {
             throw new Error(`Payout ${payoutId} not found or not in 'processing' status`);
         }
 
-        // Update challenge total paid out + reset payout cycle
-        const [challenge] = await db.select().from(challenges).where(eq(challenges.id, payout.challengeId!));
-        if (challenge) {
-            const totalPaid = safeParseFloat(challenge.totalPaidOut) + safeParseFloat(payout.amount);
-            await db.update(challenges)
+        const [challenge] = await db.select().from(challenges)
+            .where(eq(challenges.id, payout.challengeId!));
+
+        if (!challenge) {
+            throw new Error(`Challenge ${payout.challengeId} not found for payout ${payoutId}`);
+        }
+
+        // Calculate the gross profit amount to deduct from balance.
+        // This is the full cappedProfit (pre-split), not just the trader's netPayout.
+        // grossProfit is stored on the payout record; profitSplit gives us the ratio.
+        const payoutAmount = safeParseFloat(payout.amount);      // netPayout (trader's share)
+        const profitSplit = safeParseFloat(payout.profitSplit, 0.80);
+        // Reverse the split to get the full profit: netPayout / split = cappedProfit
+        const grossDeduction = profitSplit > 0 ? payoutAmount / profitSplit : payoutAmount;
+
+        const totalPaid = safeParseFloat(challenge.totalPaidOut) + payoutAmount;
+
+        // ATOMIC: balance deduction + challenge update + payout status update
+        await db.transaction(async (tx) => {
+            // 1. Deduct gross profit from trader's balance via BalanceManager
+            //    This is the critical fix — without it, the same profit could be
+            //    paid out repeatedly.
+            await BalanceManager.deductCost(
+                tx, challenge.id, grossDeduction, 'payout_completion'
+            );
+
+            // 2. Update challenge: total paid + cycle reset
+            await tx.update(challenges)
                 .set({
                     totalPaidOut: totalPaid.toFixed(2),
-                    // CYCLE RESET: Only reset after payout is actually completed
-                    // This was previously done in requestPayout, which lost progress on rejection
                     lastPayoutAt: now,
                     payoutCycleStart: now,
                     activeTradingDays: 0,
                     consistencyFlagged: false,
                 })
-                .where(eq(challenges.id, payout.challengeId!));
-        }
+                .where(eq(challenges.id, challenge.id));
 
-        await db.update(payouts)
-            .set({
-                status: "completed",
-                processedAt: now,
-                transactionHash,
-            })
-            .where(eq(payouts.id, payoutId));
+            // 3. Mark payout as completed
+            await tx.update(payouts)
+                .set({
+                    status: "completed",
+                    processedAt: now,
+                    transactionHash,
+                })
+                .where(eq(payouts.id, payoutId));
+        });
 
-        console.log(`[PayoutService] Payout ${payoutId} completed: ${transactionHash}`);
+        console.log(`[PayoutService] Payout ${payoutId} completed: ${transactionHash} | Deducted $${grossDeduction.toFixed(2)} from balance`);
     }
 
     /**

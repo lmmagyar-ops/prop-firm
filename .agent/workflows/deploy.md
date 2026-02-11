@@ -17,6 +17,10 @@ description: Staging-first deployment workflow for safe production releases
 # If this fails, DO NOT deploy — fix the issue first
 npm run test:engine
 
+# Run the safety exploit scenario tests
+# Proves payout balance deduction, transaction atomicity, funded-phase rules, and position closure
+npm run test:safety
+
 # Run the market data quality audit
 # Checks for duplicates, stale prices, encoding corruption, structural issues
 npm run test:markets
@@ -51,6 +55,9 @@ npm run test:lifecycle
 
 # Trade engine: BUY → SELL → PnL → Balance conservation
 npm run test:engine
+
+# Safety: exploit scenario proofs (payout deduction, atomicity, funded rules, position leak)
+npm run test:safety
 ```
 // turbo
 

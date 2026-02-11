@@ -173,9 +173,11 @@ export class ChallengeEvaluator {
             const tier = this.getFundedTier(startingBalance);
             const tierRules = FUNDED_RULES[tier];
 
-            // TRANSACTION SAFETY: phase change + balance reset are atomic
+            // TRANSACTION SAFETY: status guard + position closing + phase change + balance reset are atomic.
+            // Status guard prevents race with risk-monitor's triggerPass.
             await db.transaction(async (tx) => {
-                await tx.update(challenges)
+                // 1. Status guard: only transition active challenges
+                const result = await tx.update(challenges)
                     .set({
                         phase: 'funded',
                         status: 'active',
@@ -187,9 +189,67 @@ export class ChallengeEvaluator {
                         lastActivityAt: now,
                         endsAt: null,
                     })
-                    .where(eq(challenges.id, challengeId));
+                    .where(and(
+                        eq(challenges.id, challengeId),
+                        eq(challenges.status, 'active')
+                    ));
 
-                // Use BalanceManager for forensic-logged balance reset
+                if (!result.rowCount || result.rowCount === 0) {
+                    logger.info('Challenge already transitioned, skipping funded transition', { challengeId: challengeId.slice(0, 8) });
+                    return;
+                }
+
+                // 2. Close all open positions and settle proceeds
+                //    Without this, positions from the challenge phase would carry over
+                //    while the balance resets — giving traders free position value.
+                if (openPositions.length > 0) {
+                    let totalProceeds = 0;
+                    for (const pos of openPositions) {
+                        const shares = parseFloat(pos.shares);
+                        const entryPrice = parseFloat(pos.entryPrice);
+
+                        // Use the same live price we already fetched earlier in this function
+                        const liveData = livePrices.get(pos.marketId);
+                        let closePrice: number;
+                        if (liveData) {
+                            const yesPrice = parseFloat(liveData.price);
+                            closePrice = pos.direction === 'NO' ? (1 - yesPrice) : yesPrice;
+                        } else {
+                            closePrice = pos.currentPrice
+                                ? parseFloat(pos.currentPrice)
+                                : entryPrice;
+                        }
+
+                        const pnl = shares * (closePrice - entryPrice);
+                        const proceeds = shares * closePrice;
+                        totalProceeds += proceeds;
+
+                        await tx.update(positions)
+                            .set({
+                                status: 'CLOSED',
+                                shares: '0',
+                                closedAt: now,
+                                closedPrice: closePrice.toString(),
+                                pnl: pnl.toFixed(2),
+                            })
+                            .where(eq(positions.id, pos.id));
+                    }
+
+                    // Credit proceeds before reset so BalanceManager logging shows the full flow
+                    if (totalProceeds > 0) {
+                        await BalanceManager.creditProceeds(
+                            tx, challengeId, totalProceeds, 'funded_transition_liquidation'
+                        );
+                    }
+
+                    logger.info('Closed positions for funded transition', {
+                        challengeId: challengeId.slice(0, 8),
+                        count: openPositions.length,
+                        totalProceeds: totalProceeds.toFixed(2),
+                    });
+                }
+
+                // 3. Reset balance to starting balance for funded phase
                 await BalanceManager.resetBalance(
                     tx, challengeId, startingBalance, 'funded_transition'
                 );

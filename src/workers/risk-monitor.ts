@@ -126,6 +126,7 @@ export class RiskMonitor {
         const currentBalance = parseFloat(challenge.currentBalance);
         const startOfDayBalance = parseFloat(challenge.startOfDayBalance);
         const rules = challenge.rulesConfig as RulesConfig;
+        const isFunded = challenge.phase === 'funded';
 
         // Calculate position value (NOT unrealized PnL!)
         // CRITICAL FIX: Must use cash + positionValue, not cash + unrealizedPnL
@@ -160,35 +161,51 @@ export class RiskMonitor {
         // Calculate equity (current cash balance + total position value)
         const equity = currentBalance + positionValue;
 
-        // DEFENSE-IN-DEPTH: Normalize to guard against decimal-vs-absolute bug.
-        const normalized = normalizeRulesConfig(rules as Record<string, unknown>, startingBalance);
-        const maxDrawdown = normalized.maxDrawdown;
+        // FUNDED vs CHALLENGE: Use different drawdown rules
+        // Funded accounts use static drawdown from FUNDED_RULES (more lenient).
+        // Challenge accounts use stored rulesConfig with normalization guard.
+        let maxDrawdown: number;
+        let maxDailyDrawdown: number;
+        let profitTarget: number;
+
+        if (isFunded) {
+            // Funded phase: Use tier-specific static rules
+            const tier = startingBalance >= 25000 ? '25k' as const
+                : startingBalance >= 10000 ? '10k' as const
+                    : '5k' as const;
+            const fundedRules = FUNDED_RULES[tier];
+
+            maxDrawdown = fundedRules.maxTotalDrawdown;          // Static from initial balance
+            maxDailyDrawdown = fundedRules.maxDailyDrawdown;     // Static daily limit
+            profitTarget = Infinity;                              // No profit target in funded phase
+        } else {
+            // Challenge phase: Use stored rules with normalization guard
+            const normalized = normalizeRulesConfig(rules as Record<string, unknown>, startingBalance);
+            maxDrawdown = normalized.maxDrawdown;
+            maxDailyDrawdown = ((rules.maxDailyDrawdownPercent as number) || 0.04) * startingBalance;
+            profitTarget = normalized.profitTarget;
+        }
+
         const maxDrawdownLimit = startingBalance - maxDrawdown;
 
         // Check Max Drawdown (HARD BREACH)
         if (equity < maxDrawdownLimit) {
-            logger.warn('HARD BREACH: max drawdown', { challengeId: challenge.id, equity, limit: maxDrawdownLimit });
+            logger.warn('HARD BREACH: max drawdown', { challengeId: challenge.id, equity, limit: maxDrawdownLimit, phase: isFunded ? 'funded' : 'challenge' });
             await this.triggerBreach(challenge, 'max_drawdown', equity, maxDrawdownLimit);
             return;
         }
 
-        // AUDIT FIX: Use percentage-based daily drawdown (matches risk.ts)
-        const maxDailyDrawdown = ((rules.maxDailyDrawdownPercent as number) || 0.04) * startingBalance;
         const dailyDrawdownLimit = startOfDayBalance - maxDailyDrawdown;
 
         // Check Daily Drawdown (HARD BREACH - per cofounder request)
         if (equity < dailyDrawdownLimit) {
-            logger.warn('DAILY BREACH: daily drawdown', { challengeId: challenge.id, equity, limit: dailyDrawdownLimit });
+            logger.warn('DAILY BREACH: daily drawdown', { challengeId: challenge.id, equity, limit: dailyDrawdownLimit, phase: isFunded ? 'funded' : 'challenge' });
             await this.triggerBreach(challenge, 'daily_drawdown', equity, dailyDrawdownLimit);
             return;
         }
 
-        // DEFENSE-IN-DEPTH: Use normalized value (guards against decimal-vs-absolute bug)
-        const profitTarget = normalized.profitTarget;
-        const targetBalance = startingBalance + profitTarget;
-
         // Check Profit Target (PASS condition) — only for non-funded phases
-        const isFunded = challenge.phase === 'funded';
+        const targetBalance = startingBalance + profitTarget;
         if (!isFunded && equity >= targetBalance) {
             logger.info('TARGET HIT: profit target', { challengeId: challenge.id, equity, target: targetBalance });
             await this.triggerPass(challenge, equity, targetBalance);

@@ -6,6 +6,21 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ## 2026-02-10
 
+### 6:25 PM — Evaluation & Funding Safety Audit Fixes 🚨
+
+Deep audit of `evaluator.ts`, `risk-monitor.ts`, `payout-service.ts`, `funded-rules.ts`, and `resolution-detector.ts`. Found and fixed 4 issues:
+
+1. **CRITICAL: Infinite payout bug** (`payout-service.ts`). `completePayout` never deducted the payout amount from the trader's balance. A funded trader could request the same profit repeatedly. Fixed by deducting gross profit (pre-split `cappedProfit`) via `BalanceManager.deductCost()` inside the payout completion transaction.
+
+2. **Transaction safety** (`payout-service.ts`). `completePayout` performed 2 separate DB updates (challenge + payout) without `db.transaction()`, risking orphaned state. Wrapped in atomic transaction with status guard.
+
+3. **Risk monitor funded-phase mismatch** (`risk-monitor.ts`). `checkChallenge` used `normalizeRulesConfig()` for all challenges regardless of phase. Funded accounts should use `FUNDED_RULES[tier]` (static drawdown from initial balance), not the challenge-phase trailing HWM rules. Without this, funded traders could be unfairly breached. Added `isFunded` branch using tier-specific static rules.
+
+4. **Evaluator funded transition didn't close positions** (`evaluator.ts`). If the evaluator triggered the funded transition (runs after every trade), open positions from the challenge phase carried over while the balance reset — giving traders free position value. Added full position liquidation and proceeds settlement inside the transition transaction, with a `WHERE status = 'active'` guard to prevent race condition with risk-monitor's `triggerPass`.
+
+Verified: `tsc --noEmit` (0 errors), `test:engine` (53/53 ✅), `test:lifecycle` (74/74 ✅).
+
+
 ### 5:25 PM — UI Visual Audit Fixes ✅
 
 Three fixes from the visual audit pass:
