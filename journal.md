@@ -6,6 +6,16 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ## 2026-02-10
 
+### 8:05 PM — UX Polish Fixes 🎨
+
+Three fixes from the production walkthrough:
+1. Portfolio panel "Close" → "Hide Portfolio" (avoids confusion with closing positions)
+2. Trade History skeleton loader (replaces plain "Loading trades..." text with animated skeleton rows)
+3. Days Remaining hardcoded values (29, 28) → 30 in demo/fallback views for consistency
+
+All tests pass: tsc ✅, safety (44/44) ✅, engine (53/53) ✅
+Deployed: commit `3b0f0f0`
+
 ### 7:43 PM — Full User Journey Walkthrough 🧭
 
 Walked through the entire product as a user on production:
