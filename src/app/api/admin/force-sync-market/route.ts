@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { getRedisClient } from "@/lib/redis-client";
 import { requireAdmin } from "@/lib/admin-auth";
+import { forceSync, getAllMarketData } from "@/lib/worker-client";
 
 interface PolyMarket {
     question?: string;
@@ -45,13 +45,8 @@ interface ProcessedEvent {
 /**
  * POST /api/admin/force-sync-market
  * 
- * EMERGENCY BYPASS: Directly update Redis with fresh market data from Polymarket.
- * This bypasses the Railway ingestion worker entirely.
- * 
- * Use this when:
- * - Railway worker is down or not updating
- * - Specific markets have stale prices
- * - You need immediate price corrections
+ * EMERGENCY BYPASS: Fetches fresh market data from Polymarket and writes
+ * to Redis via the ingestion-worker's HTTP API. No direct Redis connection.
  */
 
 export async function POST(req: Request) {
@@ -72,11 +67,11 @@ export async function POST(req: Request) {
 
         console.log(`[FORCE_SYNC] Admin triggered force sync: query="${query}", syncAll=${syncAll}`);
 
-        // Fetch current events from Redis
-        const redis = getRedisClient();
-        const currentEventsRaw = await redis.get("event:active_list");
-        const currentEvents: ProcessedEvent[] = currentEventsRaw ?
-            (typeof currentEventsRaw === 'string' ? JSON.parse(currentEventsRaw) : currentEventsRaw) : [];
+        // Fetch current events from worker
+        const currentData = await getAllMarketData();
+        const currentEvents: ProcessedEvent[] = currentData?.events
+            ? (currentData.events as ProcessedEvent[])
+            : [];
 
         let updatedCount = 0;
         let addedCount = 0;
@@ -87,7 +82,9 @@ export async function POST(req: Request) {
             console.log(`[FORCE_SYNC] Performing full sync...`);
             const freshEvents = await fetchAndProcessEvents(500);
 
-            await redis.set("event:active_list", JSON.stringify(freshEvents));
+            const success = await forceSync("event:active_list", freshEvents);
+            if (!success) throw new Error("Failed to write to Redis via worker");
+
             syncLog.push(`Full sync complete: ${freshEvents.length} events stored`);
             updatedCount = freshEvents.length;
         } else {
@@ -111,10 +108,10 @@ export async function POST(req: Request) {
             for (const freshEvent of freshEvents) {
                 if (!freshEvent.title?.toLowerCase().includes(q)) continue;
 
-                const processedEvent = await processEvent(freshEvent);
+                const processedEvent = processEvent(freshEvent);
                 if (!processedEvent) continue;
 
-                // Find existing event in Redis list
+                // Find existing event in current list
                 const existingIndex = currentEvents.findIndex(
                     (e: ProcessedEvent) => e.slug === freshEvent.slug || e.id === freshEvent.id
                 );
@@ -131,15 +128,16 @@ export async function POST(req: Request) {
                     addedCount++;
                 }
 
-                // Also update individual market prices in Redis
+                // Also update individual market prices via worker
                 for (const market of processedEvent.markets) {
-                    await redis.set(`price:${market.id}`, market.price.toString());
+                    await forceSync(`price:${market.id}`, market.price.toString());
                     syncLog.push(`  → Price updated: ${market.question} = ${(market.price * 100).toFixed(1)}%`);
                 }
             }
 
-            // Save updated events back to Redis
-            await redis.set("event:active_list", JSON.stringify(currentEvents));
+            // Save updated events back via worker
+            const success = await forceSync("event:active_list", currentEvents);
+            if (!success) throw new Error("Failed to write updated events to Redis via worker");
         }
 
         const result = {
@@ -165,9 +163,9 @@ export async function POST(req: Request) {
 }
 
 /**
- * Process a single event from Polymarket API into our Redis format
+ * Process a single event from Polymarket API into our format
  */
-async function processEvent(event: PolyEvent): Promise<ProcessedEvent | null> {
+function processEvent(event: PolyEvent): ProcessedEvent | null {
     if (!event.markets || event.markets.length === 0) return null;
 
     const subMarkets: ProcessedMarket[] = [];
@@ -242,7 +240,7 @@ async function fetchAndProcessEvents(limit: number): Promise<ProcessedEvent[]> {
         if (seenSlugs.has(event.slug)) continue;
         seenSlugs.add(event.slug);
 
-        const processedEvent = await processEvent(event);
+        const processedEvent = processEvent(event);
         if (processedEvent) {
             processed.push(processedEvent);
         }
@@ -304,17 +302,15 @@ function getCategories(title: string): string[] {
  * 
  * Quick status check and usage instructions
  */
-export async function GET(req: Request) {
+export async function GET() {
     const adminAuth = await requireAdmin();
     if (!adminAuth.isAuthorized) {
         return adminAuth.response;
     }
 
-    // Get current Redis state
-    const redis = getRedisClient();
-    const currentEventsRaw = await redis.get("event:active_list");
-    const currentEvents: ProcessedEvent[] = currentEventsRaw ?
-        (typeof currentEventsRaw === 'string' ? JSON.parse(currentEventsRaw) : currentEventsRaw) : [];
+    // Get current state from worker
+    const data = await getAllMarketData();
+    const currentEvents = data?.events ? (data.events as ProcessedEvent[]) : [];
 
     return NextResponse.json({
         status: "ready",

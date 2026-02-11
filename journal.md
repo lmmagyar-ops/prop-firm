@@ -4,7 +4,100 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ---
 
+## 2026-02-11
+
+### 7:00 AM — Test Infrastructure Fix: In-Process Worker Server 🧪
+
+**Problem:** After the Redis→HTTP migration, test scripts (`verify-engine`, `verify-safety`, `verify-lifecycle`) seed Redis directly but `MarketService`/`TradeExecutor` now read via the worker's HTTP API. Without a running worker, tests get 404s.
+
+**Fix:** Created `src/scripts/lib/test-worker-server.ts` — starts the same `startHealthServer()` used in production, but in-process on port 19876, connected to the same Redis the tests seed. Sets `INGESTION_WORKER_URL=http://localhost:19876` so the worker-client routes through localhost. Identical code path as production.
+
+**Files changed:**
+- `src/scripts/lib/test-worker-server.ts` [NEW] — shared helper
+- `src/scripts/verify-engine.ts` — uses helper
+- `src/scripts/verify-safety.ts` — uses helper
+- `src/scripts/verify-lifecycle.ts` — uses helper
+
+**Not changed:** `verify-markets.ts`, `verify-prices.ts`, `verify-deploy.ts`, `verify-balances.ts` — these don't use `MarketService` or the worker client.
+
+### 6:00 AM — Complete Redis Proxy Elimination (13 consumers → 0) 🔒
+
+**Goal:** Eliminate ALL direct Redis connections from the Vercel app to fully delete the Railway Redis TCP proxy and save ~$87/month in egress.
+
+**What changed:**
+- **Worker API (`health-server.ts`):** Added 5 generic KV endpoints (`/kv/get`, `/kv/set`, `/kv/del`, `/kv/setnx`, `/kv/incr`) alongside the existing market data endpoints
+- **Worker Client (`worker-client.ts`):** Added generic KV helpers (`kvGet`, `kvSet`, `kvDel`, `kvSetNx`, `kvIncr`)
+- **13 files migrated** — every file that previously imported `redis-client` or `ioredis`:
+  1. `actions/market.ts` → `getAllMarketData()`
+  2. `lib/market.ts` → Full MarketService rewrite
+  3. `lib/events.ts` → `publishAdminEvent()`
+  4. `api/cron/heartbeat-check` → `getHeartbeat()`
+  5. `api/trades/history` → `getAllMarketData()`
+  6. `api/trade/positions` → `getAllMarketData()`
+  7. `api/admin/ingestion-health` → `getIngestionHealth()`
+  8. `api/markets/stream` → `getPrices()` (SSE, was #1 egress source)
+  9. `api/refresh-markets` → `forceSync()`
+  10. `api/admin/force-sync-market` → `forceSync()` + `getAllMarketData()`
+  11. `lib/polymarket-oracle.ts` → `kvGet/kvSet/kvDel`
+  12. `lib/trade-idempotency.ts` → `kvSetNx/kvGet/kvSet`
+  13. `lib/rate-limiter.ts` → `kvIncr`
+- **Dead code identified:** `redis-client.ts`, `arbitrage-sentinel.ts`, `server/ws.ts` — not imported by anything
+- **Build:** `tsc --noEmit` passes clean with zero errors
+
+**Next:** Deploy worker + Vercel, verify in production, then delete the Redis TCP proxy in Railway.
+
+### 5:07 AM — Railway Egress Cost Fix ($90 → ~$3/mo projected) 💸
+
+Root-caused $91.35 Railway bill: **Redis public TCP proxy egress** ($0.05/GB × 1,740 GB = $87).
+The Vercel SSE streaming route (`/api/markets/stream`) was connecting directly to Redis via the public proxy every 1 second per client — 2 Redis reads/second × all clients = 1.7 TB/month.
+
+Meanwhile, the ingestion-worker on Railway was already using private networking (free). Fix:
+- `health-server.ts`: Added `/prices` HTTP endpoint that reads Redis via private networking (free) and serves compact JSON
+- `stream/route.ts`: Rewrote to fetch from `ingestion-worker-production.up.railway.app/prices` instead of Redis directly
+  - Falls back to direct Redis if HTTP fails (resilience)
+  - Auto-retries HTTP every 30s if fallback is active
+
+**Deployment needed:** Push to Railway (ingestion-worker) first, then Vercel (Next.js app).
+
+
+## 2026-02-11
+
+### 4:55 AM — Precision Fix: Dollar Rounding in Risk Monitor 🔬
+
+Exhaustive stress test caught a subtle cosmetic bug: dollar values in Risk Monitor were back-calculated from rounded percentages ($18.80) instead of using raw drawdown amounts ($18.72). Fixed by:
+- `dashboard-service.ts`: Return raw `drawdownAmount` / `dailyDrawdownAmount` from `getEquityStats`
+- `RiskMeters.tsx`: Accept optional raw dollar props, prefer over back-calculated values
+- `page.tsx`: Pass `stats.drawdownAmount` and `stats.dailyDrawdownAmount` directly
+
+---
+
 ## 2026-02-10
+
+### 10:28 PM — Risk Dashboard Battle Test & Bug Fixes 🔍
+
+Ran 3-level battle test before deployment:
+1. **Math Verification**: Opened $100 trade, confirmed drawdown shows `$8.40 / $4,000.00` (0.21%) — correct
+2. **Edge Cases**: Verified zero-state (all green/SAFE) and active-position state (1/10 positions, meters update)
+3. **Cross-Tier Audit**: Found 2 bugs:
+   - `buildRulesConfig()` was missing `maxOpenPositions` — all tiers defaulted to 10 instead of 15 (10k) / 20 (25k). Fixed in `tiers.ts`.
+   - `maxDrawdownPercent` stored as decimal (0.08) but `RiskMeters` expected integer (8), causing wrong floor calc for new accounts. Fixed with `raw < 1 ? raw * 100 : raw` guard in `page.tsx`.
+
+### 10:15 PM — Risk Dashboard Enhancement 📊
+
+Enhanced `RiskMeters.tsx` from 2 abstract percentage bars into a 3-card risk monitor:
+- **Max Drawdown**: Now shows dollars used vs. limit (e.g. `$320 / $400`), 3-zone color coding (green/amber/red), equity floor
+- **Daily Loss**: Same dollar context and color zones
+- **Open Positions**: New card showing position count vs. limit, equity, buying power
+
+Pure presentation change — no backend, no API, no DB queries modified. `npx tsc --noEmit` passes clean.
+
+### 10:00 PM — New User Experience Analysis & Risk Dashboard Decision 🎯
+
+Analyzed the first 10-30 minutes for two personas: (1) experienced prop firm traders (FTMO background) who adapt fast but need to learn prediction market mechanics, and (2) newcomers (crypto/sports betting curious) who may not understand either prop firms or prediction markets.
+
+**Key gaps identified:** No guided first trade, no in-context rules explainer, no market curation, no real-time risk visibility, no newcomer explainer, no demo mode.
+
+**Decision:** Build a real-time risk dashboard (drawdown meter) first because: serves both personas, prevents the #1 retention killer (surprise breach), data already exists in challenge record, pure frontend work, and it's math not opinion. The other features (guided first trade, market curation, demo mode) are content-heavy follow-ups that build on top of this foundation.
 
 ### 9:30 PM — Tier Configuration Hardening 🔒
 

@@ -1,55 +1,6 @@
-import Redis from "ioredis";
 import { isBookDead as _isBookDead, invertOrderBook as _invertOrderBook, buildSyntheticOrderBook, calculateImpact as _calculateImpact } from "./order-book-engine";
 import { getErrorMessage, getErrorName } from "./errors";
-
-// Priority: REDIS_URL (Railway) > REDIS_HOST/PASSWORD (legacy Upstash) > localhost
-function createRedisClient(): Redis {
-    // Priority 1: Use REDIS_URL if set (Railway or any standard Redis)
-    if (process.env.REDIS_URL) {
-        return new Redis(process.env.REDIS_URL, {
-            connectTimeout: 5000,
-            commandTimeout: 5000,
-            maxRetriesPerRequest: 1,
-            lazyConnect: true,
-        });
-    }
-
-    // Priority 2: Legacy Upstash with TLS (deprecated)
-    if (process.env.REDIS_HOST && process.env.REDIS_PASSWORD) {
-        return new Redis({
-            host: process.env.REDIS_HOST,
-            port: parseInt(process.env.REDIS_PORT || "6379"),
-            password: process.env.REDIS_PASSWORD,
-            tls: {}, // Required for Upstash
-            connectTimeout: 5000,
-            commandTimeout: 5000,
-            maxRetriesPerRequest: 1,
-            lazyConnect: true,
-        });
-    }
-
-    // Priority 3: Local development fallback
-    return new Redis("redis://localhost:6380", {
-        connectTimeout: 5000,
-        commandTimeout: 5000,
-        maxRetriesPerRequest: 1,
-        lazyConnect: true,
-    });
-}
-
-// Lazy Redis singleton with connection timeout to prevent hanging on serverless
-let redisInstance: Redis | null = null;
-
-function getRedis(): Redis {
-    if (!redisInstance) {
-        redisInstance = createRedisClient();
-
-        redisInstance.on('error', (err) => {
-            console.error('[MarketService] Redis error:', getErrorMessage(err));
-        });
-    }
-    return redisInstance;
-}
+import { getAllMarketData, getAllOrderBooks, getComplement, type AllMarketData } from "./worker-client";
 
 export interface MarketPrice {
     price: string;
@@ -78,7 +29,7 @@ export interface ExecutionSimulation {
     reason?: string;
 }
 
-// ── Types for Redis-cached event/market data (Gamma API format) ──
+// ── Types for cached event/market data (Gamma API format) ──
 interface EventMarket {
     id: string;
     price: string;
@@ -92,32 +43,35 @@ interface EventData {
     markets?: EventMarket[];
 }
 
-// PERF: Short-lived in-memory cache for parsed event lists.
-// Avoids re-parsing ~500KB JSON blobs multiple times per request cycle.
-interface EventListCache {
-    kalshiEvents: EventData[];
-    polyEvents: EventData[];
+// PERF: Short-lived in-memory cache for parsed market data from the worker.
+// Avoids re-fetching within the same request cycle.
+interface MarketDataCache {
+    data: AllMarketData;
     timestamp: number;
 }
-let eventListCache: EventListCache | null = null;
-const EVENT_LIST_CACHE_TTL = 5000; // 5 seconds
+let marketDataCache: MarketDataCache | null = null;
+const MARKET_DATA_CACHE_TTL = 5000; // 5 seconds
 
-async function getParsedEventLists(): Promise<{ kalshiEvents: EventData[]; polyEvents: EventData[] }> {
-    if (eventListCache && Date.now() - eventListCache.timestamp < EVENT_LIST_CACHE_TTL) {
-        return eventListCache;
+async function getCachedMarketData(): Promise<AllMarketData | null> {
+    if (marketDataCache && Date.now() - marketDataCache.timestamp < MARKET_DATA_CACHE_TTL) {
+        return marketDataCache.data;
     }
 
-    const redis = getRedis();
-    const [kalshiData, polyData] = await Promise.all([
-        redis.get('kalshi:active_list'),
-        redis.get('event:active_list'),
-    ]);
+    const data = await getAllMarketData();
+    if (data) {
+        marketDataCache = { data, timestamp: Date.now() };
+    }
+    return data;
+}
 
-    const kalshiEvents = kalshiData ? JSON.parse(kalshiData) : [];
-    const polyEvents = polyData ? JSON.parse(polyData) : [];
+async function getParsedEventLists(): Promise<{ kalshiEvents: EventData[]; polyEvents: EventData[] }> {
+    const data = await getCachedMarketData();
+    if (!data) return { kalshiEvents: [], polyEvents: [] };
 
-    eventListCache = { kalshiEvents, polyEvents, timestamp: Date.now() };
-    return eventListCache;
+    return {
+        kalshiEvents: (data.kalshi || []) as EventData[],
+        polyEvents: (data.events || []) as EventData[],
+    };
 }
 
 export class MarketService {
@@ -158,14 +112,13 @@ export class MarketService {
             }
 
             // Fallback: binary market list
-            const redis = getRedis();
-            const binaryData = await redis.get('market:active_list');
-            if (binaryData) {
-                const markets = JSON.parse(binaryData);
+            const data = await getCachedMarketData();
+            if (data?.markets) {
+                const markets = data.markets as EventMarket[];
                 const market = markets.find((m: EventMarket) => m.id === marketId);
                 if (market) {
                     const price = market.currentPrice ?? market.basePrice;
-                    if (Number.isFinite(price) && price > 0 && price < 1) {
+                    if (Number.isFinite(price) && price !== undefined && price > 0 && price < 1) {
                         return price;
                     }
                 }
@@ -179,7 +132,7 @@ export class MarketService {
     }
 
     /**
-     * Demo mode fallback data - used when Redis is unavailable
+     * Demo mode fallback data - used when worker is unavailable
      */
     private static getDemoPrice(assetId: string): MarketPrice {
         return {
@@ -206,38 +159,33 @@ export class MarketService {
     }
 
     /**
-     * Fetches the latest price for an asset from Redis cache.
-     * Falls back to event list data, then demo data if Redis is unavailable.
+     * Fetches the latest price for an asset from the worker's market data cache.
+     * Falls back to event list data, then demo data if worker is unavailable.
      */
     static async getLatestPrice(assetId: string): Promise<MarketPrice | null> {
         try {
-            // Try consolidated prices key first (new format - 1 Redis call)
-            const allPricesData = await getRedis().get('market:prices:all');
-            if (allPricesData) {
-                try {
-                    const allPrices = JSON.parse(allPricesData);
-                    if (allPrices[assetId]) {
-                        const parsed = allPrices[assetId];
-                        return {
-                            price: parsed.price?.toString() || '0.5',
-                            asset_id: assetId,
-                            timestamp: parsed.timestamp || Date.now(),
-                            source: 'live' as const
-                        };
-                    }
-                } catch {
-                    // Invalid JSON, continue to fallback
+            // Try consolidated prices from worker (single HTTP call for all data)
+            const data = await getCachedMarketData();
+            if (data?.livePrices) {
+                const entry = data.livePrices[assetId];
+                if (entry?.price) {
+                    return {
+                        price: entry.price.toString(),
+                        asset_id: assetId,
+                        timestamp: Date.now(),
+                        source: 'live' as const
+                    };
                 }
             }
 
-            // Try to look up from event lists (already loaded, no additional Redis call)
+            // Try to look up from event lists (already loaded, no additional call)
             const eventPrice = await this.lookupPriceFromEvents(assetId);
             if (eventPrice) return { ...eventPrice, source: 'event_list' as const };
 
             console.log(`[MarketService] No price data for ${assetId}, using demo fallback`);
             return { ...this.getDemoPrice(assetId), source: 'demo' as const };
         } catch (error: unknown) {
-            console.error(`[MarketService] Redis error, using demo fallback:`, getErrorMessage(error));
+            console.error(`[MarketService] Worker error, using demo fallback:`, getErrorMessage(error));
             return { ...this.getDemoPrice(assetId), source: 'demo' as const };
         }
     }
@@ -253,7 +201,7 @@ export class MarketService {
         if (marketIds.length === 0) return results;
 
         try {
-            // PERF: Use cached event lists instead of re-parsing per call
+            // PERF: Use cached market data instead of re-parsing per call
             const { kalshiEvents, polyEvents } = await getParsedEventLists();
 
             // Build market lookup maps
@@ -311,22 +259,11 @@ export class MarketService {
         if (marketIds.length === 0) return results;
 
         try {
-            const redis = getRedis();
-
-            // Fetch ALL order books from single key (1 Redis call instead of N)
-            const allBooksData = await redis.get('market:orderbooks');
-            let allBooks: Record<string, OrderBook> = {};
-
-            if (allBooksData) {
-                try {
-                    allBooks = JSON.parse(allBooksData);
-                } catch {
-                    console.warn('[MarketService] Failed to parse orderbooks cache');
-                }
-            }
+            // Fetch ALL order books from worker (1 HTTP call instead of Redis)
+            const allBooks = await getAllOrderBooks() as Record<string, OrderBook> | null;
 
             for (const marketId of marketIds) {
-                const book = allBooks[marketId];
+                const book = allBooks?.[marketId];
 
                 if (book) {
                     // Use best bid (what you could sell at) for mark-to-market
@@ -376,7 +313,7 @@ export class MarketService {
     }
 
     /**
-     * Batch fetch market titles from Redis event lists
+     * Batch fetch market titles from event lists
      */
     static async getBatchTitles(marketIds: string[]): Promise<Map<string, string>> {
         const results = new Map<string, string>();
@@ -411,13 +348,13 @@ export class MarketService {
     }
 
     /**
-     * Look up price from event lists (kalshi:active_list or event:active_list)
-     * Falls back to market:active_list for binary markets not in featured events.
+     * Look up price from event lists (kalshi/polymarket data from worker).
+     * Falls back to binary market list for markets not in featured events.
      * This allows us to get live prices for position P&L calculations
      */
     static async lookupPriceFromEvents(marketId: string): Promise<MarketPrice | null> {
         try {
-            // PERF: Use cached event lists instead of re-parsing per call
+            // PERF: Use cached market data instead of re-parsing per call
             const { kalshiEvents, polyEvents } = await getParsedEventLists();
 
             // Try Kalshi first (marketId might be a ticker like KXPREZ2028-28-JVAN)
@@ -454,12 +391,10 @@ export class MarketService {
                 }
             }
 
-            // FALLBACK: Check market:active_list for binary markets not in featured events
-            // These are high-volume single-outcome markets displayed in the grid
-            const redis = getRedis();
-            const binaryData = await redis.get('market:active_list');
-            if (binaryData) {
-                const markets = JSON.parse(binaryData);
+            // FALLBACK: Check binary market list for markets not in featured events
+            const data = await getCachedMarketData();
+            if (data?.markets) {
+                const markets = data.markets as EventMarket[];
                 const market = markets.find((m: EventMarket) => m.id === marketId);
                 if (market) {
                     const price = market.currentPrice ?? market.basePrice ?? 0.5;
@@ -484,29 +419,15 @@ export class MarketService {
     }
 
     /**
-     * Fetches the full Order Book from Redis (Snapshot).
+     * Fetches the full Order Book from worker's cache.
      * Falls back to synthetic book from event list price, then demo data.
      */
     static async getOrderBook(assetId: string): Promise<OrderBook | null> {
         try {
-            // Try single-key cache first (new format)
-            const allBooksData = await getRedis().get('market:orderbooks');
-            if (allBooksData) {
-                try {
-                    const allBooks = JSON.parse(allBooksData);
-                    if (allBooks[assetId]) {
-                        return { ...allBooks[assetId], source: 'live' as const };
-                    }
-                } catch {
-                    // Invalid JSON, continue to fallback
-                }
-            }
-
-            // Fallback to legacy individual key (for backwards compat)
-            const legacyData = await getRedis().get(`market:book:${assetId}`);
-            if (legacyData) {
-                const parsed = JSON.parse(legacyData) as OrderBook;
-                return { ...parsed, source: 'live' as const };
+            // Fetch from worker's order book cache
+            const allBooks = await getAllOrderBooks() as Record<string, OrderBook> | null;
+            if (allBooks?.[assetId]) {
+                return { ...allBooks[assetId], source: 'live' as const };
             }
 
             // Try to build synthetic order book from event list price
@@ -516,17 +437,17 @@ export class MarketService {
                 console.log(`[MarketService] Building synthetic orderbook for ${assetId.slice(0, 12)}... at price ${price}`);
                 return { ...this.buildSyntheticOrderBookPublic(price), source: 'synthetic' as const };
             }
-            console.log(`[MarketService] No Redis orderbook for ${assetId}, using demo fallback`);
+            console.log(`[MarketService] No orderbook for ${assetId}, using demo fallback`);
             return { ...this.getDemoOrderBook(), source: 'demo' as const };
         } catch (error: unknown) {
-            console.error(`[MarketService] Redis orderbook error, using demo fallback:`, getErrorMessage(error));
+            console.error(`[MarketService] Orderbook error, using demo fallback:`, getErrorMessage(error));
             return { ...this.getDemoOrderBook(), source: 'demo' as const };
         }
     }
 
     /**
      * Fetches a FRESH order book directly from Polymarket's CLOB API.
-     * Bypasses Redis cache entirely — used exclusively for trade execution.
+     * Bypasses worker cache entirely — used exclusively for trade execution.
      * This guarantees the execution price matches current market conditions.
      * 
      * DUAL-TOKEN FIX: If the YES token's book is dead (huge spread),
@@ -547,8 +468,8 @@ export class MarketService {
             if (this.isBookDead(book)) {
                 console.warn(`[MarketService] YES book dead for ${tokenId.slice(0, 12)}... — trying complement (NO) token`);
 
-                // Look up the complement (NO) token from Redis
-                const complementTokenId = await getRedis().hget('market:complements', tokenId);
+                // Look up the complement (NO) token from the worker
+                const complementTokenId = await getComplement(tokenId);
 
                 if (complementTokenId) {
                     const noBook = await this.fetchClobBook(complementTokenId);
@@ -593,6 +514,8 @@ export class MarketService {
 
     /**
      * Fetch a single CLOB order book with timeout.
+     * NOTE: This goes directly to Polymarket's CLOB API — not through our worker.
+     * This is intentional: trade execution needs the freshest possible data.
      */
     private static async fetchClobBook(tokenId: string): Promise<OrderBook | null> {
         const controller = new AbortController();

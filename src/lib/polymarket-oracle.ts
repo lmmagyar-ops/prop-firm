@@ -10,7 +10,7 @@
  * - Sync resolution status for position settlement
  */
 
-import { getRedisClient } from "./redis-client";
+import { kvGet, kvSet, kvDel } from "./worker-client";
 import { getErrorMessage } from "./errors";
 
 const GAMMA_API_BASE = "https://gamma-api.polymarket.com";
@@ -51,8 +51,8 @@ export class PolymarketOracle {
         const cacheKey = `oracle:resolution:${tokenId}`;
 
         try {
-            // 1. Check Redis cache first
-            const cached = await getRedisClient().get(cacheKey);
+            // 1. Check cache first (via worker HTTP)
+            const cached = await kvGet(cacheKey);
             if (cached) {
                 const parsed = JSON.parse(cached) as MarketResolution;
                 return { ...parsed, source: 'cache' };
@@ -69,8 +69,8 @@ export class PolymarketOracle {
             // 3. Determine resolution status
             const resolution = this.parseResolution(tokenId, marketData);
 
-            // 4. Cache the result
-            await getRedisClient().setex(cacheKey, CACHE_TTL_SECONDS, JSON.stringify(resolution));
+            // 4. Cache the result (via worker HTTP)
+            await kvSet(cacheKey, JSON.stringify(resolution), CACHE_TTL_SECONDS);
 
             return resolution;
 
@@ -217,6 +217,6 @@ export class PolymarketOracle {
      * Useful after detecting a resolution event.
      */
     static async invalidateCache(tokenId: string): Promise<void> {
-        await getRedisClient().del(`oracle:resolution:${tokenId}`);
+        await kvDel(`oracle:resolution:${tokenId}`);
     }
 }

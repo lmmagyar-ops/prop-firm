@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getRedisClient } from "@/lib/redis-client";
+import { getHeartbeat } from "@/lib/worker-client";
 import { alerts } from "@/lib/alerts";
 
 /**
  * Heartbeat Check Cron
  * 
- * Runs every 5 minutes. Reads the `ingestion:heartbeat` key from Redis
- * (written by the ingestion worker every 60s). If the heartbeat is older
- * than 3 minutes, fires a critical Slack alert.
+ * Runs every 5 minutes. Reads the heartbeat data from the ingestion
+ * worker's HTTP API (which reads Redis via private networking).
+ * If the heartbeat is older than 3 minutes, fires a critical Slack alert.
  * 
  * Schedule: every 5 minutes (vercel.json)
  */
@@ -23,20 +23,18 @@ export async function GET(request: NextRequest) {
     }
 
     try {
-        const redis = getRedisClient();
-        const raw = await redis.get("ingestion:heartbeat");
+        const heartbeat = await getHeartbeat() as { timestamp: number; workerId?: string; isLeader?: boolean; activeTokens?: number; priceBufferSize?: number } | null;
 
-        if (!raw) {
+        if (!heartbeat) {
             // No heartbeat ever written — worker has never started
             await alerts.ingestionStale(new Date(0));
             return NextResponse.json({
                 status: "stale",
-                reason: "No heartbeat found in Redis — worker may have never started",
+                reason: "No heartbeat found — worker may have never started",
                 timestamp: new Date().toISOString(),
             });
         }
 
-        const heartbeat = JSON.parse(raw);
         const age = Date.now() - heartbeat.timestamp;
         const ageSeconds = Math.round(age / 1000);
         const isStale = age > STALE_THRESHOLD_MS;

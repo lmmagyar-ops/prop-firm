@@ -25,9 +25,10 @@ import { FUNDED_RULES } from '@/lib/funded-rules';
 import { buildRulesConfig } from '@/config/tiers';
 import { nanoid } from 'nanoid';
 import Redis from 'ioredis';
+import { startTestWorkerServer } from './lib/test-worker-server';
 import { TestGuard } from './lib/test-guard';
 
-const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
+let redis: InstanceType<typeof Redis>;
 
 // ============================================================
 // CONFIG
@@ -436,7 +437,6 @@ async function cleanup() {
 // ============================================================
 const guard = new TestGuard('safety-bot');
 guard.registerCleanup(cleanup);
-guard.registerCleanup(async () => { await redis.quit(); });
 
 async function main() {
     console.log(`
@@ -448,6 +448,10 @@ async function main() {
     await guard.sweepOrphans();
 
     try {
+        const workerServer = await startTestWorkerServer();
+        redis = workerServer.redis;
+        guard.registerCleanup(workerServer.cleanup);
+
         await seedRedis();
         await test1_infinitePayoutBug();
         await test2_transactionAtomicity();
@@ -458,7 +462,6 @@ async function main() {
         fail++;
     } finally {
         await cleanup();
-        await redis.quit();
         guard.markComplete();
     }
 

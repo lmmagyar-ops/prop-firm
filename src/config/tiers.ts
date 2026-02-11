@@ -157,6 +157,9 @@ export function buildRulesConfig(tierId: string) {
         lowVolumeThreshold: tier.lowVolumeThreshold,
         lowVolumeMaxPositionPercent: tier.lowVolumeMaxPositionPercent,
 
+        // Position Limits
+        maxOpenPositions: tier.maxOpenPositions,
+
         // Liquidity
         maxVolumeImpactPercent: tier.maxVolumeImpactPercent,
         minMarketVolume: tier.minMarketVolume,

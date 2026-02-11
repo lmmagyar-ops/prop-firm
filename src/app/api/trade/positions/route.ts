@@ -7,6 +7,7 @@ import { cookies } from "next/headers";
 import { MarketService } from "@/lib/market";
 import { createLogger } from "@/lib/logger";
 import { getDirectionAdjustedPrice } from "@/lib/position-utils";
+import { getAllMarketData } from "@/lib/worker-client";
 
 const log = createLogger("PositionsAPI");
 
@@ -67,7 +68,7 @@ export async function GET() {
     const marketIds = openPositions.map(pos => pos.marketId);
     const priceMap = await MarketService.getBatchOrderBookPrices(marketIds);
 
-    // Batch fetch all market titles at once
+    // Batch fetch all market titles at once (via worker HTTP)
     const titleMap = await getBatchMarketTitles(marketIds);
 
     // Map positions with pre-fetched prices and titles
@@ -120,48 +121,37 @@ export async function GET() {
     return NextResponse.json({ positions: mapped });
 }
 
-// Batch fetch market titles for multiple markets in a single Redis operation
+// Batch fetch market titles for multiple markets via worker HTTP API
 async function getBatchMarketTitles(marketIds: string[]): Promise<Map<string, string>> {
     const results = new Map<string, string>();
 
     if (marketIds.length === 0) return results;
 
-    const Redis = (await import("ioredis")).default;
-    const redis = new Redis(process.env.REDIS_URL || "redis://localhost:6380", {
-        connectTimeout: 2000,
-        commandTimeout: 2000,
-    });
-
     try {
-        // Load event lists once
-        const [kalshiData, polyData] = await Promise.all([
-            redis.get("kalshi:active_list"),
-            redis.get("event:active_list")
-        ]);
+        // Load event lists from worker (uses in-memory cache from worker-client)
+        const data = await getAllMarketData();
+        if (!data) return results;
 
         // Build market lookup maps
-        const kalshiMarkets = new Map<string, any>();
-        const polyMarkets = new Map<string, any>();
+        const kalshiEvents = (data.kalshi || []) as { markets?: { id: string; question?: string }[]; title?: string }[];
+        const polyEvents = (data.events || []) as { markets?: { id: string; question?: string }[]; title?: string }[];
 
-        if (kalshiData) {
-            const events = JSON.parse(kalshiData);
-            for (const event of events) {
-                for (const market of event.markets || []) {
-                    kalshiMarkets.set(market.id, {
-                        title: market.question || event.title || market.id.slice(0, 20)
-                    });
-                }
+        const kalshiMarkets = new Map<string, { title: string }>();
+        const polyMarkets = new Map<string, { title: string }>();
+
+        for (const event of kalshiEvents) {
+            for (const market of event.markets || []) {
+                kalshiMarkets.set(market.id, {
+                    title: market.question || event.title || market.id.slice(0, 20)
+                });
             }
         }
 
-        if (polyData) {
-            const events = JSON.parse(polyData);
-            for (const event of events) {
-                for (const market of event.markets || []) {
-                    polyMarkets.set(market.id, {
-                        title: market.question || event.title || market.id.slice(0, 20)
-                    });
-                }
+        for (const event of polyEvents) {
+            for (const market of event.markets || []) {
+                polyMarkets.set(market.id, {
+                    title: market.question || event.title || market.id.slice(0, 20)
+                });
             }
         }
 
@@ -186,16 +176,7 @@ async function getBatchMarketTitles(marketIds: string[]): Promise<Map<string, st
         for (const marketId of marketIds) {
             results.set(marketId, marketId.slice(0, 20) + "...");
         }
-    } finally {
-        redis.disconnect();
     }
 
     return results;
 }
-
-// Legacy helper kept for compatibility (now unused)
-async function getMarketTitle(marketId: string): Promise<string> {
-    const titles = await getBatchMarketTitles([marketId]);
-    return titles.get(marketId) || marketId.slice(0, 20) + "...";
-}
-

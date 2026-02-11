@@ -161,7 +161,7 @@ export function getEquityStats(challenge: DbChallengeRow, equity: number, starti
 
     const profitProgress = Math.max(0, Math.min(100, (totalPnL / profitTarget) * 100));
 
-    return { totalPnL, dailyPnL, drawdownUsage, dailyDrawdownUsage, profitProgress };
+    return { totalPnL, dailyPnL, drawdownUsage, dailyDrawdownUsage, profitProgress, drawdownAmount, dailyDrawdownAmount };
 }
 
 /**

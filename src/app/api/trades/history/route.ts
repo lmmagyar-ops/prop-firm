@@ -3,20 +3,19 @@ import { auth } from "@/auth";
 import { db } from "@/db";
 import { trades, challenges } from "@/db/schema";
 import { eq, desc, and } from "drizzle-orm";
-import { getRedisClient } from "@/lib/redis-client";
+import { getAllMarketData } from "@/lib/worker-client";
 
-// Enrich trade records with market titles from Redis
+// Enrich trade records with market titles from worker HTTP API
 async function enrichTrades(tradeRecords: (typeof trades.$inferSelect)[]) {
-    const redis = getRedisClient();
-    const eventData = await redis.get("event:active_list");
-    const events = eventData ? JSON.parse(eventData) : [];
+    const data = await getAllMarketData();
+    const events = data?.events ? (data.events as { markets?: { id: string; question?: string; title?: string }[]; title?: string; image?: string }[]) : [];
 
     const marketLookup: Record<string, { title: string; eventTitle: string; image?: string }> = {};
     for (const event of events) {
         for (const market of event.markets || []) {
             marketLookup[market.id] = {
-                title: market.question || market.title,
-                eventTitle: event.title,
+                title: market.question || market.title || "",
+                eventTitle: event.title || "",
                 image: event.image
             };
         }

@@ -5,9 +5,10 @@ import { users, challenges, positions, trades } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { TradeExecutor } from '@/lib/trade';
 import { MarketService } from '@/lib/market';
-import Redis from 'ioredis';
+import { startTestWorkerServer } from './lib/test-worker-server';
 import { TestGuard } from './lib/test-guard';
-const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
+import type Redis from 'ioredis';
+let redis: InstanceType<typeof Redis>;
 
 // ============================================================
 // CONFIG - All test parameters in one place
@@ -232,7 +233,6 @@ async function getBalance(challengeId: string): Promise<number> {
 // ============================================================
 const guard = new TestGuard('verify-bot');
 guard.registerCleanup(cleanup);
-guard.registerCleanup(async () => { redis.disconnect(); });
 
 async function runVerification() {
     console.log('\n🧪 ═══════════════════════════════════════════════');
@@ -243,6 +243,10 @@ async function runVerification() {
 
     try {
         // ---- PHASE 0: Setup ----
+        const workerServer = await startTestWorkerServer();
+        redis = workerServer.redis;
+        guard.registerCleanup(workerServer.cleanup);
+
         await seedRedis();
         const challengeId = await setup();
 

@@ -216,8 +216,23 @@ export default async function DashboardPage() {
                                 dailyDrawdownUsage={stats.dailyDrawdownUsage}
                                 startOfDayBalance={activeChallenge.startOfDayBalance}
                                 startingBalance={activeChallenge.startingBalance}
-                                maxDrawdownPercent={(activeChallenge.rulesConfig as Record<string, number>)?.maxDrawdownPercent ?? 10}
-                                dailyDrawdownPercent={(activeChallenge.rulesConfig as Record<string, number>)?.dailyDrawdownPercent ?? 5}
+                                maxDrawdownPercent={(() => {
+                                    const rc = activeChallenge.rulesConfig as Record<string, number> | null;
+                                    const raw = rc?.maxDrawdownPercent ?? rc?.maxTotalDrawdownPercent ?? 0.08;
+                                    return raw < 1 ? raw * 100 : raw; // 0.08 → 8, already 8 → 8
+                                })()}
+                                dailyDrawdownPercent={(() => {
+                                    const rc = activeChallenge.rulesConfig as Record<string, number> | null;
+                                    const raw = rc?.dailyLossPercent ?? rc?.maxDailyDrawdownPercent ?? 0.04;
+                                    return raw < 1 ? raw * 100 : raw; // 0.05 → 5, already 5 → 5
+                                })()}
+                                maxDrawdownDollars={(activeChallenge.rulesConfig as Record<string, number>)?.maxDrawdown ?? activeChallenge.startingBalance * 0.08}
+                                dailyDrawdownDollars={((activeChallenge.rulesConfig as Record<string, number>)?.maxDailyDrawdownPercent ?? 0.04) * activeChallenge.startingBalance}
+                                drawdownUsedDollars={stats.drawdownAmount}
+                                dailyDrawdownUsedDollars={stats.dailyDrawdownAmount}
+                                equity={trueEquity}
+                                openPositionCount={positions?.length ?? 0}
+                                maxPositions={(activeChallenge.rulesConfig as Record<string, number>)?.maxOpenPositions ?? 10}
                             />
                         </>
                     )}
@@ -257,7 +272,7 @@ export default async function DashboardPage() {
                                 <ProfitProgress totalPnL={4250.00} profitTarget={10000} profitProgress={42.5} startingBalance={100000} />
                             </div>
                         </div>
-                        <RiskMeters drawdownUsage={1.2} dailyDrawdownUsage={0.8} startOfDayBalance={103000} startingBalance={100000} />
+                        <RiskMeters drawdownUsage={1.2} dailyDrawdownUsage={0.8} startOfDayBalance={103000} startingBalance={100000} maxDrawdownDollars={8000} dailyDrawdownDollars={5000} equity={104250} openPositionCount={3} maxPositions={10} />
 
                     </div>
 

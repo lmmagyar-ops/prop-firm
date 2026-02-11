@@ -26,9 +26,10 @@ import { TradeExecutor } from '@/lib/trade';
 import { ChallengeEvaluator } from '@/lib/evaluator';
 import { TIERS, buildRulesConfig } from '@/config/tiers';
 import Redis from 'ioredis';
+import { startTestWorkerServer } from './lib/test-worker-server';
 import { TestGuard } from './lib/test-guard';
 
-const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
+let redis: InstanceType<typeof Redis>;
 
 // ============================================================
 // CONFIG
@@ -472,7 +473,6 @@ async function cleanup() {
 // ============================================================
 const guard = new TestGuard('lifecycle-bot');
 guard.registerCleanup(cleanup);
-guard.registerCleanup(async () => { await redis.disconnect(); });
 
 async function run() {
     console.log('\n🧬 ═══════════════════════════════════════════════');
@@ -482,6 +482,10 @@ async function run() {
     await guard.sweepOrphans();
 
     try {
+        const workerServer = await startTestWorkerServer();
+        redis = workerServer.redis;
+        guard.registerCleanup(workerServer.cleanup);
+
         await seedRedis();
         console.log('  ✅ Redis seeded with test market data\n');
 
@@ -504,7 +508,6 @@ async function run() {
     console.log(`   RESULTS: ${pass} passed, ${fail} failed`);
     console.log('═══════════════════════════════════════════════\n');
 
-    await redis.disconnect();
     guard.markComplete();
     process.exit(fail > 0 ? 1 : 0);
 }

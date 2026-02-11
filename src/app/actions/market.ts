@@ -1,34 +1,7 @@
 "use server";
 
-import Redis, { RedisOptions } from "ioredis";
-
 import { unstable_noStore as noStore } from "next/cache";
-
-type RedisConfig = string | RedisOptions;
-
-// Priority: REDIS_URL (Railway) > REDIS_HOST/PASSWORD (legacy Upstash) > localhost
-const getRedisConfig = (): RedisConfig => {
-    // Priority 1: Use REDIS_URL if set (Railway or any standard Redis)
-    if (process.env.REDIS_URL) {
-        return process.env.REDIS_URL;
-    }
-    // Priority 2: Legacy Upstash with TLS (deprecated)
-    if (process.env.REDIS_HOST && process.env.REDIS_PASSWORD) {
-        return {
-            host: process.env.REDIS_HOST,
-            port: parseInt(process.env.REDIS_PORT || "6379"),
-            password: process.env.REDIS_PASSWORD,
-            tls: {} // Required for Upstash
-        };
-    }
-    // Priority 3: Local development fallback
-    return "redis://localhost:6380";
-};
-
-const redisConfig = getRedisConfig();
-const redis = typeof redisConfig === 'string'
-    ? new Redis(redisConfig)
-    : new Redis(redisConfig);
+import { getAllMarketData } from "@/lib/worker-client";
 
 export interface MarketMetadata {
     id: string;
@@ -46,10 +19,10 @@ export interface MarketMetadata {
 export async function getActiveMarkets(): Promise<MarketMetadata[]> {
     noStore(); // Opt out of static caching
     try {
-        const data = await redis.get("market:active_list");
+        const data = await getAllMarketData();
         if (!data) return [];
 
-        const markets = JSON.parse(data) as MarketMetadata[];
+        const markets = (data.markets || []) as MarketMetadata[];
 
         // NOTE: basePrice is already stored during ingestion.
         // We removed N Redis calls for order book enrichment here
@@ -77,10 +50,12 @@ export async function getAllMarketsFlat(): Promise<MarketMetadata[]> {
     const seenIds = new Set<string>();
 
     try {
+        const data = await getAllMarketData();
+        if (!data) return [];
+
         // 1. Binary/standalone markets
-        const marketData = await redis.get("market:active_list");
-        if (marketData) {
-            const markets = JSON.parse(marketData) as MarketMetadata[];
+        if (data.markets) {
+            const markets = data.markets as MarketMetadata[];
             for (const m of markets) {
                 if (!seenIds.has(m.id)) {
                     seenIds.add(m.id);
@@ -93,9 +68,8 @@ export async function getAllMarketsFlat(): Promise<MarketMetadata[]> {
         }
 
         // 2. Event sub-markets (Polymarket)
-        const eventData = await redis.get("event:active_list");
-        if (eventData) {
-            const events = JSON.parse(eventData) as EventMetadata[];
+        if (data.events) {
+            const events = data.events as EventMetadata[];
             for (const event of events) {
                 for (const sub of event.markets) {
                     if (!seenIds.has(sub.id)) {
@@ -117,9 +91,8 @@ export async function getAllMarketsFlat(): Promise<MarketMetadata[]> {
         }
 
         // 3. Kalshi event sub-markets
-        const kalshiData = await redis.get("kalshi:active_list");
-        if (kalshiData) {
-            const events = JSON.parse(kalshiData) as EventMetadata[];
+        if (data.kalshi) {
+            const events = data.kalshi as EventMetadata[];
             for (const event of events) {
                 for (const sub of event.markets) {
                     if (!seenIds.has(sub.id)) {
@@ -156,6 +129,9 @@ export async function getAllMarketsFlat(): Promise<MarketMetadata[]> {
 export async function getMarketById(marketId: string): Promise<MarketMetadata | null> {
     noStore();
     try {
+        const data = await getAllMarketData();
+        if (!data) return null;
+
         // IMPORTANT: Search event lists FIRST, then binary list.
         // Sub-markets of large events (FIFA World Cup, Bitcoin, Elections) appear in BOTH
         // event:active_list (with parent event volume) and market:active_list (with only
@@ -166,9 +142,8 @@ export async function getMarketById(marketId: string): Promise<MarketMetadata | 
         // traders from the 5% tier ($500 cap) to the 2.5% tier ($250 cap).
 
         // 1. Search event:active_list (Polymarket multi-outcome events)
-        const eventData = await redis.get("event:active_list");
-        if (eventData) {
-            const events = JSON.parse(eventData) as EventMetadata[];
+        if (data.events) {
+            const events = data.events as EventMetadata[];
             for (const event of events) {
                 const subMarket = event.markets.find(m => m.id === marketId);
                 if (subMarket) {
@@ -191,9 +166,8 @@ export async function getMarketById(marketId: string): Promise<MarketMetadata | 
         }
 
         // 2. Search kalshi:active_list (Kalshi events)
-        const kalshiData = await redis.get("kalshi:active_list");
-        if (kalshiData) {
-            const events = JSON.parse(kalshiData) as EventMetadata[];
+        if (data.kalshi) {
+            const events = data.kalshi as EventMetadata[];
             for (const event of events) {
                 const subMarket = event.markets.find(m => m.id === marketId);
                 if (subMarket) {
@@ -215,9 +189,8 @@ export async function getMarketById(marketId: string): Promise<MarketMetadata | 
         }
 
         // 3. Fallback: market:active_list (standalone binary markets not in any event)
-        const marketData = await redis.get("market:active_list");
-        if (marketData) {
-            const markets = JSON.parse(marketData) as MarketMetadata[];
+        if (data.markets) {
+            const markets = data.markets as MarketMetadata[];
             const found = markets.find(m => m.id === marketId);
             if (found) {
                 return {
@@ -245,10 +218,12 @@ export async function getEventInfoForMarket(marketId: string): Promise<{
 } | null> {
     noStore();
     try {
+        const data = await getAllMarketData();
+        if (!data) return null;
+
         // Search event:active_list for multi-outcome markets
-        const eventData = await redis.get("event:active_list");
-        if (eventData) {
-            const events = JSON.parse(eventData) as EventMetadata[];
+        if (data.events) {
+            const events = data.events as EventMetadata[];
             for (const event of events) {
                 const found = event.markets.find(m => m.id === marketId);
                 if (found) {
@@ -262,9 +237,8 @@ export async function getEventInfoForMarket(marketId: string): Promise<{
         }
 
         // Try Kalshi events too
-        const kalshiData = await redis.get("kalshi:active_list");
-        if (kalshiData) {
-            const events = JSON.parse(kalshiData) as EventMetadata[];
+        if (data.kalshi) {
+            const events = data.kalshi as EventMetadata[];
             for (const event of events) {
                 const found = event.markets.find(m => m.id === marketId);
                 if (found) {
@@ -320,13 +294,15 @@ export type Platform = "polymarket" | "kalshi";
 export async function getActiveEvents(platform: Platform = "polymarket"): Promise<EventMetadata[]> {
     noStore();
     try {
-        // Fetch from platform-specific Redis key
-        const redisKey = platform === "kalshi" ? "kalshi:active_list" : "event:active_list";
-        const data = await redis.get(redisKey);
+        const data = await getAllMarketData();
+        if (!data) return [];
 
+        // Fetch from platform-specific data
         let events: EventMetadata[] = [];
-        if (data) {
-            events = JSON.parse(data) as EventMetadata[];
+        if (platform === "kalshi") {
+            events = (data.kalshi || []) as EventMetadata[];
+        } else {
+            events = (data.events || []) as EventMetadata[];
         }
 
         const now = new Date();
@@ -420,10 +396,9 @@ export async function getActiveEvents(platform: Platform = "polymarket"): Promis
         // This ensures individual game markets appear in the Sports tab
         if (platform === "polymarket") {
             try {
-                const binaryData = await redis.get("market:active_list");
-                if (binaryData) {
-                    const binaryMarkets = JSON.parse(binaryData) as MarketMetadata[];
+                const binaryMarkets = (data.markets || []) as MarketMetadata[];
 
+                if (binaryMarkets.length > 0) {
                     // Get existing event titles for deduplication (case-insensitive)
                     const existingTitles = new Set(
                         filteredEvents.map(e => e.title.toLowerCase().trim())
@@ -509,9 +484,8 @@ export async function getActiveEvents(platform: Platform = "polymarket"): Promis
         // Without this, cards show ingestion-time prices (could be hours stale).
         // The WS price stream writes to market:prices:all every 5 seconds.
         try {
-            const livePriceData = await redis.get("market:prices:all");
-            if (livePriceData) {
-                const livePrices = JSON.parse(livePriceData) as Record<string, { price?: string }>;
+            const livePrices = data.livePrices;
+            if (livePrices && Object.keys(livePrices).length > 0) {
                 let updatedCount = 0;
                 const removedMarketIds: string[] = [];
 
@@ -561,4 +535,3 @@ export async function getActiveEvents(platform: Platform = "polymarket"): Promis
         return [];
     }
 }
-

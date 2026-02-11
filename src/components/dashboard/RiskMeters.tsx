@@ -10,6 +10,26 @@ interface RiskMetersProps {
     startingBalance: number;
     maxDrawdownPercent?: number;
     dailyDrawdownPercent?: number;
+    // New: absolute dollar context
+    maxDrawdownDollars: number;
+    dailyDrawdownDollars: number;
+    // Raw dollar amounts used (avoids back-calculation rounding)
+    drawdownUsedDollars?: number;
+    dailyDrawdownUsedDollars?: number;
+    equity: number;
+    openPositionCount: number;
+    maxPositions: number;
+}
+
+/** 3-zone color: green (0-50), amber (50-80), red (80+) */
+function getZone(usage: number) {
+    if (usage >= 80) return { bar: "bg-red-500", text: "text-red-400", glow: "rgba(239, 68, 68, 0.12)", label: "DANGER" };
+    if (usage >= 50) return { bar: "bg-amber-500", text: "text-amber-400", glow: "rgba(245, 158, 11, 0.10)", label: "CAUTION" };
+    return { bar: "bg-emerald-500", text: "text-emerald-400", glow: "rgba(16, 185, 129, 0.08)", label: "SAFE" };
+}
+
+function fmt(n: number): string {
+    return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 export function RiskMeters({
@@ -18,61 +38,129 @@ export function RiskMeters({
     startOfDayBalance,
     startingBalance,
     maxDrawdownPercent = 10,
-    dailyDrawdownPercent = 5
+    dailyDrawdownPercent = 5,
+    maxDrawdownDollars,
+    dailyDrawdownDollars,
+    drawdownUsedDollars: rawDdUsed,
+    dailyDrawdownUsedDollars: rawDailyUsed,
+    equity,
+    openPositionCount,
+    maxPositions,
 }: RiskMetersProps) {
-    // Round to 2dp to prevent CountUp from rendering 16+ floating-point decimals
     const drawdownRounded = Math.round(drawdownUsage * 100) / 100;
     const dailyDrawdownRounded = Math.round(dailyDrawdownUsage * 100) / 100;
     const maxDrawdownFloor = Math.round(startingBalance * (1 - maxDrawdownPercent / 100) * 100) / 100;
     const dailyLossFloor = Math.round(startOfDayBalance * (1 - dailyDrawdownPercent / 100) * 100) / 100;
 
-    return (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Max Drawdown */}
-            <SpotlightCard
-                className="bg-zinc-900/50 border border-white/10 rounded-2xl p-6"
-                spotlightColor={drawdownRounded > 80 ? "rgba(239, 68, 68, 0.12)" : "rgba(0, 255, 178, 0.08)"}
-                spotlightSize={350}
-            >
-                <div className="flex justify-between mb-2">
-                    <span className="text-sm font-bold text-zinc-400 uppercase tracking-wider">Max Drawdown</span>
-                    <span className={`text-sm font-mono font-bold ${drawdownRounded > 80 ? 'text-red-500' : 'text-zinc-400'}`}>
-                        <CountUp to={drawdownRounded} from={0} duration={1.5} suffix="%" />
-                    </span>
-                </div>
-                <div className="h-2 bg-zinc-800 rounded-full overflow-hidden mb-2">
-                    <div
-                        className={`h-full transition-all duration-500 ${drawdownRounded > 80 ? 'bg-red-500' : 'bg-primary/50'}`}
-                        style={{ width: `${Math.min(100, drawdownRounded)}%` }}
-                    />
-                </div>
-                <div className="text-xs text-zinc-500 mt-1 font-mono">
-                    Equity Floor: ${maxDrawdownFloor.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </div>
-            </SpotlightCard>
+    // Absolute dollars used — prefer raw values over back-calculated
+    const ddUsedDollars = rawDdUsed != null ? rawDdUsed : Math.max(0, (drawdownRounded / 100) * maxDrawdownDollars);
+    const dailyUsedDollars = rawDailyUsed != null ? rawDailyUsed : Math.max(0, (dailyDrawdownRounded / 100) * dailyDrawdownDollars);
 
-            {/* Daily Drawdown */}
-            <SpotlightCard
-                className="bg-zinc-900/50 border border-white/10 rounded-2xl p-6"
-                spotlightColor={dailyDrawdownRounded > 80 ? "rgba(239, 68, 68, 0.12)" : "rgba(168, 85, 247, 0.1)"}
-                spotlightSize={350}
-            >
-                <div className="flex justify-between mb-2">
-                    <span className="text-sm font-bold text-zinc-400 uppercase tracking-wider">Daily Loss Limit</span>
-                    <span className={`text-sm font-mono font-bold ${dailyDrawdownRounded > 80 ? 'text-red-500' : 'text-zinc-400'}`}>
-                        <CountUp to={dailyDrawdownRounded} from={0} duration={1.5} suffix="%" />
-                    </span>
-                </div>
-                <div className="h-2 bg-zinc-800 rounded-full overflow-hidden mb-2">
-                    <div
-                        className={`h-full transition-all duration-500 ${dailyDrawdownRounded > 80 ? 'bg-red-500' : 'bg-purple-500'}`}
-                        style={{ width: `${Math.min(100, dailyDrawdownRounded)}%` }}
-                    />
-                </div>
-                <div className="text-xs text-zinc-500 mt-1 font-mono">
-                    Today&apos;s Floor: ${dailyLossFloor.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </div>
-            </SpotlightCard>
+    const ddZone = getZone(drawdownRounded);
+    const dailyZone = getZone(dailyDrawdownRounded);
+
+    // Positions zone
+    const positionUsage = maxPositions > 0 ? (openPositionCount / maxPositions) * 100 : 0;
+    const posZone = getZone(positionUsage);
+
+    return (
+        <div className="space-y-4">
+            {/* Section header */}
+            <div className="flex items-center gap-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Risk Monitor</span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Max Drawdown */}
+                <SpotlightCard
+                    className="bg-zinc-900/50 border border-white/10 rounded-2xl p-5"
+                    spotlightColor={ddZone.glow}
+                    spotlightSize={350}
+                >
+                    <div className="flex justify-between items-start mb-3">
+                        <div>
+                            <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Max Drawdown</span>
+                            <div className={`text-xs mt-0.5 font-semibold ${ddZone.text}`}>{ddZone.label}</div>
+                        </div>
+                        <span className={`text-lg font-mono font-bold ${ddZone.text}`}>
+                            <CountUp to={drawdownRounded} from={0} duration={1.5} suffix="%" />
+                        </span>
+                    </div>
+                    <div className="h-2 bg-zinc-800 rounded-full overflow-hidden mb-3">
+                        <div
+                            className={`h-full transition-all duration-700 rounded-full ${ddZone.bar}`}
+                            style={{ width: `${Math.min(100, drawdownRounded)}%` }}
+                        />
+                    </div>
+                    <div className="flex justify-between text-xs text-zinc-500 font-mono">
+                        <span>${fmt(ddUsedDollars)} / ${fmt(maxDrawdownDollars)}</span>
+                    </div>
+                    <div className="text-xs text-zinc-600 mt-1 font-mono">
+                        Floor: ${fmt(maxDrawdownFloor)}
+                    </div>
+                </SpotlightCard>
+
+                {/* Daily Loss */}
+                <SpotlightCard
+                    className="bg-zinc-900/50 border border-white/10 rounded-2xl p-5"
+                    spotlightColor={dailyZone.glow}
+                    spotlightSize={350}
+                >
+                    <div className="flex justify-between items-start mb-3">
+                        <div>
+                            <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Daily Loss</span>
+                            <div className={`text-xs mt-0.5 font-semibold ${dailyZone.text}`}>{dailyZone.label}</div>
+                        </div>
+                        <span className={`text-lg font-mono font-bold ${dailyZone.text}`}>
+                            <CountUp to={dailyDrawdownRounded} from={0} duration={1.5} suffix="%" />
+                        </span>
+                    </div>
+                    <div className="h-2 bg-zinc-800 rounded-full overflow-hidden mb-3">
+                        <div
+                            className={`h-full transition-all duration-700 rounded-full ${dailyZone.bar}`}
+                            style={{ width: `${Math.min(100, dailyDrawdownRounded)}%` }}
+                        />
+                    </div>
+                    <div className="flex justify-between text-xs text-zinc-500 font-mono">
+                        <span>${fmt(dailyUsedDollars)} / ${fmt(dailyDrawdownDollars)}</span>
+                    </div>
+                    <div className="text-xs text-zinc-600 mt-1 font-mono">
+                        Today&apos;s Floor: ${fmt(dailyLossFloor)}
+                    </div>
+                </SpotlightCard>
+
+                {/* Positions */}
+                <SpotlightCard
+                    className="bg-zinc-900/50 border border-white/10 rounded-2xl p-5"
+                    spotlightColor={posZone.glow}
+                    spotlightSize={350}
+                >
+                    <div className="flex justify-between items-start mb-3">
+                        <div>
+                            <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Open Positions</span>
+                            <div className={`text-xs mt-0.5 font-semibold ${posZone.text}`}>
+                                {openPositionCount === 0 ? "NO EXPOSURE" : posZone.label}
+                            </div>
+                        </div>
+                        <span className={`text-lg font-mono font-bold ${posZone.text}`}>
+                            {openPositionCount}/{maxPositions}
+                        </span>
+                    </div>
+                    <div className="h-2 bg-zinc-800 rounded-full overflow-hidden mb-3">
+                        <div
+                            className={`h-full transition-all duration-700 rounded-full ${openPositionCount === 0 ? 'bg-zinc-700' : posZone.bar}`}
+                            style={{ width: `${Math.min(100, positionUsage)}%` }}
+                        />
+                    </div>
+                    <div className="flex justify-between text-xs text-zinc-500 font-mono">
+                        <span>Equity: ${fmt(equity)}</span>
+                    </div>
+                    <div className="text-xs text-zinc-600 mt-1 font-mono">
+                        Buying Power: ${fmt(Math.max(0, equity - (equity * 0.05 * openPositionCount)))}
+                    </div>
+                </SpotlightCard>
+            </div>
         </div>
     );
 }

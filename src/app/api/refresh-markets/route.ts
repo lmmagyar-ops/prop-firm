@@ -1,37 +1,24 @@
 import { NextResponse } from "next/server";
-import Redis from "ioredis";
-import { getErrorMessage } from "@/lib/errors";
 import { requireAdmin } from "@/lib/admin-auth";
+import { forceSync, getAllMarketData } from "@/lib/worker-client";
 
-// Priority: REDIS_URL (Railway) > REDIS_HOST/PASSWORD (legacy Upstash) > localhost
-const getRedisConfig = () => {
-    if (process.env.REDIS_URL) {
-        return process.env.REDIS_URL;
-    }
-    if (process.env.REDIS_HOST && process.env.REDIS_PASSWORD) {
-        return {
-            host: process.env.REDIS_HOST,
-            port: parseInt(process.env.REDIS_PORT || "6379"),
-            password: process.env.REDIS_PASSWORD,
-            tls: {}
-        };
-    }
-    return "redis://localhost:6380";
-};
-
+/**
+ * GET /api/refresh-markets
+ * 
+ * Admin endpoint: Fetches fresh data from Polymarket and writes to Redis
+ * via the ingestion-worker's HTTP API. No direct Redis connection.
+ */
 export async function GET() {
     const { isAuthorized, response } = await requireAdmin();
     if (!isAuthorized) return response;
-
-    const redis = new Redis(getRedisConfig() as any);
 
     try {
         console.log("[RefreshMarkets] Fetching fresh data from Polymarket...");
 
         // Fetch featured events
         const url = "https://gamma-api.polymarket.com/events?featured=true&active=true&closed=false&limit=50";
-        const response = await fetch(url);
-        const events = await response.json();
+        const apiResponse = await fetch(url);
+        const events = await apiResponse.json();
 
         if (!Array.isArray(events)) {
             throw new Error("Invalid API response");
@@ -86,34 +73,24 @@ export async function GET() {
             });
         }
 
-        // Store in Redis
-        await redis.set("event:active_list", JSON.stringify(processedEvents));
+        // Write to Redis via the worker's HTTP API (no direct Redis connection)
+        const success = await forceSync("event:active_list", processedEvents);
 
-        // Verify with Fed Chair example
-        const stored = JSON.parse(await redis.get("event:active_list") || "[]");
-        const fedChair = stored.find((e: any) => e.title?.toLowerCase().includes("fed chair"));
-
-        const verification = fedChair ? {
-            title: fedChair.title,
-            marketsCount: fedChair.markets.length,
-            firstMarket: fedChair.markets[0]?.question,
-            firstPrice: (fedChair.markets[0]?.price * 100).toFixed(1) + "%"
-        } : null;
+        if (!success) {
+            throw new Error("Failed to write to Redis via worker API");
+        }
 
         return NextResponse.json({
             success: true,
             message: `Refreshed ${processedEvents.length} events with ${totalMarkets} markets`,
-            verification
         });
 
     } catch (error: unknown) {
         console.error("[RefreshMarkets] Error:", error);
         return NextResponse.json({
             success: false,
-            error: getErrorMessage(error)
+            error: String(error)
         }, { status: 500 });
-    } finally {
-        redis.disconnect();
     }
 }
 

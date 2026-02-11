@@ -1,11 +1,11 @@
 /**
- * Redis-based Rate Limiter
+ * Rate Limiter via Worker HTTP API
  * 
- * Uses sliding window algorithm for accurate rate limiting across serverless instances.
- * All rate limit state is stored in Redis, making it effective in Vercel/serverless.
+ * Uses atomic increment via the worker's KV endpoint for rate limiting.
+ * All state is managed by the worker's Redis connection (free private networking).
  */
 
-import { getRedisClient } from "./redis-client";
+import { kvIncr } from "./worker-client";
 
 // Rate limit tiers (requests per window)
 export const RATE_LIMITS = {
@@ -84,10 +84,8 @@ export function getTierForPath(pathname: string): RateLimitTier {
 }
 
 /**
- * Check rate limit using Redis sliding window.
- * 
- * Uses a simple counter with TTL for efficiency.
- * Key format: ratelimit:{tier}:{identifier}
+ * Check rate limit using worker's atomic increment endpoint.
+ * The worker handles INCR + EXPIRE atomically in a pipeline.
  */
 export async function checkRateLimit(
     identifier: string,
@@ -97,43 +95,21 @@ export async function checkRateLimit(
     const key = `ratelimit:${tier}:${identifier}`;
 
     try {
-        const redis = getRedisClient();
-
-        // Use MULTI for atomic increment + TTL check
-        const pipeline = redis.multi();
-        pipeline.incr(key);
-        pipeline.ttl(key);
-
-        const results = await pipeline.exec();
-
-        if (!results) {
-            // Redis error - fail open (allow request)
-            console.warn('[RateLimit] Redis pipeline failed, allowing request');
-            return { allowed: true, remaining: limit, resetInSeconds: windowSeconds, tier };
-        }
-
-        const [incrResult, ttlResult] = results;
-        const count = (incrResult?.[1] as number) || 1;
-        const ttl = (ttlResult?.[1] as number) || -1;
-
-        // Set expiry on first request
-        if (count === 1 || ttl === -1) {
-            await redis.expire(key, windowSeconds);
-        }
+        // Atomic increment with TTL via worker HTTP
+        const count = await kvIncr(key, windowSeconds);
 
         const allowed = count <= limit;
         const remaining = Math.max(0, limit - count);
-        const resetInSeconds = ttl > 0 ? ttl : windowSeconds;
 
         if (!allowed) {
             console.warn(`[RateLimit] BLOCKED: ${identifier} hit ${tier} limit (${count}/${limit})`);
         }
 
-        return { allowed, remaining, resetInSeconds, tier };
+        return { allowed, remaining, resetInSeconds: windowSeconds, tier };
 
     } catch (error) {
-        // Redis error - fail open to not block legitimate users
-        console.error('[RateLimit] Redis error, failing open:', error);
+        // Worker error - fail open to not block legitimate users
+        console.error('[RateLimit] Worker error, failing open:', error);
         return { allowed: true, remaining: limit, resetInSeconds: windowSeconds, tier };
     }
 }
