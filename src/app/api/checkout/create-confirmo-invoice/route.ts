@@ -50,6 +50,18 @@ export async function POST(req: NextRequest) {
                     );
                 }
 
+                // 1b. Deactivate any existing active challenge to satisfy the unique constraint
+                // (User explicitly chose a new tier, so the old one is superseded)
+                if (activeCount.length > 0) {
+                    console.log(`[Confirmo Mock] Deactivating ${activeCount.length} existing active challenge(s) for user ${userId}`);
+                    await db.update(challenges)
+                        .set({ status: "cancelled" })
+                        .where(and(
+                            eq(challenges.userId, userId),
+                            eq(challenges.status, "active")
+                        ));
+                }
+
                 // 2. Determine starting balance from tier
                 const tierBalances: Record<string, number> = {
                     "5k": 5000,
