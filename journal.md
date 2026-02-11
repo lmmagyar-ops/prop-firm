@@ -6,6 +6,27 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ## 2026-02-11
 
+### 🔒 Adversarial Testing Round 2 — SQL Info Leak Fix
+
+**Round 2 testing** verified all Round 1 fixes and found one new vulnerability:
+
+1. **[CRITICAL] SQL Info Leak** — `/api/trade/close` returned raw Drizzle ORM error messages to clients, exposing SQL query structure and schema column names. Fixed all 5 user-facing API endpoints:
+   - `trade/close/route.ts`: Generic "Failed to close position" instead of `error.message`
+   - `trade/execute/route.ts`: Only passes through structured domain errors (MARKET_RESOLVED, PRICE_MOVED), hides ORM errors
+   - `payout/request/route.ts`: Removed `details` field with raw `error.message`
+   - `payout/status/route.ts`: Removed `details` field with raw `error.message`
+   - `payout/eligibility/route.ts`: Removed `details` field with raw `error.message`
+
+**Phase 1 verification results** — All 4 Round 1 fixes confirmed working on staging:
+- ✅ Price manipulation: `?price=0.01` overridden to correct tier price ($149/$79)
+- ✅ Guest checkout: Redirects to `/login` without session
+- ✅ Trade debounce: Ref guard prevents duplicate execution
+- ✅ Onboarding markdown: Bold text renders correctly (no asterisks)
+
+**API fuzzing results** — 6/7 tests PASS (negative/zero/invalid amounts, XSS tier, empty body all rejected)
+
+## 2026-02-11
+
 ### 🔧 Adversarial Bug Fixes (4 issues)
 
 **Fixed** all bugs identified during break-the-app audit:

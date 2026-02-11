@@ -115,10 +115,10 @@ export async function POST(req: NextRequest) {
         return NextResponse.json(responsePayload);
 
     } catch (error: unknown) {
-        const errMsg = error instanceof Error ? error.message : "Failed to close position";
         console.error("Close position failed:", error);
+        // SECURITY: Never expose internal error details (SQL structure, schema) to client
         return NextResponse.json({
-            error: errMsg
+            error: "Failed to close position"
         }, { status: 500 });
     }
 }

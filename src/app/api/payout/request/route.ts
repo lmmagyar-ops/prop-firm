@@ -75,8 +75,7 @@ export async function POST(request: NextRequest) {
     } catch (error) {
         console.error("[PayoutRequest] Error:", error);
         return NextResponse.json({
-            error: "Failed to request payout",
-            details: error instanceof Error ? error.message : "Unknown error"
+            error: "Failed to request payout"
         }, { status: 400 });
     }
 }

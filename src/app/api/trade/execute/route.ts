@@ -161,10 +161,15 @@ export async function POST(req: NextRequest) {
 
         log.error(`Trade execution failed [${code}]`, error);
 
+        // SECURITY: Only expose error messages from structured domain errors (e.g. MARKET_RESOLVED, PRICE_MOVED)
+        // Never expose raw database/ORM error messages to the client
+        const isSafeError = code !== 'UNKNOWN';
+        const safeMessage = isSafeError ? (getErrorMessage(error) || "Trade failed") : "Trade failed";
+
         return NextResponse.json({
-            error: getErrorMessage(error) || "Trade failed",
+            error: safeMessage,
             code,
-            ...(typeof data === 'object' && data !== null ? data : {}),
+            ...(isSafeError && typeof data === 'object' && data !== null ? data : {}),
         }, { status: typeof status === 'number' ? status : 500 });
     }
 }
