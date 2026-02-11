@@ -102,7 +102,7 @@ export function OpenPositions({ positions: initialPositions }: OpenPositionsProp
                     </h3>
                 </div>
 
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto relative">
                     <Table>
                         <TableHeader>
                             <TableRow className="border-white/5 hover:bg-transparent">
@@ -111,9 +111,8 @@ export function OpenPositions({ positions: initialPositions }: OpenPositionsProp
                                 <TableHead className="text-xs text-zinc-500 uppercase text-right">Shares</TableHead>
                                 <TableHead className="text-xs text-zinc-500 uppercase text-right">Entry</TableHead>
                                 <TableHead className="text-xs text-zinc-500 uppercase text-right">Current</TableHead>
-                                <TableHead className="text-xs text-zinc-500 uppercase text-right">Value</TableHead>
-                                <TableHead className="text-xs text-zinc-500 uppercase text-right">Return</TableHead>
-                                <TableHead className="text-xs text-zinc-500 uppercase text-right">Action</TableHead>
+                                <TableHead className="text-xs text-zinc-500 uppercase text-right">P&L</TableHead>
+                                <TableHead className="text-xs text-zinc-500 uppercase text-right sticky right-0 bg-zinc-900/95 backdrop-blur-sm z-10 border-l border-white/5">Action</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -168,19 +167,9 @@ export function OpenPositions({ positions: initialPositions }: OpenPositionsProp
                                             {(pos.currentPrice * 100).toFixed(1)}¢
                                         </TableCell>
 
-                                        {/* Value — current value with cost subtext */}
+                                        {/* P&L — combined value + return */}
                                         <TableCell className="text-right">
-                                            <div className="font-mono text-sm text-white font-medium">
-                                                ${currentValue.toFixed(2)}
-                                            </div>
-                                            <div className="font-mono text-[10px] text-zinc-500">
-                                                Cost ${cost.toFixed(2)}
-                                            </div>
-                                        </TableCell>
-
-                                        {/* Return — P&L with percentage */}
-                                        <TableCell className="text-right">
-                                            <div className={`flex items-center justify-end gap-1 font-mono text-sm font-bold ${isPositive ? '' : ''}`}>
+                                            <div className={`flex items-center justify-end gap-1 font-mono text-sm font-bold`}>
                                                 {isPositive ? (
                                                     <TrendingUp className="w-3 h-3 text-green-400 flex-shrink-0" />
                                                 ) : (
@@ -195,13 +184,17 @@ export function OpenPositions({ positions: initialPositions }: OpenPositionsProp
                                                     {isPositive ? "+$" : "-$"}{Math.abs(pos.unrealizedPnL).toFixed(2)}
                                                 </span>
                                             </div>
-                                            <div className={`font-mono text-[10px] ${isPositive ? 'text-green-500/60' : 'text-red-500/60'}`}>
-                                                {isPositive ? "+" : ""}{returnPct.toFixed(1)}%
+                                            <div className="flex items-center justify-end gap-1.5">
+                                                <span className={`font-mono text-[10px] ${isPositive ? 'text-green-500/60' : 'text-red-500/60'}`}>
+                                                    {isPositive ? "+" : ""}{returnPct.toFixed(1)}%
+                                                </span>
+                                                <span className="font-mono text-[10px] text-zinc-600">•</span>
+                                                <span className="font-mono text-[10px] text-zinc-500">${currentValue.toFixed(2)}</span>
                                             </div>
                                         </TableCell>
 
-                                        {/* Sell Button — clear label */}
-                                        <TableCell className="text-right">
+                                        {/* Sell Button — sticky right so always visible */}
+                                        <TableCell className="text-right sticky right-0 bg-zinc-900/95 backdrop-blur-sm z-10 border-l border-white/5">
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
