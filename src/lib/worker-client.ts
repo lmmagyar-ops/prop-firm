@@ -242,7 +242,10 @@ export async function kvSetNx(key: string, value: string, ttlSeconds: number): P
         method: 'POST',
         body: JSON.stringify({ key, value, ttl: ttlSeconds }),
     });
-    return result?.acquired ?? false;
+    if (result === null) {
+        throw new Error('[WorkerClient] kvSetNx failed — worker unreachable');
+    }
+    return result.acquired;
 }
 
 /**
@@ -265,6 +268,9 @@ export async function kvIncr(key: string, ttlSeconds?: number): Promise<number> 
         method: 'POST',
         body: JSON.stringify({ key, ttl: ttlSeconds }),
     });
-    return result?.count ?? 0;
+    if (result === null) {
+        throw new Error('[WorkerClient] kvIncr failed — worker unreachable');
+    }
+    return result.count;
 }
 

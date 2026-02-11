@@ -6,6 +6,25 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ## 2026-02-11
 
+### 12:15 AM — Redis TCP Proxy Eliminated: Full Production Migration ✅
+
+**What:** Migrated all 13 Redis consumers from direct TCP connections to the ingestion-worker's HTTP API. Deleted Redis TCP proxy in Railway ($87/month savings).
+
+**Changes:**
+- Added 5 KV endpoints to health-server (`/kv/get`, `/kv/set`, `/kv/del`, `/kv/setnx`, `/kv/incr`)
+- Created `worker-client.ts` — centralized HTTP client with 3s cache
+- Migrated 13 files: `rate-limiter.ts`, `trade-idempotency.ts`, `polymarket-oracle.ts`, `events.ts`, `market.ts`, and 8 API routes
+- Deleted dead code: `redis-client.ts`, `arbitrage-sentinel.ts`, `ws.ts`
+- Fixed `WORKER_URL` — was captured at import time, changed to lazy `getWorkerUrl()` so test env var override works
+
+**Verification:**
+- `tsc --noEmit` ✅
+- `test:engine` 53/53 ✅, `test:safety` 44/44 ✅, `test:lifecycle` 74/74 ✅
+- Post-deploy smoke 12/12 ✅
+- Production E2E: markets load with live prices, market detail + chart + LIVE DATA, dashboard $49,981.28, SSE streaming connected
+
+**Commit:** `0e3db07` on `develop` and `main`
+
 ### 7:00 AM — Test Infrastructure Fix: In-Process Worker Server 🧪
 
 **Problem:** After the Redis→HTTP migration, test scripts (`verify-engine`, `verify-safety`, `verify-lifecycle`) seed Redis directly but `MarketService`/`TradeExecutor` now read via the worker's HTTP API. Without a running worker, tests get 404s.

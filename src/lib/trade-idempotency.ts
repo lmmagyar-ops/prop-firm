@@ -65,9 +65,10 @@ export async function checkIdempotency(idempotencyKey: string): Promise<Idempote
         // Key exists but no data (shouldn't happen) — proceed
         return { isDuplicate: false };
     } catch (err) {
-        // Worker failure should NOT block trades — log and proceed
-        log.error("Idempotency check failed, proceeding without guard", err as Error);
-        return { isDuplicate: false };
+        // Worker failure — fail CLOSED. Block the trade rather than risk double-execution.
+        // The user can retry; double-spending is worse than a transient rejection.
+        log.error("Idempotency check failed — failing CLOSED to prevent double execution", err as Error);
+        return { isDuplicate: true, cachedResponse: { error: "Service temporarily unavailable. Please try again." } };
     }
 }
 

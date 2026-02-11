@@ -83,9 +83,23 @@ export function getTierForPath(pathname: string): RateLimitTier {
     return 'DEFAULT';
 }
 
+// Financial tiers that must fail CLOSED when the worker is unreachable.
+// If we can't verify the rate limit, we reject the request.
+const FAIL_CLOSED_TIERS: ReadonlySet<RateLimitTier> = new Set([
+    'TRADE_EXECUTE',
+    'PAYOUT',
+]);
+
 /**
  * Check rate limit using worker's atomic increment endpoint.
  * The worker handles INCR + EXPIRE atomically in a pipeline.
+ * 
+ * Financial tiers (TRADE_EXECUTE, PAYOUT) fail CLOSED — if the worker is
+ * unreachable, the request is rejected. This prevents trades from bypassing
+ * rate limits during worker outages.
+ * 
+ * Read tiers (MARKETS, DASHBOARD, etc.) fail OPEN — a worker blip
+ * shouldn't block page loads.
  */
 export async function checkRateLimit(
     identifier: string,
@@ -108,8 +122,14 @@ export async function checkRateLimit(
         return { allowed, remaining, resetInSeconds: windowSeconds, tier };
 
     } catch (error) {
-        // Worker error - fail open to not block legitimate users
-        console.error('[RateLimit] Worker error, failing open:', error);
+        if (FAIL_CLOSED_TIERS.has(tier)) {
+            // Financial path — reject the request when we can't verify the limit
+            console.error(`[RateLimit] Worker unreachable, failing CLOSED for ${tier}:`, error);
+            return { allowed: false, remaining: 0, resetInSeconds: windowSeconds, tier };
+        }
+
+        // Non-financial path — fail open to not block page loads
+        console.error(`[RateLimit] Worker unreachable, failing open for ${tier}:`, error);
         return { allowed: true, remaining: limit, resetInSeconds: windowSeconds, tier };
     }
 }
