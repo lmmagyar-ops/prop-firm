@@ -6,6 +6,16 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ## 2026-02-10
 
+### 9:15 PM — 25K Tier Provisioning Fix 🔧
+
+Walkthrough test of 25K Executive tier revealed a **critical bug**: the checkout flow silently failed when the user already had an active challenge. The `uniqueIndex("challenges_unique_active_per_user")` constraint blocked the new challenge insert, so the catch block redirected with `db_error=true` and the onboarding page rendered the old stale $5K challenge.
+
+**Root cause:** `create-confirmo-invoice/route.ts` blindly inserted a new active challenge without deactivating the existing one first.
+
+**Fix:** Added step 1b in the checkout API route — deactivate any existing active challenge (set status to 'cancelled') before inserting the new one. This mirrors the idempotency protection already present in `createChallengeAction`.
+
+**Verified on production:** Activation page now shows $25,000 balance, $2,500 target, $2,000 max loss. Dashboard confirms $25,000.00. Commit `2b61f1d`.
+
 ### 8:05 PM — UX Polish Fixes 🎨
 
 Three fixes from the production walkthrough:
