@@ -5,9 +5,61 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 ---
 
 ## 2026-02-11
+
+### 🤝 HANDOFF NOTE FOR NEXT AGENT
+
+**Context:** Tonight we completed a major infrastructure migration (Redis TCP proxy elimination) and hardened the safety layer. Everything is deployed and verified on production. The owner now wants a **persona-based UX audit** using the browser agent.
+
+**What to do:** Walk through the entire production site (https://prop-firmx.vercel.app) as two distinct user personas, auditing every screen, interaction, and piece of copy for UX issues, confusion points, and bugs:
+
+**Persona 1: "The Veteran"** — Experienced prop firm trader (has done FTMO, Topstep, etc.)
+- Knows the prop firm model (evaluation → funded → payout), drawdown limits, profit targets
+- User journey: Landing page → scans pricing + rules → compares to firms they've used → buys evaluation → trades aggressively → expects clean payout flow
+- Audit for: Are the rules clearly stated? Does pricing compare favorably? Is the payout flow transparent? Would a veteran trust this platform?
+- Friction points to check: Skepticism about prediction markets as the trading vehicle — "Is this real trading or gambling?"
+
+**Persona 2: "The Green"** — First-time user, no prop firm experience
+- May come from Polymarket, sports betting, crypto degen culture
+- Doesn't know what "funded," "evaluation," or "drawdown" means
+- User journey: Landing page → "Wait, I can trade with someone else's money?" → needs education → buys cheapest tier → confused by risk rules
+- Audit for: Is there enough education/onboarding? Are financial terms explained? Does the UI guide a brand-new user?
+- Friction points to check: "Max Drawdown 8%" — would a green user understand this? What happens when they fail an evaluation?
+
+**For each persona, audit these pages:**
+1. Landing page (hero, pricing, FAQ)
+2. Login/signup flow
+3. Buy Evaluation page (tier selection, checkout)
+4. Dashboard (stats, challenge progress, risk meters)
+5. Trade page (market browsing, market detail modal, placing a trade)
+6. Portfolio sidebar
+7. Trade History
+8. Settings
+9. Leaderboard
+10. Certificates / Public Profile
+
+**Produce:** A detailed UX audit report with specific issues, screenshots, and recommendations, organized by persona.
+
+**Current platform state:**
+- Production: https://prop-firmx.vercel.app — fully functional, all data flowing through worker HTTP API
+- 3 active accounts, $49,981.28 balance on primary test account
+- 228 live markets with real Polymarket prices
+- Redis TCP proxy deleted — all traffic goes through ingestion-worker
+- Rate limits: 300/min for reads, 10/min for trade execution, 5/min for payouts
+- Trade-critical paths fail CLOSED when worker is unreachable
+
+**Env note:** `.env.local` `REDIS_URL` still points to deleted Railway proxy — local integration tests won't run. Need `brew install redis` or a new Redis URL to run `test:engine`/`test:safety`/`test:lifecycle` locally.
+
+---
+
+### Session Summary: Late Night Infrastructure Sprint (10 PM – 1 AM)
+
+**Overview:** Eliminated the Redis TCP proxy ($87/month), hardened the safety layer to fail-closed, caught and fixed a rate limit regression via visual audit. 3 production deploys, all verified.
+
+---
+
 ### 12:45 AM — Rate Limit Regression Fix 🐛
 
-**Problem:** Visual audit caught 429 errors on Portfolio ($0.00) and Trade History ("No trades yet"). Each page load fires ~5 concurrent API calls (balance, positions, history) — the 60/min `TRADE_READ` limit was too tight for normal browsing.
+**Problem:** Visual browser audit caught 429 errors on Portfolio ($0.00) and Trade History ("No trades yet"). Each page load fires ~5 concurrent API calls (balance, positions, history) — the 60/min `TRADE_READ` limit was too tight for normal browsing.
 
 **Fix:** Bumped `TRADE_READ`, `MARKETS`, `DASHBOARD` from 60 → 300/min. Financial write tiers unchanged (TRADE_EXECUTE 10/min, PAYOUT 5/min).
 
@@ -15,9 +67,9 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 **Commit:** `03f2f5d` on `develop` and `main`
 
+### 12:30 AM — Fail-Closed Safety Hardening 🛡️
 
-
-**What:** Trade-critical paths now reject requests when the worker is unreachable, instead of silently bypassing safety guards.
+**What:** Trade-critical paths now reject requests when the worker is unreachable, instead of silently bypassing safety guards. An Anthropic-grade safety audit identified that `kvIncr` returning 0 on failure meant rate limits were bypassed (0 <= any_limit is always true).
 
 **Changes:**
 - `kvIncr` throws on worker failure (was: return 0 → bypass rate limits)
@@ -25,11 +77,19 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 - `rate-limiter.ts` fails CLOSED for `TRADE_EXECUTE`/`PAYOUT`, still fails open for reads
 - `trade-idempotency.ts` blocks trades when worker unreachable (was: allow through)
 
+**Principle:** "It's better to briefly inconvenience a user ('please try again') than to risk letting a trade bypass safety rails during a worker hiccup."
+
 **Commit:** `70eb8f9` on `develop` and `main`
 
 ### 12:15 AM — Redis TCP Proxy Eliminated: Full Production Migration ✅
 
 **What:** Migrated all 13 Redis consumers from direct TCP connections to the ingestion-worker's HTTP API. Deleted Redis TCP proxy in Railway ($87/month savings).
+
+**Architecture change:**
+```
+Before: Vercel → Redis TCP proxy ($87/mo egress) → Redis
+After:  Vercel → Worker HTTP (free) → Redis (private, free)
+```
 
 **Changes:**
 - Added 5 KV endpoints to health-server (`/kv/get`, `/kv/set`, `/kv/del`, `/kv/setnx`, `/kv/incr`)
