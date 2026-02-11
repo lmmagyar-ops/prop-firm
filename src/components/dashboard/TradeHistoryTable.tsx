@@ -71,9 +71,33 @@ export function TradeHistoryTable() {
 
     if (loading) {
         return (
-            <div className="bg-card/50 border border-white/5 rounded-xl p-8">
-                <div className="flex items-center justify-center h-48 text-zinc-500">
-                    Loading trades...
+            <div className="bg-card/50 border border-white/5 rounded-xl overflow-hidden">
+                {/* Skeleton search bar */}
+                <div className="p-4 border-b border-white/5">
+                    <div className="h-9 w-48 bg-zinc-800 rounded-lg animate-pulse" />
+                </div>
+                {/* Skeleton table header */}
+                <div className="bg-zinc-900/50 border-b border-white/5 px-4 py-3 flex gap-4">
+                    {[48, 120, 40, 48, 48, 48, 48].map((w, i) => (
+                        <div key={i} className="h-3 bg-zinc-800 rounded animate-pulse" style={{ width: w }} />
+                    ))}
+                </div>
+                {/* Skeleton rows */}
+                <div className="divide-y divide-white/5">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                        <div key={i} className="flex items-center gap-4 px-4 py-3" style={{ animationDelay: `${i * 75}ms` }}>
+                            <div className="h-4 w-20 bg-zinc-800/60 rounded animate-pulse" />
+                            <div className="flex items-center gap-2 flex-1">
+                                <div className="w-8 h-8 bg-zinc-800/60 rounded-lg animate-pulse" />
+                                <div className="h-4 w-40 bg-zinc-800/60 rounded animate-pulse" />
+                            </div>
+                            <div className="h-5 w-10 bg-zinc-800/60 rounded animate-pulse" />
+                            <div className="h-4 w-12 bg-zinc-800/60 rounded animate-pulse" />
+                            <div className="h-4 w-12 bg-zinc-800/60 rounded animate-pulse" />
+                            <div className="h-4 w-14 bg-zinc-800/60 rounded animate-pulse" />
+                            <div className="h-4 w-14 bg-zinc-800/60 rounded animate-pulse" />
+                        </div>
+                    ))}
                 </div>
             </div>
         );

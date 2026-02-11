@@ -6,6 +6,22 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ## 2026-02-10
 
+### 7:43 PM — Full User Journey Walkthrough 🧭
+
+Walked through the entire product as a user on production:
+- **Landing → Buy Evaluation → Checkout → Trading → Dashboard**
+- Bought a 10K evaluation — confirmed `tier=10k` param fix is live
+- Placed $10 on Barcelona (La Liga Winner) and $25 on JD Vance (Presidential Election 2028)
+- Closed Gavin Newsom position — realized -$4.67 loss, equity updated in real-time
+- Explored every dashboard page: settings, trade history, leaderboard, payouts, public profile
+- All pages functional and responsive
+
+**UX observations (minor polish, not bugs):**
+1. Portfolio panel "Close" button should say "Hide Panel" — confuses close-position intent
+2. Trade History loading delay — needs skeleton loader
+3. Market grid click precision — edge of cards sometimes opens wrong modal
+4. Days Remaining mismatch — DOM vs visual UI showed different values (hydration?)
+
 ### 7:15 PM — Checkout Tier Mapping Bug Fix 🐛
 
 **Bug:** Purchasing a 25k (or 5k) account resulted in a 10k account being provisioned.

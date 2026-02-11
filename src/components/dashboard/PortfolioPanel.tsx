@@ -303,7 +303,7 @@ export function PortfolioPanel() {
                                     onClick={() => setIsOpen(false)}
                                     className="w-full py-2 px-4 bg-zinc-800 hover:bg-zinc-700 text-white text-sm font-medium rounded-lg transition-colors"
                                 >
-                                    Close
+                                    Hide Portfolio
                                 </button>
                             </div>
                         </motion.div>
