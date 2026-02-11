@@ -5,7 +5,17 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 ---
 
 ## 2026-02-11
-### 12:30 AM — Fail-Closed Safety Hardening 🛡️
+### 12:45 AM — Rate Limit Regression Fix 🐛
+
+**Problem:** Visual audit caught 429 errors on Portfolio ($0.00) and Trade History ("No trades yet"). Each page load fires ~5 concurrent API calls (balance, positions, history) — the 60/min `TRADE_READ` limit was too tight for normal browsing.
+
+**Fix:** Bumped `TRADE_READ`, `MARKETS`, `DASHBOARD` from 60 → 300/min. Financial write tiers unchanged (TRADE_EXECUTE 10/min, PAYOUT 5/min).
+
+**Before/After:** Portfolio showed $0.00 → now shows $49,981.28 equity, 2 active positions. Trade History showed "No trades yet" → now shows 4 real trades.
+
+**Commit:** `03f2f5d` on `develop` and `main`
+
+
 
 **What:** Trade-critical paths now reject requests when the worker is unreachable, instead of silently bypassing safety guards.
 
