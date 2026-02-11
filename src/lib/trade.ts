@@ -13,6 +13,7 @@ import {
     PositionNotFoundError,
     RiskLimitExceededError
 } from "@/errors/trading-errors";
+import { OutageManager } from "./outage-manager";
 
 const logger = createLogger('TradeExecutor');
 
@@ -70,6 +71,15 @@ export class TradeExecutor {
         const canonicalPrice = await MarketService.getCanonicalPrice(marketId);
 
         if (canonicalPrice === null) {
+            // EXCHANGE HALT: Check if this is an outage, and return a clear error
+            const outageStatus = await OutageManager.getOutageStatus();
+            if (outageStatus.isOutage) {
+                throw new TradingError(
+                    'Trading halted — market data temporarily unavailable. Your evaluation timer is paused.',
+                    'EXCHANGE_HALT',
+                    503
+                );
+            }
             throw new TradingError(
                 'This market is currently unavailable. It may have been removed or is temporarily offline.',
                 'NO_MARKET_DATA',

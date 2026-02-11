@@ -8,6 +8,7 @@ import { FUNDED_RULES, FundedTier, getFundedTier as getFundedTierShared } from "
 import { normalizeRulesConfig } from "./normalize-rules";
 import { createLogger } from "./logger";
 import { BalanceManager } from "./trading/BalanceManager";
+import { OutageManager } from "./outage-manager";
 
 const logger = createLogger('Evaluator');
 
@@ -20,6 +21,18 @@ interface EvaluationResult {
 export class ChallengeEvaluator {
 
     static async evaluate(challengeId: string): Promise<EvaluationResult> {
+        // EXCHANGE HALT: Skip evaluation during outage or grace window.
+        // Without this, traders could be failed due to stale/missing price data.
+        const outageStatus = await OutageManager.getOutageStatus();
+        if (outageStatus.isOutage || outageStatus.isGraceWindow) {
+            logger.info('Evaluation skipped: exchange halt', {
+                challengeId: challengeId.slice(0, 8),
+                isOutage: outageStatus.isOutage,
+                isGraceWindow: outageStatus.isGraceWindow,
+            });
+            return { status: 'active', reason: 'Exchange halt — evaluation paused' };
+        }
+
         const challenge = await db.query.challenges.findFirst({
             where: eq(challenges.id, challengeId)
         });

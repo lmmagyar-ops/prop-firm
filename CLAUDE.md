@@ -261,7 +261,51 @@ Runs every 5 seconds in the ingestion worker:
 
 **File:** `src/workers/risk-monitor.ts`
 
-### 4. Admin Access
+### 4. Exchange Halt (Outage Protection)
+
+When the Railway ingestion worker goes down, the platform enters "Exchange Halt" mode to protect traders:
+
+```
+Heartbeat Stale → OutageManager.recordOutageStart()
+                        ↓
+            ┌─── OUTAGE ACTIVE ───┐
+            │ • Evaluations frozen │
+            │ • Trades return 503  │
+            │ • Red UI banner      │
+            └──────────────────────┘
+                        ↓
+Heartbeat Healthy → OutageManager.recordOutageEnd()
+                        ↓
+            ┌── GRACE WINDOW (30 min) ──┐
+            │ • Evaluations still frozen │
+            │ • Trading re-enabled       │
+            │ • Yellow UI banner         │
+            │ • Challenge timers extended │
+            └───────────────────────────┘
+                        ↓
+                  NORMAL OPERATION
+```
+
+| Component | File | Purpose |
+|-----------|------|---------|
+| OutageManager | `src/lib/outage-manager.ts` | Core: detect, record, extend timers |
+| MarketCacheService | `src/lib/market-cache-service.ts` | Postgres fallback cache (1hr expiry) |
+| OutageBanner | `src/components/dashboard/OutageBanner.tsx` | Red/yellow UI alert |
+| System Status API | `src/app/api/system/status/route.ts` | Polled by OutageBanner every 30s |
+| Outage Events Table | `outage_events` in `schema.ts` | Audit trail + timer extension tracking |
+| Market Cache Table | `market_cache` in `schema.ts` | Singleton row, upserted on every fetch |
+
+**Integration points:**
+- `heartbeat-check/route.ts` — records outage start/end
+- `evaluator.ts` — skips evaluation during outage or grace window
+- `trade.ts` — returns `EXCHANGE_HALT` error with reassuring message
+- `worker-client.ts` — write-through cache to Postgres, fallback reads on failure
+- `DashboardShell.tsx` — renders `<OutageBanner />` on every page
+
+> [!IMPORTANT]
+> Challenge `endsAt` is extended by the exact outage duration when the outage ends. This ensures traders are never failed due to infrastructure problems.
+
+### 5. Admin Access
 
 **Layout guard:** `src/app/admin/layout.tsx` — checks `user.role === "admin"`, redirects otherwise.
 
@@ -273,7 +317,7 @@ Runs every 5 seconds in the ingestion worker:
 
 **Shared utilities:** `src/lib/admin-utils.ts` — `TIER_PRICES`, `getTierPrice()`, `EXPOSURE_CAP`, `VAR_MULTIPLIER`, `HEDGE_RATIO`.
 
-### 5. Waitlist System
+### 6. Waitlist System
 
 Standalone Next.js app in `propshot-waitlist/`. Deployed separately to Vercel.
 

@@ -5,6 +5,7 @@ import { challenges, users } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { getErrorMessage } from "@/lib/errors";
 import { TIERS, buildRulesConfig } from "@/config/tiers";
+import { PLANS } from "@/config/plans";
 
 export async function POST(req: NextRequest) {
     const session = await auth();
@@ -13,8 +14,19 @@ export async function POST(req: NextRequest) {
 
     try {
         const body = await req.json();
-        const { tier, price, platform } = body;
+        const { tier, platform } = body;
         const selectedPlatform = platform || "polymarket"; // Default to polymarket
+
+        // SERVER-AUTHORITATIVE PRICING: Ignore any client-supplied price.
+        // Derive the correct price from the canonical PLANS config.
+        const planEntry = Object.values(PLANS).find(p => p.id === tier);
+        if (!planEntry) {
+            return NextResponse.json(
+                { error: `Unknown tier: ${tier}. Valid tiers: ${Object.values(PLANS).map(p => p.id).join(", ")}` },
+                { status: 400 }
+            );
+        }
+        const price = planEntry.price;
 
         console.log("[Checkout] Received platform from request:", platform);
         console.log("[Checkout] Selected platform for storage:", selectedPlatform);
@@ -126,8 +138,8 @@ export async function POST(req: NextRequest) {
                 },
                 invoice: {
                     currency_from: "USD",
-                    amount: price,
-                    currency_to: "USDC" // Force USDC for simplicity? Or allow user choice on Confirmo
+                    amount: price, // Server-authoritative: derived from PLANS config, NOT client input
+                    currency_to: "USDC"
                 },
                 // Reference format: userId:tier:platform (parsed by webhook)
                 reference: `${userId}:${tier}:${selectedPlatform}`,

@@ -1,3 +1,5 @@
+import { MarketCacheService } from "./market-cache-service";
+
 /**
  * Worker HTTP Client
  * 
@@ -77,14 +79,35 @@ export interface AllMarketData {
 /**
  * Fetch all market lists in a single HTTP call.
  * Replaces 4+ individual redis.get() calls in actions/market.ts.
+ * 
+ * EXCHANGE HALT: Write-through to Postgres on success.
+ * On worker failure, falls back to Postgres cache.
  */
 export async function getAllMarketData(): Promise<AllMarketData | null> {
     const cached = getCached<AllMarketData>('markets');
     if (cached) return cached;
 
     const data = await workerFetch<AllMarketData>('/markets');
-    if (data) setCache('markets', data);
-    return data;
+    if (data) {
+        setCache('markets', data);
+        // Write-through to Postgres (fire-and-forget, non-blocking)
+        MarketCacheService.saveSnapshot(data).catch(() => { });
+        return data;
+    }
+
+    // Worker unreachable — fall back to Postgres cache
+    const snapshot = await MarketCacheService.getSnapshot();
+    if (snapshot) {
+        const staleData = snapshot.markets as AllMarketData;
+        // Tag as stale so the UI can show a banner
+        if (staleData && typeof staleData === 'object') {
+            (staleData as unknown as Record<string, unknown>)._stale = true;
+            (staleData as unknown as Record<string, unknown>)._cachedAt = snapshot.capturedAt.toISOString();
+        }
+        return staleData;
+    }
+
+    return null;
 }
 
 /**

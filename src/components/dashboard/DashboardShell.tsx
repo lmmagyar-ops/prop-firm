@@ -2,6 +2,7 @@
 
 import { Sidebar } from "./Sidebar";
 import { TopNav } from "./TopNav";
+import { OutageBanner } from "./OutageBanner";
 import { useSidebarCollapse } from "@/hooks/useSidebarCollapse";
 
 interface DashboardShellProps {
@@ -34,6 +35,7 @@ export function DashboardShell({
                     }`}
             >
                 <TopNav userId={userId} />
+                <OutageBanner />
 
                 <div className="flex-1 p-6 max-w-[1800px] mx-auto w-full overflow-hidden">
                     {children}

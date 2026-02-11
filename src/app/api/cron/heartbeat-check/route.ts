@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getHeartbeat } from "@/lib/worker-client";
 import { alerts } from "@/lib/alerts";
+import { OutageManager } from "@/lib/outage-manager";
 
 /**
  * Heartbeat Check Cron
  * 
  * Runs every 5 minutes. Reads the heartbeat data from the ingestion
  * worker's HTTP API (which reads Redis via private networking).
- * If the heartbeat is older than 3 minutes, fires a critical Slack alert.
+ * If the heartbeat is older than 3 minutes, fires a critical Slack alert
+ * and records an outage event for Exchange Halt protection.
  * 
  * Schedule: every 5 minutes (vercel.json)
  */
@@ -28,6 +30,7 @@ export async function GET(request: NextRequest) {
         if (!heartbeat) {
             // No heartbeat ever written — worker has never started
             await alerts.ingestionStale(new Date(0));
+            await OutageManager.recordOutageStart("No heartbeat found — worker may have never started");
             return NextResponse.json({
                 status: "stale",
                 reason: "No heartbeat found — worker may have never started",
@@ -41,6 +44,7 @@ export async function GET(request: NextRequest) {
 
         if (isStale) {
             await alerts.ingestionStale(new Date(heartbeat.timestamp));
+            await OutageManager.recordOutageStart(`Heartbeat stale: ${ageSeconds}s old`);
             return NextResponse.json({
                 status: "stale",
                 reason: `Heartbeat is ${ageSeconds}s old (threshold: ${STALE_THRESHOLD_MS / 1000}s)`,
@@ -49,6 +53,9 @@ export async function GET(request: NextRequest) {
                 timestamp: new Date().toISOString(),
             });
         }
+
+        // Worker is healthy — end any active outage
+        await OutageManager.recordOutageEnd();
 
         return NextResponse.json({
             status: "healthy",
@@ -69,3 +76,4 @@ export async function GET(request: NextRequest) {
         );
     }
 }
+

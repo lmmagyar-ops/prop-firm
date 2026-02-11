@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/errors";
 
@@ -36,11 +36,21 @@ export function useTradeExecution(options: UseTradeExecutionOptions = {}) {
     const [isLoading, setIsLoading] = useState(false);
     const [lastResult, setLastResult] = useState<TradeResult | null>(null);
 
+    // CRITICAL: Ref-based guard prevents re-entry from rapid clicks.
+    // React setState is async — the `isLoading` state may not update before
+    // the next click event fires, allowing duplicate trades. A ref is synchronous.
+    const isExecutingRef = useRef(false);
+
     const executeTrade = useCallback(async (
         marketId: string,
         outcome: "YES" | "NO",
         amount: number
     ): Promise<TradeResult> => {
+        // Synchronous re-entry guard — blocks before any async work
+        if (isExecutingRef.current) {
+            return { success: false, error: "Trade already in progress" };
+        }
+        isExecutingRef.current = true;
         setIsLoading(true);
 
         try {
@@ -132,6 +142,7 @@ export function useTradeExecution(options: UseTradeExecutionOptions = {}) {
             return { success: false, error: errorMsg };
         } finally {
             setIsLoading(false);
+            isExecutingRef.current = false;
         }
     }, [options]);
 

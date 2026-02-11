@@ -43,6 +43,16 @@ vi.mock('@/lib/events', () => ({
     publishAdminEvent: vi.fn(),
 }));
 
+// Mock OutageManager — default: no outage (so evaluator proceeds normally)
+vi.mock('@/lib/outage-manager', () => ({
+    OutageManager: {
+        getOutageStatus: vi.fn().mockResolvedValue({
+            isOutage: false,
+            isGraceWindow: false,
+        }),
+    },
+}));
+
 import { db } from '@/db';
 import { MarketService } from '@/lib/market';
 

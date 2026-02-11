@@ -29,7 +29,11 @@ function CheckoutContent() {
     const tierParam = searchParams.get("tier"); // e.g. "5k", "10k", "25k"
     const derivedTier = size === "5000" ? "5k" : size === "25000" ? "25k" : "10k";
     const tierId = tierParam || derivedTier;
-    const basePrice = parseFloat(searchParams.get("price") || "149");
+
+    // SERVER-AUTHORITATIVE PRICING: Derive price from tier, never from URL params.
+    // This prevents price manipulation via ?price=0.01
+    const TIER_PRICES: Record<string, number> = { "5k": 79, "10k": 149, "25k": 299 };
+    const basePrice = TIER_PRICES[tierId] || 149;
 
     const [loading, setLoading] = useState(false);
     const [profitSplit, setProfitSplit] = useState(false);
@@ -69,13 +73,18 @@ function CheckoutContent() {
     const evaluationPrice = appliedDiscount ? appliedDiscount.finalPrice : basePrice;
     const total = evaluationPrice + (profitSplit ? splitAddonPrice : 0);
 
-    // Soft Lock: Ensure user came from a valid internal flow
+    // Soft Lock: Ensure user came from a valid internal flow AND is authenticated
     useEffect(() => {
         const fromDashboard = searchParams.get("from_dashboard");
         if (!fromDashboard) {
             router.push(`/signup?intent=buy_evaluation&tier=${tierId}&price=${basePrice}`);
+            return;
         }
-    }, [searchParams, router, tierId, basePrice]);
+        // Require authenticated session — prevent guest checkout
+        if (!session?.user) {
+            router.push(`/login?callbackUrl=/checkout?tier=${tierId}&from_dashboard=true`);
+        }
+    }, [searchParams, router, tierId, basePrice, session]);
 
     // Discount Code Validation
     const handleApplyDiscount = async () => {
@@ -129,7 +138,7 @@ function CheckoutContent() {
                 method: "POST",
                 body: JSON.stringify({
                     tier: tierId,
-                    price: total,
+                    // NOTE: price is no longer sent — server derives it from tier config
                     platform: platform,
                     discountCode: appliedDiscount?.code || null,
                     discountAmount: appliedDiscount?.discountAmount || 0,

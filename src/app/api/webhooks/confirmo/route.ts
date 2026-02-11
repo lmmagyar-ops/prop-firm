@@ -71,8 +71,10 @@ export async function POST(req: NextRequest) {
 
             if (expectedPrice && paidAmount < expectedPrice * 0.95) { // 5% tolerance for fees
                 console.error(`[Confirmo] Payment mismatch! Expected $${expectedPrice}, got $${paidAmount} for tier ${tier}`);
-                // Still provision but log the discrepancy - don't block the user
-                // In production, you might want to flag this for manual review
+                return NextResponse.json(
+                    { error: `Payment amount mismatch: expected $${expectedPrice}, received $${paidAmount}` },
+                    { status: 400 }
+                );
             }
 
             // IDEMPOTENCY GUARD: Prevent duplicate challenge creation from webhook retries

@@ -56,7 +56,7 @@ export function WelcomeTour() {
                                 <div>
                                     <h3 className="text-xl font-bold text-white mb-2">Your Mission Monitor</h3>
                                     <p className="text-zinc-400 leading-relaxed mb-6">
-                                        This is your cockpit. Track your **Profit Target** and **Drawdown** limits in real-time here. If your Equity line crosses the red line, the evaluation fails.
+                                        This is your cockpit. Track your <strong className="text-white">Profit Target</strong> and <strong className="text-white">Drawdown</strong> limits in real-time here. If your Equity line crosses the red line, the evaluation fails.
                                     </p>
                                     <button
                                         onClick={nextStep}
@@ -88,7 +88,7 @@ export function WelcomeTour() {
                                 <div>
                                     <h3 className="text-xl font-bold text-white mb-2">Hard Breach Limits</h3>
                                     <p className="text-zinc-400 leading-relaxed mb-6">
-                                        Monitor your **Daily Loss Limit**. This resets every day at 00:00 UTC. Breaching this will instantly liquidate the account.
+                                        Monitor your <strong className="text-white">Daily Loss Limit</strong>. This resets every day at 00:00 UTC. Breaching this will instantly liquidate the account.
                                     </p>
                                     <button
                                         onClick={nextStep}

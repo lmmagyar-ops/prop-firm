@@ -490,3 +490,34 @@ export const affiliatePayouts = pgTable("affiliate_payouts", {
     paidAt: timestamp("paid_at"),
 });
 
+// ============================================================================
+// EXCHANGE HALT: Outage Protection
+// ============================================================================
+
+/**
+ * Track Railway outage events for evaluation timer extension + audit trail.
+ * One row per outage window. `endedAt` is null while the outage is active.
+ */
+export const outageEvents = pgTable("outage_events", {
+    id: uuid("id").defaultRandom().primaryKey(),
+    startedAt: timestamp("started_at").notNull(),
+    endedAt: timestamp("ended_at"),
+    durationMs: integer("duration_ms"),
+    reason: text("reason"),
+    challengesExtended: integer("challenges_extended").default(0),
+    graceWindowEndsAt: timestamp("grace_window_ends_at"),
+    createdAt: timestamp("created_at").defaultNow(),
+});
+
+/**
+ * Cache last-known market data in Postgres for fallback display during outages.
+ * Singleton row — always id='current'. Upserted on every successful worker fetch.
+ */
+export const marketCache = pgTable("market_cache", {
+    id: text("id").primaryKey().default("current"),
+    marketsJson: jsonb("markets_json"),
+    pricesJson: jsonb("prices_json"),
+    capturedAt: timestamp("captured_at").notNull(),
+    workerHealthy: boolean("worker_healthy").default(true),
+});
+
