@@ -6,6 +6,46 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ## 2026-02-10
 
+### 7:15 PM — Checkout Tier Mapping Bug Fix 🐛
+
+**Bug:** Purchasing a 25k (or 5k) account resulted in a 10k account being provisioned.
+
+**Root Cause:** The checkout page derived the tier ID from the `size` query param via fragile string matching (`size === "5000" ? "5k" : size === "25000" ? "25k" : "10k"`). Any mismatch (missing param, encoding issue, etc.) defaulted to 10k. Additionally, an orphaned `payment-success/page.tsx` hard-coded `createChallengeAction("10k_challenge")`.
+
+**Fixes:**
+- `BuyEvaluationClient.tsx`: Now passes `tier=${plan.id}` (e.g. `tier=25k`) directly in checkout URL
+- `checkout/page.tsx`: Reads `tier` param directly; falls back to size-based derivation for backward compatibility
+- Deleted orphaned `payment-success/page.tsx` (dead code with hard-coded 10k values, nothing linked to it)
+
+**Files:** `src/app/buy-evaluation/BuyEvaluationClient.tsx`, `src/app/checkout/page.tsx`, `src/app/payment-success/page.tsx` (deleted)
+
+**Tests added (to prevent regression):**
+- `tests/checkout-tier.test.ts`: 24 Vitest assertions — tier derivation logic, PLANS config integrity, invoice balance mapping, URL construction
+- `e2e/checkout-tier.spec.ts`: 12 Playwright tests — buy-evaluation link params, checkout page display, invoice API tier mapping
+
+**Root cause forensics:** Bug introduced in commit `c12f267` (Dec 27 2025) during "multi-account support + stripe removal + build fixes" — a large multi-concern commit where the `tierId` derivation replaced the old `plan` param with fragile string matching. No tests covered the purchase funnel, so it shipped silently.
+
+---
+
+### 7:00 PM — Senior Engineer Code Audit & Fixes 🔬
+
+Full codebase audit looking for what a strong dev would flag. Found and fixed:
+
+**Security (critical):**
+- `email.ts` was logging verification codes, reset links, and decoy codes to stdout in production. Replaced with dev-only structured logger.
+- Deleted 6 dead scaffolding routes (`fix-rules`, `create-schema`, `reset-demo`, `setup-demo`, `seed`, `db-check`) — `fix-rules` had an auth bypass (defaulted to `demo-user-1`), `create-schema` leaked stack traces to clients.
+- Gated `/api/refresh-markets` behind `requireAdmin()` — was previously public.
+
+**Tech debt:**
+- Extracted `getFundedTier()` from duplicated code in `evaluator.ts` and `payout-service.ts` to single source of truth in `funded-rules.ts`.
+- Removed stale `// Force recompile` comment from trade execute route.
+
+Full audit report with 9 areas of engineering excellence and 11 findings saved to `senior_audit.md`.
+
+---
+
+## 2026-02-10
+
 ### 6:50 PM — Deploy Pipeline Hardening 🛡️
 
 Closed 6 identified gaps in the deployment process:

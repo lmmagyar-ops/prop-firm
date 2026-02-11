@@ -9,7 +9,7 @@ import { db } from "@/db";
 import { challenges, payouts } from "@/db/schema";
 import { eq, and, inArray } from "drizzle-orm";
 import { ResolutionDetector } from "./resolution-detector";
-import { FUNDED_RULES, FundedTier } from "./funded-rules";
+import { FUNDED_RULES, FundedTier, getFundedTier as getFundedTierShared } from "./funded-rules";
 import { nanoid } from "nanoid";
 import { safeParseFloat } from "./safe-parse";
 import { BalanceManager } from "./trading/BalanceManager";
@@ -410,10 +410,9 @@ export class PayoutService {
 
     /**
      * Determine the funded tier based on starting balance.
+     * Delegates to the shared function in funded-rules.ts.
      */
     private static getFundedTier(startingBalance: number): FundedTier {
-        if (startingBalance >= 25000) return '25k';
-        if (startingBalance >= 10000) return '10k';
-        return '5k';
+        return getFundedTierShared(startingBalance);
     }
 }

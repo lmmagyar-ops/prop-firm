@@ -1,14 +1,17 @@
+import { createLogger } from "./logger";
+
+const logger = createLogger('Email');
+const isDev = process.env.NODE_ENV === 'development';
+
 export async function sendVerificationEmail(email: string, code: string, decoys: string[]) {
-    // ADD: Fallback for missing env var
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
-    // In development or if no API key, log to console
-    console.log("---------------------------------------------------");
-    console.log(`📧 SENDING VERIFICATION EMAIL TO: ${email}`);
-    console.log(`🔐 CODE: ${code}`);
-    console.log(`🎭 DECOYS: ${decoys.join(", ")}`);
-    console.log(`🔗 APP URL: ${appUrl}`); // ADD: Log the URL being used
-    console.log("---------------------------------------------------");
+    // Only log secrets in local dev — never in production
+    if (isDev) {
+        logger.debug(`Verification email to ${email}`, { code, decoys: decoys.length, appUrl });
+    } else {
+        logger.info(`Verification email sent to ${email}`);
+    }
 
     if (process.env.RESEND_API_KEY) {
         try {
@@ -51,11 +54,11 @@ export async function sendPasswordResetEmail(email: string, token: string) {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     const resetLink = `${appUrl}/reset-password?token=${token}`;
 
-    // Always log to console in development
-    console.log("---------------------------------------------------");
-    console.log(`🔑 PASSWORD RESET EMAIL TO: ${email}`);
-    console.log(`🔗 RESET LINK: ${resetLink}`);
-    console.log("---------------------------------------------------");
+    if (isDev) {
+        logger.debug(`Password reset email to ${email}`, { resetLink });
+    } else {
+        logger.info(`Password reset email sent to ${email}`);
+    }
 
     if (process.env.RESEND_API_KEY) {
         try {
@@ -105,11 +108,11 @@ export async function sendEmailVerificationLink(email: string, token: string) {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     const verifyLink = `${appUrl}/api/auth/verify-email?token=${token}`;
 
-    // Always log to console in development
-    console.log("---------------------------------------------------");
-    console.log(`✉️ EMAIL VERIFICATION TO: ${email}`);
-    console.log(`🔗 VERIFY LINK: ${verifyLink}`);
-    console.log("---------------------------------------------------");
+    if (isDev) {
+        logger.debug(`Email verification to ${email}`, { verifyLink });
+    } else {
+        logger.info(`Email verification sent to ${email}`);
+    }
 
     if (process.env.RESEND_API_KEY) {
         try {

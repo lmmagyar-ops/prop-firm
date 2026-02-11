@@ -4,7 +4,7 @@ import { eq, and } from "drizzle-orm";
 import { publishAdminEvent } from "./events";
 import { ChallengeRules } from "@/types/trading";
 import { MarketService } from "./market";
-import { FUNDED_RULES, FundedTier } from "./funded-rules";
+import { FUNDED_RULES, FundedTier, getFundedTier as getFundedTierShared } from "./funded-rules";
 import { normalizeRulesConfig } from "./normalize-rules";
 import { createLogger } from "./logger";
 import { BalanceManager } from "./trading/BalanceManager";
@@ -272,10 +272,9 @@ export class ChallengeEvaluator {
 
     /**
      * Determine the funded tier based on starting balance.
+     * Delegates to the shared function in funded-rules.ts.
      */
     private static getFundedTier(startingBalance: number): FundedTier {
-        if (startingBalance >= 25000) return '25k';
-        if (startingBalance >= 10000) return '10k';
-        return '5k';
+        return getFundedTierShared(startingBalance);
     }
 }

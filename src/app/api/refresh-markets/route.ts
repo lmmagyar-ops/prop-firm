@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import Redis from "ioredis";
 import { getErrorMessage } from "@/lib/errors";
+import { requireAdmin } from "@/lib/admin-auth";
 
 // Priority: REDIS_URL (Railway) > REDIS_HOST/PASSWORD (legacy Upstash) > localhost
 const getRedisConfig = () => {
@@ -19,6 +20,9 @@ const getRedisConfig = () => {
 };
 
 export async function GET() {
+    const { isAuthorized, response } = await requireAdmin();
+    if (!isAuthorized) return response;
+
     const redis = new Redis(getRedisConfig() as any);
 
     try {

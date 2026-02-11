@@ -165,3 +165,13 @@ export function getVolumeTierLabel(volume: number): string {
 
 export type FundedTier = keyof typeof FUNDED_RULES;
 export type FundedRulesConfig = typeof FUNDED_RULES[FundedTier];
+
+/**
+ * Determine the funded tier based on starting balance.
+ * Single source of truth — imported by evaluator.ts and payout-service.ts.
+ */
+export function getFundedTier(startingBalance: number): FundedTier {
+    if (startingBalance >= 25000) return '25k';
+    if (startingBalance >= 10000) return '10k';
+    return '5k';
+}

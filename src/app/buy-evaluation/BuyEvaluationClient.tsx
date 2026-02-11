@@ -142,7 +142,7 @@ export default function BuyEvaluationClient({ hasActiveChallenge }: BuyEvaluatio
                         {plans.map((plan) => (
                             <div key={plan.size} className="px-2 text-center">
                                 <Link
-                                    href={`/checkout?size=${plan.size}&price=${plan.price}&from_dashboard=true`}
+                                    href={`/checkout?size=${plan.size}&price=${plan.price}&tier=${plan.id}&from_dashboard=true`}
                                 >
                                     <Button
                                         className={`w-full font-bold py-6 ${plan.isPopular

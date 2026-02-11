@@ -24,10 +24,12 @@ function CheckoutContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
 
-    // params
-    const size = searchParams.get("size") || "5000";
-    const tierId = size === "5000" ? "5k" : size === "25000" ? "25k" : "10k";
-    const basePrice = parseFloat(searchParams.get("price") || "60");
+    // params — prefer explicit `tier` param; fall back to deriving from `size`
+    const size = searchParams.get("size") || "10000";
+    const tierParam = searchParams.get("tier"); // e.g. "5k", "10k", "25k"
+    const derivedTier = size === "5000" ? "5k" : size === "25000" ? "25k" : "10k";
+    const tierId = tierParam || derivedTier;
+    const basePrice = parseFloat(searchParams.get("price") || "149");
 
     const [loading, setLoading] = useState(false);
     const [profitSplit, setProfitSplit] = useState(false);
