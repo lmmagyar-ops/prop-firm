@@ -5,6 +5,17 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 ---
 
 ## 2026-02-11
+### 12:30 AM — Fail-Closed Safety Hardening 🛡️
+
+**What:** Trade-critical paths now reject requests when the worker is unreachable, instead of silently bypassing safety guards.
+
+**Changes:**
+- `kvIncr` throws on worker failure (was: return 0 → bypass rate limits)
+- `kvSetNx` throws on worker failure (was: return false → bypass idempotency)
+- `rate-limiter.ts` fails CLOSED for `TRADE_EXECUTE`/`PAYOUT`, still fails open for reads
+- `trade-idempotency.ts` blocks trades when worker unreachable (was: allow through)
+
+**Commit:** `70eb8f9` on `develop` and `main`
 
 ### 12:15 AM — Redis TCP Proxy Eliminated: Full Production Migration ✅
 
