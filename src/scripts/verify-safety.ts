@@ -25,6 +25,7 @@ import { FUNDED_RULES } from '@/lib/funded-rules';
 import { buildRulesConfig } from '@/config/tiers';
 import { nanoid } from 'nanoid';
 import Redis from 'ioredis';
+import { TestGuard } from './lib/test-guard';
 
 const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
 
@@ -433,12 +434,18 @@ async function cleanup() {
 // ============================================================
 // MAIN
 // ============================================================
+const guard = new TestGuard('safety-bot');
+guard.registerCleanup(cleanup);
+guard.registerCleanup(async () => { await redis.quit(); });
+
 async function main() {
     console.log(`
 🛡️  ═══════════════════════════════════════════════
    SAFETY VERIFICATION — Exploit Scenario Tests
    ═══════════════════════════════════════════════
 `);
+
+    await guard.sweepOrphans();
 
     try {
         await seedRedis();
@@ -452,6 +459,7 @@ async function main() {
     } finally {
         await cleanup();
         await redis.quit();
+        guard.markComplete();
     }
 
     console.log(`

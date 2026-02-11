@@ -6,6 +6,7 @@ import { eq, and } from 'drizzle-orm';
 import { TradeExecutor } from '@/lib/trade';
 import { MarketService } from '@/lib/market';
 import Redis from 'ioredis';
+import { TestGuard } from './lib/test-guard';
 const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
 
 // ============================================================
@@ -229,10 +230,16 @@ async function getBalance(challengeId: string): Promise<number> {
 // ============================================================
 // MAIN TEST
 // ============================================================
+const guard = new TestGuard('verify-bot');
+guard.registerCleanup(cleanup);
+guard.registerCleanup(async () => { redis.disconnect(); });
+
 async function runVerification() {
     console.log('\n🧪 ═══════════════════════════════════════════════');
     console.log('   TRADE ENGINE ROUND-TRIP VERIFICATION');
     console.log('   ═══════════════════════════════════════════════\n');
+
+    await guard.sweepOrphans();
 
     try {
         // ---- PHASE 0: Setup ----
@@ -846,6 +853,7 @@ async function runVerification() {
         // ALWAYS clean up, even on failure
         await cleanup();
         redis.disconnect();
+        guard.markComplete();
         process.exit(fail > 0 ? 1 : 0);
     }
 }

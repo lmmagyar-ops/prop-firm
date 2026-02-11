@@ -4,6 +4,8 @@ description: Staging-first deployment workflow for safe production releases
 
 # Staging-First Deployment Workflow
 
+// turbo-all
+
 ## Branch Structure
 - `develop` - Staging branch (auto-deploys to Vercel preview)
 - `main` - Production branch (auto-deploys to production URL)
@@ -12,72 +14,84 @@ description: Staging-first deployment workflow for safe production releases
 
 ### 1. Pre-Deploy Verification
 ```bash
-# Run the trade engine integration test BEFORE deploying
-# This verifies the full BUY → SELL → PnL → Balance pipeline
-# If this fails, DO NOT deploy — fix the issue first
+# Core engine verification (53 assertions)
 npm run test:engine
 
-# Run the safety exploit scenario tests
-# Proves payout balance deduction, transaction atomicity, funded-phase rules, and position closure
+# Safety exploit scenario proofs (44 assertions)
 npm run test:safety
 
-# Run the market data quality audit
-# Checks for duplicates, stale prices, encoding corruption, structural issues
-npm run test:markets
+# Full challenge lifecycle (74 assertions)
+npm run test:lifecycle
+
+# Type safety
+npx tsc --noEmit
 ```
-// turbo
 
-### 2. Make Changes on Develop
+### 2. Schema Check
+If you modified `src/db/schema.ts`, run the schema push **before deploying**:
 ```bash
-# Ensure you're on develop
-git checkout develop
+npm run db:push
+# Review the diff output — NEVER accept destructive changes without explicit approval
+```
 
-# Make your changes, then commit
+### 3. Commit and Push to Staging
+```bash
+git checkout develop
 git add -A
 git commit -m "feat: your change description"
-
-# Push to staging
 git push origin develop
 ```
 
-### 3. Run E2E Smoke Tests Against Staging
+### 4. Run E2E Smoke Tests Against Staging
 ```bash
 # Wait ~2 min for Vercel build, then run browser smoke tests
 PLAYWRIGHT_BASE_URL=https://prop-firmx-git-develop-oversightresearch-4292s-projects.vercel.app \
   npm run test:e2e
 ```
-// turbo
 
-### 4. Run Integration Tests Against Live DB
+### 5. Manual Staging Verification
+
+Open the staging preview URL and verify each of these:
+
+| # | Check | What to Look For |
+|---|-------|-----------------|
+| 1 | **Homepage loads** | No blank page, no console errors |
+| 2 | **Sign in** | Login with test account → dashboard renders with correct balance |
+| 3 | **Markets load** | Navigate to trade page → markets display, prices are not $0.00 |
+| 4 | **Admin panel** | `/admin` loads, shows active account counts |
+| 5 | **Browser console** | Open DevTools → Console → no uncaught errors or 500s |
+
+### 6. Run Integration Tests Against Live DB
 ```bash
-# Risk engine lifecycle: challenge creation → drawdown breach → funded transition → data integrity
 npm run test:lifecycle
-
-# Trade engine: BUY → SELL → PnL → Balance conservation
 npm run test:engine
-
-# Safety: exploit scenario proofs (payout deduction, atomicity, funded rules, position leak)
 npm run test:safety
 ```
-// turbo
 
-**If either test fails, DO NOT promote to production. Fix the issue and redeploy to staging.**
+**If any test fails, DO NOT promote to production. Fix the issue and redeploy to staging.**
 
-### 5. Manual Verification on Staging
-- Preview URL: `https://prop-firmx-git-develop-oversightresearch-4292s-projects.vercel.app`
-- Also visible in Vercel dashboard under Deployments
-
-### 6. Promote to Production
+### 7. Promote to Production
 ```bash
-# After testing on staging, merge to main
 git checkout main
 git merge develop
 git push origin main
 ```
 
-### 7. Verify Production
-- Check https://prop-firmx.vercel.app
-- Monitor Vercel deployment status
+### 8. Post-Deploy Smoke Test
+```bash
+# Automated production health check (no DB writes, read-only)
+npm run test:deploy -- https://prop-firmx.vercel.app
+```
+
+### 9. Monitor for 10 Minutes
+- **Sentry:** Check https://prop-firm-org.sentry.io → no new error spikes
+- **Re-run smoke:** `npm run test:deploy -- https://prop-firmx.vercel.app`
+- **If error rate spikes:** Run emergency rollback immediately (see below)
+
+### 10. Switch Back to Develop
+```bash
+git checkout develop
+```
 
 ## Quick Reference
 | Action | Command |
@@ -85,6 +99,7 @@ git push origin main
 | Switch to staging | `git checkout develop` |
 | Push to staging | `git push origin develop` |
 | Promote to prod | `git checkout main && git merge develop && git push` |
+| Post-deploy smoke | `npm run test:deploy -- https://prop-firmx.vercel.app` |
 | Check current branch | `git branch` |
 
 ## Emergency Rollback
@@ -93,4 +108,13 @@ git push origin main
 git checkout main
 git revert HEAD
 git push origin main
+# Then verify the rollback worked:
+npm run test:deploy -- https://prop-firmx.vercel.app
+```
+
+## Optional: Market Data Quality
+```bash
+# Only works when ingestion worker is running.
+# Skip if worker is down — this is an infrastructure check, not a code gate.
+npm run test:markets
 ```

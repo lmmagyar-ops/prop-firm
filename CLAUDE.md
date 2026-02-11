@@ -42,7 +42,8 @@ npm run test                                    # All Vitest unit tests
 npm run test:engine                             # Trading engine verification (53 assertions)
 npm run test:lifecycle                          # Full lifecycle simulator (73 assertions)
 npm run test:safety                             # Exploit scenario tests (44 assertions)
-npm run test:markets                            # Market data quality audit (22 assertions)
+npm run test:deploy -- https://prop-firmx.vercel.app  # Post-deploy smoke test (HTTP-only, no DB writes)
+npm run test:markets                            # Market data quality audit (22 assertions) — OPTIONAL, requires worker running
 npm run test:balances                           # Balance integrity verification
 npm run test:e2e                                # Playwright smoke tests (10 tests)
 
@@ -398,7 +399,7 @@ npx tsc --noEmit         # Zero type errors
 ```
 
 > [!CAUTION]
-> **NEVER deploy without running `test:safety`.** It proves that critical financial exploits (infinite payouts, wrong drawdown rules, orphaned positions) are blocked. Added Feb 2026 after discovering 3 critical vulnerabilities.
+> **NEVER deploy without running `test:safety`.** It proves that critical financial exploits (infinite payouts, wrong drawdown rules, orphaned positions) are blocked. After promoting to production, run `npm run test:deploy -- https://prop-firmx.vercel.app` to verify the live site.
 
 | Branch | Environment | URL |
 |--------|-------------|-----|
@@ -430,8 +431,9 @@ See `.agent/workflows/deploy.md` for the full deployment workflow.
 | **Trade Engine** | `npm run test:engine` | 53 assertions, 11 phases |
 | **Lifecycle** | `npm run test:lifecycle` | 73 assertions, 7 phases (full user journey) |
 | **Safety** | `npm run test:safety` | 44 assertions — exploit scenario tests (payout deduction, transaction atomicity, funded-phase drawdown, position leak on transition) |
+| **Deploy Smoke** | `npm run test:deploy -- <url>` | HTTP-only production smoke: homepage, cron status, heartbeat, login |
 | **Balance Integrity** | `npm run test:balances` | Balance audit checks |
-| **Market Quality** | `npm run test:markets` | 22 assertions vs live Redis |
+| **Market Quality** | `npm run test:markets` | 22 assertions vs live Redis (optional — requires worker running) |
 | **E2E Smoke** | `npm run test:e2e` | 10 Playwright browser tests |
 
 ### E2E Setup

@@ -6,6 +6,22 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ## 2026-02-10
 
+### 6:50 PM — Deploy Pipeline Hardening 🛡️
+
+Closed 6 identified gaps in the deployment process:
+
+1. **Test data isolation** — Created `src/scripts/lib/test-guard.ts`, a crash-safe cleanup module. All 3 test scripts (engine, lifecycle, safety) now use `TestGuard` which: registers process crash handlers, sweeps orphaned test data on startup (found and cleaned 3 orphaned `verify-bot-*` users from a previous crashed run), and prevents double-cleanup.
+
+2. **Post-deploy smoke test** — Created `src/scripts/verify-deploy.ts` (`npm run test:deploy -- <url>`). HTTP-only, no DB writes. Checks homepage (200), cron status API (healthy + valid stats), heartbeat (not 500), login page (content served), all under 5s. **12/12 checks passed** on first run against production.
+
+3. **Deploy workflow rewrite** — Rewrote `.agent/workflows/deploy.md` from 5 steps to 10. Added: schema migration gate (step 2), 5-item manual staging checklist (step 5), post-deploy smoke (step 8), 10-minute monitoring window (step 9), emergency rollback section. `test:markets` moved to optional — it depends on the ingestion worker which isn't always running.
+
+4. **Documentation** — Updated `CLAUDE.md` with `test:deploy` in: quick-start commands, test suite table, and pre-deploy checklist caution block. Marked `test:markets` as optional throughout.
+
+---
+
+## 2026-02-10
+
 ### 6:25 PM — Evaluation & Funding Safety Audit Fixes 🚨
 
 Deep audit of `evaluator.ts`, `risk-monitor.ts`, `payout-service.ts`, `funded-rules.ts`, and `resolution-detector.ts`. Found and fixed 4 issues:

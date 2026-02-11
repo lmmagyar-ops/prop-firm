@@ -26,6 +26,7 @@ import { TradeExecutor } from '@/lib/trade';
 import { ChallengeEvaluator } from '@/lib/evaluator';
 import { TIERS, buildRulesConfig } from '@/config/tiers';
 import Redis from 'ioredis';
+import { TestGuard } from './lib/test-guard';
 
 const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
 
@@ -469,10 +470,16 @@ async function cleanup() {
 // ============================================================
 // MAIN
 // ============================================================
+const guard = new TestGuard('lifecycle-bot');
+guard.registerCleanup(cleanup);
+guard.registerCleanup(async () => { await redis.disconnect(); });
+
 async function run() {
     console.log('\n🧬 ═══════════════════════════════════════════════');
     console.log('   LIFECYCLE SIMULATOR — Full Challenge Journey');
     console.log('   ═══════════════════════════════════════════════\n');
+
+    await guard.sweepOrphans();
 
     try {
         await seedRedis();
@@ -498,6 +505,7 @@ async function run() {
     console.log('═══════════════════════════════════════════════\n');
 
     await redis.disconnect();
+    guard.markComplete();
     process.exit(fail > 0 ? 1 : 0);
 }
 
