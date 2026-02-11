@@ -6,6 +6,14 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ## 2026-02-10
 
+### 9:30 PM — Tier Configuration Hardening 🔒
+
+Eliminated all duplicate tier definitions — `tiers.ts` is now the enforced single source of truth.
+
+**Changes:** (1) `create-confirmo-invoice/route.ts` — removed hardcoded 6-tier `tierBalances` map and inline `rulesConfig`, now uses `TIERS` lookup + `buildRulesConfig()`. Unknown tiers return 400 instead of silently defaulting to 10K. (2) `confirmo/route.ts` webhook — replaced hardcoded `tierPrices` with dynamic derivation from `PLANS`. Fixed 25K price bug ($349→$299). Removed dead 50K/100K/200K entries. (3) `tiers.ts` — `getTierConfig()` now throws on unknown tiers (fail-fast).
+
+**Bonus bug found:** Checkout route was applying 5K drawdown rules (4%/8%) to ALL tiers instead of per-tier values. The 25K tier should have had 5%/10%.
+
 ### 9:15 PM — 25K Tier Provisioning Fix 🔧
 
 Walkthrough test of 25K Executive tier revealed a **critical bug**: the checkout flow silently failed when the user already had an active challenge. The `uniqueIndex("challenges_unique_active_per_user")` constraint blocked the new challenge insert, so the catch block redirected with `db_error=true` and the onboarding page rendered the old stale $5K challenge.

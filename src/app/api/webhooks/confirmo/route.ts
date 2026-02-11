@@ -61,11 +61,11 @@ export async function POST(req: NextRequest) {
             const startingBalance = tierConfig.startingBalance;
             const rulesConfig = buildRulesConfig(tier);
 
-            // Validate payment amount matches tier
-            const tierPrices: Record<string, number> = {
-                "5k": 79, "10k": 149, "25k": 349,
-                "50k": 499, "100k": 799, "200k": 1499
-            };
+            // Validate payment amount matches tier (derived from canonical PLANS config)
+            const { PLANS } = await import("@/config/plans");
+            const tierPrices: Record<string, number> = Object.fromEntries(
+                Object.values(PLANS).map(p => [p.id, p.price])
+            );
             const expectedPrice = tierPrices[tier];
             const paidAmount = parseFloat(payload.amount || "0");
 

@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { challenges, users } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { getErrorMessage } from "@/lib/errors";
+import { TIERS, buildRulesConfig } from "@/config/tiers";
 
 export async function POST(req: NextRequest) {
     const session = await auth();
@@ -62,17 +63,16 @@ export async function POST(req: NextRequest) {
                         ));
                 }
 
-                // 2. Determine starting balance from tier
-                const tierBalances: Record<string, number> = {
-                    "5k": 5000,
-                    "10k": 10000,
-                    "25k": 25000,
-                    "50k": 50000,
-                    "100k": 100000,
-                    "200k": 200000
-                };
-
-                const startingBalance = tierBalances[tier] || 10000; // Default to 10k if tier not found
+                // 2. Validate tier and get starting balance from canonical config
+                const tierConfig = TIERS[tier];
+                if (!tierConfig) {
+                    return NextResponse.json(
+                        { error: `Unknown tier: ${tier}. Valid tiers: ${Object.keys(TIERS).join(", ")}` },
+                        { status: 400 }
+                    );
+                }
+                const startingBalance = tierConfig.startingBalance;
+                const rulesConfig = buildRulesConfig(tier);
 
                 // 3. Create the Active Challenge immediately (Simulating Webhook)
                 await db.insert(challenges).values({
@@ -83,24 +83,7 @@ export async function POST(req: NextRequest) {
                     currentBalance: startingBalance.toString(),
                     startOfDayBalance: startingBalance.toString(),
                     highWaterMark: startingBalance.toString(),
-                    rulesConfig: {
-                        // CRITICAL: profitTarget and maxDrawdown must be ABSOLUTE DOLLAR VALUES
-                        // Evaluator compares: equity >= startingBalance + profitTarget
-                        profitTarget: startingBalance * 0.10, // 10% in absolute $
-                        maxDrawdown: startingBalance * 0.08, // 8% in absolute $
-                        maxTotalDrawdownPercent: 0.08, // 8% (kept as percent for display)
-                        maxDailyDrawdownPercent: 0.04, // 4%
-
-                        // Position Sizing
-                        maxPositionSizePercent: 0.05, // 5% per market
-                        maxCategoryExposurePercent: 0.10, // 10% per category
-                        lowVolumeThreshold: 10_000_000, // $10M
-                        lowVolumeMaxPositionPercent: 0.025, // 2.5%
-
-                        // Liquidity
-                        maxVolumeImpactPercent: 0.10, // 10% of 24h volume
-                        minMarketVolume: 100_000, // $100k
-                    },
+                    rulesConfig,
                     platform: selectedPlatform,
                     startedAt: new Date(),
                     endsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)

@@ -111,10 +111,14 @@ export const TIERS: Record<string, TierConfig> = {
 } as const;
 
 /**
- * Get tier config by ID. Falls back to 10k if unknown.
+ * Get tier config by ID. Throws on unknown tier — fail-fast, no silent defaults.
  */
 export function getTierConfig(tierId: string): TierConfig {
-    return TIERS[tierId] || TIERS["10k"];
+    const config = TIERS[tierId];
+    if (!config) {
+        throw new Error(`Unknown tier: "${tierId}". Valid tiers: ${Object.keys(TIERS).join(", ")}`);
+    }
+    return config;
 }
 
 /**
