@@ -123,7 +123,7 @@ export function useTradeExecution(options: UseTradeExecutionOptions = {}) {
 
             // Show success toast
             toast.success(
-                `Bought ${result.trade?.shares.toFixed(2)} shares @ ${((result.trade?.price || 0) * 100).toFixed(0)}¢`
+                `Bought ${result.trade?.shares.toFixed(2)} shares @ ${((result.trade?.price || 0) * 100).toFixed(1)}¢`
             );
 
             // Handle challenge status changes

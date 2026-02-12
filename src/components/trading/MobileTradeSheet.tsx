@@ -210,7 +210,7 @@ export function MobileTradeSheet({
                                         "text-sm font-mono",
                                         outcome === "YES" ? "text-emerald-400/70" : "text-zinc-500"
                                     )}>
-                                        {(yesPrice * 100).toFixed(0)}¢
+                                        {(yesPrice * 100).toFixed(1)}¢
                                     </span>
                                 </button>
 
@@ -237,7 +237,7 @@ export function MobileTradeSheet({
                                         "text-sm font-mono",
                                         outcome === "NO" ? "text-rose-400/70" : "text-zinc-500"
                                     )}>
-                                        {(noPrice * 100).toFixed(0)}¢
+                                        {(noPrice * 100).toFixed(1)}¢
                                     </span>
                                 </button>
                             </div>

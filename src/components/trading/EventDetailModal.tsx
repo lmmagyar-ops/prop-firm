@@ -392,8 +392,8 @@ interface OutcomeRowProps {
 
 function OutcomeRow({ market, eventTitle, isSelected, onSelect, onTrade, isKalshi }: OutcomeRowProps) {
     const percentage = Math.round(market.price * 100);
-    const yesPrice = Math.round(market.price * 100);
-    const noPrice = 100 - yesPrice;
+    const yesCents = (market.price * 100).toFixed(1);
+    const noCents = ((1 - market.price) * 100).toFixed(1);
 
     const formatVolume = (volume: number) => {
         if (volume >= 1_000_000) return `$${(volume / 1_000_000).toFixed(1)}M`;
@@ -492,7 +492,7 @@ function OutcomeRow({ market, eventTitle, isSelected, onSelect, onTrade, isKalsh
                             : "text-[#052e1f]"
                     )}>Yes</span>
                     <span className={cn("text-base font-bold", isKalshi ? (isSelected ? "text-white" : "text-[#00C896]") : "text-[#052e1f]")}>
-                        {yesPrice < 1 ? "<1" : yesPrice}¢
+                        {parseFloat(yesCents) < 1 ? "<1" : yesCents}¢
                     </span>
                 </button>
 
@@ -513,7 +513,7 @@ function OutcomeRow({ market, eventTitle, isSelected, onSelect, onTrade, isKalsh
                             ? "text-[#E63E5D]"
                             : "text-[#380e14]")}>No</span>
                     <span className={cn("text-base font-bold", isKalshi ? "text-[#E63E5D]" : "text-[#380e14]")}>
-                        {noPrice < 1 ? "<1" : noPrice}¢
+                        {parseFloat(noCents) < 1 ? "<1" : noCents}¢
                     </span>
                 </button>
             </div >
@@ -612,9 +612,11 @@ function TradingSidebar({ market, eventTitle, onTradeComplete, isKalshi, initial
 
     // Use re-quoted price if available, otherwise use market price
     const effectiveMarketPrice = requotePrice ?? market.price;
-    const yesPrice = Math.round(effectiveMarketPrice * 100);
-    const noPrice = 100 - yesPrice;
-    const price = side === 'yes' ? yesPrice : noPrice;
+    const yesCentsNum = effectiveMarketPrice * 100;
+    const noCentsNum = (1 - effectiveMarketPrice) * 100;
+    const yesCents = yesCentsNum.toFixed(1);
+    const noCents = noCentsNum.toFixed(1);
+    const price = side === 'yes' ? yesCentsNum : noCentsNum;
     const shares = amount / (price / 100);
     const toWin = shares - amount;
 
@@ -746,7 +748,7 @@ function TradingSidebar({ market, eventTitle, onTradeComplete, isKalshi, initial
                                 <div className="flex justify-between text-sm">
                                     <span className={cn(isKalshi ? "text-slate-500" : "text-zinc-400")}>Avg Price</span>
                                     <span className={cn("font-mono", isKalshi ? "text-slate-900" : "text-white")}>
-                                        {Math.round(parseFloat(userPosition.entryPrice) * 100)}¢
+                                        {(parseFloat(userPosition.entryPrice) * 100).toFixed(1)}¢
                                     </span>
                                 </div>
                                 <div className="flex justify-between text-sm">
@@ -811,7 +813,7 @@ function TradingSidebar({ market, eventTitle, onTradeComplete, isKalshi, initial
                             )}
                         >
                             <span className="text-xs uppercase tracking-wider opacity-90">Yes</span>
-                            <span>{yesPrice < 1 ? "<1" : yesPrice}¢</span>
+                            <span>{parseFloat(yesCents) < 1 ? "<1" : yesCents}¢</span>
                         </button>
                         <button
                             onClick={() => setSide('no')}
@@ -823,7 +825,7 @@ function TradingSidebar({ market, eventTitle, onTradeComplete, isKalshi, initial
                             )}
                         >
                             <span className="text-xs uppercase tracking-wider opacity-90">No</span>
-                            <span>{noPrice < 1 ? "<1" : noPrice}¢</span>
+                            <span>{parseFloat(noCents) < 1 ? "<1" : noCents}¢</span>
                         </button>
                     </div>
 

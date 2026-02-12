@@ -106,8 +106,8 @@ function BinaryLayout({ event, onTrade }: { event: EventMetadata; onTrade: Unifi
     const yesPrice = market.price < 0.01 ? 0.5 : market.price;
     const noPrice = 1 - yesPrice;
     const percentage = Math.round(yesPrice * 100);
-    const yesCents = Math.round(yesPrice * 100);
-    const noCents = Math.round(noPrice * 100);
+    const yesCents = (yesPrice * 100).toFixed(1);
+    const noCents = (noPrice * 100).toFixed(1);
 
     return (
         <>

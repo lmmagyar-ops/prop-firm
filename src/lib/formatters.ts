@@ -17,18 +17,18 @@ import type { Platform } from "./platform-theme";
  * @param platform - "polymarket" (56%) or "kalshi" (56¢)
  */
 export function formatPrice(price: number, platform: Platform = "polymarket"): string {
-    const cents = Math.round(price * 100);
+    const cents = price * 100;
 
     if (platform === "kalshi") {
         if (cents < 1) return "<1¢";
         if (cents > 99) return "99¢";
-        return `${cents}¢`;
+        return `${cents.toFixed(1)}¢`;
     }
 
     // Polymarket format (percent)
     if (cents < 1) return "<1%";
     if (cents > 99) return ">99%";
-    return `${cents}%`;
+    return `${cents.toFixed(1)}%`;
 }
 
 /**

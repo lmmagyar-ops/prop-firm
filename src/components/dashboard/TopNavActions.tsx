@@ -81,7 +81,7 @@ export function TopNavActions({ userId }: TopNavActionsProps) {
 
     return (
         <SelectedChallengeProvider value={contextValue}>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 md:gap-4">
                 {challenges.length > 0 && (
                     <ChallengeSelector
                         challenges={challenges}

@@ -23,8 +23,8 @@ export const BinaryEventCard = memo(function BinaryEventCard({ event, onTrade }:
     const yesPrice = rawYesPrice < 0.01 ? 0.5 : rawYesPrice; // Fallback to 50% for display
     const noPrice = 1 - yesPrice;
     const percentage = Math.round(yesPrice * 100);
-    const yesCents = Math.round(yesPrice * 100);
-    const noCents = Math.round(noPrice * 100);
+    const yesCents = (yesPrice * 100).toFixed(1);
+    const noCents = (noPrice * 100).toFixed(1);
 
     const formatVolume = (volume: number) => {
         if (volume >= 1_000_000) return `$${(volume / 1_000_000).toFixed(1)}m`;

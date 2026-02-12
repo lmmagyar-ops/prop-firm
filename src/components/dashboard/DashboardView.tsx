@@ -148,7 +148,7 @@ export function DashboardView({ initialBalance = null, demoMode = false, userId 
                                 </div>
                                 <div className="text-right">
                                     <div className="text-4xl font-medium text-green-500 font-mono tracking-tighter">
-                                        {Math.round(featuredMarket.price * 100)}¢
+                                        {(featuredMarket.price * 100).toFixed(1)}¢
                                     </div>
                                 </div>
                             </div>
@@ -196,7 +196,7 @@ export function DashboardView({ initialBalance = null, demoMode = false, userId 
                     className="w-full bg-[#29af73] text-white font-black uppercase py-4 rounded-xl shadow-2xl shadow-primary/30 border border-primary/50 flex items-center justify-center gap-2"
                 >
                     {featuredMarket ? (
-                        <>Trade Now • {Math.round(featuredMarket.price * 100)}¢</>
+                        <>Trade Now • {(featuredMarket.price * 100).toFixed(1)}¢</>
                     ) : (
                         <>Explore Markets</>
                     )}

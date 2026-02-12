@@ -196,7 +196,7 @@ export function PositionsTable({ challengeId }: PositionsTableProps) {
 
                                     {/* Avg Entry Price */}
                                     <td className="py-3 px-2 text-right text-zinc-400">
-                                        {(pos.entryPrice * 100).toFixed(0)}¢
+                                        {(pos.entryPrice * 100).toFixed(1)}¢
                                     </td>
 
                                     {/* Current Value */}

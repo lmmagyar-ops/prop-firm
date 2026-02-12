@@ -69,7 +69,7 @@ export function MarketTicker() {
                             {market.symbol}
                         </span>
                         <span className="font-mono font-bold text-sm text-white">
-                            {Math.round(market.price * 100)}¢
+                            {(market.price * 100).toFixed(1)}¢
                         </span>
                     </div>
                 ))}

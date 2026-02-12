@@ -327,10 +327,10 @@ export function PortfolioPanel() {
                                                             {pos.shares.toFixed(2)} shares
                                                         </span>
                                                         <span className="text-zinc-500">
-                                                            @ {Math.round(pos.avgPrice * 100)}¢
+                                                            @ {(pos.avgPrice * 100).toFixed(1)}¢
                                                         </span>
                                                         <span className="text-zinc-400">
-                                                            → {Math.round(pos.currentPrice * 100)}¢
+                                                            → {(pos.currentPrice * 100).toFixed(1)}¢
                                                         </span>
                                                     </div>
 

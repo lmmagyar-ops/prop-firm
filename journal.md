@@ -5,6 +5,51 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 ---
 
 ## 2026-02-12
+### ☀️ Morning Checklist (8:20 AM)
+
+1. **Mat's feedback:** ✅ "Everything looks great so far" — only 2 minor UI issues: (a) Buy Evaluation page doesn't auto-fit on mobile, (b) balance in top-right slightly off position-wise. Also asked about shares changes from a prior conversation.
+2. **Sentry:** ✅ 0 errors in last 14 days. Clean.
+3. **Vercel:** ✅ All deployments in Ready state. Latest deploy ~10hrs ago (`fix: show '—' instead of '0%' win rate`). Runtime logs show expected `/api/markets/stream` 300s timeouts and rate-limit 429s on `/api/system/status` — both known/expected.
+4. **`test:handoff`:** ✅ 23/23 passed against production. Balance $9,950.00, 1 open position, 5 trades, all APIs returning data.
+
+**Next:** Fix Mat's 2 minor UI issues (mobile buy-evaluation page, balance positioning).
+
+### 🎨 Mat's UI Fixes (8:25 AM)
+
+**Issue 1: Buy Evaluation page doesn't auto-fit on mobile**
+- Root cause: Hardcoded `ml-64` sidebar margin applied on all viewports, plus a fixed 4-column grid (`grid-cols-[240px_repeat(3,1fr)]`) too wide for 375px screens.
+- Fix: Changed to `md:ml-64` (no margin on mobile since sidebar is hidden). Converted the comparison table to **stacked tier cards** on mobile (`block md:hidden`) while keeping the desktop table unchanged (`hidden md:block`). Also scaled down header text, padding, and FAQ section for mobile.
+
+**Issue 2: Balance in top-right slightly off position-wise**
+- Root cause: `gap-4` spacing between nav items too loose on small screens, coupled with `h-9 px-4` buttons.
+- Fix: Tightened to `gap-2 md:gap-4` across `TopNav.tsx` and `TopNavActions.tsx`. Reduced mobile buttons to `h-8 px-3 text-sm`. Header height `h-14 md:h-16`, padding `px-3 md:px-6`.
+
+**Files changed:** `BuyEvaluationClient.tsx`, `TopNav.tsx`, `TopNavActions.tsx`
+**Build:** ✅ Passed (exit 0)
+
+### 💰 Share Price Decimal Formatting (8:33 AM)
+
+**Request from Mat:** "Can we have 1 decimal point on share prices? Here and on the popup."
+
+**Changes:** Updated all share price displays from whole cents (`27¢`) to 1-decimal (`27.0¢`):
+- Central `formatPrice()` in `formatters.ts` — switched from `Math.round` to `toFixed(1)`
+- `EventDetailModal.tsx` — OutcomeRow + TradingSidebar YES/NO buttons, avg price display
+- `MobileTradeSheet.tsx` — YES/NO price selectors
+- `BinaryEventCard.tsx`, `UnifiedMarketCard.tsx` — market card price breakdown
+- `KalshiMultiOutcomeCard.tsx` — multi-outcome buttons
+- `PositionsTable.tsx` — entry price column
+- `PortfolioPanel.tsx` — avg price + current price
+- `MarketTicker.tsx` — scrolling ticker prices
+- `useTradeExecution.ts` — success toast message
+
+**Files changed:** 10 files → 11 files (added `DashboardView.tsx` after audit)
+**Build:** ✅ Passed (exit 0)
+**Financial verification:** ✅ `test:financial` 24/24 passed, `test:engine` 53/53 passed
+**Audit notes:** Confirmed type-safety — arithmetic paths use `number` types (`yesCentsNum`), display paths use `string` types (`yesCents` from `toFixed(1)`). Zero remaining `Math.round * 100 + ¢` in components.
+
+---
+
+## 2026-02-12
 ### 🧪 Pre-Handoff Smoke Test (`test:handoff`)
 
 **Problem:** No automated test verifies authenticated API responses return real data. Mat keeps hitting silent failures ($0.00, "No trades yet") that only appear when a real user navigates the dashboard.

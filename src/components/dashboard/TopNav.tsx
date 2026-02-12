@@ -17,10 +17,10 @@ export function TopNav({ userId }: TopNavProps) {
     return (
         <>
             <header className="sticky top-0 z-50 w-full border-b border-[#2E3A52] bg-[#0E1217]/80 backdrop-blur-md">
-                <div className="max-w-[1800px] mx-auto px-6 h-16 flex items-center justify-between">
+                <div className="max-w-[1800px] mx-auto px-3 md:px-6 h-14 md:h-16 flex items-center justify-between">
 
                     {/* Left: Mobile only — Logo, Navigation, New Evaluation (sidebar covers desktop) */}
-                    <div className="flex md:hidden items-center gap-4">
+                    <div className="flex md:hidden items-center gap-2">
                         <Link href="/dashboard/trade" className="flex items-center gap-2">
                             <img src="/icon.png" alt="Predictions Firm" className="w-8 h-8 rounded-lg" />
                         </Link>
@@ -30,7 +30,7 @@ export function TopNav({ userId }: TopNavProps) {
                                 <Button
                                     variant="ghost"
                                     className={cn(
-                                        "h-9 px-4 font-medium",
+                                        "h-8 px-3 text-sm font-medium",
                                         pathname === "/dashboard"
                                             ? "bg-[#1E293B] text-white"
                                             : "text-zinc-400 hover:text-white hover:bg-[#1E293B]"
@@ -43,7 +43,7 @@ export function TopNav({ userId }: TopNavProps) {
                                 <Button
                                     variant="ghost"
                                     className={cn(
-                                        "h-9 px-4 font-medium",
+                                        "h-8 px-3 text-sm font-medium",
                                         pathname === "/dashboard/trade"
                                             ? "bg-[#1E293B] text-white"
                                             : "text-zinc-400 hover:text-white hover:bg-[#1E293B]"
@@ -55,14 +55,14 @@ export function TopNav({ userId }: TopNavProps) {
                         </nav>
 
                         <Link href="/buy-evaluation">
-                            <Button className="bg-[#29af73] hover:bg-[#1e8a5a] text-white font-bold h-9 px-4 shadow-lg shadow-green-900/20">
+                            <Button className="bg-[#29af73] hover:bg-[#1e8a5a] text-white font-bold h-8 px-3 text-sm shadow-lg shadow-green-900/20">
                                 New Evaluation
                             </Button>
                         </Link>
                     </div>
 
                     {/* Right: Challenge Selector + Portfolio + User */}
-                    <div className="flex-1 flex items-center justify-end gap-4">
+                    <div className="flex-1 flex items-center justify-end gap-2 md:gap-4">
                         <TopNavActions userId={userId} />
                     </div>
                 </div>

@@ -55,8 +55,8 @@ export const KalshiMultiOutcomeCard = memo(function KalshiMultiOutcomeCard({ eve
             {/* Outcomes Table */}
             <div className="flex-1 space-y-1.5">
                 {visibleMarkets.map((market) => {
-                    const yesPrice = Math.floor(market.price * 100);
-                    const noPrice = 100 - yesPrice;
+                    const yesPrice = (market.price * 100).toFixed(1);
+                    const noPrice = ((1 - market.price) * 100).toFixed(1);
 
                     return (
                         <div
