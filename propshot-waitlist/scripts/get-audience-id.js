@@ -1,3 +1,4 @@
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const { Resend } = require('resend');
 
 // Check if API key is provided

@@ -29,7 +29,7 @@ async function loginTestUser(page: Page): Promise<boolean> {
         const passwordInput = page.locator('input[type="password"]');
 
         if (!await emailInput.isVisible({ timeout: 5000 })) {
-            console.log('Login form not found');
+            console.warn('Login form not found');
             return false;
         }
 
@@ -42,7 +42,7 @@ async function loginTestUser(page: Page): Promise<boolean> {
         await page.waitForURL(/dashboard/, { timeout: 10000 });
         return true;
     } catch (error) {
-        console.log('Login failed:', error);
+        console.warn('Login failed:', error);
         return false;
     }
 }
@@ -179,7 +179,7 @@ test.describe('Authenticated Trade Flow', () => {
                 await page.waitForTimeout(2000);
 
                 // Should show error, not crash
-                const hasError = await page.getByText(/insufficient|exceeds|error|rejected/i).isVisible({ timeout: 5000 }).catch(() => false);
+                const _hasError = await page.getByText(/insufficient|exceeds|error|rejected/i).isVisible({ timeout: 5000 }).catch(() => false);
                 // Even if no explicit error shown, page shouldn't crash
                 expect(page.url()).not.toContain('error');
             }
@@ -228,7 +228,7 @@ test.describe('Risk Limits E2E', () => {
         await page.waitForLoadState('networkidle');
 
         // Look for any risk indicators (progress bars, percentages, colors)
-        const hasRiskIndicator = await page.locator('[class*="risk"], [class*="drawdown"], [class*="warning"]').first().isVisible({ timeout: 3000 }).catch(() => false);
+        const _hasRiskIndicator = await page.locator('[class*="risk"], [class*="drawdown"], [class*="warning"]').first().isVisible({ timeout: 3000 }).catch(() => false);
 
         // At minimum, the dashboard exists
         expect(page.url()).toContain('/dashboard');

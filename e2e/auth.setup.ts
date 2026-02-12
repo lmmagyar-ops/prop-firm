@@ -47,7 +47,7 @@ setup('authenticate', async ({ page }) => {
             domain: url.hostname,
             path: '/',
         }]);
-        console.log('🔑 Vercel bypass cookie set for', url.hostname);
+        console.warn('🔑 Vercel bypass cookie set for', url.hostname);
     }
 
     // Navigate to login page
@@ -75,5 +75,5 @@ setup('authenticate', async ({ page }) => {
 
     // Save the authenticated session
     await page.context().storageState({ path: authFile });
-    console.log('✅ Auth session saved to', authFile);
+    console.warn('✅ Auth session saved to', authFile);
 });
