@@ -17,9 +17,9 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 **Checks:** 6 authenticated checks — Challenges API, Balance API, Positions API, Trade History API, Live Stats API, Dashboard page render. Also verifies DB data presence before hitting APIs.
 
-**Bonus fix:** Discovered `/api/challenges` was NOT exempt from rate limiting (429). Added it to the middleware prefix convention alongside `/api/trade/`, `/api/trades/`, `/api/user/`.
+**Bonus fix:** Discovered `/api/challenges` and `/api/stats/live` were NOT exempt from rate limiting (429). Added both to the middleware prefix convention alongside `/api/trade/`, `/api/trades/`, `/api/user/`.
 
-**Verification:** `tsc --noEmit` ✅ | 20/23 checks pass pre-deploy (3 fail from challenges 429, fixed in middleware pending deploy)
+**Verification:** `tsc --noEmit` ✅ | `test:engine` 53 ✅ | `test:safety` 44 ✅ | `test:lifecycle` 74 ✅ | `test:handoff` 23/23 ✅ | Visual spot-check ✅
 
 ---
 
