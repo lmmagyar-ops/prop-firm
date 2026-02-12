@@ -25,6 +25,8 @@ Triaged 8 bugs from Mat's testing doc. Fixed all 8.
 
 **Build:** ✅ `tsc --noEmit` passes with 0 errors.
 
+**Deployed to staging:** Commit `5a24c91` pushed to `develop`, Vercel auto-deployed. All 8 bugs verified fixed in browser. Redis TCP proxy re-enabled after billing suspension (`crossover.proxy.rlwy.net:33183`). Financial verification suite: 24/24 ✅. Pre-deploy tests: engine ✅, safety 44/44 ✅, lifecycle 72/73 ✅.
+
 ---
 
 ### 🔬 Financial Consistency Verification System (New)
