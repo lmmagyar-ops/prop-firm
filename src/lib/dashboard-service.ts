@@ -278,7 +278,7 @@ export async function getDashboardData(userId: string) {
     const winningTrades = sellTrades.filter((t: TradeRow) => safeParseFloat(t.realizedPnL) > 0);
     const tradeWinRate = sellTrades.length > 0
         ? (winningTrades.length / sellTrades.length) * 100
-        : 0;
+        : null; // null = no closed trades yet (UI shows "—" instead of misleading "0%")
 
     // Calculate current win streak (consecutive profitable SELL trades, most recent first)
     let currentWinStreak = 0;

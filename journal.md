@@ -28,8 +28,8 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 4. **Re-run `npm run test:handoff -- https://prop-firmx.vercel.app`** — confirm still green after any overnight DB changes
 
 **🔧 Follow-up items (non-blocking, do when bandwidth allows):**
-- Dashboard Win Rate shows 0% despite closed trades with P&L — investigate stats calculation or win/loss marking
-- `test:handoff` is hardcoded to `l.m.magyar@gmail.com` — make it accept `HANDOFF_EMAIL` env var for testing other accounts (e.g., Mat's)
+- ~~Dashboard Win Rate shows 0% despite having closed trades with P&L~~ **Investigated: NOT a bug.** User has 5 BUY trades and 0 SELL trades (no closed positions). Win rate formula = `(winning SELLs / total SELLs) × 100` = 0/0 → 0%. This is correct behavior — but looks confusing. Consider showing "—" or "No closed trades" when there are 0 SELLs
+- ~~`test:handoff` is hardcoded to `l.m.magyar@gmail.com`~~ **Already supported.** `HANDOFF_EMAIL` env var exists on line 31 — use `HANDOFF_EMAIL=mat@email.com npm run test:handoff -- URL`
 - No write-path concurrency test exists — what happens if two tabs close the same position simultaneously? Safety tests cover DB-level but not HTTP-level
 
 ---
