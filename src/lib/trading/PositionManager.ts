@@ -64,7 +64,6 @@ export class PositionManager {
                 shares: totalShares.toString(),
                 entryPrice: newAvg.toString(),
                 sizeAmount: (parseFloat(position.sizeAmount) + additionalAmount).toString(),
-                currentPrice: additionalPrice.toString(), // Update current price to latest trade price
             })
             .where(eq(positions.id, positionId));
     }
@@ -110,8 +109,14 @@ export class PositionManager {
                 })
                 .where(eq(positions.id, positionId));
         } else {
+            // Proportionally reduce sizeAmount so risk engine sees correct exposure
+            const proportionRemaining = remainingShares / currentShares;
+            const updatedSize = parseFloat(position.sizeAmount) * proportionRemaining;
             await tx.update(positions)
-                .set({ shares: remainingShares.toString() })
+                .set({
+                    shares: remainingShares.toString(),
+                    sizeAmount: updatedSize.toFixed(2),
+                })
                 .where(eq(positions.id, positionId));
         }
 

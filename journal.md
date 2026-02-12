@@ -6,6 +6,24 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ## 2026-02-11
 
+### 🔒 Financial Hardening Sprint (5 Fixes)
+
+Deep audit of all financial code paths (`trade.ts`, `PositionManager.ts`, `BalanceManager.ts`, `risk.ts`, `evaluator.ts`, `settlement.ts`, `position-utils.ts`, `close/route.ts`). Found 6 edge cases, fixed 5 (issue 2 is a feature enhancement, deferred).
+
+| Fix | File | Root Cause | Severity |
+|-----|------|-----------|----------|
+| **sizeAmount stale on partial sell** | `PositionManager.ts` | `reducePosition` didn't update `sizeAmount` — risk engine saw inflated exposure | 🔴 P1 |
+| **Settlement race window** | `settlement.ts` | Position close and balance credit in separate operations — concurrent runs could double-settle | 🟡 P2 |
+| **Close P&L uses invested** | `close/route.ts` | Used `sizeAmount` for P&L display — not immune to drift from averaging/partial sell | 🟡 P2 |
+| **Resolved market stale equity** | `position-utils.ts` | Prices at 0¢/100¢ rejected by sanity check, fell back to entry price | 🟢 P3 |
+| **currentPrice override on add** | `PositionManager.ts` | `addToPosition` set `currentPrice` to execution price, creating misleading fallback | 🟢 P3 |
+
+**Approach:** Anthropic-grade — one variable per fix, invariant at every boundary, zero refactors mixed in, each fix independently testable.
+
+**Verification:** `tsc --noEmit` ✅ | `test:engine` 53/53 ✅ | `test:safety` 44/44 ✅ | `test:financial` 24/24 ✅
+
+---
+
 ### 🐛 Mat's Bug Fix Sprint (8 Fixes)
 
 Triaged 8 bugs from Mat's testing doc. Fixed all 8.

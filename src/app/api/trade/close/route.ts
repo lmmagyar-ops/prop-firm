@@ -56,7 +56,8 @@ export async function POST(req: NextRequest) {
 
         // Close the position by selling all shares
         const shares = parseFloat(position.shares);
-        const invested = parseFloat(position.sizeAmount || '0'); // Original investment
+        // Derive cost basis from entry price × shares (immune to sizeAmount drift)
+        const costBasis = shares * parseFloat(position.entryPrice);
 
         // Get current market price to calculate sell amount
         const { MarketService } = await import("@/lib/market");
@@ -92,12 +93,12 @@ export async function POST(req: NextRequest) {
 
         // Calculate proceeds and P&L for display
         const proceeds = parseFloat(trade.shares) * parseFloat(trade.price);
-        const pnl = proceeds - invested; // Profit/loss = what you got back - what you invested
+        const pnl = proceeds - costBasis; // Profit/loss = what you got back - what you invested
 
         const responsePayload = {
             success: true,
             proceeds, // Amount user received from closing
-            invested, // Original investment amount
+            costBasis, // Cost basis (entryPrice × shares)
             pnl,      // Profit or loss
             trade: {
                 id: trade.id,

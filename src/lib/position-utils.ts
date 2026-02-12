@@ -82,8 +82,9 @@ export function getPortfolioValue(
         if (priceData) {
             const rawPrice = parseFloat(priceData.price);
 
-            // Sanity check: valid range for active markets
-            if (rawPrice > 0.01 && rawPrice < 0.99 && !isNaN(rawPrice)) {
+            // Sanity check: valid range including resolution prices (0 and 1)
+            // Trade executor blocks new entries at ≥95¢/≤5¢, so 0/1 only appear on resolved positions
+            if (rawPrice >= 0 && rawPrice <= 1 && !isNaN(rawPrice)) {
                 // Live price is raw YES price — apply direction adjustment
                 effectivePrice = getDirectionAdjustedPrice(rawPrice, direction);
                 priceSource = "live";
