@@ -40,7 +40,8 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 | 3 | SSE reconnect storms → 429s | **Fixed** — backoff 1s→5s, added max 10 retries to prevent infinite reconnection | `useMarketStream.ts` |
 
 **Verification:** Build ✅, lifecycle 74/74 ✅, engine 53/53 ✅, safety 44/44 ✅  
-**Commit:** `93debf6`
+**Pre-prod gate:** Unit tests 783/783 ✅, financial consistency 24/24 ✅  
+**Production merge:** `931a521..d5cb779` (fast-forward), commit `93debf6`
 
 ---
 
