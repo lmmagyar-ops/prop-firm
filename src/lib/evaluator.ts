@@ -189,7 +189,10 @@ export class ChallengeEvaluator {
             // TRANSACTION SAFETY: status guard + position closing + phase change + balance reset are atomic.
             // Status guard prevents race with risk-monitor's triggerPass.
             await db.transaction(async (tx) => {
-                // 1. Status guard: only transition active challenges
+                // 1. Status + phase guard: only transition active CHALLENGE-phase challenges.
+                //    The status guard alone is insufficient because funded transition keeps
+                //    status='active'. Without the phase guard, two concurrent evaluate() calls
+                //    both see status='active' and both execute the transition.
                 const result = await tx.update(challenges)
                     .set({
                         phase: 'funded',
@@ -204,7 +207,8 @@ export class ChallengeEvaluator {
                     })
                     .where(and(
                         eq(challenges.id, challengeId),
-                        eq(challenges.status, 'active')
+                        eq(challenges.status, 'active'),
+                        eq(challenges.phase, 'challenge')
                     ));
 
                 if (!result.rowCount || result.rowCount === 0) {
