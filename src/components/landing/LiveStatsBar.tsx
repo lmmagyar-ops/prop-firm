@@ -3,6 +3,7 @@
 import { motion, useSpring, useTransform } from "framer-motion";
 import { useEffect, useState } from "react";
 import { Users, DollarSign, TrendingUp, Award, Loader2 } from "lucide-react";
+import { apiFetch } from "@/lib/api-fetch";
 
 /**
  * LiveStatsBar - Real-time platform statistics for social proof
@@ -110,16 +111,17 @@ export function LiveStatsBar() {
     useEffect(() => {
         const fetchStats = async () => {
             try {
-                const res = await fetch("/api/stats/live", {
+                const res = await apiFetch("/api/stats/live", {
                     next: { revalidate: 60 }, // Cache for 1 minute
                 });
                 if (res.ok) {
                     const data = await res.json();
                     setStats(data);
+                } else {
+                    console.warn(`[LiveStatsBar] API error: ${res.status}`);
                 }
             } catch (error) {
-                // Silently fail - component will show fallback
-                console.warn("[LiveStatsBar] Failed to fetch stats:", error);
+                console.warn("[LiveStatsBar] Network error:", error);
             } finally {
                 setLoading(false);
             }

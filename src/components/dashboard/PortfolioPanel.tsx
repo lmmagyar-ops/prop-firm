@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
+import { apiFetch } from "@/lib/api-fetch";
 
 interface Position {
     id: string;
@@ -29,6 +30,7 @@ export function PortfolioPanel() {
     const router = useRouter();
     const [isOpen, setIsOpen] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [error, setError] = useState<string | null>(null);
     const [closingId, setClosingId] = useState<string | null>(null);
     const isClosingRef = useRef(false);
     const [positions, setPositions] = useState<Position[]>([]);
@@ -83,27 +85,35 @@ export function PortfolioPanel() {
 
     // Extract fetch logic for manual refresh
     const fetchPositions = useCallback(async () => {
+        setError(null);
         try {
             const [positionsRes, balanceRes] = await Promise.all([
-                fetch("/api/trade/positions"),
-                fetch("/api/user/balance")
+                apiFetch("/api/trade/positions"),
+                apiFetch("/api/user/balance")
             ]);
 
             if (positionsRes.ok) {
                 const data = await positionsRes.json();
                 setPositions(data.positions || []);
+            } else {
+                console.error(`[PortfolioPanel] Positions API error: ${positionsRes.status}`);
+                setError(`Failed to load positions (${positionsRes.status})`);
+            }
 
-                if (balanceRes.ok) {
-                    const balanceData = await balanceRes.json();
-                    setSummary({
-                        cash: balanceData.balance ?? 0,
-                        positionValue: balanceData.positionValue ?? 0,
-                        equity: balanceData.equity ?? 0,
-                    });
-                }
+            if (balanceRes.ok) {
+                const balanceData = await balanceRes.json();
+                setSummary({
+                    cash: balanceData.balance ?? 0,
+                    positionValue: balanceData.positionValue ?? 0,
+                    equity: balanceData.equity ?? 0,
+                });
+            } else {
+                console.error(`[PortfolioPanel] Balance API error: ${balanceRes.status}`);
+                setError((prev: string | null) => prev || `Failed to load balance (${balanceRes.status})`);
             }
         } catch (e) {
-            console.error("Failed to fetch positions", e);
+            console.error("[PortfolioPanel] Network error:", e);
+            setError("Network error — check your connection");
         }
     }, []);
 

@@ -5,6 +5,21 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 ---
 
 ## 2026-02-12
+### 🛡️ Fetch Layer Hardening (3-Phase Silent Failure Fix)
+
+**Problem:** Components silently swallowed API errors (429s, 5xx), displaying misleading "$0.00" or "No trades yet" instead of error states.
+
+**Phase 1 — Error UI:** Added explicit error states + amber ⚠ warnings to 5 data components (`TradeHistoryTable`, `RecentTradesWidget`, `PortfolioPanel`, `PortfolioDropdown`, `PositionsTable`). Added structured `[ComponentName]` logging to `TopNavActions` and `LiveStatsBar`.
+
+**Phase 2 — Convention Exemptions:** Replaced 4 individual endpoint exemptions in `middleware.ts` with 3 prefix-based conventions (`/api/trade/`, `/api/trades/`, `/api/user/`). New GET endpoints under these prefixes are auto-exempt.
+
+**Phase 3 — Observability:** Created `src/lib/api-fetch.ts` — thin fetch wrapper that auto-logs 429s and 5xx. Refactored all 7 components to use `apiFetch` for data-loading calls. POST/mutation calls keep raw `fetch`.
+
+**Verification:** `tsc --noEmit` ✅ | `test:engine` 53 pass ✅ | `test:safety` 44 pass ✅
+
+---
+
+## 2026-02-12
 ### 🐛 Trade Display Bug Fix (Rate Limiter Exemptions)
 
 **Bugs:** "Recent Trades" widget showed "No trades yet", Trade History page was empty, Portfolio dropdown showed $0.00 for Equity/Cash/Positions. All three symptoms had the same root cause.

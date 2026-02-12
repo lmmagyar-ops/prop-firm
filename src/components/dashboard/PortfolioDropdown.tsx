@@ -8,6 +8,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { apiFetch } from "@/lib/api-fetch";
 
 // Types matching our DB schema conceptually
 interface Position {
@@ -25,7 +26,7 @@ export function PortfolioDropdown() {
     const router = useRouter();
     const [isOpen, setIsOpen] = useState(false);
     const [positions, setPositions] = useState<Position[]>([]);
-
+    const [error, setError] = useState<string | null>(null);
     const [closingId, setClosingId] = useState<string | null>(null);
     const isClosingRef = useRef(false);
 
@@ -82,14 +83,19 @@ export function PortfolioDropdown() {
     // Checking for recent update trigger (local storage or event)
     useEffect(() => {
         const fetchPositions = async () => {
+            setError(null);
             try {
-                const res = await fetch("/api/trade/positions"); // Need to create this lightweight endpoint
+                const res = await apiFetch("/api/trade/positions");
                 if (res.ok) {
                     const data = await res.json();
                     setPositions(data.positions);
+                } else {
+                    console.error(`[PortfolioDropdown] API error: ${res.status}`);
+                    setError(res.status === 429 ? "Rate limited" : `Error (${res.status})`);
                 }
             } catch (e) {
-                console.error("Failed to fetch positions", e);
+                console.error("[PortfolioDropdown] Network error:", e);
+                setError("Network error");
             }
         };
 

@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { TrendingUp, TrendingDown, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
+import { apiFetch } from "@/lib/api-fetch";
 
 interface Position {
     id: string;
@@ -30,23 +31,29 @@ interface PositionsTableProps {
 export function PositionsTable({ challengeId }: PositionsTableProps) {
     const [positions, setPositions] = useState<Position[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [closingId, setClosingId] = useState<string | null>(null);
     const [viewNetted, setViewNetted] = useState(false);
     const router = useRouter();
 
     // Fetch positions
     const fetchPositions = async () => {
+        setError(null);
         try {
             const params = new URLSearchParams();
             if (challengeId) params.set("challengeId", challengeId);
 
-            const res = await fetch(`/api/trade/positions?${params}`);
+            const res = await apiFetch(`/api/trade/positions?${params}`);
             if (res.ok) {
                 const data = await res.json();
                 setPositions(data.positions || []);
+            } else {
+                console.error(`[PositionsTable] API error: ${res.status}`);
+                setError(res.status === 429 ? "Rate limited" : `Failed to load positions (${res.status})`);
             }
         } catch (e) {
-            console.error("Failed to fetch positions:", e);
+            console.error("[PositionsTable] Network error:", e);
+            setError("Network error");
         } finally {
             setLoading(false);
         }
@@ -104,6 +111,19 @@ export function PositionsTable({ challengeId }: PositionsTableProps) {
                     <h3 className="text-sm font-bold text-white">Positions</h3>
                 </div>
                 <div className="text-zinc-500 text-sm text-center py-4">Loading...</div>
+            </div>
+        );
+    }
+
+    if (error && positions.length === 0) {
+        return (
+            <div className="bg-card/50 border border-white/5 rounded-xl p-4">
+                <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-sm font-bold text-white">Positions</h3>
+                </div>
+                <div className="text-center py-4 text-amber-400 text-xs">
+                    ⚠ {error}
+                </div>
             </div>
         );
     }

@@ -6,6 +6,7 @@ import { PortfolioPanel } from "./PortfolioPanel";
 import { UserNav } from "./user-nav";
 import { useSelectedChallenge } from "@/hooks/useSelectedChallenge";
 import { SelectedChallengeProvider } from "@/contexts/SelectedChallengeContext";
+import { apiFetch } from "@/lib/api-fetch";
 
 interface Challenge {
     id: string;
@@ -33,16 +34,18 @@ export function TopNavActions({ userId }: TopNavActionsProps) {
     useEffect(() => {
         async function fetchChallenges() {
             try {
-                const response = await fetch(`/api/challenges?userId=${userId}&_t=${Date.now()}`, {
+                const response = await apiFetch(`/api/challenges?userId=${userId}&_t=${Date.now()}`, {
                     cache: 'no-store'
                 });
                 if (response.ok) {
                     const data = await response.json();
                     console.log("[TopNavActions] userId:", userId, "Fetched IDs:", JSON.stringify(data.challenges?.map((c: Record<string, string>) => c.id)));
                     setChallenges(data.challenges || []);
+                } else {
+                    console.error(`[TopNavActions] Challenges API error: ${response.status}`);
                 }
             } catch (error) {
-                console.error("Failed to fetch challenges:", error);
+                console.error("[TopNavActions] Network error:", error);
             } finally {
                 setIsLoading(false);
             }

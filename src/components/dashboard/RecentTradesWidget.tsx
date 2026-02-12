@@ -5,6 +5,7 @@ import { Clock, TrendingUp, TrendingDown, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useSelectedChallengeContext } from "@/contexts/SelectedChallengeContext";
+import { apiFetch } from "@/lib/api-fetch";
 import ScrollReveal from "@/components/reactbits/ScrollReveal";
 import SpotlightCard from "@/components/reactbits/SpotlightCard";
 
@@ -25,22 +26,28 @@ interface Trade {
 export function RecentTradesWidget() {
     const [trades, setTrades] = useState<Trade[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const { selectedChallengeId } = useSelectedChallengeContext();
 
     useEffect(() => {
         const fetchTrades = async () => {
+            setError(null);
             try {
                 const params = new URLSearchParams({ limit: "5" });
                 if (selectedChallengeId) {
                     params.set("challengeId", selectedChallengeId);
                 }
-                const res = await fetch(`/api/trades/history?${params}`);
+                const res = await apiFetch(`/api/trades/history?${params}`);
                 if (res.ok) {
                     const data = await res.json();
                     setTrades(data.trades || []);
+                } else {
+                    console.error(`[RecentTradesWidget] API error: ${res.status}`);
+                    setError(res.status === 429 ? "Rate limited" : `Error (${res.status})`);
                 }
             } catch (e) {
-                console.error("Failed to fetch trade history:", e);
+                console.error("[RecentTradesWidget] Network error:", e);
+                setError("Network error");
             } finally {
                 setLoading(false);
             }
@@ -76,6 +83,19 @@ export function RecentTradesWidget() {
                 </div>
                 <div className="flex items-center justify-center h-24 text-zinc-500 text-sm">
                     Loading...
+                </div>
+            </div>
+        );
+    }
+
+    if (error && trades.length === 0) {
+        return (
+            <div className="bg-card/50 border border-white/5 rounded-xl p-6">
+                <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-bold text-white">Recent Trades</h3>
+                </div>
+                <div className="flex flex-col items-center justify-center h-24 text-amber-400 text-sm">
+                    <span className="text-xs opacity-70">⚠ {error}</span>
                 </div>
             </div>
         );

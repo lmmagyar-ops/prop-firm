@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Clock, TrendingUp, TrendingDown, ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { Clock, TrendingUp, TrendingDown, ChevronLeft, ChevronRight, Search, AlertTriangle, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSelectedChallengeContext } from "@/contexts/SelectedChallengeContext";
+import { apiFetch } from "@/lib/api-fetch";
 
 interface Trade {
     id: string;
@@ -22,6 +23,7 @@ interface Trade {
 export function TradeHistoryTable() {
     const [trades, setTrades] = useState<Trade[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [page, setPage] = useState(1);
     const [searchQuery, setSearchQuery] = useState("");
     const { selectedChallengeId } = useSelectedChallengeContext();
@@ -31,18 +33,23 @@ export function TradeHistoryTable() {
     useEffect(() => {
         const fetchTrades = async () => {
             setLoading(true);
+            setError(null);
             try {
                 const params = new URLSearchParams({ limit: "100" }); // Fetch more for client-side pagination
                 if (selectedChallengeId) {
                     params.set("challengeId", selectedChallengeId);
                 }
-                const res = await fetch(`/api/trades/history?${params}`);
+                const res = await apiFetch(`/api/trades/history?${params}`);
                 if (res.ok) {
                     const data = await res.json();
                     setTrades(data.trades || []);
+                } else {
+                    console.error(`[TradeHistoryTable] API error: ${res.status}`);
+                    setError(res.status === 429 ? "Rate limited — retrying shortly" : `Failed to load trades (${res.status})`);
                 }
             } catch (e) {
-                console.error("Failed to fetch trade history:", e);
+                console.error("[TradeHistoryTable] Network error:", e);
+                setError("Network error — check your connection");
             } finally {
                 setLoading(false);
             }
@@ -134,7 +141,20 @@ export function TradeHistoryTable() {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
-                        {paginatedTrades.length === 0 ? (
+                        {error && trades.length === 0 ? (
+                            <tr>
+                                <td colSpan={7} className="text-center py-12">
+                                    <AlertTriangle className="w-8 h-8 mx-auto mb-2 text-amber-400 opacity-70" />
+                                    <p className="text-amber-400 text-sm mb-2">{error}</p>
+                                    <button
+                                        onClick={() => { setLoading(true); setError(null); const params = new URLSearchParams({ limit: "100" }); if (selectedChallengeId) params.set("challengeId", selectedChallengeId); apiFetch(`/api/trades/history?${params}`).then(r => r.ok ? r.json() : Promise.reject(r.status)).then(d => { setTrades(d.trades || []); setError(null); }).catch(() => setError("Still failing — try again later")).finally(() => setLoading(false)); }}
+                                        className="text-xs text-primary hover:text-primary/80 flex items-center gap-1 mx-auto"
+                                    >
+                                        <RefreshCw className="w-3 h-3" /> Retry
+                                    </button>
+                                </td>
+                            </tr>
+                        ) : paginatedTrades.length === 0 ? (
                             <tr>
                                 <td colSpan={7} className="text-center py-12 text-zinc-500">
                                     <Clock className="w-8 h-8 mx-auto mb-2 opacity-50" />
