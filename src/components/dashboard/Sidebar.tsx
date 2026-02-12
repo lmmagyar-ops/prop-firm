@@ -12,8 +12,6 @@ import {
     Wallet,
     HelpCircle,
     Trophy,
-    MessageSquare,
-    Clock,
     History,
     TrendingUp,
     Lock,
@@ -201,26 +199,7 @@ export function Sidebar({
                 </div>
             </nav>
 
-            {/* Support Card — hidden when collapsed */}
-            {!isCollapsed && (
-                <div className="p-4">
-                    <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-primary to-cyan-500 p-4">
-                        <Clock className="w-8 h-8 text-white/20 absolute -bottom-2 -right-2" />
-                        <div className="relative z-10">
-                            <p className="font-bold text-xs text-primary/80 uppercase mb-1">
-                                Support
-                            </p>
-                            <Link
-                                href="/dashboard/faq"
-                                className="flex items-center gap-2 text-sm font-semibold hover:underline"
-                            >
-                                <MessageSquare className="w-4 h-4" /> Chat with
-                                us
-                            </Link>
-                        </div>
-                    </div>
-                </div>
-            )}
+
 
             {/* Collapse Toggle */}
             <button

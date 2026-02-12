@@ -9,9 +9,11 @@
  *   const res = await apiFetch("/api/trade/positions");
  *   // same as fetch(), but 429s and 5xx are logged automatically
  */
-import { createLogger } from '@/lib/logger';
-
-const logger = createLogger('ApiFetch');
+// Client-side module — cannot use winston (Node.js only).
+// Use console.error for observability; Sentry captures these automatically.
+const logger = {
+    error: (msg: string) => console.error(msg),
+};
 
 export async function apiFetch(
     input: RequestInfo | URL,

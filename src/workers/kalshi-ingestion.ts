@@ -227,7 +227,8 @@ class KalshiIngestionWorker {
                     .filter((m: KalshiApiMarket) => this.getKalshiMidPrice(m) >= 0.001)
                     .map((m: KalshiApiMarket) => ({
                         id: m.ticker,
-                        question: m.title || m.ticker,
+                        // Use subtitle for bracket markets (e.g. "Above 95000" instead of generic "the price of Bitcoin")
+                        question: m.subtitle || m.title || m.ticker,
                         outcomes: ["Yes", "No"],
                         price: this.getKalshiMidPrice(m),
                         volume: m.volume_24h || m.volume || 0,

@@ -4,6 +4,26 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ---
 
+## Feb 12, 2026 — Team Feedback Sprint (7 Items)
+
+**Scope:** Address all feedback from Mat + MP review session. 7 items triaged P0 → P2.
+
+| # | Issue | Resolution | Files |
+|---|-------|-----------|-------|
+| 1 | Outcome text "the price of Bitcoin" | **Fixed** — use `market.subtitle` for bracket-specific text | `kalshi-ingestion.ts`, `refresh-kalshi.ts` |
+| 2 | Market limit shows $200 not $250 | **Already implemented** — `formatConstraint()` displays binding constraint inline | N/A |
+| 3 | Close button too red | **Fixed** — PnL-aware colors (green=profit, muted=loss) | `PortfolioPanel.tsx`, `PortfolioDropdown.tsx` |
+| 4 | Balance needs page refresh | **Already implemented** — `TopNavActions` listens for `balance-updated` events | N/A |
+| 5 | Balance lacks label | **Fixed** — added "Balance" label in header | `ChallengeSelector.tsx` |
+| 6 | Gradient card dated | **Fixed** — removed gradient Support Card | `Sidebar.tsx` |
+| 7 | "Chat with us" redundant | **Fixed** — removed with #6 (FAQ already in nav) | `Sidebar.tsx` |
+| — | Build error (pre-existing) | **Fixed** — `api-fetch.ts` imported winston in client component | `api-fetch.ts` |
+
+**Visual verification:** Confirmed on localhost — sidebar card gone, "BALANCE" label visible, close buttons muted zinc for losing positions.
+**Test results:** 783/783 passed, 0 failures.
+
+---
+
 ## Feb 12, 2026 — Fix All Failing Unit Tests (20 → 0)
 
 **Scope:** Fix all 20 pre-existing unit test failures across 9 test files caused by production refactors (logger migration, rate-limiter rewrite, evaluator transaction wrapping, boundary range expansion, risk message updates).

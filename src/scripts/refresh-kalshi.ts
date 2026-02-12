@@ -87,9 +87,15 @@ async function refreshKalshiMarkets() {
                     const rawName = market.title;
                     const extracted = getCleanOutcomeName(rawName, event.title);
 
-                    // STEP 3: If extraction just returned the full title, use ticker suffix
+                    // STEP 3: If extraction just returned the full title, try subtitle
+                    // (Kalshi bracket markets have generic titles but specific subtitles)
                     if (extracted === rawName || extracted.length > 50) {
-                        cleanedName = tickerSuffix; // Show ticker code (fail-safe)
+                        if (market.subtitle && market.subtitle !== rawName) {
+                            // Subtitle has bracket-specific text (e.g. "Above 95000")
+                            cleanedName = getCleanOutcomeName(market.subtitle, event.title);
+                        } else {
+                            cleanedName = tickerSuffix; // Show ticker code (fail-safe)
+                        }
                     } else {
                         cleanedName = extracted;
                     }

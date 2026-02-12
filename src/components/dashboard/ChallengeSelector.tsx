@@ -129,6 +129,7 @@ export function ChallengeSelector({ challenges, selectedChallengeId, onSelect }:
                     >
                         <span className="text-sm">{getPlatformIcon(selectedChallenge.platform)}</span>
                         <Briefcase className="w-4 h-4 text-primary" />
+                        <span className="text-[10px] text-zinc-500 uppercase tracking-wider mr-1">Balance</span>
                         <span className="font-medium text-white" data-testid="account-balance">
                             ${parseFloat(selectedChallenge.equity || selectedChallenge.currentBalance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
