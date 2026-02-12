@@ -81,6 +81,7 @@ export async function middleware(request: NextRequest) {
         // - cron jobs (internal, protected by Vercel headers)
         // - auth routes (NextAuth OAuth callbacks + session — blocking these breaks login)
         // - trade READ endpoints on GET (positions, history, markets listing — all read-only DB selects)
+        // - user balance endpoint on GET (needed by PortfolioPanel for equity/cash display)
         //   POST requests (trade execution) remain rate-limited via TRADE_EXECUTE tier.
         if (
             pathname.startsWith('/api/webhooks') ||
@@ -89,7 +90,8 @@ export async function middleware(request: NextRequest) {
             (request.method === 'GET' && (
                 pathname.startsWith('/api/trade/positions') ||
                 pathname.startsWith('/api/trades/history') ||
-                pathname.startsWith('/api/trade/markets')
+                pathname.startsWith('/api/trade/markets') ||
+                pathname.startsWith('/api/user/balance')
             ))
         ) {
             const response = NextResponse.next();
