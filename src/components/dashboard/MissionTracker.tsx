@@ -58,7 +58,7 @@ export function MissionTracker({
                     {/* Profit Target */}
                     <div className="space-y-2">
                         <div className="flex justify-between text-xs font-bold">
-                            <span className="text-zinc-400">Profit Target ($500)</span>
+                            <span className="text-zinc-400">Target ${(startingBalance + profitTarget).toLocaleString()}</span>
                             <span className="text-green-400">{targetProgress.toFixed(1)}%</span>
                         </div>
                         <div className="h-2 bg-zinc-800 rounded-full overflow-hidden relative">
@@ -79,10 +79,10 @@ export function MissionTracker({
                     {/* Daily Loss Limit */}
                     <div className="space-y-2">
                         <div className="flex justify-between text-xs font-bold">
-                            <span className="text-zinc-400">Daily Loss Limit ($400)</span>
+                            <span className="text-zinc-400">Daily Limit -${dailyLossLimit.toLocaleString()}</span>
                             {/* Assuming profit acts as daily P&L for MVP Day 1 */}
                             <span className={`${profit < -300 ? "text-red-500 animate-pulse" : "text-primary"}`}>
-                                {Math.max(0, 400 + Math.min(profit, 0)).toFixed(0)} Left
+                                {Math.max(0, dailyLossLimit + Math.min(profit, 0)).toFixed(0)} Left
                             </span>
                         </div>
                         <div className="h-2 bg-zinc-800 rounded-full overflow-hidden relative">
@@ -102,7 +102,7 @@ export function MissionTracker({
                     {/* Max Drawdown */}
                     <div className="space-y-2">
                         <div className="flex justify-between text-xs font-bold">
-                            <span className="text-zinc-400">Max Drawdown ($800)</span>
+                            <span className="text-zinc-400">Max DD -${maxDrawdown.toLocaleString()}</span>
                             <span className={`${drawdownProgress > 80 ? "text-red-500 animate-pulse" : "text-primary"}`}>
                                 {(100 - drawdownProgress).toFixed(1)}% Left
                             </span>

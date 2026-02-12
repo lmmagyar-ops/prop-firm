@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { Briefcase, X, RefreshCw } from "lucide-react";
+import { Briefcase, X, RefreshCw, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
@@ -28,6 +29,7 @@ export function PortfolioPanel() {
     const router = useRouter();
     const [isOpen, setIsOpen] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [closingId, setClosingId] = useState<string | null>(null);
     const [positions, setPositions] = useState<Position[]>([]);
     const [summary, setSummary] = useState<AccountSummary>({ equity: 0, cash: 0, positionValue: 0 });
 
@@ -35,6 +37,39 @@ export function PortfolioPanel() {
     const handleNavigateToMarket = (marketId: string) => {
         setIsOpen(false);
         router.push(`/dashboard/trade?market=${marketId}`);
+    };
+
+    // Close position — same pattern as OpenPositions.tsx
+    const handleClosePosition = async (e: React.MouseEvent, positionId: string) => {
+        e.stopPropagation(); // Don't navigate to market
+        setClosingId(positionId);
+        try {
+            const response = await fetch('/api/trade/close', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ positionId, idempotencyKey: crypto.randomUUID() }),
+            });
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to close position');
+            }
+            const result = await response.json();
+            const pnl = result.pnl || 0;
+            const pnlText = pnl >= 0 ? `+$${pnl.toFixed(2)}` : `-$${Math.abs(pnl).toFixed(2)}`;
+            if (pnl >= 0) {
+                toast.success(`Position closed: ${pnlText} profit`);
+            } else {
+                toast.error(`Position closed: ${pnlText} loss`);
+            }
+            setPositions(prev => prev.filter(p => p.id !== positionId));
+            window.dispatchEvent(new Event('balance-updated'));
+            router.refresh();
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Failed to close position';
+            toast.error(message);
+        } finally {
+            setClosingId(null);
+        }
     };
 
     // Extract fetch logic for manual refresh
@@ -223,9 +258,10 @@ export function PortfolioPanel() {
                                             const entryNoPrice = 1 - pos.avgPrice;
                                             const currentNoPrice = 1 - pos.currentPrice;
 
-                                            const pnlPercent = pos.direction === "YES"
-                                                ? ((pos.currentPrice - pos.avgPrice) / pos.avgPrice * 100)
-                                                : ((currentNoPrice - entryNoPrice) / entryNoPrice * 100);
+                                            const entryCost = pos.shares * pos.avgPrice;
+                                            const pnlPercent = entryCost > 0
+                                                ? (pos.unrealizedPnL / entryCost) * 100
+                                                : 0;
 
                                             const isUp = pos.unrealizedPnL >= 0;
 
@@ -290,6 +326,23 @@ export function PortfolioPanel() {
                                                             )}
                                                         />
                                                     </div>
+
+                                                    {/* Close Position Button */}
+                                                    <button
+                                                        onClick={(e) => handleClosePosition(e, pos.id)}
+                                                        disabled={closingId === pos.id}
+                                                        className={cn(
+                                                            "mt-3 w-full py-1.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5",
+                                                            "bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20",
+                                                            closingId === pos.id && "opacity-50 cursor-not-allowed"
+                                                        )}
+                                                    >
+                                                        {closingId === pos.id ? (
+                                                            <><Loader2 className="w-3 h-3 animate-spin" /> Closing...</>
+                                                        ) : (
+                                                            `Close ${pos.direction} Position`
+                                                        )}
+                                                    </button>
                                                 </div>
                                             );
                                         })}

@@ -13,6 +13,7 @@
     "db:push": "drizzle-kit push",
     "test:engine": "node --env-file=.env.local --import=tsx src/scripts/verify-engine.ts",
     "test:balances": "node --env-file=.env.local --import=tsx src/scripts/verify-balances.ts",
+    "test:financial": "node --env-file=.env.local --import=tsx src/scripts/verify-financial-consistency.ts",
     "test:markets": "node --env-file=.env.local --import=tsx src/scripts/verify-markets.ts",
     "test:lifecycle": "node --env-file=.env.local --import=tsx src/scripts/verify-lifecycle.ts",
     "test:safety": "node --env-file=.env.local --import=tsx src/scripts/verify-safety.ts",

@@ -111,7 +111,7 @@ export function OpenPositions({ positions: initialPositions }: OpenPositionsProp
                                 <TableHead className="text-xs text-zinc-500 uppercase text-right">Shares</TableHead>
                                 <TableHead className="text-xs text-zinc-500 uppercase text-right">Entry</TableHead>
                                 <TableHead className="text-xs text-zinc-500 uppercase text-right">Current</TableHead>
-                                <TableHead className="text-xs text-zinc-500 uppercase text-right">P&L</TableHead>
+                                <TableHead className="text-xs text-zinc-500 uppercase text-right">Est. P&L</TableHead>
                                 <TableHead className="text-xs text-zinc-500 uppercase text-right sticky right-0 bg-zinc-900/95 backdrop-blur-sm z-10 border-l border-white/5">Action</TableHead>
                             </TableRow>
                         </TableHeader>

@@ -69,8 +69,8 @@ export function invertOrderBook(noBook: OrderBook): OrderBook {
  * and widened spread from 1¢ to 2¢ to match typical Polymarket depth.
  */
 export function buildSyntheticOrderBook(price: number): OrderBook {
-    // PARITY: Real Polymarket spreads are 0.5%-10%, we use 2¢
-    const spread = 0.02; // 2 cent spread (was 1¢)
+    // Demo spread: 0.5¢ — tight enough that mid-price ≈ VWAP for typical trades
+    const spread = 0.005; // 0.5 cent spread (Mat feedback: 2¢ was too wide for demo)
     // PARITY: Real Polymarket depth is ~1K-10K per level
     const depthPerLevel = "5000"; // (was 50000)
 

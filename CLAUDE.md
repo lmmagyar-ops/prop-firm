@@ -8,7 +8,8 @@
 2. **Run `npm run test:engine`** — 53 assertions across 11 phases prove the trading engine works
 3. **Run `npm run test:lifecycle`** — 73 assertions across 7 phases prove the full challenge lifecycle
 4. **Run `npm run test:safety`** — 44 assertions proving each critical exploit path (payout, drawdown, transitions) is blocked
-4. **If debugging**, follow the "Number Discrepancy Audit" section — step-by-step protocol with symptom → cause lookup
+5. **Run `npm run test:financial`** — Financial consistency verification (share counts, PnL cross-checks, risk limit messages)
+6. **If debugging**, follow the "Number Discrepancy Audit" section — step-by-step protocol with symptom → cause lookup
 6. **If data looks wrong**, run `npx tsx scripts/reconcile-positions.ts` to validate positions against trade history
 7. **For manual testing**, see `docs/SMOKE_TEST.md` — 15-minute end-to-end checklist
 8. **For history**, see `journal.md` — daily changelog with root causes, commits, and verification results
@@ -42,6 +43,7 @@ npm run test                                    # All Vitest unit tests
 npm run test:engine                             # Trading engine verification (53 assertions)
 npm run test:lifecycle                          # Full lifecycle simulator (73 assertions)
 npm run test:safety                             # Exploit scenario tests (44 assertions)
+npm run test:financial                          # Financial consistency verification (share counts, PnL, risk limits)
 npm run test:deploy -- https://prop-firmx.vercel.app  # Post-deploy smoke test (HTTP-only, no DB writes)
 npm run test:markets                            # Market data quality audit (22 assertions) — OPTIONAL, requires worker running
 npm run test:balances                           # Balance integrity verification
@@ -439,6 +441,7 @@ npm run db:push    # Review diff output before confirming destructive changes
 npm run test:engine      # 53 assertions — core trading engine
 npm run test:lifecycle   # 74 assertions — full challenge lifecycle
 npm run test:safety      # 44 assertions — exploit scenario proofs
+npm run test:financial   # Financial consistency (PnL, shares, risk messages)
 npx tsc --noEmit         # Zero type errors
 ```
 
@@ -477,6 +480,7 @@ See `.agent/workflows/deploy.md` for the full deployment workflow.
 | **Safety** | `npm run test:safety` | 44 assertions — exploit scenario tests (payout deduction, transaction atomicity, funded-phase drawdown, position leak on transition) |
 | **Deploy Smoke** | `npm run test:deploy -- <url>` | HTTP-only production smoke: homepage, cron status, heartbeat, login |
 | **Balance Integrity** | `npm run test:balances` | Balance audit checks |
+| **Financial Consistency** | `npm run test:financial` | Share count, PnL cross-check, risk limit messages, equity sync |
 | **Market Quality** | `npm run test:markets` | 22 assertions vs live Redis (optional — requires worker running) |
 | **E2E Smoke** | `npm run test:e2e` | 10 Playwright browser tests |
 

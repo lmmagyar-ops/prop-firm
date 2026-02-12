@@ -6,6 +6,46 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ## 2026-02-11
 
+### 🐛 Mat's Bug Fix Sprint (8 Fixes)
+
+Triaged 8 bugs from Mat's testing doc. Fixed all 8.
+
+| Fix | File | Root Cause | Risk |
+|-----|------|-----------|------|
+| **PnL sign flip** | `PortfolioPanel.tsx` | `pnlPercent` computed from price deltas disagreed with `unrealizedPnL` on NO positions | Very Low |
+| **Equity mismatch** | `DashboardView.tsx` | Used cash-only `balance`, header used true equity. Now both use `useEquityPolling` | Low |
+| **Est. P&L label** | `OpenPositions.tsx` | Mid-price PnL vs VWAP execution — correct behavior, labeled as estimate | None |
+| **Risk limit message** | `risk.ts` | Fail-safe used different message format than combined check. Unified to same format | Very Low |
+| **Profit target label** | `MissionTracker.tsx` | "$500" hardcoded, now dynamic. Also fixed hardcoded 400 in daily loss calculation | None |
+| **Est. Shares label** | `EventDetailModal.tsx` | Mid-price preview vs VWAP execution — labeled as estimate | None |
+| **Sell from portfolio** | `PortfolioPanel.tsx` | New close button, copied exact pattern from `OpenPositions.tsx` | Low |
+| **Demo spread** | `order-book-engine.ts` | 2¢ spread too wide for demo. Tightened to 0.5¢ per Mat's feedback | Very Low |
+
+**Engineering discipline:** Minimal diffs, one variable per change, no refactors, no new dependencies. Each fix independently verifiable.
+
+**Build:** ✅ `tsc --noEmit` passes with 0 errors.
+
+---
+
+### 🔬 Financial Consistency Verification System (New)
+
+**Origin**: Mat's bug report exposed that existing tests verified functionality ("does it work?") but not financial accuracy ("are the numbers right?"). 8 issues found: share count mismatches, PnL sign bugs, misleading risk limit messages, equity widget desync, and sell PnL inconsistencies.
+
+**Created:**
+- `src/scripts/verify-financial-consistency.ts` — 6-phase test script (`npm run test:financial`):
+  1. Share count consistency (trade response vs DB position)
+  2. PnL calculation consistency (two independent calculation paths)
+  3. Sell PnL cross-check (sell response vs trade history vs closed position)
+  4. Entry price spread audit (reports slippage cost)
+  5. Risk limit boundary tests (error message accuracy)
+  6. Equity calculation cross-check (dashboard path vs risk engine path)
+- `.agent/workflows/verify-financial.md` — Mandatory workflow with API + browser checks
+- `CLAUDE.md` — Added to "New Agent? Start Here", Quick Start, Pre-Deploy Checklist, and Testing table
+
+**Key insight:** Every test now has **cross-reference assertions** — "value A in place 1 must equal value A in place 2" — instead of just "does place 1 have a value?"
+
+---
+
 ### 🧪 Comprehensive 8-Phase Engine Test
 
 Executed adversarial browser-based testing across all critical systems:
@@ -49,6 +89,31 @@ Fixed the `OpenPositions.tsx` table so the Sell button is **always visible**:
 2. **Merged columns**: Combined the Value and Return columns into a single "P&L" column showing dollar amount, percentage, and current value — reduces from 8 to 7 columns, significantly reducing overflow probability
 3. **Build verified**: `next build` passes cleanly
 4. **Mat Simulation retest**: Full UI journey on localhost:3001 — Sell button visible without scrolling, sticky-right working, trades show in Recent Trades, Sell click closes position and updates balance
+
+### 🐛 Fix: Test Scripts Hanging on Missing Redis
+
+Root cause: `test-worker-server.ts` created `new Redis()` with no `connectTimeout` or `maxRetriesPerRequest` — it would retry connections **forever** instead of failing fast.
+
+**Fix**: Rewrote `test-worker-server.ts` with:
+1. `connectTimeout: 5000` + `maxRetriesPerRequest: 3` + `retryStrategy` that stops after 3 attempts
+2. Redis `error` event handler logs ECONNREFUSED/ECONNRESET clearly
+3. PING pre-flight with 5s race timeout verifies connectivity before proceeding
+4. Server listen wrapped in 5s timeout  
+5. Cleanup uses try/catch to avoid secondary hangs
+
+**Result**: Tests now fail in ~8 seconds with a clear error message instead of hanging indefinitely.
+
+### ✅ Mat Simulation Test — Production (PASSED)
+
+Full end-to-end verification on `prop-firmx.vercel.app`:
+1. **Dashboard**: $9,987.77 equity, active $10K challenge, 2 open positions, all risk monitors SAFE
+2. **Trade page**: 211 live markets loaded
+3. **Trade execution**: $10 BUY YES on "Kevin Warsh" at 95¢ → 10.53 shares filled instantly
+4. **Sell button**: Visible & sticky on all positions — no horizontal scrolling needed ✅
+5. **Position close**: Clicked Sell → closed with -$0.41 PnL, position removed from table
+6. **Settings page**: Accessible via user menu, all tabs (User Info, KYC, Address) render correctly
+
+**Verdict**: All 6 tests PASSED. App is ready for Mat handoff 🚀
 
 ## 2026-02-11
 

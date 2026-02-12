@@ -10,6 +10,7 @@ import { OpenPositions } from "./OpenPositions";
 import { ProbabilityChart } from "@/components/trading/ProbabilityChart";
 import { useRouter } from "next/navigation";
 import { getActiveEvents, type EventMetadata } from "@/app/actions/market";
+import { useEquityPolling } from "@/hooks/useEquityPolling";
 
 import { ChallengeFailedModal } from "@/components/dashboard/ChallengeFailedModal";
 import { ChallengePassedModal } from "@/components/dashboard/ChallengePassedModal";
@@ -90,8 +91,10 @@ export function DashboardView({ initialBalance = null, demoMode = false, userId 
         fetchFeaturedMarket();
     }, [demoMode]);
 
-    // Derived states
-    const currentEquity = balance || 10000;
+    // Derived states — use equity polling for live equity (matches header)
+    const ssrEquity = balance || 10000;
+    const { equity: polledEquity } = useEquityPolling(ssrEquity);
+    const currentEquity = demoMode ? 10000 : polledEquity;
 
     const MAX_DRAWDOWN = 10000 * 0.10;
     const drawdownAmount = 10000 - currentEquity;

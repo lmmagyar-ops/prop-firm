@@ -890,7 +890,7 @@ function TradingSidebar({ market, eventTitle, onTradeComplete, isKalshi, initial
                     {/* Summary */}
                     <div className={cn("space-y-2 text-sm", isKalshi ? "pt-4 border-t border-slate-100" : "")}>
                         <div className="flex justify-between">
-                            <span className={cn(isKalshi ? "text-slate-500" : "text-zinc-400")}>Shares</span>
+                            <span className={cn(isKalshi ? "text-slate-500" : "text-zinc-400")}>Est. Shares</span>
                             <span className={cn("font-mono", isKalshi ? "text-slate-900" : "text-white")}>{shares > 0 ? shares.toFixed(2) : '0'}</span>
                         </div>
                         <div className="flex justify-between">

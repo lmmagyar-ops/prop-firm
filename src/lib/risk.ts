@@ -169,9 +169,10 @@ export class RiskEngine {
 
         const remainingEventCapacity = maxPerEvent - currentExposure;
 
-        // Fail-safe: block large trades when event lookup fails
+        // Fail-safe: if event lookup fails, use per-event limit directly (conservative)
         if (!eventInfo && tradeAmount > maxPerEvent) {
-            return this.deny(`Trade of $${tradeAmount.toFixed(2)} exceeds max per-market limit of $${maxPerEvent.toFixed(2)}`, audit);
+            const limitPercent = ((maxPerEvent / startBalance) * 100).toFixed(1);
+            return this.deny(`Max single trade for this market: $${maxPerEvent.toFixed(0)} (${limitPercent}% of account). Enter a smaller amount.`, audit);
         }
 
         // ── RULE 4: PER-CATEGORY EXPOSURE (10%) ───────────────────
