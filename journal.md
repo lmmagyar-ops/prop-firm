@@ -21,6 +21,17 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 **Verification:** `tsc --noEmit` ✅ | `test:engine` 53 ✅ | `test:safety` 44 ✅ | `test:lifecycle` 74 ✅ | `test:handoff` 23/23 ✅ | Visual spot-check ✅
 
+**📋 Next Session — Morning Checklist (for the next agent):**
+1. **Check Mat's feedback first** — he was sent a 10-point testing plan. Don't touch code until his results come back
+2. **Check Sentry** for overnight error spikes (https://prop-firm-org.sentry.io)
+3. **Check Vercel deployment logs** — confirm no build failures or edge function errors
+4. **Re-run `npm run test:handoff -- https://prop-firmx.vercel.app`** — confirm still green after any overnight DB changes
+
+**🔧 Follow-up items (non-blocking, do when bandwidth allows):**
+- Dashboard Win Rate shows 0% despite closed trades with P&L — investigate stats calculation or win/loss marking
+- `test:handoff` is hardcoded to `l.m.magyar@gmail.com` — make it accept `HANDOFF_EMAIL` env var for testing other accounts (e.g., Mat's)
+- No write-path concurrency test exists — what happens if two tabs close the same position simultaneously? Safety tests cover DB-level but not HTTP-level
+
 ---
 
 ## 2026-02-12
