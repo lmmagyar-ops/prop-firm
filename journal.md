@@ -18,9 +18,11 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 | 6 | Gradient card dated | **Fixed** — removed gradient Support Card | `Sidebar.tsx` |
 | 7 | "Chat with us" redundant | **Fixed** — removed with #6 (FAQ already in nav) | `Sidebar.tsx` |
 | — | Build error (pre-existing) | **Fixed** — `api-fetch.ts` imported winston in client component | `api-fetch.ts` |
+| — | Build error (CI) | **Fixed** — `monte-carlo.ts`, `stress-tests.ts` imported winston via logger | `monte-carlo.ts`, `stress-tests.ts` |
 
 **Visual verification:** Confirmed on localhost — sidebar card gone, "BALANCE" label visible, close buttons muted zinc for losing positions.
 **Test results:** 783/783 passed, 0 failures.
+**Deployed:** Staging verified ✅ → merged to `main` (`fd31ada`). Production deploying.
 
 ---
 
