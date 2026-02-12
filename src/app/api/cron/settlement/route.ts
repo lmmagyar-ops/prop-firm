@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { settleResolvedPositions } from "@/lib/settlement";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("Settlement");
 
 /**
  * Settlement Cron Endpoint
@@ -20,12 +22,12 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    console.log("[Settlement] Starting settlement scan...");
+    logger.info("[Settlement] Starting settlement scan...");
 
     try {
         const result = await settleResolvedPositions();
 
-        console.log(`[Settlement] ✅ Complete: ${result.positionsSettled}/${result.positionsChecked} settled, PnL: $${result.totalPnLSettled.toFixed(2)}`);
+        logger.info(`[Settlement] ✅ Complete: ${result.positionsSettled}/${result.positionsChecked} settled, PnL: $${result.totalPnLSettled.toFixed(2)}`);
 
         return NextResponse.json({
             success: true,
@@ -33,7 +35,7 @@ export async function GET(request: NextRequest) {
             ...result,
         });
     } catch (error) {
-        console.error("[Settlement] ❌ Error:", error);
+        logger.error("[Settlement] ❌ Error:", error);
         return NextResponse.json(
             { error: "Settlement failed", details: String(error) },
             { status: 500 }

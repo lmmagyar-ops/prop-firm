@@ -5,25 +5,37 @@
  * and the Redis-based rate limiting behavior.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
+
+// ── Mock worker-client (replaces old Redis mock) ────────────────
+
+const { mockKvIncr, mockWarn, mockError } = vi.hoisted(() => ({
+    mockKvIncr: vi.fn(),
+    mockWarn: vi.fn(),
+    mockError: vi.fn(),
+}));
+
+vi.mock("@/lib/worker-client", () => ({
+    kvIncr: (...args: unknown[]) => mockKvIncr(...args),
+}));
+
+// ── Mock logger ─────────────────────────────────────────────────
+
+vi.mock("@/lib/logger", () => ({
+    createLogger: () => ({
+        info: vi.fn(),
+        warn: mockWarn,
+        error: mockError,
+        debug: vi.fn(),
+        withContext: vi.fn(),
+    }),
+}));
+
 import {
     getTierForPath,
     getClientIdentifier,
     checkRateLimit,
     RATE_LIMITS,
 } from "@/lib/rate-limiter";
-
-// ── Mock Redis ──────────────────────────────────────────────────
-
-const mockRedis = {
-    multi: vi.fn(),
-    expire: vi.fn(),
-    incr: vi.fn(),
-    ttl: vi.fn(),
-};
-
-vi.mock("@/lib/redis-client", () => ({
-    getRedisClient: vi.fn(() => mockRedis),
-}));
 
 // =====================================================================
 // getTierForPath — Pure Function Tests
@@ -110,7 +122,7 @@ describe("getClientIdentifier", () => {
 });
 
 // =====================================================================
-// checkRateLimit — Redis Interaction
+// checkRateLimit — Worker HTTP via kvIncr
 // =====================================================================
 
 describe("checkRateLimit", () => {
@@ -119,16 +131,7 @@ describe("checkRateLimit", () => {
     });
 
     it("allows requests under the limit", async () => {
-        const mockPipeline = {
-            incr: vi.fn(),
-            ttl: vi.fn(),
-            exec: vi.fn().mockResolvedValue([
-                [null, 1], // incr result: count = 1
-                [null, -1], // ttl result: no expiry yet
-            ]),
-        };
-        mockRedis.multi.mockReturnValue(mockPipeline);
-        mockRedis.expire.mockResolvedValue(1);
+        mockKvIncr.mockResolvedValue(1); // count = 1, well under any limit
 
         const result = await checkRateLimit("1.2.3.4", "DEFAULT");
 
@@ -138,51 +141,46 @@ describe("checkRateLimit", () => {
     });
 
     it("blocks requests at/over the limit", async () => {
-        const mockPipeline = {
-            incr: vi.fn(),
-            ttl: vi.fn(),
-            exec: vi.fn().mockResolvedValue([
-                [null, RATE_LIMITS.TRADE_EXECUTE.limit + 1], // Over limit
-                [null, 30], // 30 seconds remaining
-            ]),
-        };
-        mockRedis.multi.mockReturnValue(mockPipeline);
+        // Return count that exceeds the limit
+        mockKvIncr.mockResolvedValue(RATE_LIMITS.TRADE_EXECUTE.limit + 1);
 
-        const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => { });
         const result = await checkRateLimit("1.2.3.4", "TRADE_EXECUTE");
 
         expect(result.allowed).toBe(false);
         expect(result.remaining).toBe(0);
-        expect(result.resetInSeconds).toBe(30);
-        expect(consoleSpy).toHaveBeenCalled();
+        expect(mockWarn).toHaveBeenCalled();
     });
 
-    it("fails open when Redis pipeline returns null", async () => {
-        const mockPipeline = {
-            incr: vi.fn(),
-            ttl: vi.fn(),
-            exec: vi.fn().mockResolvedValue(null),
-        };
-        mockRedis.multi.mockReturnValue(mockPipeline);
+    it("fails open for non-financial tiers when worker throws", async () => {
+        mockKvIncr.mockRejectedValue(new Error("Worker unreachable"));
 
-        vi.spyOn(console, "warn").mockImplementation(() => { });
         const result = await checkRateLimit("1.2.3.4", "DEFAULT");
 
-        // Should allow request (fail open)
-        expect(result.allowed).toBe(true);
-    });
-
-    it("fails open when Redis throws", async () => {
-        mockRedis.multi.mockImplementation(() => {
-            throw new Error("Redis connection refused");
-        });
-
-        vi.spyOn(console, "error").mockImplementation(() => { });
-        const result = await checkRateLimit("1.2.3.4", "DEFAULT");
-
-        // Should allow request (fail open to not block legitimate users)
+        // Non-financial tier: fail open to not block page loads
         expect(result.allowed).toBe(true);
         expect(result.remaining).toBe(RATE_LIMITS.DEFAULT.limit);
+        expect(mockError).toHaveBeenCalled();
+    });
+
+    it("fails CLOSED for financial tiers when worker throws", async () => {
+        mockKvIncr.mockRejectedValue(new Error("Worker unreachable"));
+
+        const result = await checkRateLimit("1.2.3.4", "TRADE_EXECUTE");
+
+        // Financial tier: fail closed to prevent trades bypassing limits
+        expect(result.allowed).toBe(false);
+        expect(result.remaining).toBe(0);
+        expect(mockError).toHaveBeenCalled();
+    });
+
+    it("fails CLOSED for PAYOUT tier when worker throws", async () => {
+        mockKvIncr.mockRejectedValue(new Error("Worker unreachable"));
+
+        const result = await checkRateLimit("1.2.3.4", "PAYOUT");
+
+        // PAYOUT is financial: fail closed
+        expect(result.allowed).toBe(false);
+        expect(result.remaining).toBe(0);
     });
 });
 

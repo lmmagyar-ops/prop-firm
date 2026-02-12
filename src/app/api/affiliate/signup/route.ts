@@ -4,6 +4,8 @@ import { db } from "@/db";
 import { affiliates } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { randomBytes } from "crypto";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("Signup");
 
 /**
  * POST /api/affiliate/signup
@@ -66,7 +68,7 @@ export async function POST(req: NextRequest) {
         });
 
     } catch (error: unknown) {
-        console.error("[Affiliate Signup Error]:", error);
+        logger.error("[Affiliate Signup Error]:", error);
         return NextResponse.json(
             { error: "Failed to register as affiliate" },
             { status: 500 }
@@ -108,7 +110,7 @@ export async function GET() {
         });
 
     } catch (error: unknown) {
-        console.error("[Affiliate Status Error]:", error);
+        logger.error("[Affiliate Status Error]:", error);
         return NextResponse.json(
             { error: "Failed to fetch affiliate status" },
             { status: 500 }

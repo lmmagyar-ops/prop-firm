@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-auth";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("RefreshMarket");
 
 interface PolyMarketResult {
     id?: string;
@@ -41,7 +43,7 @@ export async function POST(req: Request) {
 
         if (query) {
             // Search for market by query
-            console.log(`[Admin] Searching for market: "${query}"`);
+            logger.info(`[Admin] Searching for market: "${query}"`);
             const searchUrl = `https://gamma-api.polymarket.com/markets?active=true&closed=false&limit=50`;
             const searchRes = await fetch(searchUrl);
             const markets = await searchRes.json();
@@ -55,7 +57,7 @@ export async function POST(req: Request) {
             }
         } else if (marketId) {
             // Fetch specific market by ID
-            console.log(`[Admin] Looking up market: ${marketId}`);
+            logger.info(`[Admin] Looking up market: ${marketId}`);
             const url = `https://gamma-api.polymarket.com/markets/${marketId}`;
             const res = await fetch(url);
             if (res.ok) {
@@ -96,12 +98,12 @@ export async function POST(req: Request) {
             }
         };
 
-        console.log(`[Admin] Market refresh result:`, JSON.stringify(result, null, 2));
+        logger.info(`[Admin] Market refresh result:`, JSON.stringify(result, null, 2));
 
         return NextResponse.json(result);
 
     } catch (error) {
-        console.error("[Admin] Refresh market error:", error);
+        logger.error("[Admin] Refresh market error:", error);
         return NextResponse.json(
             { error: "Failed to refresh market" },
             { status: 500 }
@@ -131,7 +133,7 @@ export async function GET(req: Request) {
     }
 
     try {
-        console.log(`[Admin] Searching Polymarket for: "${query}"`);
+        logger.info(`[Admin] Searching Polymarket for: "${query}"`);
 
         const q = query.toLowerCase();
         const matchingEvents: Array<{ title: string; slug: string; volume: number; markets: Array<{ question: string; yesPrice: string; volume: string; closed: boolean }> }> = [];
@@ -148,7 +150,7 @@ export async function GET(req: Request) {
                     seenSlugs.add(event.slug);
                 }
             }
-            console.log(`[Admin] Targeted search found ${targetedEvents.length} events`);
+            logger.info(`[Admin] Targeted search found ${targetedEvents.length} events`);
         }
 
         // Method 2: Also search the top 500 events by volume for broader coverage
@@ -206,7 +208,7 @@ export async function GET(req: Request) {
         });
 
     } catch (error) {
-        console.error("[Admin] Market search error:", error);
+        logger.error("[Admin] Market search error:", error);
         return NextResponse.json(
             { error: "Search failed" },
             { status: 500 }

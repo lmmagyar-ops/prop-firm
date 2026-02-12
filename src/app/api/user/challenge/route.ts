@@ -3,6 +3,8 @@ import { auth } from "@/auth";
 import { db } from "@/db";
 import { challenges } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("Challenge");
 
 /**
  * GET /api/user/challenge
@@ -45,7 +47,7 @@ export async function GET() {
             }
         });
     } catch (error) {
-        console.error("[/api/user/challenge] Error:", error);
+        logger.error("[/api/user/challenge] Error:", error);
         return NextResponse.json({
             error: "Failed to fetch challenge"
         }, { status: 500 });

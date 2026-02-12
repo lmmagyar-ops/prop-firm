@@ -14,6 +14,8 @@ import { db } from "@/db";
 import { trades } from "@/db/schema";
 import { eq, isNull, and } from "drizzle-orm";
 import { MarketService } from "@/lib/market";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("ClvCalculator");
 
 // ============================================================================
 // Types
@@ -66,13 +68,13 @@ export class CLVCalculator {
 
         // Defensive: prevent division by zero
         if (entryPrice <= 0) {
-            console.warn(`[CLV] Trade ${tradeId} has invalid entry price: ${entryPrice}`);
+            logger.warn(`[CLV] Trade ${tradeId} has invalid entry price: ${entryPrice}`);
             return { tradeId, entryPrice, closingPrice, clvPercent: 0 };
         }
 
         const clvPercent = ((closingPrice - entryPrice) / entryPrice) * 100;
 
-        // TODO: Add closingPrice and clvPercent columns to trades schema to persist CLV data
+        // BACKLOG: Add closingPrice and clvPercent columns to trades schema to persist CLV data
         // For now, we calculate but don't persist (schema migration needed)
         // await db.update(trades)
         //     .set({
@@ -81,7 +83,7 @@ export class CLVCalculator {
         //     })
         //     .where(eq(trades.id, tradeId));
 
-        console.log(`[CLV] Trade ${tradeId.slice(0, 8)}: Entry ${(entryPrice * 100).toFixed(0)}¢ → Close ${(closingPrice * 100).toFixed(0)}¢ = CLV ${clvPercent.toFixed(2)}%`);
+        logger.info(`[CLV] Trade ${tradeId.slice(0, 8)}: Entry ${(entryPrice * 100).toFixed(0)}¢ → Close ${(closingPrice * 100).toFixed(0)}¢ = CLV ${clvPercent.toFixed(2)}%`);
 
         return { tradeId, entryPrice, closingPrice, clvPercent };
     }
@@ -95,19 +97,19 @@ export class CLVCalculator {
         const marketData = await MarketService.getLatestPrice(marketId);
 
         if (!marketData) {
-            console.log(`[CLV] No market data for ${marketId}, skipping CLV calculation`);
+            logger.info(`[CLV] No market data for ${marketId}, skipping CLV calculation`);
             return [];
         }
 
         const closingPrice = parseFloat(marketData.price);
 
-        // TODO: clvPercent column doesn't exist in trades schema yet
+        // BACKLOG: clvPercent column doesn't exist in trades schema yet
         // For now, calculate CLV for all trades in this market (no filtering by null clvPercent)
         const pendingTrades = await db.query.trades.findMany({
             where: eq(trades.marketId, marketId),
         });
 
-        console.log(`[CLV] Calculating CLV for ${pendingTrades.length} trades in market ${marketId.slice(0, 16)}...`);
+        logger.info(`[CLV] Calculating CLV for ${pendingTrades.length} trades in market ${marketId.slice(0, 16)}...`);
 
         const results: CLVResult[] = [];
         for (const trade of pendingTrades) {
@@ -122,7 +124,7 @@ export class CLVCalculator {
      * Get CLV summary for a trader (challenge).
      * Used for trader classification (sharp vs gambler).
      * 
-     * TODO: Requires clvPercent column in trades schema to function properly.
+     * BACKLOG: Requires clvPercent column in trades schema to function properly.
      * Currently returns 'unknown' classification for all traders.
      */
     static async getSummary(challengeId: string): Promise<CLVSummary> {
@@ -130,7 +132,7 @@ export class CLVCalculator {
             where: eq(trades.challengeId, challengeId),
         });
 
-        // TODO: clvPercent column doesn't exist yet in trades schema
+        // BACKLOG: clvPercent column doesn't exist yet in trades schema
         // Return unknown classification until schema migration is complete
         return {
             totalTrades: allTrades.length,
@@ -148,7 +150,7 @@ export class CLVCalculator {
         // This would be called periodically or on-demand by admin
         // Returns a map of challengeId -> CLV summary
         // Implementation would fetch all funded challenges and summarize
-        console.log('[CLV] Trader classification not yet implemented for bulk queries');
+        logger.info('[CLV] Trader classification not yet implemented for bulk queries');
         return new Map();
     }
 }

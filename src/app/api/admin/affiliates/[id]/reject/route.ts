@@ -3,6 +3,8 @@ import { db } from "@/db";
 import { affiliates } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { requireAdmin } from "@/lib/admin-auth";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("Reject");
 
 /**
  * PATCH /api/admin/affiliates/[id]/reject
@@ -53,7 +55,7 @@ export async function PATCH(
         });
 
     } catch (error: unknown) {
-        console.error("[Admin Reject Affiliate Error]:", error);
+        logger.error("[Admin Reject Affiliate Error]:", error);
         return NextResponse.json(
             { error: "Failed to reject affiliate" },
             { status: 500 }

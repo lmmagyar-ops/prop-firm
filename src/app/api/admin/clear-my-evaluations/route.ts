@@ -3,6 +3,8 @@ import { challenges, positions, trades, users } from "@/db/schema";
 import { eq, and, inArray } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-auth";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("ClearMyEvaluations");
 
 /**
  * DELETE /api/admin/clear-my-evaluations
@@ -60,7 +62,7 @@ export async function DELETE() {
             .where(eq(challenges.userId, userId))
             .returning({ id: challenges.id });
 
-        console.log(`[Admin] Cleared all data for user ${userId}:`, {
+        logger.info(`[Admin] Cleared all data for user ${userId}:`, {
             challenges: deletedChallenges.length,
             positions: deletedPositions.length,
             trades: deletedTrades.length
@@ -77,7 +79,7 @@ export async function DELETE() {
         });
 
     } catch (error) {
-        console.error("Clear evaluations error:", error);
+        logger.error("Clear evaluations error:", error);
         return NextResponse.json({ error: "Failed to clear evaluations" }, { status: 500 });
     }
 }

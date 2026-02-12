@@ -5,8 +5,8 @@ import { PublicProfileHeader } from "@/components/dashboard/PublicProfileHeader"
 import { ProfileMetricsGrid } from "@/components/dashboard/ProfileMetricsGrid";
 import { getPublicProfileData } from "@/lib/profile-service";
 import { db } from "@/db";
-import { users, challenges, payouts } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { users, challenges, payouts, trades } from "@/db/schema";
+import { eq, sql, count, countDistinct } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { ClientPublicProfileWrapper } from "@/components/dashboard/ClientPublicProfileWrapper";
 import { SocialVisibilitySection } from "@/components/dashboard/SocialVisibilitySection";
@@ -49,8 +49,28 @@ export default async function PublicProfilePage() {
 
     // Calculate achievement data
     const isFunded = data.accounts.some(acc => acc.status === "passed");
-    const totalTrades = 0; // TODO: Count from trades table
-    const activeDays = 0; // TODO: Calculate from trading activity
+
+    // Get user's challenge IDs for trade queries
+    const userChallenges = await db.query.challenges.findMany({
+        where: eq(challenges.userId, session.user.id),
+        columns: { id: true },
+    });
+    const challengeIds = userChallenges.map(c => c.id);
+
+    let totalTrades = 0;
+    let activeDays = 0;
+    if (challengeIds.length > 0) {
+        const [tradeCountResult, activeDaysResult] = await Promise.all([
+            db.select({ value: count() })
+                .from(trades)
+                .where(sql`${trades.challengeId} IN ${challengeIds}`),
+            db.select({ value: countDistinct(sql`DATE(${trades.executedAt})`) })
+                .from(trades)
+                .where(sql`${trades.challengeId} IN ${challengeIds}`),
+        ]);
+        totalTrades = tradeCountResult[0]?.value ?? 0;
+        activeDays = activeDaysResult[0]?.value ?? 0;
+    }
 
     // Server actions for toggles
     async function toggleLeaderboard(enabled: boolean) {

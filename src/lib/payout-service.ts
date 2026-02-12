@@ -13,6 +13,8 @@ import { FUNDED_RULES, FundedTier, getFundedTier as getFundedTierShared } from "
 import { nanoid } from "nanoid";
 import { safeParseFloat } from "./safe-parse";
 import { BalanceManager } from "./trading/BalanceManager";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("PayoutService");
 
 // Types
 export interface PayoutEligibility {
@@ -158,7 +160,7 @@ export class PayoutService {
         const netPayout = cappedProfit * profitSplit;
         const firmShare = cappedProfit - netPayout;
 
-        console.log(`[PayoutService] Calculation for ${challengeId.slice(0, 8)}:`, {
+        logger.info(`[PayoutService] Calculation for ${challengeId.slice(0, 8)}:`, {
             grossProfit: grossProfit.toFixed(2),
             excludedPnl: excludedPnl.toFixed(2),
             adjustedProfit: adjustedProfit.toFixed(2),
@@ -236,7 +238,7 @@ export class PayoutService {
         // payout is actually completed, not just requested. This prevents
         // losing trading day progress if payout is rejected.
 
-        console.log(`[PayoutService] Payout requested: ${payoutId} for $${calculation.netPayout.toFixed(2)}`);
+        logger.info(`[PayoutService] Payout requested: ${payoutId} for $${calculation.netPayout.toFixed(2)}`);
 
         return {
             payoutId,
@@ -272,7 +274,7 @@ export class PayoutService {
                 eq(payouts.status, "pending")
             ));
 
-        console.log(`[PayoutService] Payout ${payoutId} approved by ${adminId}`);
+        logger.info(`[PayoutService] Payout ${payoutId} approved by ${adminId}`);
     }
 
     /**
@@ -297,7 +299,7 @@ export class PayoutService {
                 eq(payouts.status, "approved")
             ));
 
-        console.log(`[PayoutService] Payout ${payoutId} marked as processing`);
+        logger.info(`[PayoutService] Payout ${payoutId} marked as processing`);
     }
 
     /**
@@ -377,7 +379,7 @@ export class PayoutService {
                 .where(eq(payouts.id, payoutId));
         });
 
-        console.log(`[PayoutService] Payout ${payoutId} completed: ${transactionHash} | Deducted $${grossDeduction.toFixed(2)} from balance`);
+        logger.info(`[PayoutService] Payout ${payoutId} completed: ${transactionHash} | Deducted $${grossDeduction.toFixed(2)} from balance`);
     }
 
     /**
@@ -405,7 +407,7 @@ export class PayoutService {
                 inArray(payouts.status, ['pending', 'approved', 'processing'])
             ));
 
-        console.log(`[PayoutService] Payout ${payoutId} failed: ${reason}`);
+        logger.info(`[PayoutService] Payout ${payoutId} failed: ${reason}`);
     }
 
     /**

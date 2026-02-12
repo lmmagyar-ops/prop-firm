@@ -17,7 +17,7 @@ interface BadgesGridProps {
     }>;
 }
 
-const ICON_MAP: Record<string, any> = {
+const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
     "trophy": Trophy,
     "star": Star,
     "medal": Medal,

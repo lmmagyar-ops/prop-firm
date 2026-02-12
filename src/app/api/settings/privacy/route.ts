@@ -3,6 +3,8 @@ import { auth } from "@/auth";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("Privacy");
 
 export async function POST(request: NextRequest) {
     try {
@@ -41,7 +43,7 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({ success: true });
     } catch (error) {
-        console.error("Error updating privacy settings:", error);
+        logger.error("Error updating privacy settings:", error);
         return NextResponse.json(
             { error: "Failed to update privacy settings" },
             { status: 500 }

@@ -40,7 +40,7 @@ export async function GET(req: Request) {
 
     // Calculate what balance SHOULD be
     let calculatedBalance = startingBalance;
-    const tradeLog: any[] = [];
+    const tradeLog: { type: string; amount: number; balanceAfter: number; shares: number; price: number; time: Date | null }[] = [];
 
     for (const trade of allTrades.reverse()) { // Process in chronological order
         const amount = parseFloat(trade.amount);

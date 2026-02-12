@@ -26,19 +26,10 @@ export function PayoutRequestForm({ availableBalance }: { availableBalance: numb
             toast.error("Please enter a valid amount");
             return;
         }
-        // Logic: allow request even if balance is 0 for testing? No, enforce logic.
-        // Actually for dev, I might relax this or use the mock breakout balance which is 300.
-        // The prop `availableBalance` is passed in.
-
-        /* 
         if (amount > availableBalance) {
-            toast.error("Amount exceeds available balance");
+            toast.error(`Amount exceeds available balance ($${availableBalance.toFixed(2)})`);
             return;
-        } 
-        */
-        // Since availableBalance defaults to 0 in my mock service unless I changed it, 
-        // I will comment out strict check for now or ensure I pass a value > 0.
-
+        }
         if (!payoutData.walletAddress) {
             toast.error("Wallet address is required");
             return;

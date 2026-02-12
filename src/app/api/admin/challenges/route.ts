@@ -4,6 +4,8 @@ import { desc, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 import { requireAdmin } from "@/lib/admin-auth";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("Challenges");
 
 export async function GET() {
     const { isAuthorized, response } = await requireAdmin();
@@ -29,7 +31,7 @@ export async function GET() {
 
         return NextResponse.json({ challenges: allChallenges });
     } catch (error) {
-        console.error("Admin List Error:", error);
+        logger.error("Admin List Error:", error);
         return NextResponse.json({ error: "Failed to fetch challenges" }, { status: 500 });
     }
 }

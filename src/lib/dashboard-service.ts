@@ -299,7 +299,7 @@ export async function getDashboardData(userId: string) {
         challengesFailed,
         successRate,
         totalProfitEarned: totalProfitEarned > 0 ? totalProfitEarned : Math.max(0, totalRealizedPnL),
-        bestMarketCategory: null as string | null, // TODO: implement category analysis
+        bestMarketCategory: null as string | null, // BACKLOG: implement category analysis (requires per-trade Redis lookup)
         currentWinStreak,
         avgTradeWinRate: tradeWinRate,
         // NEW: trade-level stats

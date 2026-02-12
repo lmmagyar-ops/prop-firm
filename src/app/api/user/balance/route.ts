@@ -6,6 +6,8 @@ import { eq, and } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { MarketService } from "@/lib/market";
 import { calculatePositionMetrics } from "@/lib/position-utils";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("Balance");
 
 export async function GET(req: NextRequest) {
     try {
@@ -91,7 +93,7 @@ export async function GET(req: NextRequest) {
         });
 
     } catch (error) {
-        console.error("Failed to fetch balance:", error);
+        logger.error("Failed to fetch balance:", error);
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
     }
 }

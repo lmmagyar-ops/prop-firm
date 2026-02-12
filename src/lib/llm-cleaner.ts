@@ -6,6 +6,8 @@
  */
 
 import Anthropic from "@anthropic-ai/sdk";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("LlmCleaner");
 
 // Simple in-memory cache for LLM results
 const cleaningCache = new Map<string, string[]>();
@@ -150,7 +152,7 @@ Return ONLY a JSON array of cleaned labels in the SAME ORDER:
         cleaningCache.set(cacheKey, cleaned);
         return cleaned;
     } catch (error) {
-        console.error(`[LLM Cleaner] Error cleaning "${eventTitle}":`, error);
+        logger.error(`[LLM Cleaner] Error cleaning "${eventTitle}":`, error);
         return outcomes;
     }
 }

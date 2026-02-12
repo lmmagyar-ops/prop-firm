@@ -159,8 +159,7 @@ export function MarketGridWithTabs({ events = [], balance, platform = "polymarke
     };
 
     // Handler for trading from within the detail modal
-    const handleTrade = (marketId: string, side: 'yes' | 'no', question: string) => {
-        console.log(`[Trade] ${side.toUpperCase()} on ${marketId}: ${question}`);
+    const handleTrade = (_marketId: string, _side: 'yes' | 'no', _question: string) => {
         // Detail modal has its own TradingSidebar that handles execution
     };
 

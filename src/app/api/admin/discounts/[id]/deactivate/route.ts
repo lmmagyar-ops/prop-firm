@@ -3,6 +3,8 @@ import { db } from "@/db";
 import { discountCodes } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { requireAdmin } from "@/lib/admin-auth";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("Deactivate");
 
 /**
  * PATCH /api/admin/discounts/[id]/deactivate
@@ -41,7 +43,7 @@ export async function PATCH(
         });
 
     } catch (error: unknown) {
-        console.error("[Admin Deactivate Discount Error]:", error);
+        logger.error("[Admin Deactivate Discount Error]:", error);
         return NextResponse.json(
             { error: "Failed to deactivate discount code" },
             { status: 500 }

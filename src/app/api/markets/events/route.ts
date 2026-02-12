@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { getActiveEvents } from "@/app/actions/market";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("Events");
 
 export const dynamic = "force-dynamic";
 export const revalidate = 10; // Cache for 10 seconds
@@ -31,7 +33,7 @@ export async function GET(request: Request) {
             }
         );
     } catch (error) {
-        console.error("[API /markets/events] Error:", error);
+        logger.error("[API /markets/events] Error:", error);
         return NextResponse.json(
             { error: "Failed to fetch events", events: [] },
             { status: 500 }

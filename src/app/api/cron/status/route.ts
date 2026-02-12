@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { challenges } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("Status");
 
 /**
  * Cron Status/Health Check Endpoint
@@ -75,13 +77,13 @@ export async function GET(request: NextRequest) {
                     )
                 }));
 
-            (response as any).nearInactiveAccounts = nearInactiveAccounts;
+            return NextResponse.json({ ...response, nearInactiveAccounts });
+        } else {
+            return NextResponse.json(response);
         }
 
-        return NextResponse.json(response);
-
     } catch (error) {
-        console.error("[CronStatus] ❌ Error:", error);
+        logger.error("[CronStatus] ❌ Error:", error);
         return NextResponse.json(
             {
                 status: "error",

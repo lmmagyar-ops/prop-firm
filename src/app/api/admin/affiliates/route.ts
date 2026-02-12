@@ -3,6 +3,8 @@ import { db } from "@/db";
 import { affiliates, affiliateReferrals } from "@/db/schema";
 import { eq, desc, sql } from "drizzle-orm";
 import { requireAdmin } from "@/lib/admin-auth";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("Affiliates");
 
 /**
  * GET /api/admin/affiliates
@@ -57,7 +59,7 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ affiliates: affiliatesWithStats });
 
     } catch (error: unknown) {
-        console.error("[Admin Affiliates List Error]:", error);
+        logger.error("[Admin Affiliates List Error]:", error);
         return NextResponse.json(
             { error: "Failed to fetch affiliates" },
             { status: 500 }

@@ -5,6 +5,8 @@
 
 import { NextResponse } from "next/server";
 import { logPageView } from "@/lib/event-logger";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("PageView");
 
 export async function POST(req: Request) {
     try {
@@ -21,7 +23,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: true });
     } catch (error) {
         // Don't fail loudly - analytics should be invisible
-        console.error("[PageView API Error]:", error);
+        logger.error("[PageView API Error]:", error);
         return NextResponse.json({ success: false }, { status: 200 });
     }
 }

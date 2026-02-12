@@ -3,6 +3,8 @@ import { requireAdmin } from "@/lib/admin-auth";
 import { db } from "@/db";
 import { challenges, trades } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("FixBalance");
 
 /**
  * POST /api/admin/fix-balance
@@ -84,7 +86,7 @@ export async function POST(req: Request) {
         .set({ currentBalance: calculatedBalance.toString() })
         .where(eq(challenges.id, challengeId));
 
-    console.log(`[Admin Fix] Challenge ${challengeId} balance fixed: $${currentBalance} → $${calculatedBalance} (was off by $${discrepancy})`);
+    logger.info(`[Admin Fix] Challenge ${challengeId} balance fixed: $${currentBalance} → $${calculatedBalance} (was off by $${discrepancy})`);
 
     return NextResponse.json({
         success: true,

@@ -11,6 +11,8 @@
 
 import http from 'http';
 import type { Redis } from 'ioredis';
+import { createLogger } from '../lib/logger';
+const logger = createLogger('HealthServer');
 
 interface HealthStatus {
     status: 'healthy' | 'degraded' | 'unhealthy';
@@ -95,7 +97,7 @@ export function startHealthServer(
                     health.status = 'degraded';
                     health.redis = 'reconnecting';
                     health.reason = message;
-                    console.log('[Health] Degraded mode - Redis reconnecting:', message);
+                    logger.info('[Health] Degraded mode - Redis reconnecting:', message);
                 }
 
                 // Always return 200 — Railway restarts on 503
@@ -416,17 +418,17 @@ export function startHealthServer(
 
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : String(err);
-            console.error(`[API] Error on ${path}:`, message);
+            logger.error(`[API] Error on ${path}:`, message);
             sendError(res, message, 500);
         }
     });
 
     server.on('error', (err) => {
-        console.error('[Health] Server error:', err.message);
+        logger.error('[Health] Server error:', err.message);
     });
 
     server.listen(port, () => {
-        console.log(`[Health] Server listening on port ${port}`);
+        logger.info(`[Health] Server listening on port ${port}`);
     });
 
     return server;

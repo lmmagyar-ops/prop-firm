@@ -3,6 +3,8 @@ import { auth } from "@/auth";
 import { db } from "@/db";
 import { user2FA, users } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("Disable");
 
 export async function POST(request: NextRequest) {
     try {
@@ -22,7 +24,7 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({ success: true });
     } catch (error) {
-        console.error("2FA disable error:", error);
+        logger.error("2FA disable error:", error);
         return NextResponse.json({ error: "Failed to disable 2FA" }, { status: 500 });
     }
 }

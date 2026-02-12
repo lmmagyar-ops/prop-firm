@@ -3,6 +3,8 @@ import { challenges, positions, trades } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-auth";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("ResetChallenge");
 
 /**
  * POST /api/admin/reset-challenge
@@ -66,7 +68,7 @@ export async function POST(req: Request) {
             .where(eq(challenges.id, challengeId));
 
         // FORENSIC LOGGING: Track admin reset
-        console.log(`[BALANCE_FORENSIC] ${JSON.stringify({
+        logger.info(`[BALANCE_FORENSIC] ${JSON.stringify({
             timestamp: new Date().toISOString(),
             operation: 'ADMIN_RESET',
             challengeId: challengeId.slice(0, 8),
@@ -85,7 +87,7 @@ export async function POST(req: Request) {
         });
 
     } catch (error) {
-        console.error("Reset Challenge Error:", error);
+        logger.error("Reset Challenge Error:", error);
         return NextResponse.json({ error: "Failed to reset challenge" }, { status: 500 });
     }
 }
@@ -112,7 +114,7 @@ export async function GET() {
 
         return NextResponse.json({ challenges: allChallenges });
     } catch (error) {
-        console.error("Get Challenges Error:", error);
+        logger.error("Get Challenges Error:", error);
         return NextResponse.json({ error: "Failed to fetch challenges" }, { status: 500 });
     }
 }

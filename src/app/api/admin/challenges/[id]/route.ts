@@ -3,6 +3,8 @@ import { challenges, trades, positions } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-auth";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("[id]");
 
 /**
  * DELETE /api/admin/challenges/[id]
@@ -49,7 +51,7 @@ export async function DELETE(
             .delete(challenges)
             .where(eq(challenges.id, challengeId));
 
-        console.log(`[Admin] Deleted challenge ${challengeId}:`, {
+        logger.info(`[Admin] Deleted challenge ${challengeId}:`, {
             trades: deletedTrades.length,
             positions: deletedPositions.length,
         });
@@ -64,7 +66,7 @@ export async function DELETE(
         });
 
     } catch (error) {
-        console.error("Delete Challenge Error:", error);
+        logger.error("Delete Challenge Error:", error);
         return NextResponse.json(
             { error: "Failed to delete challenge" },
             { status: 500 }
@@ -103,7 +105,7 @@ export async function PATCH(
             return NextResponse.json({ error: "Challenge not found" }, { status: 404 });
         }
 
-        const updates: Record<string, any> = {};
+        const updates: Record<string, unknown> = {};
 
         // Status change (active, failed, passed)
         if (body.status !== undefined) {
@@ -173,7 +175,7 @@ export async function PATCH(
             .where(eq(challenges.id, challengeId))
             .limit(1);
 
-        console.log(`[Admin] Challenge ${challengeId} updated:`, updates);
+        logger.info(`[Admin] Challenge ${challengeId} updated:`, updates);
 
         return NextResponse.json({
             success: true,
@@ -182,7 +184,7 @@ export async function PATCH(
         });
 
     } catch (error) {
-        console.error("Update Challenge Error:", error);
+        logger.error("Update Challenge Error:", error);
         return NextResponse.json(
             { error: "Failed to update challenge" },
             { status: 500 }
@@ -217,7 +219,7 @@ export async function GET(
         return NextResponse.json({ challenge });
 
     } catch (error) {
-        console.error("Get Challenge Error:", error);
+        logger.error("Get Challenge Error:", error);
         return NextResponse.json(
             { error: "Failed to fetch challenge" },
             { status: 500 }

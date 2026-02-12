@@ -12,6 +12,8 @@
 
 import { kvGet, kvSet, kvDel } from "./worker-client";
 import { getErrorMessage } from "./errors";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("PolymarketOracle");
 
 const GAMMA_API_BASE = "https://gamma-api.polymarket.com";
 const CACHE_TTL_SECONDS = 300; // 5 minute cache for resolution status
@@ -75,7 +77,7 @@ export class PolymarketOracle {
             return resolution;
 
         } catch (error: unknown) {
-            console.error(`[PolymarketOracle] Error fetching resolution for ${tokenId.slice(0, 12)}:`, getErrorMessage(error));
+            logger.error(`[PolymarketOracle] Error fetching resolution for ${tokenId.slice(0, 12)}:`, getErrorMessage(error));
             return this.buildFallback(tokenId, getErrorMessage(error));
         }
     }
@@ -124,7 +126,7 @@ export class PolymarketOracle {
             });
 
             if (!response.ok) {
-                console.warn(`[PolymarketOracle] Gamma API returned ${response.status}`);
+                logger.warn(`[PolymarketOracle] Gamma API returned ${response.status}`);
                 return null;
             }
 
@@ -137,7 +139,7 @@ export class PolymarketOracle {
 
             return null;
         } catch (error: unknown) {
-            console.error(`[PolymarketOracle] Fetch error:`, getErrorMessage(error));
+            logger.error(`[PolymarketOracle] Fetch error:`, getErrorMessage(error));
             return null;
         }
     }
@@ -202,7 +204,7 @@ export class PolymarketOracle {
      * Conservative: assumes NOT resolved to avoid blocking trades incorrectly.
      */
     private static buildFallback(tokenId: string, reason: string): MarketResolution {
-        console.warn(`[PolymarketOracle] Using fallback for ${tokenId.slice(0, 12)}: ${reason}`);
+        logger.warn(`[PolymarketOracle] Using fallback for ${tokenId.slice(0, 12)}: ${reason}`);
         return {
             marketId: tokenId,
             isResolved: false, // Conservative: don't block trades

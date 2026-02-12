@@ -181,7 +181,7 @@ export function DashboardView({ initialBalance = null, demoMode = false, userId 
 
                 {/* 4. Open Positions */}
                 <OpenPositions
-                    positions={[]} // TODO: Wire up real positions from API/Context
+                    positions={[]} // BACKLOG: Wire up real positions from API/Context
                 />
 
             </div>

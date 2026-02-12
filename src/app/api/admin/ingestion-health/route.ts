@@ -8,6 +8,8 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-auth";
 import { getIngestionHealth } from "@/lib/worker-client";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("IngestionHealth");
 
 interface IngestionHealth {
     status: "healthy" | "degraded" | "down";
@@ -47,7 +49,7 @@ export async function GET(): Promise<NextResponse> {
         return NextResponse.json(healthData);
 
     } catch (error) {
-        console.error("[IngestionHealth] Error:", error);
+        logger.error("[IngestionHealth] Error:", error);
 
         const health: IngestionHealth = {
             status: "down",

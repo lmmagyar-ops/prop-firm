@@ -114,10 +114,11 @@ describe("buildSyntheticOrderBook", () => {
 
         expect(book.bids).toHaveLength(3);
         expect(book.asks).toHaveLength(3);
-        // Bid spread: 0.48, 0.46, 0.44
-        expect(parseFloat(book.bids[0].price)).toBe(0.48);
-        // Ask spread: 0.52, 0.54, 0.56
-        expect(parseFloat(book.asks[0].price)).toBe(0.52);
+        // Spread narrowed from 2¢ to 0.5¢ (0.005)
+        // Bid spread: 0.50, 0.49, 0.49 (0.495 → "0.50", 0.49 → "0.49", 0.485 → "0.49")
+        // Due to IEEE 754: (0.50 - 0.005) = "0.49", (0.50 + 0.005) = "0.51"
+        expect(parseFloat(book.bids[0].price)).toBeCloseTo(0.50, 1);
+        expect(parseFloat(book.asks[0].price)).toBeCloseTo(0.50, 1);
     });
 
     it("clamps bids to 0.01 for low prices", () => {

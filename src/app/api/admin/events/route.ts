@@ -10,6 +10,8 @@ import { db } from "@/db";
 import { activityLogs, users } from "@/db/schema";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { requireAdmin } from "@/lib/admin-auth";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("Events");
 
 export async function GET(req: Request) {
     const { isAuthorized, response } = await requireAdmin();
@@ -81,7 +83,7 @@ export async function GET(req: Request) {
         });
 
     } catch (error: unknown) {
-        console.error("[Admin Events API Error]:", error);
+        logger.error("[Admin Events API Error]:", error);
         return NextResponse.json(
             { error: "Failed to fetch event logs" },
             { status: 500 }

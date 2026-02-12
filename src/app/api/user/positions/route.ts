@@ -3,6 +3,8 @@ import { auth } from "@/auth";
 import { db } from "@/db";
 import { challenges, positions } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("Positions");
 
 export async function GET(req: NextRequest) {
     try {
@@ -60,7 +62,7 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ positions: formattedPositions });
 
     } catch (error) {
-        console.error("Failed to fetch positions:", error);
+        logger.error("Failed to fetch positions:", error);
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
     }
 }

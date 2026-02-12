@@ -9,6 +9,10 @@
  *   const res = await apiFetch("/api/trade/positions");
  *   // same as fetch(), but 429s and 5xx are logged automatically
  */
+import { createLogger } from '@/lib/logger';
+
+const logger = createLogger('ApiFetch');
+
 export async function apiFetch(
     input: RequestInfo | URL,
     init?: RequestInit
@@ -17,9 +21,9 @@ export async function apiFetch(
     const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
 
     if (response.status === 429) {
-        console.error(`[apiFetch] 429 Rate Limited: ${init?.method ?? "GET"} ${url}`);
+        logger.error(`[apiFetch] 429 Rate Limited: ${init?.method ?? "GET"} ${url}`);
     } else if (response.status >= 500) {
-        console.error(`[apiFetch] ${response.status} Server Error: ${init?.method ?? "GET"} ${url}`);
+        logger.error(`[apiFetch] ${response.status} Server Error: ${init?.method ?? "GET"} ${url}`);
     }
 
     return response;

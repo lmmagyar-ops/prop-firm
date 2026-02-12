@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-auth";
 import { forceSync, getAllMarketData } from "@/lib/worker-client";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("ForceSyncMarket");
 
 interface PolyMarket {
     question?: string;
@@ -65,7 +67,7 @@ export async function POST(req: Request) {
             );
         }
 
-        console.log(`[FORCE_SYNC] Admin triggered force sync: query="${query}", syncAll=${syncAll}`);
+        logger.info(`[FORCE_SYNC] Admin triggered force sync: query="${query}", syncAll=${syncAll}`);
 
         // Fetch current events from worker
         const currentData = await getAllMarketData();
@@ -79,7 +81,7 @@ export async function POST(req: Request) {
 
         if (syncAll) {
             // Full sync: Fetch top 500 events from Polymarket
-            console.log(`[FORCE_SYNC] Performing full sync...`);
+            logger.info(`[FORCE_SYNC] Performing full sync...`);
             const freshEvents = await fetchAndProcessEvents(500);
 
             const success = await forceSync("event:active_list", freshEvents);
@@ -150,11 +152,11 @@ export async function POST(req: Request) {
             timestamp: new Date().toISOString()
         };
 
-        console.log(`[FORCE_SYNC] Complete:`, JSON.stringify(result, null, 2));
+        logger.info(`[FORCE_SYNC] Complete:`, JSON.stringify(result, null, 2));
         return NextResponse.json(result);
 
     } catch (error) {
-        console.error("[FORCE_SYNC] Error:", error);
+        logger.error("[FORCE_SYNC] Error:", error);
         return NextResponse.json(
             { error: "Sync failed", details: String(error) },
             { status: 500 }

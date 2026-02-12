@@ -9,6 +9,8 @@
 import { db } from '@/db';
 import { activityLogs } from '@/db/schema';
 import { headers } from 'next/headers';
+import { createLogger } from '@/lib/logger';
+const logger = createLogger('EventLogger');
 
 // Event types for type safety
 export type EventType =
@@ -82,7 +84,7 @@ export async function logEvent(
         });
 
         // Also log to console for Vercel Logs (structured JSON)
-        console.log(JSON.stringify({
+        logger.info(JSON.stringify({
             event: action,
             userId: options.userId,
             metadata: options.metadata,
@@ -91,7 +93,7 @@ export async function logEvent(
 
     } catch (error) {
         // Never let logging break the app
-        console.error('[EventLog] Failed to log event:', error);
+        logger.error('[EventLog] Failed to log event:', error);
     }
 }
 

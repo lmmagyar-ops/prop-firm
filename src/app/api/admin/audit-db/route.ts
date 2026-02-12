@@ -10,6 +10,8 @@ import { db } from "@/db";
 import { positions, challenges } from "@/db/schema";
 import { eq, or, sql } from "drizzle-orm";
 import { auth } from "@/auth";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("AuditDb");
 
 export async function GET() {
     // Security: Admin only
@@ -25,7 +27,7 @@ export async function GET() {
     // }
 
     try {
-        console.log("🔍 DATABASE AUDIT - Finding corrupted data...");
+        logger.info("🔍 DATABASE AUDIT - Finding corrupted data...");
 
         // 1. Find positions with invalid entry prices (≤0.01 or ≥0.99)
         const invalidPositions = await db.query.positions.findMany({
@@ -71,13 +73,13 @@ export async function GET() {
             }
         };
 
-        console.log("✅ Audit complete:", report.summary);
+        logger.info("✅ Audit complete:", report.summary);
 
         return NextResponse.json(report);
 
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : 'Unknown error';
-        console.error("❌ Audit failed:", message);
+        logger.error("❌ Audit failed:", message);
         return NextResponse.json({ error: message }, { status: 500 });
     }
 }

@@ -1,4 +1,6 @@
 import { publishAdminEvent as workerPublish } from "./worker-client";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("Events");
 
 /**
  * Publish admin events via the ingestion-worker's HTTP API.
@@ -8,9 +10,9 @@ export async function publishAdminEvent(type: "NEW_TRADE" | "RISK_ALERT" | "CHAL
     try {
         const success = await workerPublish(type, data);
         if (!success) {
-            console.warn("[Events] Failed to publish admin event via worker, event dropped:", type);
+            logger.warn("[Events] Failed to publish admin event via worker, event dropped:", type);
         }
     } catch (error) {
-        console.error("Failed to publish admin event:", error);
+        logger.error("Failed to publish admin event:", error);
     }
 }

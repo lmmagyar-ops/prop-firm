@@ -2,6 +2,8 @@ import { db } from "@/db";
 import { challenges, positions, trades } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("Actions");
 
 /**
  * POST /api/dev/actions
@@ -58,7 +60,7 @@ export async function POST(req: NextRequest) {
                     })
                     .where(eq(challenges.id, activeChallenge.id));
 
-                console.log(`[DevTools] Reset challenge ${activeChallenge.id.slice(0, 8)} for user ${userId.slice(0, 8)}`);
+                logger.info(`[DevTools] Reset challenge ${activeChallenge.id.slice(0, 8)} for user ${userId.slice(0, 8)}`);
                 return NextResponse.json({ success: true, action: "reset" });
             }
 
@@ -151,7 +153,7 @@ export async function POST(req: NextRequest) {
                 return NextResponse.json({ error: `Unknown action: ${action}` }, { status: 400 });
         }
     } catch (error) {
-        console.error("DevTools action error:", error);
+        logger.error("DevTools action error:", error);
         return NextResponse.json({ error: "Action failed" }, { status: 500 });
     }
 }

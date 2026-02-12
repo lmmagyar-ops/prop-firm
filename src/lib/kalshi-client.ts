@@ -8,6 +8,8 @@
  */
 
 import crypto from 'crypto';
+import { createLogger } from '@/lib/logger';
+const logger = createLogger('KalshiClient');
 
 const KALSHI_API_BASE = "https://api.elections.kalshi.com/trade-api/v2";
 
@@ -102,7 +104,7 @@ export async function getKalshiEvents(limit = 200): Promise<KalshiEvent[]> {
         const data = await response.json();
         return data.events || [];
     } catch (error) {
-        console.error("[Kalshi] Failed to fetch events:", error);
+        logger.error("[Kalshi] Failed to fetch events:", error);
         return [];
     }
 }
@@ -130,7 +132,7 @@ export async function getKalshiMarkets(limit = 500): Promise<KalshiMarket[]> {
         const data = await response.json();
         return data.markets || [];
     } catch (error) {
-        console.error("[Kalshi] Failed to fetch markets:", error);
+        logger.error("[Kalshi] Failed to fetch markets:", error);
         return [];
     }
 }
@@ -157,7 +159,7 @@ export async function getKalshiOrderBook(ticker: string): Promise<KalshiOrderBoo
             no: data.orderbook?.no || [],
         };
     } catch (error) {
-        console.error(`[Kalshi] Failed to fetch order book for ${ticker}:`, error);
+        logger.error(`[Kalshi] Failed to fetch order book for ${ticker}:`, error);
         return null;
     }
 }

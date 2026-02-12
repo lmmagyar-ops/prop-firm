@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { OutageManager } from "@/lib/outage-manager";
 import { MarketCacheService } from "@/lib/market-cache-service";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("Status");
 
 /**
  * System Status API
@@ -35,7 +37,7 @@ export async function GET() {
             message: outageStatus.message ?? null,
         });
     } catch (error) {
-        console.error("[SystemStatus] Error:", error);
+        logger.error("[SystemStatus] Error:", error);
         return NextResponse.json({
             status: "healthy",
             marketDataAge: null,

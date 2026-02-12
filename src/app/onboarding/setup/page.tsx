@@ -30,11 +30,11 @@ export default async function OnboardingSetupPage() {
                 startingBalance: parseFloat(latestChallenge.startingBalance),
                 // Safe access to JSONB fields + Calculation logic
                 profitTarget: (() => {
-                    const target = (latestChallenge.rulesConfig as any)?.profitTarget || 0.1;
+                    const target = (latestChallenge.rulesConfig as Record<string, unknown>)?.profitTarget as number || 0.1;
                     return target < 1 ? parseFloat(latestChallenge.startingBalance) * target : target;
                 })(),
                 maxDrawdown: (() => {
-                    const drawdown = (latestChallenge.rulesConfig as any)?.maxDrawdown || 0.1;
+                    const drawdown = (latestChallenge.rulesConfig as Record<string, unknown>)?.maxDrawdown as number || 0.1;
                     return drawdown < 1 ? parseFloat(latestChallenge.startingBalance) * drawdown : drawdown;
                 })(),
             }}

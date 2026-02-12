@@ -1,5 +1,7 @@
 import { NextRequest } from "next/server";
 import { getPrices } from "@/lib/worker-client";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("Stream");
 
 /**
  * SSE Endpoint for Real-Time Market Price Streaming
@@ -32,13 +34,13 @@ export async function GET(request: NextRequest) {
                             controller.enqueue(encoder.encode(`data: {"error":"worker_unavailable"}\n\n`));
                         }
                     } catch (err) {
-                        console.error('[MarketStream] Poll error:', err);
+                        logger.error('[MarketStream] Poll error:', err);
                         controller.enqueue(encoder.encode(`data: {"error":"poll_error"}\n\n`));
                     }
                 }, 1000);
 
             } catch (err) {
-                console.error('[MarketStream] Failed to start stream:', err);
+                logger.error('[MarketStream] Failed to start stream:', err);
                 controller.enqueue(encoder.encode(`data: {"error":"init_failed"}\n\n`));
                 controller.close();
             }
@@ -46,7 +48,7 @@ export async function GET(request: NextRequest) {
 
         cancel() {
             if (interval) clearInterval(interval);
-            console.log('[MarketStream] Client disconnected, cleaned up');
+            logger.info('[MarketStream] Client disconnected, cleaned up');
         }
     });
 

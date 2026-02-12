@@ -9,6 +9,8 @@ import { generateTrader, Trader } from './trader-behavior';
 import { runChallenge, ChallengeResult } from './challenge-simulator';
 import { calculateCashFlow } from './cash-flow';
 import { TRADER_ARCHETYPES, FirmConfig } from './config';
+import { createLogger } from '@/lib/logger';
+const logger = createLogger('StressTests');
 
 export interface StressScenario {
     name: string;
@@ -211,10 +213,10 @@ export function runStressTest(
     scenario: StressScenario,
     firmConfig: FirmConfig
 ): StressTestResult {
-    console.log(`\n🔥 STRESS TEST: ${scenario.name}`);
-    console.log(`   ${scenario.description}`);
-    console.log(`   Traders: ${scenario.traders.length}`);
-    console.log(`   Expected Risk: ${scenario.expectedRisk}`);
+    logger.info(`\n🔥 STRESS TEST: ${scenario.name}`);
+    logger.info(`   ${scenario.description}`);
+    logger.info(`   Traders: ${scenario.traders.length}`);
+    logger.info(`   Expected Risk: ${scenario.expectedRisk}`);
 
     // Run challenges
     const challengeResults = scenario.traders.map(trader =>
@@ -238,7 +240,7 @@ export function runStressTest(
 
     const details = `Pass rate: ${passRate.toFixed(1)}% | Net: $${Math.round(cashFlow.netCashFlow).toLocaleString()} | Verdict: ${verdict}`;
 
-    console.log(`   ${details}\n`);
+    logger.info(`   ${details}\n`);
 
     return {
         scenario,
@@ -253,7 +255,7 @@ export function runStressTest(
  * Run all stress tests
  */
 export function runAllStressTests(firmConfig: FirmConfig): StressTestResult[] {
-    console.log('🔥 RUNNING ALL STRESS TESTS...\n');
+    logger.info('🔥 RUNNING ALL STRESS TESTS...\n');
 
     const scenarios = [
         generateWinnersCurseScenario(100),
@@ -266,7 +268,7 @@ export function runAllStressTests(firmConfig: FirmConfig): StressTestResult[] {
 
     const results = scenarios.map(scenario => runStressTest(scenario, firmConfig));
 
-    console.log('✅ STRESS TESTS COMPLETE\n');
+    logger.info('✅ STRESS TESTS COMPLETE\n');
 
     return results;
 }

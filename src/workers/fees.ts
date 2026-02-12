@@ -3,6 +3,8 @@ import { positions, challenges, businessRules } from "@/db/schema";
 import { eq, and, lte, isNull } from "drizzle-orm";
 import { TRADING_CONFIG } from "@/config/trading";
 import { BalanceManager } from "@/lib/trading/BalanceManager";
+import { createLogger } from "../lib/logger";
+const logger = createLogger("Fees");
 
 // Configuration from centralized config
 const FEE_RATE = TRADING_CONFIG.fees.carryFeeRate;
@@ -16,7 +18,7 @@ const THRESHOLD_MS = TRADING_CONFIG.fees.stalePeriodMs;
  * to force the user to manage their PnL actively.
  */
 export async function runFeeSweep() {
-    console.log("🧹 [FeeSweeper] Starting sweep...");
+    logger.info("🧹 [FeeSweeper] Starting sweep...");
 
     try {
         const now = new Date();
@@ -50,7 +52,7 @@ export async function runFeeSweep() {
             return lastCharged.getTime() < staleThreshold.getTime();
         });
 
-        console.log(`🧹 [FeeSweeper] Found ${chargeablePositions.length} positions to charge.`);
+        logger.info(`🧹 [FeeSweeper] Found ${chargeablePositions.length} positions to charge.`);
 
         let chargedCount = 0;
         for (const pos of chargeablePositions) {
@@ -58,16 +60,22 @@ export async function runFeeSweep() {
             chargedCount++;
         }
 
-        if (chargedCount > 0) console.log(`🧹 [FeeSweeper] Sweep complete. Charged ${chargedCount} positions.`);
+        if (chargedCount > 0) logger.info(`🧹 [FeeSweeper] Sweep complete. Charged ${chargedCount} positions.`);
 
     } catch (error) {
-        console.error("🧹 [FeeSweeper] Error:", error);
+        logger.error("🧹 [FeeSweeper] Error:", error);
     }
 }
 
-async function chargeFee(position: any) {
+async function chargeFee(position: typeof positions.$inferSelect) {
     // Transaction to ensure balance deduction and position update happen together
     await db.transaction(async (tx) => {
+        // Guard: challengeId is nullable in schema but required for fee deduction
+        if (!position.challengeId) {
+            logger.warn(`Skipping fee for position ${position.id}: no challengeId`);
+            return;
+        }
+
         // 1. Calculate Fee
         const entryPrice = parseFloat(position.entryPrice);
         const shares = parseFloat(position.shares);
@@ -86,7 +94,7 @@ async function chargeFee(position: any) {
             })
             .where(eq(positions.id, position.id));
 
-        console.log(`   💸 Charged $${fee.toFixed(2)} on Position ${position.id} (Challenge ${position.challengeId})`);
+        logger.info(`   💸 Charged $${fee.toFixed(2)} on Position ${position.id} (Challenge ${position.challengeId})`);
     });
 }
 

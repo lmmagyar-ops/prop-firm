@@ -1,4 +1,6 @@
 import { MarketCacheService } from "./market-cache-service";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("WorkerClient");
 
 /**
  * Worker HTTP Client
@@ -53,13 +55,13 @@ async function workerFetch<T>(path: string, options?: RequestInit): Promise<T | 
         });
 
         if (!res.ok) {
-            console.error(`[WorkerClient] ${path} returned ${res.status}`);
+            logger.error(`[WorkerClient] ${path} returned ${res.status}`);
             return null;
         }
 
         return await res.json() as T;
     } catch (err) {
-        console.error(`[WorkerClient] ${path} failed:`, err instanceof Error ? err.message : err);
+        logger.error(`[WorkerClient] ${path} failed:`, err instanceof Error ? err.message : err);
         return null;
     }
 }

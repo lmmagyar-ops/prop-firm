@@ -4,6 +4,140 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ---
 
+## Feb 12, 2026 — Fix All Failing Unit Tests (20 → 0)
+
+**Scope:** Fix all 20 pre-existing unit test failures across 9 test files caused by production refactors (logger migration, rate-limiter rewrite, evaluator transaction wrapping, boundary range expansion, risk message updates).
+
+**Root Causes & Fixes:**
+
+| Category | Files | Root Cause | Fix |
+|----------|-------|-----------|-----|
+| Logger migration | `normalize-rules`, `resolution-detector` | Tests spied on `console.warn`/`error` but prod uses `logger.warn`/`error` via `createLogger()` | Mocked `@/lib/logger` with `vi.hoisted()` pattern |
+| Rate-limiter rewrite | `rate-limiter` | Tests mocked old Redis `multi()` pipeline but prod uses `kvIncr()` via worker HTTP | Complete mock rewrite: `@/lib/worker-client`.kvIncr + fail-open/fail-closed logic |
+| Evaluator transaction | `evaluator`, `evaluator-integration` | Funded phase transitions wrapped in `db.transaction()` but mock missing `transaction` method | Added `transaction` mock + `BalanceManager`, `OutageManager`, `logger` mocks |
+| Boundary range | `position-utils` | Price sanity bounds expanded from `(0.01, 0.99)` to `[0, 1]` for resolution prices | Updated assertions: 0.01/0.99 now valid live prices, added 0/1 resolution tests |
+| Risk message | `trade-flow` | User-friendly message: `"Max single trade for this market: $X"` replaced technical text | Updated `toContain()` assertion |
+| Spread change | `market` | Synthetic order book spread narrowed from 2¢ to 0.5¢ | Updated price assertions to `toBeCloseTo()` |
+| Position manager | `position-manager` | `addToPosition` no longer sets `currentPrice` (price refresh is separate) | Changed assertion to `toBeUndefined()` |
+
+**Verification:** `npx vitest run` → **783 passed, 0 failed, 3 skipped** across 50 test files.
+
+---
+
+## Feb 12, 2026 — Phase 5: Lint Hardening
+
+**Scope:** Promote `no-explicit-any` and `no-console` from `warn` → `error`.
+
+### Changes
+- Promoted both rules in `eslint.config.mjs`
+- Fixed ~20 `any` usages across 14 production files
+- Key patterns: `Record<string, any>` → `Record<string, unknown>`, `as any` → proper type bridges, `useState<any>` → typed state, JSONB `as any` → `Record<string, unknown>`
+- Added `AdminUserSummary` / `AdminChallengeSummary` interfaces for admin users route
+- Scripts/tests excluded from both rules
+
+### Verification
+- `tsc --noEmit`: 0 errors
+- `eslint --quiet`: 0 errors, 0 warnings (exit 0)
+
+---
+
+## Feb 12, 2026 — Phase 4: Type Safety
+
+**Scope:** Eliminate all `: any` in production code.
+
+### 5 Fixes
+1. **`verify-email/page.tsx`** — `catch (err: any)` → `unknown` + `instanceof Error`
+2. **`trade/execute/route.ts`** — `responsePayload: any` → `Record<string, unknown>`
+3. **`audit-balance/route.ts`** — `tradeLog: any[]` → typed `{ type, amount, balanceAfter, shares, price, time }[]`
+4. **`create-confirmo-invoice/route.ts`** — `catch (dbError: any)` → `unknown` + safe message extraction
+5. **`fees.ts`** — `position: any` → `typeof positions.$inferSelect` (Drizzle inferred type)
+
+### Bonus: Hidden Bug Found
+Properly typing `fees.ts` exposed that `position.challengeId` is nullable in the schema. Previously, `any` silently allowed passing `null` to `BalanceManager.deductCost()`. Added null guard with warning log.
+
+### Verification
+- `grep ': any'` in `src/`: **0 results** (excluding `errors.ts` documentation comment)
+- `tsc --noEmit`: 0 errors
+
+---
+
+## Feb 12, 2026 — Phase 3: TODO Triage
+
+**Scope:** Zero out all untracked `TODO` markers in production code.
+
+### 3 TODOs Fixed with Real DB Queries
+1. **`public-profile/page.tsx`** — `totalTrades` and `activeDays` were hardcoded to 0. Now queries `COUNT(*)` and `COUNT(DISTINCT DATE(executedAt))` from `trades` table across all user challenges.
+2. **`certificates-service.ts`** — `totalVolume` was hardcoded to $1.25M. Now queries `SUM(trades.amount)` across user's challenges.
+
+### 13 TODOs Converted to `BACKLOG:` Annotations
+- `dashboard-service.ts` — bestMarketCategory (needs per-trade Redis lookup)
+- `auth.ts` — Google OAuth re-enable
+- `PriceTicker.tsx` — WS server deployment
+- `clv-calculator.ts` (×4) — CLV schema columns
+- `DashboardView.tsx` — positions wiring
+- `AchievementBadgesSection.tsx` — performance-based badges
+- `UserInformationTab.tsx` — file upload
+- `profile-service.ts` (×3) — profile visibility + win rate asset
+
+### Verification
+- `grep TODO` in `src/`: **0 results**
+- `grep BACKLOG:` in `src/`: **13 results**
+- `tsc --noEmit`: 0 errors
+
+---
+
+## Feb 12, 2026 — Phase 2: Structured Logger + Console.log Cleanup
+
+**Scope:** Complete migration from `console.log/error/warn` to structured Winston logger.
+
+### Automated Codemod
+- Ran `scripts/migrate-console-to-logger.ts` against `workers/`, `app/api/`, `lib/` — 496 replacements across 116 files.
+- Fixed post-codemod TypeScript errors: 3 missing logger imports (`api-fetch.ts`, `display-types.ts`, `normalize-rules.ts`), logger meta type widening (`string | object`), worker global handler ordering (`ingestion.ts`, `kalshi-ingestion.ts`), confirmo webhook arg count.
+
+### Manual Cleanup
+- Migrated `auth.ts`, `app/actions/challenges.ts`, `app/actions/market.ts`, `db/index.ts` to structured logger.
+- Removed all debug `console.log` from client components: `ChallengeSelector`, `TopNavActions`, `TradePageComponents`, `MarketGridWithTabs`.
+- Removed all debug `console.log` from hooks: `useSelectedChallenge`, `useMarketStream`.
+
+### ESLint Rule
+- Added `no-console: ["warn", { allow: ["error", "warn"] }]` to `eslint.config.mjs`.
+- Test/script files exempt via override (`**/*.test.*`, `**/scripts/**`).
+
+### Verification
+- `tsc --noEmit`: 0 errors.
+- Only 1 `console.log` remains — in commented-out dead code (`PriceTicker.tsx` WS block).
+- All 500+ server-side logging statements now use structured Winston logger with context.
+
+**Files modified:** ~130 files across `src/`.
+
+---
+
+## Feb 12, 2026 — Phase 1: Financial Safety Hardening
+
+**Scope:** Engineering hardening sprint — 3 critical financial safety fixes.
+
+### 1. Payout Balance Validation (payouts-actions.ts)
+**Problem:** The `requestPayout` server action had ZERO server-side validation — any user could request any amount, bypassing the well-guarded `PayoutService`.
+**Fix:** Added server-side checks: funded challenge lookup, profit > 0, amount <= profit, input validation ($100 min, valid network, non-empty wallet). Replaced `console.log` with structured Winston logger.
+
+### 2. Real `getAvailableBalance()` (payouts-actions.ts)
+**Problem:** Function returned hardcoded `0` with a TODO comment — the payout form always showed $0 available.
+**Fix:** Wired to real challenge data — queries active funded challenge, calculates `(currentBalance - startingBalance) * profitSplit`. Demo users still get mock values.
+
+### 3. Discount Redemption Race Condition (checkout/page.tsx → webhooks/confirmo)
+**Problem:** Discount codes were consumed client-side BEFORE payment confirmation — abandoned payments consumed discounts.
+**Fix:** Moved redemption to the Confirmo webhook handler (post-payment). Discount info passed through the Confirmo reference field (`userId:tier:platform:code:amount:originalPrice`). Webhook now records redemption + increments usage counter. Payment validation adjusted for discounted amounts.
+
+### 4. Client-Side Balance Guard (PayoutRequestForm.tsx)
+**Problem:** Balance check was commented out — users could submit payout requests for amounts exceeding their balance.
+**Fix:** Uncommented the guard and enhanced the error message to show available balance.
+
+**Files modified:** `payouts-actions.ts`, `PayoutRequestForm.tsx`, `checkout/page.tsx`, `create-confirmo-invoice/route.ts`, `webhooks/confirmo/route.ts`
+
+**Verification:** `tsc --noEmit` ✅ (zero errors)
+
+---
+
 ## Feb 12, 2026 — Price Formatting Refactor + Event Date Fix
 
 **Problem:** Mat reported (1) share prices still showing whole numbers on some card types, (2) event dates showing today's date instead of resolution date.
@@ -20,6 +154,8 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 **Files modified:** `UnifiedMarketCard.tsx`, `EventDetailModal.tsx`, `BinaryEventCard.tsx`, `HeadToHeadCard.tsx`, `MultiRunnerCard.tsx`, `EventCard.tsx`, `ProbabilityChart.tsx`, `CLAUDE.md`
 
 **Verification:** `tsc --noEmit` ✅ | `test:engine` (53 assertions) ✅ | `next build` ✅
+
+**Deployed:** Staged on `develop` → visual verification on Vercel preview ✅ → promoted to `main` → production live (`3a10bb3`). All card types confirmed showing one-decimal prices (26.5%, 94.3%, 47.5%, etc.). Note: event dates still show "Feb 12" for Polymarket events missing `endDate` in their API — this is an upstream data gap, not a rendering bug.
 
 ---
 

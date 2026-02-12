@@ -48,8 +48,7 @@ export function ChallengeSelector({ challenges, selectedChallengeId, onSelect }:
     const [isMobile, setIsMobile] = useState(false);
     const isMac = useIsMac();
 
-    // DEBUG: Log challenges prop on every render (JSON for visibility)
-    console.log("[ChallengeSelector PROP] IDs:", JSON.stringify(challenges.map(c => c.id)));
+
 
     // PERF: Debounced resize listener to avoid excessive re-renders
     const resizeTimeout = useRef<NodeJS.Timeout | null>(null);
@@ -174,7 +173,7 @@ export function ChallengeSelector({ challenges, selectedChallengeId, onSelect }:
                                                     key={challenge.id}
                                                     onClick={() => {
                                                         const wasAlreadySelected = challenge.id === selectedChallengeId;
-                                                        console.log("[ChallengeSelector] Click! Switching to:", challenge.id, "wasAlreadySelected:", wasAlreadySelected);
+
                                                         onSelect(challenge.id);
                                                         setIsOpen(false);
                                                         // Reload page to fetch correct platform markets (only if switching)
@@ -297,7 +296,7 @@ export function ChallengeSelector({ challenges, selectedChallengeId, onSelect }:
                                                     key={challenge.id}
                                                     onClick={() => {
                                                         const wasAlreadySelected = challenge.id === selectedChallengeId;
-                                                        console.log("[ChallengeSelector] Click! Switching to:", challenge.id, "wasAlreadySelected:", wasAlreadySelected);
+
                                                         onSelect(challenge.id);
                                                         setIsOpen(false);
                                                         // Reload page to fetch correct platform markets (only if switching)

@@ -3,6 +3,8 @@ import { auth } from "@/auth";
 import { db } from "@/db";
 import { challenges } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("Start");
 
 export async function POST(req: NextRequest) {
     try {
@@ -40,7 +42,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: true, challengeId: pendingChallenge.id });
 
     } catch (error) {
-        console.error("Failed to start challenge:", error);
+        logger.error("Failed to start challenge:", error);
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
     }
 }

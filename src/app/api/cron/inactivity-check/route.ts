@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ActivityTracker } from "@/lib/activity-tracker";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("InactivityCheck");
 
 /**
  * Inactivity Check Cron Endpoint
@@ -21,11 +23,11 @@ export async function GET(request: NextRequest) {
     const cronSecret = process.env.CRON_SECRET;
 
     if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-        console.log("[InactivityCheck] ⚠️ Unauthorized cron attempt");
+        logger.info("[InactivityCheck] ⚠️ Unauthorized cron attempt");
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    console.log("[InactivityCheck] 🔍 Checking for inactive funded accounts...");
+    logger.info("[InactivityCheck] 🔍 Checking for inactive funded accounts...");
 
     try {
         const result = await ActivityTracker.checkInactivity();
@@ -41,12 +43,12 @@ export async function GET(request: NextRequest) {
             flaggedAccountIds: result.flagged
         };
 
-        console.log(`[InactivityCheck] ✅ Complete: ${result.terminated.length} terminated, ${result.flagged.length} flagged`);
+        logger.info(`[InactivityCheck] ✅ Complete: ${result.terminated.length} terminated, ${result.flagged.length} flagged`);
 
         return NextResponse.json(response);
 
     } catch (error) {
-        console.error("[InactivityCheck] ❌ Error:", error);
+        logger.error("[InactivityCheck] ❌ Error:", error);
         return NextResponse.json(
             { error: "Inactivity check failed", details: String(error) },
             { status: 500 }

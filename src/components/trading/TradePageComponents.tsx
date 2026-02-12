@@ -41,9 +41,7 @@ export function MarketCardClient({ market, balance, userId }: { market: MockMark
                 event={isModalOpen ? mockEvent : null}
                 open={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
-                onTrade={(marketId, side, question) => {
-                    console.log(`[Trade] ${side.toUpperCase()} on ${marketId}: ${question}`);
-                }}
+                onTrade={() => { }}
                 platform="polymarket"
             />
         </>

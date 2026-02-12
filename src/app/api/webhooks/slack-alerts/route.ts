@@ -6,6 +6,8 @@
  */
 
 import { NextResponse } from "next/server";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("SlackAlerts");
 
 interface SlackWebhookPayload {
     type: string;
@@ -51,15 +53,15 @@ export async function POST(request: Request): Promise<NextResponse> {
         const webhookUrl = process.env.SLACK_WEBHOOK_URL;
         if (webhookUrl) {
             await sendToSlack(webhookUrl, message);
-            console.log(`[SlackAlerts] Sent ${type} alert to Slack`);
+            logger.info(`[SlackAlerts] Sent ${type} alert to Slack`);
         } else {
-            console.log(`[SlackAlerts] ${type} alert (Slack not configured):`, message.text);
+            logger.info(`[SlackAlerts] ${type} alert (Slack not configured):`, message.text);
         }
 
         return NextResponse.json({ status: "sent", type });
 
     } catch (error) {
-        console.error("[SlackAlerts] Error:", error);
+        logger.error("[SlackAlerts] Error:", error);
         return NextResponse.json({ error: "Failed to process alert" }, { status: 500 });
     }
 }

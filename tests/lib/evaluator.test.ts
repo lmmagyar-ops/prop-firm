@@ -4,8 +4,8 @@ import { ChallengeEvaluator } from "@/lib/evaluator";
 import { db } from "@/db";
 
 // Mock dependencies
-vi.mock("@/db", () => ({
-    db: {
+vi.mock("@/db", () => {
+    const mockDb = {
         query: {
             challenges: {
                 findFirst: vi.fn()
@@ -16,11 +16,15 @@ vi.mock("@/db", () => ({
         },
         update: vi.fn(() => ({
             set: vi.fn(() => ({
-                where: vi.fn()
+                where: vi.fn().mockResolvedValue({ rowCount: 1 })
             }))
-        }))
-    }
-}));
+        })),
+        transaction: vi.fn(),
+    };
+    // transaction calls the callback with db itself as the tx context
+    mockDb.transaction.mockImplementation(async (cb: (tx: typeof mockDb) => Promise<void>) => cb(mockDb));
+    return { db: mockDb };
+});
 
 vi.mock("@/lib/events", () => ({
     publishAdminEvent: vi.fn()
@@ -36,6 +40,35 @@ vi.mock("@/lib/market", () => ({
             return map;
         })
     }
+}));
+
+// Mock OutageManager — default: no outage
+vi.mock("@/lib/outage-manager", () => ({
+    OutageManager: {
+        getOutageStatus: vi.fn().mockResolvedValue({
+            isOutage: false,
+            isGraceWindow: false,
+        }),
+    },
+}));
+
+// Mock BalanceManager (used during funded transitions)
+vi.mock("@/lib/trading/BalanceManager", () => ({
+    BalanceManager: {
+        creditProceeds: vi.fn().mockResolvedValue(undefined),
+        resetBalance: vi.fn().mockResolvedValue(undefined),
+    },
+}));
+
+// Mock logger
+vi.mock("@/lib/logger", () => ({
+    createLogger: () => ({
+        info: vi.fn(),
+        warn: vi.fn(),
+        error: vi.fn(),
+        debug: vi.fn(),
+        withContext: vi.fn(),
+    }),
 }));
 
 describe("ChallengeEvaluator - Daily Loss Pending Failure", () => {
@@ -766,11 +799,13 @@ describe("ChallengeEvaluator - Position Closure on Phase Transition", () => {
 
         expect(result.status).toBe("passed");
 
-        // db.update should be called 1 time:
-        // Phase transition to funded (position closure now handled by risk-monitor)
-        expect(db.update).toHaveBeenCalledTimes(1);
+        // db.update is called 3 times inside the transaction:
+        // 1. Phase transition to funded
+        // 2. Close position pos-1
+        // 3. Close position pos-2
+        expect(db.update).toHaveBeenCalledTimes(3);
 
-        // Verify the set call transitions to funded
+        // Verify the first set call transitions to funded
         const setCalls = vi.mocked(db.update).mock.results.map(
             (r: any) => r.value.set.mock.calls[0][0]
         );

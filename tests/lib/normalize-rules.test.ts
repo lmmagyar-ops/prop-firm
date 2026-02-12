@@ -1,10 +1,26 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+
+// Mock logger before importing normalize-rules
+// vi.hoisted() ensures mockWarn is available when vi.mock factory runs (hoisted to top)
+const { mockWarn } = vi.hoisted(() => ({
+    mockWarn: vi.fn(),
+}));
+vi.mock("@/lib/logger", () => ({
+    createLogger: () => ({
+        info: vi.fn(),
+        warn: mockWarn,
+        error: vi.fn(),
+        debug: vi.fn(),
+        withContext: vi.fn(),
+    }),
+}));
+
 import { normalizeRulesConfig } from "@/lib/normalize-rules";
 
 describe("normalizeRulesConfig", () => {
     beforeEach(() => {
         vi.restoreAllMocks();
-        vi.spyOn(console, "warn").mockImplementation(() => { });
+        mockWarn.mockClear();
     });
 
     // ─── Correct absolute values pass through unchanged ────────────
@@ -46,7 +62,7 @@ describe("normalizeRulesConfig", () => {
         // 0.08 * 10000 = $800
         expect(result.maxDrawdown).toBe(800);
         expect(result.profitTarget).toBe(1000);
-        expect(console.warn).toHaveBeenCalledWith(
+        expect(mockWarn).toHaveBeenCalledWith(
             expect.stringContaining("maxDrawdown=0.08 looks like a percentage")
         );
     });
@@ -59,7 +75,7 @@ describe("normalizeRulesConfig", () => {
         expect(result.maxDrawdown).toBe(800);
         // 0.10 * 10000 = $1000
         expect(result.profitTarget).toBe(1000);
-        expect(console.warn).toHaveBeenCalledWith(
+        expect(mockWarn).toHaveBeenCalledWith(
             expect.stringContaining("profitTarget=0.1 looks like a percentage")
         );
     });
@@ -129,6 +145,6 @@ describe("normalizeRulesConfig", () => {
             { maxDrawdown: 800, profitTarget: 1000 },
             10000
         );
-        expect(console.warn).not.toHaveBeenCalled();
+        expect(mockWarn).not.toHaveBeenCalled();
     });
 });

@@ -39,7 +39,6 @@ export function TopNavActions({ userId }: TopNavActionsProps) {
                 });
                 if (response.ok) {
                     const data = await response.json();
-                    console.log("[TopNavActions] userId:", userId, "Fetched IDs:", JSON.stringify(data.challenges?.map((c: Record<string, string>) => c.id)));
                     setChallenges(data.challenges || []);
                 } else {
                     console.error(`[TopNavActions] Challenges API error: ${response.status}`);

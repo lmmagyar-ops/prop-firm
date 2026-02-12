@@ -1,12 +1,14 @@
 
 import { db } from "@/db";
-import { users, challenges, certificates, badges, userBadges } from "@/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { users, challenges, certificates, badges, userBadges, trades } from "@/db/schema";
+import { eq, desc, sql } from "drizzle-orm";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("CertificatesService");
 
 export async function getCertificatesData(userId: string) {
     // MOCK DATA BYPASS FOR DEMO USER
     if (userId.startsWith("demo-user")) {
-        console.log("Returning mock certificates for demo user");
+        logger.info("Returning mock certificates for demo user");
         return {
             featured: {
                 type: 'lifetime-payouts',
@@ -201,8 +203,19 @@ export async function getCertificatesData(userId: string) {
             userName
         }));
 
-    // Mock stats for sidebar
-    const totalVolume = 1250000; // TODO: Calculate real volume
+    // Calculate real total volume from trades
+    const userChallenges = await db.query.challenges.findMany({
+        where: eq(challenges.userId, userId),
+        columns: { id: true },
+    });
+    const challengeIds = userChallenges.map(c => c.id);
+    let totalVolume = 0;
+    if (challengeIds.length > 0) {
+        const volumeResult = await db.select({ value: sql<string>`COALESCE(SUM(${trades.amount}), 0)` })
+            .from(trades)
+            .where(sql`${trades.challengeId} IN ${challengeIds}`);
+        totalVolume = parseFloat(volumeResult[0]?.value || "0");
+    }
     const lastUpdated = new Date().toLocaleDateString();
 
     return {

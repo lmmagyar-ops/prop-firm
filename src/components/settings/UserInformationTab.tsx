@@ -179,7 +179,7 @@ export function UserInformationTab({ user, onTabChange }: UserInformationTabProp
                     <ProfilePictureUpload
                         currentImageUrl={user.image}
                         onUpload={(file) => {
-                            // TODO: Implement file upload logic
+                            // BACKLOG: Implement file upload logic
                             toast.info("Image upload coming soon");
                         }}
                     />

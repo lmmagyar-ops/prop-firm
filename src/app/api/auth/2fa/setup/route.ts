@@ -5,6 +5,8 @@ import QRCode from "qrcode";
 import { db } from "@/db";
 import { user2FA } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("Setup");
 
 export async function POST(request: NextRequest) {
     try {
@@ -62,7 +64,7 @@ export async function POST(request: NextRequest) {
             secret,
         });
     } catch (error) {
-        console.error("2FA setup error:", error);
+        logger.error("2FA setup error:", error);
         return NextResponse.json({ error: "Failed to setup 2FA" }, { status: 500 });
     }
 }

@@ -3,6 +3,8 @@ import { auth } from "@/auth";
 import { db } from "@/db";
 import { discountCodes, discountRedemptions } from "@/db/schema";
 import { eq, and, sql } from "drizzle-orm";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("Redeem");
 
 /**
  * Patterns that identify test/demo discount codes
@@ -55,7 +57,7 @@ export async function POST(req: NextRequest) {
 
         // SECURITY: Block test codes in production
         if (process.env.NODE_ENV === 'production' && isTestCode(normalizedCode)) {
-            console.warn(`[Security] Blocked test code redemption attempt: ${normalizedCode} by user ${userId}`);
+            logger.warn(`[Security] Blocked test code redemption attempt: ${normalizedCode} by user ${userId}`);
             return NextResponse.json(
                 { error: "Invalid discount code" },
                 { status: 400 }
@@ -64,7 +66,7 @@ export async function POST(req: NextRequest) {
 
         // SECURITY: Validate discount amount is reasonable (prevent client-side manipulation)
         if (discountAmount < 0 || discountAmount > originalPrice) {
-            console.warn(`[Security] Invalid discount amount: ${discountAmount} (original: ${originalPrice}) by user ${userId}`);
+            logger.warn(`[Security] Invalid discount amount: ${discountAmount} (original: ${originalPrice}) by user ${userId}`);
             return NextResponse.json(
                 { error: "Invalid discount calculation" },
                 { status: 400 }
@@ -74,7 +76,7 @@ export async function POST(req: NextRequest) {
         // SECURITY: Validate final price matches
         const expectedFinalPrice = Math.max(0, originalPrice - discountAmount);
         if (Math.abs(finalPrice - expectedFinalPrice) > 0.01) {
-            console.warn(`[Security] Price mismatch: got ${finalPrice}, expected ${expectedFinalPrice} by user ${userId}`);
+            logger.warn(`[Security] Price mismatch: got ${finalPrice}, expected ${expectedFinalPrice} by user ${userId}`);
             return NextResponse.json(
                 { error: "Price validation failed" },
                 { status: 400 }
@@ -165,7 +167,7 @@ export async function POST(req: NextRequest) {
         });
 
     } catch (error: unknown) {
-        console.error("[Discount Redemption Error]:", error);
+        logger.error("[Discount Redemption Error]:", error);
         return NextResponse.json(
             { error: "Failed to redeem discount code" },
             { status: 500 }

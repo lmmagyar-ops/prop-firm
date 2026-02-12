@@ -136,7 +136,7 @@ export async function POST(req: NextRequest) {
         // TradeExecutor already calls the evaluator, so we skip it here to avoid duplicate
         // If needed, uncomment: ChallengeEvaluator.evaluate(challenge.id).catch(console.error);
 
-        const responsePayload: any = {
+        const responsePayload: Record<string, unknown> = {
             success: true,
             trade: {
                 id: trade.id,

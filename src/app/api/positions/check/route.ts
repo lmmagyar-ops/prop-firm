@@ -3,6 +3,8 @@ import { auth } from "@/auth";
 import { db } from "@/db";
 import { positions, challenges } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("Check");
 
 /**
  * GET /api/positions/check?marketId=xxx
@@ -48,7 +50,7 @@ export async function GET(req: NextRequest) {
 
         return NextResponse.json({ position: position || null });
     } catch (error) {
-        console.error("Position check failed:", error);
+        logger.error("Position check failed:", error);
         return NextResponse.json({ position: null });
     }
 }

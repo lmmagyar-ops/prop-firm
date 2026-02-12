@@ -3,6 +3,8 @@ import { db } from "@/db";
 import { challenges, users } from "@/db/schema";
 import { requireAdmin } from "@/lib/admin-auth";
 import { getTierPrice } from "@/lib/admin-utils";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("Metrics");
 
 /**
  * GET /api/admin/analytics/metrics
@@ -145,7 +147,7 @@ export async function GET() {
             }
         });
     } catch (error) {
-        console.error("[Analytics Metrics API Error]:", error);
+        logger.error("[Analytics Metrics API Error]:", error);
         return NextResponse.json(
             { error: "Failed to fetch analytics metrics" },
             { status: 500 }

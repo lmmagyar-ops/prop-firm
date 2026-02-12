@@ -4,6 +4,8 @@ import { challenges } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { requireAdmin } from "@/lib/admin-auth";
 import { EXPOSURE_CAP, VAR_MULTIPLIER, HEDGE_RATIO } from "@/lib/admin-utils";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("Exposure");
 
 /**
  * GET /api/admin/risk/exposure
@@ -76,7 +78,7 @@ export async function GET() {
             activeChallengeCount: activeChallenges.length,
         });
     } catch (error) {
-        console.error("[Risk Exposure API Error]:", error);
+        logger.error("[Risk Exposure API Error]:", error);
         return NextResponse.json(
             { error: "Failed to fetch risk exposure data" },
             { status: 500 }

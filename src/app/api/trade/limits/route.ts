@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { RiskEngine } from "@/lib/risk";
 import { getErrorMessage } from "@/lib/errors";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("Limits");
 
 export async function GET(req: Request) {
     try {
@@ -25,7 +27,7 @@ export async function GET(req: Request) {
 
         return NextResponse.json(limits);
     } catch (error) {
-        console.error("[/api/trade/limits] Error:", error);
+        logger.error("[/api/trade/limits] Error:", error);
         return NextResponse.json(
             { error: getErrorMessage(error) },
             { status: 500 }

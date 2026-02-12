@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { affiliateReferrals, affiliates } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("Track");
 
 /**
  * GET /api/affiliate/track
@@ -75,7 +77,7 @@ export async function GET(req: NextRequest) {
         return response;
 
     } catch (error: unknown) {
-        console.error("[Affiliate Track Error]:", error);
+        logger.error("[Affiliate Track Error]:", error);
         return NextResponse.json(
             { error: "Failed to track referral" },
             { status: 500 }

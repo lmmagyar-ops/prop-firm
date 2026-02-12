@@ -10,6 +10,10 @@
  * const title: MarketQuestion = extractOutcomeLabel(q); // ❌ Type error!
  */
 
+import { createLogger } from '@/lib/logger';
+
+const logger = createLogger('DisplayTypes');
+
 // ============================================================================
 // BRANDED TYPES
 // ============================================================================
@@ -111,7 +115,7 @@ export function looksLikeFullQuestion(s: string): boolean {
 export function assertFullQuestion(s: string, context: string): MarketQuestion {
     if (process.env.NODE_ENV === 'development') {
         if (!looksLikeFullQuestion(s) && s.length < 30) {
-            console.warn(
+            logger.warn(
                 `[Display Warning] Possible truncated question in ${context}: "${s}". ` +
                 `Expected full question like "Will X do Y?"`
             );

@@ -160,21 +160,59 @@ describe("getPortfolioValue", () => {
         expect(result.positions[0].unrealizedPnL).toBeCloseTo(1.0);
     });
 
-    // ── Live price rejection (sanity bounds) ──────────────────────
+    // ── Live price sanity bounds [0, 1] inclusive ──────────────────
+    // Range was expanded from (0.01, 0.99) to [0, 1] to support
+    // resolution prices (0 = NO wins, 1 = YES wins).
 
-    it("rejects live price at boundary 0.01 → falls back to entry price", () => {
+    it("accepts live price 0.01 as valid (within [0, 1] range)", () => {
         const result = getPortfolioValue(
             [mkPos({ marketId: "m1", shares: "10", entryPrice: "0.50" })],
             mkPrices({ m1: "0.01" })
+        );
+        expect(result.positions[0].effectivePrice).toBe(0.01);
+        expect(result.positions[0].priceSource).toBe("live");
+    });
+
+    it("accepts live price 0.99 as valid (within [0, 1] range)", () => {
+        const result = getPortfolioValue(
+            [mkPos({ marketId: "m1", shares: "10", entryPrice: "0.50" })],
+            mkPrices({ m1: "0.99" })
+        );
+        expect(result.positions[0].effectivePrice).toBe(0.99);
+        expect(result.positions[0].priceSource).toBe("live");
+    });
+
+    it("accepts resolution price 0 as valid (NO wins)", () => {
+        const result = getPortfolioValue(
+            [mkPos({ marketId: "m1", shares: "10", entryPrice: "0.50" })],
+            mkPrices({ m1: "0" })
+        );
+        expect(result.positions[0].effectivePrice).toBe(0);
+        expect(result.positions[0].priceSource).toBe("live");
+    });
+
+    it("accepts resolution price 1 as valid (YES wins)", () => {
+        const result = getPortfolioValue(
+            [mkPos({ marketId: "m1", shares: "10", entryPrice: "0.50" })],
+            mkPrices({ m1: "1" })
+        );
+        expect(result.positions[0].effectivePrice).toBe(1);
+        expect(result.positions[0].priceSource).toBe("live");
+    });
+
+    it("rejects negative live price → falls back to entry price", () => {
+        const result = getPortfolioValue(
+            [mkPos({ marketId: "m1", shares: "10", entryPrice: "0.50" })],
+            mkPrices({ m1: "-0.01" })
         );
         expect(result.positions[0].effectivePrice).toBe(0.50);
         expect(result.positions[0].priceSource).toBe("stored");
     });
 
-    it("rejects live price at boundary 0.99 → falls back to entry price", () => {
+    it("rejects live price above 1 → falls back to entry price", () => {
         const result = getPortfolioValue(
             [mkPos({ marketId: "m1", shares: "10", entryPrice: "0.50" })],
-            mkPrices({ m1: "0.99" })
+            mkPrices({ m1: "1.01" })
         );
         expect(result.positions[0].effectivePrice).toBe(0.50);
         expect(result.positions[0].priceSource).toBe("stored");

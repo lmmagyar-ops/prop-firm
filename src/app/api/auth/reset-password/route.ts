@@ -4,6 +4,8 @@ import { eq, and, gt } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import bcrypt from "bcrypt";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("ResetPassword");
 
 const SALT_ROUNDS = 12;
 
@@ -109,7 +111,7 @@ export async function POST(request: Request) {
             .delete(verificationTokens)
             .where(eq(verificationTokens.token, hashedToken));
 
-        console.log(`[Auth] Password reset successful for: ${tokenRecord.identifier}`);
+        logger.info(`[Auth] Password reset successful for: ${tokenRecord.identifier}`);
 
         return NextResponse.json({
             success: true,
@@ -117,7 +119,7 @@ export async function POST(request: Request) {
         });
 
     } catch (error) {
-        console.error("Reset Password Error:", error);
+        logger.error("Reset Password Error:", error);
         return NextResponse.json(
             { error: "Failed to reset password. Please try again." },
             { status: 500 }

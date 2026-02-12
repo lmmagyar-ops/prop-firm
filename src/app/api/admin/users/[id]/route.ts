@@ -3,6 +3,8 @@ import { users, challenges, trades, positions, accounts, sessions } from "@/db/s
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-auth";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("[id]");
 
 /**
  * DELETE /api/admin/users/[id]
@@ -66,7 +68,7 @@ export async function DELETE(
         });
 
     } catch (error) {
-        console.error("Delete User Error:", error);
+        logger.error("Delete User Error:", error);
         return NextResponse.json(
             { error: "Failed to delete user" },
             { status: 500 }
@@ -100,7 +102,7 @@ export async function PATCH(
         }
 
         // Allowed fields with validation
-        const updates: Record<string, any> = {};
+        const updates: Record<string, unknown> = {};
 
         // Name and email
         if (body.name !== undefined) {
@@ -145,7 +147,7 @@ export async function PATCH(
             .where(eq(users.id, userId))
             .limit(1);
 
-        console.log(`[Admin] User ${userId} updated:`, updates);
+        logger.info(`[Admin] User ${userId} updated:`, updates);
 
         return NextResponse.json({
             success: true,
@@ -153,7 +155,7 @@ export async function PATCH(
         });
 
     } catch (error) {
-        console.error("Update User Error:", error);
+        logger.error("Update User Error:", error);
         return NextResponse.json(
             { error: "Failed to update user" },
             { status: 500 }

@@ -11,6 +11,8 @@ import { db } from "@/db";
 import { positions, challenges } from "@/db/schema";
 import { eq, or, sql, inArray } from "drizzle-orm";
 import { auth } from "@/auth";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("CleanupDb");
 
 export async function POST(req: Request) {
     // Security: Admin only
@@ -23,7 +25,7 @@ export async function POST(req: Request) {
     const dryRun = body.dryRun !== false; // Default to dry run for safety
 
     try {
-        console.log(`🧹 DATABASE CLEANUP - ${dryRun ? 'DRY RUN' : 'LIVE EXECUTION'}...`);
+        logger.info(`🧹 DATABASE CLEANUP - ${dryRun ? 'DRY RUN' : 'LIVE EXECUTION'}...`);
 
         // 1. Find positions with invalid entry prices (≤0.01 or ≥0.99)
         const invalidPositions = await db.query.positions.findMany({
@@ -42,7 +44,7 @@ export async function POST(req: Request) {
             await db.delete(positions).where(inArray(positions.id, idsToDelete));
             deletedCount = invalidPositions.length;
             deletedIds.push(...idsToDelete);
-            console.log(`🗑️  Deleted ${deletedCount} corrupted positions`);
+            logger.info(`🗑️  Deleted ${deletedCount} corrupted positions`);
         }
 
         // 2. Report on funded challenges (don't auto-delete - needs manual review)
@@ -75,7 +77,7 @@ export async function POST(req: Request) {
             }
         };
 
-        console.log("✅ Cleanup complete:", {
+        logger.info("✅ Cleanup complete:", {
             dryRun,
             positionsDeleted: deletedCount,
             fundedChallengesFound: fundedChallenges.length
@@ -85,7 +87,7 @@ export async function POST(req: Request) {
 
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : 'Unknown error';
-        console.error("❌ Cleanup failed:", message);
+        logger.error("❌ Cleanup failed:", message);
         return NextResponse.json({ error: message }, { status: 500 });
     }
 }

@@ -43,18 +43,11 @@ export function useSelectedChallenge(challenges: Challenge[]) {
         // Use stored value from localStorage OR cookie
         const preferredId = stored || cookieValue;
 
-        // DEBUG: Log what we're checking
-        console.log("[ChallengeSelector] Debug:", {
-            storedInLocalStorage: stored,
-            storedInCookie: cookieValue,
-            preferredId,
-            challengeIds: challenges.map(c => ({ id: c.id, status: c.status })),
-            foundMatch: preferredId ? challenges.some(c => c.id === preferredId && c.status === "active") : false
-        });
+
 
         // If we have a stored ID and it's still valid (exists in challenges list AND is active)
         if (preferredId && challenges.some(c => c.id === preferredId && c.status === "active")) {
-            console.log("[ChallengeSelector] Restoring saved selection:", preferredId);
+
             setSelectedId(preferredId);
             // Sync both localStorage and cookie
             localStorage.setItem("selectedChallengeId", preferredId);
@@ -64,12 +57,12 @@ export function useSelectedChallenge(challenges: Challenge[]) {
         else {
             // Clear the stale stored values since they don't match any active challenges
             if (preferredId) {
-                console.log("[ChallengeSelector] Clearing stale stored ID:", preferredId);
+
                 localStorage.removeItem("selectedChallengeId");
                 document.cookie = "selectedChallengeId=; path=/; max-age=0"; // Delete cookie
             }
 
-            console.log("[ChallengeSelector] No valid stored selection, auto-selecting...");
+
             const mostRecent = challenges
                 .filter(c => c.status === "active")
                 .sort((a, b) => {
@@ -79,7 +72,7 @@ export function useSelectedChallenge(challenges: Challenge[]) {
                 })[0];
 
             if (mostRecent) {
-                console.log("[ChallengeSelector] Auto-selected:", mostRecent.id);
+
                 setSelectedId(mostRecent.id);
                 localStorage.setItem("selectedChallengeId", mostRecent.id);
                 // Sync to cookie for server-side reading
@@ -92,7 +85,7 @@ export function useSelectedChallenge(challenges: Challenge[]) {
 
     // Save to localStorage AND cookie when selection changes
     const selectChallenge = (id: string) => {
-        console.log("[ChallengeSelector] User switched to:", id);
+
         setSelectedId(id);
         localStorage.setItem("selectedChallengeId", id);
         // Also set cookie for server-side reading

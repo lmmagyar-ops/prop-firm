@@ -5,6 +5,8 @@ import { db } from "@/db";
 import { challenges, positions } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { checkIdempotency, cacheIdempotencyResult } from "@/lib/trade-idempotency";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("Close");
 
 export async function POST(req: NextRequest) {
     const session = await auth();
@@ -116,7 +118,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json(responsePayload);
 
     } catch (error: unknown) {
-        console.error("Close position failed:", error);
+        logger.error("Close position failed:", error);
         // SECURITY: Never expose internal error details (SQL structure, schema) to client
         return NextResponse.json({
             error: "Failed to close position"

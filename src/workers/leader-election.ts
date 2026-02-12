@@ -1,4 +1,6 @@
 import Redis from 'ioredis';
+import { createLogger } from '../lib/logger';
+const logger = createLogger('LeaderElection');
 
 /**
  * Distributed Leader Election using Redis SETNX
@@ -40,7 +42,7 @@ export class LeaderElection {
         const isLeader = result === 'OK';
 
         if (isLeader) {
-            console.log(`[LeaderElection] ✅ Became leader (workerId: ${this.workerId})`);
+            logger.info(`[LeaderElection] ✅ Became leader (workerId: ${this.workerId})`);
         }
 
         return isLeader;
@@ -54,13 +56,13 @@ export class LeaderElection {
         // Verify we still own the lock before renewing
         const currentHolder = await this.redis.get(this.lockKey);
         if (currentHolder !== this.workerId) {
-            console.warn(`[LeaderElection] ⚠️ Lost leadership! Current holder: ${currentHolder}`);
+            logger.warn(`[LeaderElection] ⚠️ Lost leadership! Current holder: ${currentHolder}`);
             return false;
         }
 
         const renewed = await this.redis.expire(this.lockKey, this.lockTTL) === 1;
         if (!renewed) {
-            console.warn(`[LeaderElection] ⚠️ Failed to renew lock - key may have expired`);
+            logger.warn(`[LeaderElection] ⚠️ Failed to renew lock - key may have expired`);
         }
         return renewed;
     }
@@ -77,13 +79,13 @@ export class LeaderElection {
         this.renewIntervalId = setInterval(async () => {
             const renewed = await this.renewLock();
             if (!renewed && onLost) {
-                console.error(`[LeaderElection] 🔴 Leadership lost! Triggering callback...`);
+                logger.error(`[LeaderElection] 🔴 Leadership lost! Triggering callback...`);
                 this.stopRenewal();
                 onLost();
             }
         }, 20000); // Renew every 20s (TTL is 30s, so 1.5x buffer - saves 50% Redis calls)
 
-        console.log(`[LeaderElection] Started lock renewal (every 20s, TTL: ${this.lockTTL}s)`);
+        logger.info(`[LeaderElection] Started lock renewal (every 20s, TTL: ${this.lockTTL}s)`);
     }
 
     /**
@@ -93,7 +95,7 @@ export class LeaderElection {
         if (this.renewIntervalId) {
             clearInterval(this.renewIntervalId);
             this.renewIntervalId = null;
-            console.log(`[LeaderElection] Stopped lock renewal`);
+            logger.info(`[LeaderElection] Stopped lock renewal`);
         }
     }
 
@@ -105,7 +107,7 @@ export class LeaderElection {
         const currentHolder = await this.redis.get(this.lockKey);
         if (currentHolder === this.workerId) {
             await this.redis.del(this.lockKey);
-            console.log(`[LeaderElection] Released leadership lock`);
+            logger.info(`[LeaderElection] Released leadership lock`);
         }
     }
 

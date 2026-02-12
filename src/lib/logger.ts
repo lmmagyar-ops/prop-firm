@@ -28,17 +28,27 @@ export type Logger = ReturnType<typeof createLogger>;
 export const createLogger = (context: string, baseContext: Record<string, unknown> = {}) => {
     const ctx = { context, ...baseContext };
 
+    // Normalize meta: if a string was passed (from migrated console.log calls), wrap it
+    const normalizeMeta = (meta: unknown): object => {
+        if (typeof meta === 'string') return { detail: meta };
+        if (meta && typeof meta === 'object') return meta as object;
+        return {};
+    };
+
     return {
-        info: (message: string, meta: object = {}) => logger.info(message, { ...ctx, ...meta }),
-        warn: (message: string, meta: object = {}) => logger.warn(message, { ...ctx, ...meta }),
-        error: (message: string, error?: unknown, meta: object = {}) => {
+        info: (message: string, meta: string | object = {}) =>
+            logger.info(message, { ...ctx, ...normalizeMeta(meta) }),
+        warn: (message: string, meta: string | object = {}) =>
+            logger.warn(message, { ...ctx, ...normalizeMeta(meta) }),
+        error: (message: string, error?: unknown, meta: string | object = {}) => {
             if (error instanceof Error) {
-                logger.error(message, { ...ctx, error: error.message, stack: error.stack, ...meta });
+                logger.error(message, { ...ctx, error: error.message, stack: error.stack, ...normalizeMeta(meta) });
             } else {
-                logger.error(message, { ...ctx, error, ...meta });
+                logger.error(message, { ...ctx, error, ...normalizeMeta(meta) });
             }
         },
-        debug: (message: string, meta: object = {}) => logger.debug(message, { ...ctx, ...meta }),
+        debug: (message: string, meta: string | object = {}) =>
+            logger.debug(message, { ...ctx, ...normalizeMeta(meta) }),
 
         /**
          * Create a child logger with additional context fields pre-attached.

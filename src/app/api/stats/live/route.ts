@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { challenges, users, payouts } from "@/db/schema";
 import { eq, sql, gte, and } from "drizzle-orm";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("Live");
 
 /**
  * GET /api/stats/live
@@ -99,7 +101,7 @@ export async function GET() {
             },
         });
     } catch (error) {
-        console.error("[Live Stats API Error]:", error);
+        logger.error("[Live Stats API Error]:", error);
 
         // Return graceful fallback instead of error
         // This ensures landing page always renders

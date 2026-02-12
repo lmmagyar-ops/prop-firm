@@ -3,6 +3,8 @@ import { auth } from "@/auth";
 import { db } from "@/db";
 import { affiliates } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("Apply");
 
 /**
  * POST /api/affiliate/apply
@@ -105,7 +107,7 @@ export async function POST(req: NextRequest) {
         }
 
     } catch (error: unknown) {
-        console.error("[Affiliate Application Error]:", error);
+        logger.error("[Affiliate Application Error]:", error);
         return NextResponse.json(
             { error: "Failed to submit application" },
             { status: 500 }

@@ -4,6 +4,8 @@ import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-auth";
 import { auth } from "@/auth";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("Actions");
 
 export async function POST(req: Request) {
     const { isAuthorized, response } = await requireAdmin();
@@ -56,10 +58,10 @@ export async function POST(req: Request) {
             return result;
         });
 
-        console.log(`[Admin] ${adminId} ${action} challenge ${challengeId} (was: ${current.status})`);
+        logger.info(`[Admin] ${adminId} ${action} challenge ${challengeId} (was: ${current.status})`);
         return NextResponse.json({ success: true, challenge: updated[0] });
     } catch (error) {
-        console.error("Admin Action Error:", error);
+        logger.error("Admin Action Error:", error);
         return NextResponse.json({ error: "Action failed" }, { status: 500 });
     }
 }

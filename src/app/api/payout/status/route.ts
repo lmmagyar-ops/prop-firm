@@ -3,6 +3,8 @@ import { auth } from "@/auth";
 import { db } from "@/db";
 import { payouts, challenges } from "@/db/schema";
 import { eq, and, desc } from "drizzle-orm";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("Status");
 
 /**
  * GET /api/payout/status?challengeId=xxx
@@ -85,7 +87,7 @@ export async function GET(request: NextRequest) {
             }
         });
     } catch (error) {
-        console.error("[PayoutStatus] Error:", error);
+        logger.error("[PayoutStatus] Error:", error);
         return NextResponse.json({
             error: "Failed to fetch payout status"
         }, { status: 500 });

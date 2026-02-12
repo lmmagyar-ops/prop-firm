@@ -3,6 +3,8 @@ import { users, challenges, trades, positions } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { NextResponse, NextRequest } from "next/server";
 import { requireAdmin } from "@/lib/admin-auth";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("Investigate");
 
 /**
  * GET /api/admin/investigate?email=xxx
@@ -118,7 +120,7 @@ export async function GET(req: NextRequest) {
         });
 
     } catch (error) {
-        console.error("[Investigate] Error:", error);
+        logger.error("[Investigate] Error:", error);
         return NextResponse.json({ error: "Investigation failed", details: String(error) }, { status: 500 });
     }
 }

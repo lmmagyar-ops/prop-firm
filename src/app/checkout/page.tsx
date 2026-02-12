@@ -150,28 +150,9 @@ function CheckoutContent() {
 
             const data = await res.json();
 
-            // TODO (HARDENING): Discount is redeemed BEFORE payment confirmation.
-            // If user abandons payment, the discount code is consumed with no challenge provisioned.
-            // FIX: Move this call to api/webhooks/confirmo handler, triggered after confirmed payment.
-            // Acceptable at MVP volume — tracked as a known limitation.
-            if (appliedDiscount && data.challengeId) {
-                try {
-                    await fetch("/api/discount/redeem", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                            code: appliedDiscount.code,
-                            challengeId: data.challengeId,
-                            originalPrice: basePrice,
-                            finalPrice: appliedDiscount.finalPrice,
-                            discountAmount: appliedDiscount.discountAmount
-                        })
-                    });
-                } catch (redeemError) {
-                    // Non-blocking: Log but don't prevent checkout
-                    console.error("[Discount Redeem Error]:", redeemError);
-                }
-            }
+            // Discount redemption is handled server-side in the Confirmo webhook
+            // (api/webhooks/confirmo) AFTER payment is confirmed — not here.
+            // The discount code is passed via the invoice reference field.
 
             // 3. Redirect to payment gateway
             window.location.href = data.invoiceUrl;

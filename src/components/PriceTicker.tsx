@@ -14,11 +14,11 @@ type MarketUpdate = {
 
 export function PriceTicker() {
     const [status, setStatus] = useState<"CONNECTING" | "CONNECTED" | "DISCONNECTED">("CONNECTING");
-    const [messages, setMessages] = useState<any[]>([]);
+    const [messages, setMessages] = useState<MarketUpdate[]>([]);
     const [lastPrice, setLastPrice] = useState<string | null>(null);
 
     // DISABLED: WebSocket not available on Vercel
-    // TODO: Re-enable when WS server is deployed
+    // BACKLOG: Re-enable when WS server is deployed
     /*
     useEffect(() => {
         const ws = new WebSocket("ws://localhost:3001");

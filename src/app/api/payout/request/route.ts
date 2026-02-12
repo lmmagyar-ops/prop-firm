@@ -4,6 +4,8 @@ import { PayoutService } from "@/lib/payout-service";
 import { db } from "@/db";
 import { challenges } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("Request");
 
 /**
  * POST /api/payout/request
@@ -73,7 +75,7 @@ export async function POST(request: NextRequest) {
             message: "Payout request submitted. Pending admin approval."
         });
     } catch (error) {
-        console.error("[PayoutRequest] Error:", error);
+        logger.error("[PayoutRequest] Error:", error);
         return NextResponse.json({
             error: "Failed to request payout"
         }, { status: 400 });

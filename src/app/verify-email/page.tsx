@@ -79,8 +79,9 @@ function VerifyEmailContent() {
                 setCode(data.verificationCode);
             }
 
-        } catch (err: any) {
-            setResendMessage(`❌ ${err.message}`);
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : "Something went wrong";
+            setResendMessage(`❌ ${message}`);
         } finally {
             setIsResending(false);
         }

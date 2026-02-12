@@ -6,6 +6,9 @@ import { db } from "@/db";
 import { users, accounts, sessions, verificationTokens, activityLogs } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcrypt";
+import { createLogger } from "@/lib/logger";
+
+const logger = createLogger("Auth");
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
     debug: process.env.NODE_ENV === "development",
@@ -25,7 +28,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             },
             async authorize(credentials) {
                 if (!credentials?.email || !credentials?.password) {
-                    console.log("[Auth] Missing credentials");
+                    logger.info("Missing credentials");
                     return null;
                 }
 
@@ -41,7 +44,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                         .limit(1);
 
                     if (user.length === 0) {
-                        console.log("[Auth] User not found:", email);
+                        logger.info("User not found", { email });
                         return null;
                     }
 
@@ -49,18 +52,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
                     // Check if account is active
                     if (foundUser.isActive === false) {
-                        console.log("[Auth] Account suspended:", email);
+                        logger.warn("Account suspended", { email });
                         return null;
                     }
 
                     // Check if user has a password (might be OAuth-only)
                     if (!foundUser.passwordHash) {
-                        console.log("[Auth] No password set (OAuth user?):", email);
+                        logger.info("No password set (OAuth user?)", { email });
                         return null;
                     }
 
                     // TEMPORARILY DISABLED: Email verification check
-                    // TODO: Re-enable after Google OAuth is fixed
+                    // BACKLOG: Re-enable after Google OAuth is fixed
                     // if (!foundUser.emailVerified) {
                     //     console.log("[Auth] Email not verified:", email);
                     //     return null;
@@ -69,11 +72,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                     // Verify password
                     const isValidPassword = await bcrypt.compare(password, foundUser.passwordHash);
                     if (!isValidPassword) {
-                        console.log("[Auth] Invalid password for:", email);
+                        logger.warn("Invalid password attempt", { email });
                         return null;
                     }
 
-                    console.log("[Auth] Successful login:", email);
+                    logger.info("Successful login", { email });
                     return {
                         id: foundUser.id,
                         name: foundUser.name || `${foundUser.firstName} ${foundUser.lastName}`,
@@ -82,7 +85,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                         role: foundUser.role || 'user', // Include role for admin access
                     };
                 } catch (error) {
-                    console.error("[Auth] Database error:", error);
+                    logger.error("Database error during auth", error);
                     return null;
                 }
             },
@@ -103,14 +106,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                         email: user.email,
                     },
                 });
-                console.log(JSON.stringify({
-                    event: 'login',
+                logger.info("Sign-in event", {
                     userId: user.id,
                     provider: account?.provider,
-                    timestamp: new Date().toISOString(),
-                }));
+                });
             } catch (e) {
-                console.error("[Auth] Failed to log sign-in event:", e);
+                logger.error("Failed to log sign-in event", e);
             }
         },
         // Log sign-outs
@@ -125,14 +126,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                         action: 'logout',
                         metadata: {},
                     });
-                    console.log(JSON.stringify({
-                        event: 'logout',
-                        userId,
-                        timestamp: new Date().toISOString(),
-                    }));
+                    logger.info("Sign-out event", { userId });
                 }
             } catch (e) {
-                console.error("[Auth] Failed to log sign-out event:", e);
+                logger.error("Failed to log sign-out event", e);
             }
         },
     },

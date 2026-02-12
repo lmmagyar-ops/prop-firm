@@ -3,6 +3,8 @@ import { db } from "@/db";
 import { challenges } from "@/db/schema";
 import { requireAdmin } from "@/lib/admin-auth";
 import { getTierPrice } from "@/lib/admin-utils";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("Total");
 
 /**
  * GET /api/admin/revenue/total
@@ -62,7 +64,7 @@ export async function GET() {
             totalChallenges,
         });
     } catch (error) {
-        console.error("[Revenue API Error]:", error);
+        logger.error("[Revenue API Error]:", error);
         return NextResponse.json(
             { error: "Failed to fetch revenue data" },
             { status: 500 }

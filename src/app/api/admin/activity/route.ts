@@ -4,6 +4,8 @@ import { desc, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 import { requireAdmin } from "@/lib/admin-auth";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("Activity");
 
 export async function GET() {
     const { isAuthorized, response } = await requireAdmin();
@@ -35,7 +37,7 @@ export async function GET() {
 
         return NextResponse.json({ trades: recentTrades });
     } catch (error) {
-        console.error("Activity Feed Error:", error);
+        logger.error("Activity Feed Error:", error);
         return NextResponse.json({ error: "Failed to fetch activity" }, { status: 500 });
     }
 }

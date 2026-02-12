@@ -2,6 +2,8 @@ import { db } from "@/db";
 import { positions } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { getActiveEvents, Platform } from "@/app/actions/market";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("ArbitrageDetector");
 
 export interface ArbCheckResult {
     isArb: boolean;
@@ -93,7 +95,7 @@ export class ArbitrageDetector {
 
             return []; // Standalone market
         } catch (error) {
-            console.error("[ArbitrageDetector] Error fetching sibling markets:", error);
+            logger.error("[ArbitrageDetector] Error fetching sibling markets:", error);
             return [];
         }
     }

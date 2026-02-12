@@ -4,6 +4,8 @@ import { challenges, auditLogs } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { requireAdmin } from "@/lib/admin-auth";
 import { normalizeRulesConfig } from "@/lib/normalize-rules";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("ResurrectChallenge");
 
 /**
  * Admin API: Resurrect a falsely-failed challenge
@@ -97,7 +99,7 @@ export async function POST(req: NextRequest) {
             },
         });
 
-        console.log(`[Admin] ✅ Resurrected challenge ${challengeId.slice(0, 8)} ` +
+        logger.info(`[Admin] ✅ Resurrected challenge ${challengeId.slice(0, 8)} ` +
             `(corrupt=${wasCorrupt}, maxDrawdown: ${rules.maxDrawdown} → ${normalized.maxDrawdown})`);
 
         return NextResponse.json({
@@ -111,7 +113,7 @@ export async function POST(req: NextRequest) {
         });
 
     } catch (err) {
-        console.error("[Admin] Resurrect challenge error:", err);
+        logger.error("[Admin] Resurrect challenge error:", err);
         return NextResponse.json(
             { error: "Failed to resurrect challenge" },
             { status: 500 }

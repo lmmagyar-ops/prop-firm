@@ -81,7 +81,7 @@ export const ChartWidget = (props: ChartWidgetProps) => {
             },
         });
 
-        mainSeries.setData(data as any);
+        mainSeries.setData(data as unknown as import('lightweight-charts').AreaData[]);
 
         // --- BINARY MIRROR / COMPARISON LOGIC (Phase 3) ---
         if (dataNo) {
@@ -95,7 +95,7 @@ export const ChartWidget = (props: ChartWidgetProps) => {
                     formatter: (price: number) => `${(price * 100).toFixed(1)}%`,
                 },
             });
-            noSeries.setData(dataNo as any);
+            noSeries.setData(dataNo as unknown as import('lightweight-charts').AreaData[]);
         }
 
         window.addEventListener('resize', handleResize);

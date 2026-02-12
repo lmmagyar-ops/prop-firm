@@ -3,6 +3,8 @@ import { auth } from "@/auth";
 import { db } from "@/db";
 import { challenges } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("ResetDailyFloor");
 
 /**
  * POST /api/admin/reset-daily-floor
@@ -63,7 +65,7 @@ export async function POST(request: Request) {
             message: "Daily floor reset to current balance"
         });
     } catch (error) {
-        console.error("[reset-daily-floor] Error:", error);
+        logger.error("[reset-daily-floor] Error:", error);
         return NextResponse.json({
             error: "Failed to reset daily floor"
         }, { status: 500 });

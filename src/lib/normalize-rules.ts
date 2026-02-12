@@ -9,6 +9,10 @@
  * MUST go through this function.
  */
 
+import { createLogger } from '@/lib/logger';
+
+const logger = createLogger('NormalizeRules');
+
 export interface NormalizedRules {
     maxDrawdown: number;
     profitTarget: number;
@@ -39,7 +43,7 @@ export function normalizeRulesConfig(
     // A $5k account (smallest tier) has maxDrawdown = $400 at minimum.
     // Any value < 1 is clearly a percentage, not a dollar amount.
     if (maxDrawdown > 0 && maxDrawdown < 1) {
-        console.warn(
+        logger.warn(
             `[normalizeRulesConfig] ⚠️ maxDrawdown=${maxDrawdown} looks like a percentage, ` +
             `converting to absolute: $${(startingBalance * maxDrawdown).toFixed(2)}`
         );
@@ -47,7 +51,7 @@ export function normalizeRulesConfig(
     }
 
     if (profitTarget > 0 && profitTarget < 1) {
-        console.warn(
+        logger.warn(
             `[normalizeRulesConfig] ⚠️ profitTarget=${profitTarget} looks like a percentage, ` +
             `converting to absolute: $${(startingBalance * profitTarget).toFixed(2)}`
         );

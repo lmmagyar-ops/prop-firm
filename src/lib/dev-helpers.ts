@@ -8,6 +8,8 @@
  */
 
 import { db } from "@/db";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("DevHelpers");
 
 /**
  * Auto-provision a demo user and challenge when one doesn't exist.
@@ -20,7 +22,7 @@ export async function autoProvisionDemoChallenge(userId: string): Promise<string
     const existingUser = await db.query.users.findFirst({ where: eq(users.id, userId) });
 
     if (!existingUser) {
-        console.log("[Auto-Provision] Creating new user 'demo-user-1'...");
+        logger.info("[Auto-Provision] Creating new user 'demo-user-1'...");
         await db.insert(users).values({
             id: userId,
             email: "demo@breakoutprop.com",
@@ -32,7 +34,7 @@ export async function autoProvisionDemoChallenge(userId: string): Promise<string
     const { ChallengeManager } = await import("@/lib/challenges");
     const newChallenge = await ChallengeManager.createChallenge(userId);
 
-    console.log(`[Auto-Provision] Created challenge ${newChallenge.id} for ${userId}`);
+    logger.info(`[Auto-Provision] Created challenge ${newChallenge.id} for ${userId}`);
     return newChallenge.id;
 }
 
@@ -60,5 +62,5 @@ export async function autoProvisionMarketData(marketId: string): Promise<void> {
     }));
 
     redis.disconnect();
-    console.log(`[Auto-Provision] Seeded Redis market data for ${marketId}`);
+    logger.info(`[Auto-Provision] Seeded Redis market data for ${marketId}`);
 }

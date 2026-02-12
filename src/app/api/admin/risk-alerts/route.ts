@@ -4,6 +4,8 @@ import { eq, and } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 import { requireAdmin } from "@/lib/admin-auth";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("RiskAlerts");
 
 export async function GET() {
     const { isAuthorized, response } = await requireAdmin();
@@ -27,7 +29,7 @@ export async function GET() {
         const alerts = [];
 
         for (const challenge of activeChallenges) {
-            const rules = challenge.rulesConfig as any;
+            const rules = challenge.rulesConfig as Record<string, unknown>;
             const startingBalance = Number(rules.startingBalance || 10000); // Default to 10k
             const currentBalance = Number(challenge.currentBalance);
             const maxDrawdownPercent = Number(rules.max_drawdown_percent || 10);
@@ -54,7 +56,7 @@ export async function GET() {
         return NextResponse.json({ alerts });
 
     } catch (error) {
-        console.error("Risk Alerts Error:", error);
+        logger.error("Risk Alerts Error:", error);
         return NextResponse.json({ error: "Failed to fetch risk alerts" }, { status: 500 });
     }
 }

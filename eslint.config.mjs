@@ -16,7 +16,7 @@ const eslintConfig = defineConfig([
   // Rule overrides - demote to warnings to unblock CI
   {
     rules: {
-      "@typescript-eslint/no-explicit-any": "warn",
+      "@typescript-eslint/no-explicit-any": "error",
       "@typescript-eslint/ban-ts-comment": "warn",
       "@typescript-eslint/no-empty-object-type": "warn",
       "react/no-unescaped-entities": "warn",
@@ -26,6 +26,17 @@ const eslintConfig = defineConfig([
       "react-hooks/static-components": "off",
       "react-hooks/purity": "off",
       "react-hooks/immutability": "off",
+      // Console logging: use structured logger (src/lib/logger.ts) in server code
+      // Allow console.error in client components where Winston doesn't run
+      "no-console": ["error", { allow: ["error", "warn"] }],
+    },
+  },
+  // Tests and scripts can use console freely
+  {
+    files: ["**/*.test.*", "**/scripts/**", "**/__tests__/**"],
+    rules: {
+      "no-console": "off",
+      "@typescript-eslint/no-explicit-any": "off",
     },
   },
 ]);

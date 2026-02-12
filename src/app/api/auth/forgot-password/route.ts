@@ -4,6 +4,8 @@ import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { sendPasswordResetEmail } from "@/lib/email";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("ForgotPassword");
 
 /**
  * POST /api/auth/forgot-password
@@ -66,12 +68,12 @@ export async function POST(request: Request) {
         // Send reset email with the unhashed token
         await sendPasswordResetEmail(normalizedEmail, token);
 
-        console.log(`[Auth] Password reset requested for: ${normalizedEmail}`);
+        logger.info(`[Auth] Password reset requested for: ${normalizedEmail}`);
 
         return NextResponse.json(successResponse);
 
     } catch (error) {
-        console.error("Forgot Password Error:", error);
+        logger.error("Forgot Password Error:", error);
         return NextResponse.json(
             { error: "Failed to process request. Please try again." },
             { status: 500 }

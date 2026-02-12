@@ -5,6 +5,9 @@ import { db } from "@/db";
 import { challenges } from "@/db/schema";
 import { revalidatePath } from "next/cache";
 import { buildRulesConfig, getTierConfig } from "@/config/tiers";
+import { createLogger } from "@/lib/logger";
+
+const logger = createLogger("ChallengeActions");
 
 export async function createChallengeAction(tierId: string = "10k_challenge") {
     const session = await auth();
@@ -16,7 +19,7 @@ export async function createChallengeAction(tierId: string = "10k_challenge") {
     const startingBalance = tierConfig.startingBalance;
     const rulesConfig = buildRulesConfig(tier);
 
-    console.log(`[Action] Creating challenge for user: ${userId} (Tier: ${tier}, Balance: $${startingBalance})`);
+    logger.info("Creating challenge", { userId, tier, startingBalance });
 
     // AUTO-PROVISION USER (Self-Healing due to Stale Sessions or DB Resets)
     // If the user is authenticated (has session) but missing from DB, we seed them now 
@@ -30,7 +33,7 @@ export async function createChallengeAction(tierId: string = "10k_challenge") {
         });
 
         if (!existingUser) {
-            console.log(`[Action] User ${userId} missing from DB. Seeding now...`);
+            logger.info("User missing from DB, seeding", { userId });
             await db.insert(users).values({
                 id: userId,
                 email: session?.user?.email || `user-${userId}@breakout.com`,
@@ -38,10 +41,10 @@ export async function createChallengeAction(tierId: string = "10k_challenge") {
                 username: `trader-${userId.substring(0, 8)}`,
                 kycStatus: "not_started"
             });
-            console.log(`[Action] User ${userId} seeded successfully.`);
+            logger.info("User seeded successfully", { userId });
         }
     } catch (e) {
-        console.error("Failed to check/seed user:", e);
+        logger.error("Failed to check/seed user", e);
     }
 
     // 1. CHECK IDEMPOTENCY: If user already has an active challenge, just return success
@@ -55,12 +58,12 @@ export async function createChallengeAction(tierId: string = "10k_challenge") {
         });
 
         if (existingChallenge) {
-            console.log(`[Action] Active challenge found for ${userId}. Returning existing.`);
+            logger.info("Active challenge found, returning existing", { userId, challengeId: existingChallenge.id });
             revalidatePath("/dashboard");
             return { success: true, challengeId: existingChallenge.id };
         }
     } catch (e) {
-        console.warn("Failed to check existing challenges, proceeding to create...", e);
+        logger.warn("Failed to check existing challenges, proceeding to create", { error: e instanceof Error ? e.message : String(e) });
     }
 
     try {
@@ -81,7 +84,7 @@ export async function createChallengeAction(tierId: string = "10k_challenge") {
         revalidatePath("/dashboard");
         return { success: true, challengeId: newChallenge.id };
     } catch (error: unknown) {
-        console.error("Failed to create challenge:", error);
+        logger.error("Failed to create challenge", error);
         const message = error instanceof Error ? error.message : "Database Error";
         return { success: false, error: message };
     }

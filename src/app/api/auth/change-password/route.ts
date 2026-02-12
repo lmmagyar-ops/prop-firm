@@ -4,6 +4,8 @@ import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import bcrypt from "bcrypt";
 import { auth } from "@/auth";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("ChangePassword");
 
 const SALT_ROUNDS = 12;
 
@@ -99,7 +101,7 @@ export async function POST(request: Request) {
             .set({ passwordHash: newPasswordHash })
             .where(eq(users.id, session.user.id));
 
-        console.log(`[Auth] Password changed for user: ${session.user.id}`);
+        logger.info(`[Auth] Password changed for user: ${session.user.id}`);
 
         return NextResponse.json({
             success: true,
@@ -107,7 +109,7 @@ export async function POST(request: Request) {
         });
 
     } catch (error) {
-        console.error("Change Password Error:", error);
+        logger.error("Change Password Error:", error);
         return NextResponse.json(
             { error: "Failed to change password. Please try again." },
             { status: 500 }

@@ -13,6 +13,8 @@ import { eq, and, gte, sql, lt } from "drizzle-orm";
 import { CONSISTENCY_CONFIG } from "./funded-rules";
 import { subDays, startOfDay, endOfDay, isSameDay } from "date-fns";
 import { safeParseFloat } from "./safe-parse";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("ActivityTracker");
 
 export interface ActivityCheckResult {
     activeTradingDays: number;
@@ -53,7 +55,7 @@ export class ActivityTracker {
                 })
                 .where(eq(challenges.id, challengeId));
 
-            console.log(`[ActivityTracker] ${challengeId.slice(0, 8)}: New trading day recorded (${newDays} total)`);
+            logger.info(`[ActivityTracker] ${challengeId.slice(0, 8)}: New trading day recorded (${newDays} total)`);
         } else {
             // Just update last activity timestamp
             await db.update(challenges)
@@ -127,7 +129,7 @@ export class ActivityTracker {
                 .set({ consistencyFlagged: true })
                 .where(eq(challenges.id, challengeId));
 
-            console.log(`[ActivityTracker] ${challengeId.slice(0, 8)}: Consistency flag set - ${reason}`);
+            logger.info(`[ActivityTracker] ${challengeId.slice(0, 8)}: Consistency flag set - ${reason}`);
             return { flagged: true, reason };
         }
 
@@ -158,7 +160,7 @@ export class ActivityTracker {
                 (Date.now() - (account.lastActivityAt?.getTime() || 0)) / (1000 * 60 * 60 * 24)
             );
 
-            console.log(`[ActivityTracker] Inactive account ${account.id.slice(0, 8)}: ${daysSinceActivity} days inactive`);
+            logger.info(`[ActivityTracker] Inactive account ${account.id.slice(0, 8)}: ${daysSinceActivity} days inactive`);
 
             // Terminate the account
             await db.update(challenges)
@@ -171,7 +173,7 @@ export class ActivityTracker {
             terminated.push(account.id);
         }
 
-        console.log(`[ActivityTracker] Inactivity check complete: ${terminated.length} terminated, ${flagged.length} flagged`);
+        logger.info(`[ActivityTracker] Inactivity check complete: ${terminated.length} terminated, ${flagged.length} flagged`);
         return { terminated, flagged };
     }
 
@@ -214,6 +216,6 @@ export class ActivityTracker {
             .set({ consistencyFlagged: false })
             .where(eq(challenges.id, challengeId));
 
-        console.log(`[ActivityTracker] Consistency flag cleared for ${challengeId.slice(0, 8)}`);
+        logger.info(`[ActivityTracker] Consistency flag cleared for ${challengeId.slice(0, 8)}`);
     }
 }

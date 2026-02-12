@@ -3,6 +3,8 @@ import { db } from "@/db";
 import { users } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("AdminAuth");
 
 // Bootstrap admin emails from environment variable (comma-separated)
 // Set ADMIN_BOOTSTRAP_EMAILS in .env for initial setup before DB admins exist
@@ -13,7 +15,7 @@ const BOOTSTRAP_ADMIN_EMAILS = (process.env.ADMIN_BOOTSTRAP_EMAILS || "")
     .filter(email => email.length > 0);
 
 if (BOOTSTRAP_ADMIN_EMAILS.length > 0 && process.env.NODE_ENV === "production") {
-    console.warn(
+    logger.warn(
         "[Admin Auth] WARNING: ADMIN_BOOTSTRAP_EMAILS is set in production. " +
         "This bypasses database role checks. Remove after initial setup."
     );
@@ -56,7 +58,7 @@ export async function requireAdmin() {
 
         // Fallback: Check bootstrap admin list (for initial setup)
         if (BOOTSTRAP_ADMIN_EMAILS.includes(email)) {
-            console.log("[Admin Auth] Bootstrap admin access for:", email);
+            logger.info("[Admin Auth] Bootstrap admin access for:", email);
             return { isAuthorized: true, user: session.user };
         }
 
@@ -67,7 +69,7 @@ export async function requireAdmin() {
         };
 
     } catch (error) {
-        console.error("[Admin Auth] Database error:", error);
+        logger.error("[Admin Auth] Database error:", error);
         // In case of DB error, fall back to bootstrap list
         if (BOOTSTRAP_ADMIN_EMAILS.includes(email)) {
             return { isAuthorized: true, user: session.user };

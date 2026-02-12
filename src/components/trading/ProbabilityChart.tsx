@@ -170,7 +170,7 @@ export function ProbabilityChart({ tokenId, currentPrice, outcome }: Probability
         // Cast time to satisfy lightweight-charts Time type
         lineSeries.setData(data.map(d => ({
             ...d,
-            time: d.time as any
+            time: d.time as unknown as import('lightweight-charts').Time
         })));
         chart.timeScale().fitContent();
 

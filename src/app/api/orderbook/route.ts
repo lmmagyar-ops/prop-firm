@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("Orderbook");
 
 /**
  * GET /api/orderbook?token_id={tokenId}
@@ -29,7 +31,7 @@ export async function GET(req: NextRequest) {
             asks: (book.asks || []).slice(0, 5),
         });
     } catch (error) {
-        console.error("[OrderBook API] Error:", error);
+        logger.error("[OrderBook API] Error:", error);
         return NextResponse.json({ bids: [], asks: [] });
     }
 }

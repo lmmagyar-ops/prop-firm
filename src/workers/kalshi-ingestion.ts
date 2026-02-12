@@ -9,14 +9,18 @@
  */
 
 // Global error handlers - MUST be first!
+// Logger must be imported before these handlers that reference it
+import { createLogger } from "../lib/logger";
+const logger = createLogger("KalshiIngestion");
+
 process.on('uncaughtException', (err: Error) => {
-    console.error('[FATAL] Kalshi Uncaught Exception:', err.message);
-    console.error(err.stack);
+    logger.error('[FATAL] Kalshi Uncaught Exception:', err.message);
+    if (err.stack) logger.error(err.stack);
 });
 
 process.on('unhandledRejection', (reason: unknown) => {
     const message = reason instanceof Error ? reason.message : String(reason);
-    console.error('[FATAL] Kalshi Unhandled Rejection:', message);
+    logger.error('[FATAL] Kalshi Unhandled Rejection:', message);
 });
 
 import WebSocket from "ws";
@@ -71,7 +75,7 @@ class KalshiIngestionWorker {
 
     constructor() {
         if (process.env.REDIS_HOST && process.env.REDIS_PASSWORD) {
-            console.log(`[Kalshi] Connecting to Redis via HOST/PORT/PASS config...`);
+            logger.info(`[Kalshi] Connecting to Redis via HOST/PORT/PASS config...`);
             this.redis = new Redis({
                 host: process.env.REDIS_HOST,
                 port: parseInt(process.env.REDIS_PORT || "6379"),
@@ -87,7 +91,7 @@ class KalshiIngestionWorker {
             });
         } else {
             const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6380";
-            console.log(`[Kalshi] Connecting to Redis via URL...`);
+            logger.info(`[Kalshi] Connecting to Redis via URL...`);
             this.redis = new Redis(REDIS_URL, {
                 retryStrategy: (times: number) => {
                     if (times > 20) return null;
@@ -101,10 +105,10 @@ class KalshiIngestionWorker {
 
         // Redis connection monitoring
         this.redis.on('error', (err) => {
-            console.error('[Kalshi Redis] Connection error:', err.message);
+            logger.error('[Kalshi Redis] Connection error:', err.message);
         });
         this.redis.on('reconnecting', () => {
-            console.log('[Kalshi Redis] Attempting reconnection...');
+            logger.info('[Kalshi Redis] Attempting reconnection...');
         });
 
         // Graceful shutdown handlers
@@ -118,7 +122,7 @@ class KalshiIngestionWorker {
             if (this.isShuttingDown) return;
             this.isShuttingDown = true;
 
-            console.log(`[Kalshi] ${signal} received, shutting down gracefully...`);
+            logger.info(`[Kalshi] ${signal} received, shutting down gracefully...`);
 
             try {
                 if (this.pollingInterval) {
@@ -130,11 +134,11 @@ class KalshiIngestionWorker {
                     this.ws = null;
                 }
                 await this.redis.quit();
-                console.log('[Kalshi] Shutdown complete.');
+                logger.info('[Kalshi] Shutdown complete.');
                 process.exit(0);
             } catch (err: unknown) {
                 const message = err instanceof Error ? err.message : String(err);
-                console.error('[Kalshi] Shutdown error:', message);
+                logger.error('[Kalshi] Shutdown error:', message);
                 process.exit(1);
             }
         };
@@ -144,17 +148,17 @@ class KalshiIngestionWorker {
     }
 
     private async init() {
-        console.log("[Kalshi] 🚀 Starting Kalshi Ingestion Worker...");
+        logger.info("[Kalshi] 🚀 Starting Kalshi Ingestion Worker...");
 
         // Fetch active markets first
         await this.fetchActiveMarkets();
 
         // Try WebSocket if credentials are available
         if (process.env.KALSHI_API_KEY_ID && process.env.KALSHI_PRIVATE_KEY) {
-            console.log("[Kalshi] API credentials found, attempting WebSocket connection...");
+            logger.info("[Kalshi] API credentials found, attempting WebSocket connection...");
             this.connectWebSocket();
         } else {
-            console.log("[Kalshi] No API credentials, using REST polling only...");
+            logger.info("[Kalshi] No API credentials, using REST polling only...");
             this.startPolling();
         }
     }
@@ -177,7 +181,7 @@ class KalshiIngestionWorker {
             const markets = data.markets || [];
             this.activeMarkets = markets.map((m: KalshiApiMarket) => m.ticker);
 
-            console.log(`[Kalshi] Loaded ${this.activeMarkets.length} active markets`);
+            logger.info(`[Kalshi] Loaded ${this.activeMarkets.length} active markets`);
 
             // Store simple market list in Redis (for price lookups)
             const processedMarkets = markets.map((m: KalshiApiMarket) => ({
@@ -256,11 +260,11 @@ class KalshiIngestionWorker {
                 'EX', 300 // 5 min TTL
             );
 
-            console.log(`[Kalshi] Stored ${events.length} events in kalshi:active_list`);
+            logger.info(`[Kalshi] Stored ${events.length} events in kalshi:active_list`);
 
             return markets;
         } catch (error) {
-            console.error("[Kalshi] Failed to fetch markets:", error);
+            logger.error("[Kalshi] Failed to fetch markets:", error);
             return [];
         }
     }
@@ -288,7 +292,7 @@ class KalshiIngestionWorker {
             });
 
             this.ws.on('open', () => {
-                console.log("[Kalshi] ✅ WebSocket connected!");
+                logger.info("[Kalshi] ✅ WebSocket connected!");
 
                 // Subscribe to ticker updates for all markets
                 if (this.activeMarkets.length > 0) {
@@ -301,7 +305,7 @@ class KalshiIngestionWorker {
                         }
                     };
                     this.ws!.send(JSON.stringify(subscribeMsg));
-                    console.log(`[Kalshi] Subscribed to ${Math.min(100, this.activeMarkets.length)} markets`);
+                    logger.info(`[Kalshi] Subscribed to ${Math.min(100, this.activeMarkets.length)} markets`);
                 }
             });
 
@@ -332,17 +336,17 @@ class KalshiIngestionWorker {
                         );
                     }
                 } catch (err) {
-                    console.error("[Kalshi] Message parse error:", err);
+                    logger.error("[Kalshi] Message parse error:", err);
                 }
             });
 
             this.ws.on('error', (err) => {
                 // Error handler MUST exist to prevent Node crash
-                console.error("[Kalshi] WebSocket error:", err.message);
+                logger.error("[Kalshi] WebSocket error:", err.message);
             });
 
             this.ws.on('close', () => {
-                console.log("[Kalshi] WebSocket closed.");
+                logger.info("[Kalshi] WebSocket closed.");
                 this.ws = null;
 
                 // Only reconnect if not shutting down
@@ -354,7 +358,7 @@ class KalshiIngestionWorker {
 
         } catch (error: unknown) {
             const message = error instanceof Error ? error.message : String(error);
-            console.error("[Kalshi] WebSocket connection failed:", message);
+            logger.error("[Kalshi] WebSocket connection failed:", message);
             if (!this.isShuttingDown) {
                 this.startPolling();
             }
@@ -367,7 +371,7 @@ class KalshiIngestionWorker {
     private startPolling() {
         if (this.pollingInterval) return; // Already polling
 
-        console.log("[Kalshi] 📊 Starting REST polling (every 10s)...");
+        logger.info("[Kalshi] 📊 Starting REST polling (every 10s)...");
 
         this.pollingInterval = setInterval(async () => {
             await this.pollPrices();
@@ -394,9 +398,9 @@ class KalshiIngestionWorker {
                 );
             }
 
-            console.log(`[Kalshi] Polled ${Math.min(100, markets.length)} market prices`);
+            logger.info(`[Kalshi] Polled ${Math.min(100, markets.length)} market prices`);
         } catch (error) {
-            console.error("[Kalshi] Polling error:", error);
+            logger.error("[Kalshi] Polling error:", error);
         }
     }
 
@@ -426,5 +430,5 @@ class KalshiIngestionWorker {
 }
 
 // Start the worker
-console.log("[Kalshi] Worker initializing...");
+logger.info("[Kalshi] Worker initializing...");
 new KalshiIngestionWorker();

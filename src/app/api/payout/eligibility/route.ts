@@ -4,6 +4,8 @@ import { PayoutService } from "@/lib/payout-service";
 import { db } from "@/db";
 import { challenges } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("Eligibility");
 
 /**
  * GET /api/payout/eligibility?challengeId=xxx
@@ -61,7 +63,7 @@ export async function GET(request: NextRequest) {
             calculation,
         });
     } catch (error) {
-        console.error("[PayoutEligibility] Error:", error);
+        logger.error("[PayoutEligibility] Error:", error);
         return NextResponse.json({
             error: "Failed to check eligibility"
         }, { status: 500 });

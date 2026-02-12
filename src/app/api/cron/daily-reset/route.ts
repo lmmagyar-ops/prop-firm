@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { challenges } from "@/db/schema";
 import { eq, and, isNotNull } from "drizzle-orm";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("DailyReset");
 
 /**
  * Daily Reset Cron Endpoint
@@ -25,11 +27,11 @@ export async function GET(request: NextRequest) {
     const cronSecret = process.env.CRON_SECRET;
 
     if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-        console.log("[DailyReset] ⚠️ Unauthorized cron attempt");
+        logger.info("[DailyReset] ⚠️ Unauthorized cron attempt");
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    console.log("[DailyReset] 🌅 Starting Daily Reset...");
+    logger.info("[DailyReset] 🌅 Starting Daily Reset...");
 
     const todayUTC = new Date().toISOString().split('T')[0];
 
@@ -54,12 +56,12 @@ export async function GET(request: NextRequest) {
                 })
                 .where(eq(challenges.id, challenge.id));
 
-            console.log(`[DailyReset] 🔴 BREACH FINALIZED: Challenge ${challenge.id.slice(0, 8)} → FAILED (daily loss not recovered)`);
+            logger.info(`[DailyReset] 🔴 BREACH FINALIZED: Challenge ${challenge.id.slice(0, 8)} → FAILED (daily loss not recovered)`);
             failedCount++;
         }
 
         if (failedCount > 0) {
-            console.log(`[DailyReset] ❌ ${failedCount} challenge(s) marked as FAILED`);
+            logger.info(`[DailyReset] ❌ ${failedCount} challenge(s) marked as FAILED`);
         }
 
         // ============================================
@@ -69,7 +71,7 @@ export async function GET(request: NextRequest) {
             .from(challenges)
             .where(eq(challenges.status, "active"));
 
-        console.log(`[DailyReset] Found ${activeChallenges.length} active accounts`);
+        logger.info(`[DailyReset] Found ${activeChallenges.length} active accounts`);
 
         let resetCount = 0;
         let skippedCount = 0;
@@ -106,12 +108,12 @@ export async function GET(request: NextRequest) {
             }
         };
 
-        console.log(`[DailyReset] ✅ Complete: ${failedCount} failed, ${resetCount} reset, ${skippedCount} skipped`);
+        logger.info(`[DailyReset] ✅ Complete: ${failedCount} failed, ${resetCount} reset, ${skippedCount} skipped`);
 
         return NextResponse.json(result);
 
     } catch (error) {
-        console.error("[DailyReset] ❌ Error:", error);
+        logger.error("[DailyReset] ❌ Error:", error);
         return NextResponse.json(
             { error: "Daily reset failed", details: String(error) },
             { status: 500 }

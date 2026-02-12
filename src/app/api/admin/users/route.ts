@@ -4,6 +4,8 @@ import { eq, desc, sql, count } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-auth";
 import bcrypt from "bcrypt";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("Users");
 
 const SALT_ROUNDS = 12;
 
@@ -28,6 +30,37 @@ function isStrongPassword(password: string): { valid: boolean; message: string }
         return { valid: false, message: "Password must contain at least one number" };
     }
     return { valid: true, message: "" };
+}
+
+interface AdminChallengeSummary {
+    id: string;
+    status: string | null;
+    phase: string | null;
+    balance: string | null;
+    platform: string | null;
+    startedAt: Date | null;
+    startingBalance: number;
+    cashBalance: number;
+    positionValue: number;
+    pnl: number;
+    tradeCount?: number;
+}
+
+interface AdminUserSummary {
+    id: string;
+    name: string;
+    email: string | null;
+    image: string | null;
+    createdAt: Date | null;
+    isActive: boolean;
+    role: string;
+    challenges: AdminChallengeSummary[];
+    totalChallenges: number;
+    activeChallenges: number;
+    passedChallenges: number;
+    failedChallenges: number;
+    totalPnL: number;
+    totalTrades?: number;
 }
 
 /**
@@ -66,7 +99,7 @@ export async function GET() {
             .orderBy(desc(challenges.startedAt));
 
         // Group by user and calculate stats
-        const userMap = new Map<string, any>();
+        const userMap = new Map<string, AdminUserSummary>();
 
         for (const row of usersWithChallenges) {
             if (!userMap.has(row.userId)) {
@@ -87,7 +120,7 @@ export async function GET() {
                 });
             }
 
-            const user = userMap.get(row.userId);
+            const user = userMap.get(row.userId)!;
 
             if (row.challengeId) {
                 const startingBalance = Number(row.startingBalance || 10000);
@@ -205,7 +238,7 @@ export async function GET() {
         });
 
     } catch (error) {
-        console.error("Users List Error:", error);
+        logger.error("Users List Error:", error);
         return NextResponse.json({ error: "Failed to fetch users" }, { status: 500 });
     }
 }
@@ -296,7 +329,7 @@ export async function POST(request: Request) {
         }, { status: 201 });
 
     } catch (error) {
-        console.error("Create User Error:", error);
+        logger.error("Create User Error:", error);
         return NextResponse.json(
             { error: "Failed to create user. Please try again." },
             { status: 500 }

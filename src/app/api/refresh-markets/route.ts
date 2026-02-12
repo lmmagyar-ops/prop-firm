@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-auth";
 import { forceSync, getAllMarketData } from "@/lib/worker-client";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("RefreshMarkets");
 
 /**
  * GET /api/refresh-markets
@@ -13,7 +15,7 @@ export async function GET() {
     if (!isAuthorized) return response;
 
     try {
-        console.log("[RefreshMarkets] Fetching fresh data from Polymarket...");
+        logger.info("[RefreshMarkets] Fetching fresh data from Polymarket...");
 
         // Fetch featured events
         const url = "https://gamma-api.polymarket.com/events?featured=true&active=true&closed=false&limit=50";
@@ -86,7 +88,7 @@ export async function GET() {
         });
 
     } catch (error: unknown) {
-        console.error("[RefreshMarkets] Error:", error);
+        logger.error("[RefreshMarkets] Error:", error);
         return NextResponse.json({
             success: false,
             error: String(error)

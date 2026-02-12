@@ -5,6 +5,8 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
 import { sendEmailVerificationLink } from "@/lib/email";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("Signup");
 
 const SALT_ROUNDS = 12;
 
@@ -109,7 +111,7 @@ export async function POST(request: Request) {
             const recaptchaData = await recaptchaResponse.json();
 
             if (!recaptchaData.success) {
-                console.warn("[Signup] reCAPTCHA verification failed:", recaptchaData["error-codes"]);
+                logger.warn("[Signup] reCAPTCHA verification failed:", recaptchaData["error-codes"]);
                 return NextResponse.json(
                     { error: "CAPTCHA verification failed. Please try again." },
                     { status: 400 }
@@ -118,7 +120,7 @@ export async function POST(request: Request) {
 
             // For v3 reCAPTCHA, check score (0.0 - 1.0, higher is more likely human)
             if (recaptchaData.score !== undefined && recaptchaData.score < 0.5) {
-                console.warn("[Signup] Low reCAPTCHA score:", recaptchaData.score);
+                logger.warn("[Signup] Low reCAPTCHA score:", recaptchaData.score);
                 return NextResponse.json(
                     { error: "Suspicious activity detected. Please try again." },
                     { status: 400 }
@@ -186,7 +188,7 @@ export async function POST(request: Request) {
         }, { status: 201 });
 
     } catch (error) {
-        console.error("Signup Error:", error);
+        logger.error("Signup Error:", error);
         return NextResponse.json(
             { error: "Failed to create account. Please try again." },
             { status: 500 }

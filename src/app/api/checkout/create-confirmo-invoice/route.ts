@@ -6,6 +6,8 @@ import { eq, and } from "drizzle-orm";
 import { getErrorMessage } from "@/lib/errors";
 import { TIERS, buildRulesConfig } from "@/config/tiers";
 import { PLANS } from "@/config/plans";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("CreateConfirmoInvoice");
 
 export async function POST(req: NextRequest) {
     const session = await auth();
@@ -14,7 +16,7 @@ export async function POST(req: NextRequest) {
 
     try {
         const body = await req.json();
-        const { tier, platform } = body;
+        const { tier, platform, discountCode, discountAmount } = body;
         const selectedPlatform = platform || "polymarket"; // Default to polymarket
 
         // SERVER-AUTHORITATIVE PRICING: Ignore any client-supplied price.
@@ -28,13 +30,13 @@ export async function POST(req: NextRequest) {
         }
         const price = planEntry.price;
 
-        console.log("[Checkout] Received platform from request:", platform);
-        console.log("[Checkout] Selected platform for storage:", selectedPlatform);
+        logger.info("[Checkout] Received platform from request:", platform);
+        logger.info("[Checkout] Selected platform for storage:", selectedPlatform);
 
         // Create Confirmo invoice
         // MOCK FOR DEVELOPMENT: Return a fake invoice URL if no API key
         if (!process.env.CONFIRMO_API_KEY) {
-            console.log("[Confirmo] API Key missing, provisioning MOCK challenge + returning redirect");
+            logger.info("[Confirmo] API Key missing, provisioning MOCK challenge + returning redirect");
 
             try {
                 // 0. Ensure Demo User Exists (to satisfy Foreign Key)
@@ -66,7 +68,7 @@ export async function POST(req: NextRequest) {
                 // 1b. Deactivate any existing active challenge to satisfy the unique constraint
                 // (User explicitly chose a new tier, so the old one is superseded)
                 if (activeCount.length > 0) {
-                    console.log(`[Confirmo Mock] Deactivating ${activeCount.length} existing active challenge(s) for user ${userId}`);
+                    logger.info(`[Confirmo Mock] Deactivating ${activeCount.length} existing active challenge(s) for user ${userId}`);
                     await db.update(challenges)
                         .set({ status: "cancelled" })
                         .where(and(
@@ -110,16 +112,17 @@ export async function POST(req: NextRequest) {
                     invoiceUrl: `${baseUrl}/onboarding/setup?status=success&demomode=true`,
                     invoiceId: "inv-mock-123-456"
                 });
-            } catch (dbError: any) {
-                console.error("[Confirmo Mock] Database error:", dbError);
+            } catch (dbError: unknown) {
+                logger.error("[Confirmo Mock] Database error:", dbError);
                 // If DB fails, still return success but without creating challenge
                 // This allows UI testing even if DB is down
                 const protocol = req.headers.get('x-forwarded-proto') || 'http';
                 const host = req.headers.get('host') || 'localhost:3000';
                 const baseUrl = `${protocol}://${host}`;
+                const dbErrorMessage = dbError instanceof Error ? dbError.message : JSON.stringify(dbError);
 
                 return NextResponse.json({
-                    invoiceUrl: `${baseUrl}/onboarding/setup?status=success&demomode=true&db_error=true&error_details=${encodeURIComponent(dbError.message || JSON.stringify(dbError))}`,
+                    invoiceUrl: `${baseUrl}/onboarding/setup?status=success&demomode=true&db_error=true&error_details=${encodeURIComponent(dbErrorMessage)}`,
                     invoiceId: "inv-mock-error"
                 });
             }
@@ -141,8 +144,11 @@ export async function POST(req: NextRequest) {
                     amount: price, // Server-authoritative: derived from PLANS config, NOT client input
                     currency_to: "USDC"
                 },
-                // Reference format: userId:tier:platform (parsed by webhook)
-                reference: `${userId}:${tier}:${selectedPlatform}`,
+                // Reference format: userId:tier:platform[:discountCode:discountAmount:originalPrice]
+                // Discount fields appended only when a discount is applied
+                reference: discountCode
+                    ? `${userId}:${tier}:${selectedPlatform}:${discountCode}:${discountAmount || 0}:${price}`
+                    : `${userId}:${tier}:${selectedPlatform}`,
                 // Webhooks
                 notify_url: `${process.env.NEXTAUTH_URL}/api/webhooks/confirmo`,
                 return_url: `${process.env.NEXTAUTH_URL}/onboarding/setup?status=success`
@@ -161,7 +167,7 @@ export async function POST(req: NextRequest) {
             invoiceId: data.id
         });
     } catch (error: unknown) {
-        console.error("Confirmo invoice creation failed:", error);
+        logger.error("Confirmo invoice creation failed:", error);
         return NextResponse.json(
             { error: getErrorMessage(error) || "Failed to create invoice" },
             { status: 500 }

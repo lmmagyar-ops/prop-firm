@@ -1,6 +1,8 @@
 import { isBookDead as _isBookDead, invertOrderBook as _invertOrderBook, buildSyntheticOrderBook, calculateImpact as _calculateImpact } from "./order-book-engine";
 import { getErrorMessage, getErrorName } from "./errors";
 import { getAllMarketData, getAllOrderBooks, getComplement, type AllMarketData } from "./worker-client";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("Market");
 
 export interface MarketPrice {
     price: string;
@@ -126,7 +128,7 @@ export class MarketService {
 
             return null;
         } catch (error) {
-            console.error('[MarketService] getCanonicalPrice error:', error);
+            logger.error('[MarketService] getCanonicalPrice error:', error);
             return null;
         }
     }
@@ -182,10 +184,10 @@ export class MarketService {
             const eventPrice = await this.lookupPriceFromEvents(assetId);
             if (eventPrice) return { ...eventPrice, source: 'event_list' as const };
 
-            console.log(`[MarketService] No price data for ${assetId}, using demo fallback`);
+            logger.info(`[MarketService] No price data for ${assetId}, using demo fallback`);
             return { ...this.getDemoPrice(assetId), source: 'demo' as const };
         } catch (error: unknown) {
-            console.error(`[MarketService] Worker error, using demo fallback:`, getErrorMessage(error));
+            logger.error(`[MarketService] Worker error, using demo fallback:`, getErrorMessage(error));
             return { ...this.getDemoPrice(assetId), source: 'demo' as const };
         }
     }
@@ -236,9 +238,9 @@ export class MarketService {
                 }
             }
 
-            console.log(`[MarketService] Batch fetched ${results.size}/${marketIds.length} prices`);
+            logger.info(`[MarketService] Batch fetched ${results.size}/${marketIds.length} prices`);
         } catch (error: unknown) {
-            console.error(`[MarketService] Batch price error:`, getErrorMessage(error));
+            logger.error(`[MarketService] Batch price error:`, getErrorMessage(error));
             // Fallback to demo prices for all
             for (const marketId of marketIds) {
                 results.set(marketId, this.getDemoPrice(marketId));
@@ -282,7 +284,7 @@ export class MarketService {
                         continue;
                     } else if (bestBid) {
                         // Log invalid prices for debugging
-                        console.warn(`[MarketService] Invalid order book price for ${marketId.slice(0, 12)}...: ${bestBid} (rejected, using fallback)`);
+                        logger.warn(`[MarketService] Invalid order book price for ${marketId.slice(0, 12)}...: ${bestBid} (rejected, using fallback)`);
                     }
                 }
 
@@ -295,9 +297,9 @@ export class MarketService {
                 }
             }
 
-            console.log(`[MarketService] Batch fetched ${results.size}/${marketIds.length} order book prices`);
+            logger.info(`[MarketService] Batch fetched ${results.size}/${marketIds.length} order book prices`);
         } catch (error: unknown) {
-            console.error(`[MarketService] Batch order book error:`, getErrorMessage(error));
+            logger.error(`[MarketService] Batch order book error:`, getErrorMessage(error));
             // Fallback to event list prices
             for (const marketId of marketIds) {
                 const eventPrice = await this.lookupPriceFromEvents(marketId);
@@ -341,7 +343,7 @@ export class MarketService {
                 }
             }
         } catch (error: unknown) {
-            console.error(`[MarketService] Batch titles error:`, getErrorMessage(error));
+            logger.error(`[MarketService] Batch titles error:`, getErrorMessage(error));
         }
 
         return results;
@@ -413,7 +415,7 @@ export class MarketService {
 
             return null;
         } catch (error) {
-            console.error('[MarketService] Error looking up price from events:', error);
+            logger.error('[MarketService] Error looking up price from events:', error);
             return null;
         }
     }
@@ -434,13 +436,13 @@ export class MarketService {
             const livePrice = await this.lookupPriceFromEvents(assetId);
             if (livePrice) {
                 const price = parseFloat(livePrice.price);
-                console.log(`[MarketService] Building synthetic orderbook for ${assetId.slice(0, 12)}... at price ${price}`);
+                logger.info(`[MarketService] Building synthetic orderbook for ${assetId.slice(0, 12)}... at price ${price}`);
                 return { ...this.buildSyntheticOrderBookPublic(price), source: 'synthetic' as const };
             }
-            console.log(`[MarketService] No orderbook for ${assetId}, using demo fallback`);
+            logger.info(`[MarketService] No orderbook for ${assetId}, using demo fallback`);
             return { ...this.getDemoOrderBook(), source: 'demo' as const };
         } catch (error: unknown) {
-            console.error(`[MarketService] Orderbook error, using demo fallback:`, getErrorMessage(error));
+            logger.error(`[MarketService] Orderbook error, using demo fallback:`, getErrorMessage(error));
             return { ...this.getDemoOrderBook(), source: 'demo' as const };
         }
     }
@@ -466,7 +468,7 @@ export class MarketService {
 
             // Check if this book is "dead" — huge spread or asks far from reasonable
             if (this.isBookDead(book)) {
-                console.warn(`[MarketService] YES book dead for ${tokenId.slice(0, 12)}... — trying complement (NO) token`);
+                logger.warn(`[MarketService] YES book dead for ${tokenId.slice(0, 12)}... — trying complement (NO) token`);
 
                 // Look up the complement (NO) token from the worker
                 const complementTokenId = await getComplement(tokenId);
@@ -479,12 +481,12 @@ export class MarketService {
                         // NO bids (someone buys NO at X) → YES asks (sell YES at 1-X)
                         // NO asks (someone sells NO at X) → YES bids (buy YES at 1-X)
                         const invertedBook = this.invertOrderBook(noBook);
-                        console.log(`[MarketService] ✅ Using INVERTED complement book for ${tokenId.slice(0, 12)}... (${invertedBook.bids?.length || 0} bids, ${invertedBook.asks?.length || 0} asks)`);
+                        logger.info(`[MarketService] ✅ Using INVERTED complement book for ${tokenId.slice(0, 12)}... (${invertedBook.bids?.length || 0} bids, ${invertedBook.asks?.length || 0} asks)`);
                         return { ...invertedBook, source: 'live' as const };
                     }
                 }
 
-                console.warn(`[MarketService] Complement book also unavailable for ${tokenId.slice(0, 12)}...`);
+                logger.warn(`[MarketService] Complement book also unavailable for ${tokenId.slice(0, 12)}...`);
 
                 // CRITICAL FIX: Don't return the dead YES book or stale cached book.
                 // Instead, build a synthetic book from the EVENT LIST price (Gamma API),
@@ -492,20 +494,20 @@ export class MarketService {
                 const eventPrice = await this.lookupPriceFromEvents(tokenId);
                 if (eventPrice) {
                     const price = parseFloat(eventPrice.price);
-                    console.log(`[MarketService] 🔧 Building SYNTHETIC book from event list price (${price}) for ${tokenId.slice(0, 12)}...`);
+                    logger.info(`[MarketService] 🔧 Building SYNTHETIC book from event list price (${price}) for ${tokenId.slice(0, 12)}...`);
                     return { ...this.buildSyntheticOrderBookPublic(price), source: 'synthetic' as const };
                 }
 
-                console.warn(`[MarketService] No event list price either — returning dead book for ${tokenId.slice(0, 12)}...`);
+                logger.warn(`[MarketService] No event list price either — returning dead book for ${tokenId.slice(0, 12)}...`);
             }
 
-            console.log(`[MarketService] ✅ Fresh order book fetched for ${tokenId.slice(0, 12)}... (${book.bids?.length || 0} bids, ${book.asks?.length || 0} asks)`);
+            logger.info(`[MarketService] ✅ Fresh order book fetched for ${tokenId.slice(0, 12)}... (${book.bids?.length || 0} bids, ${book.asks?.length || 0} asks)`);
             return { ...book, source: 'live' as const };
         } catch (error: unknown) {
             if (getErrorName(error) === 'AbortError') {
-                console.warn(`[MarketService] Fresh book fetch TIMED OUT for ${tokenId.slice(0, 12)}..., using cached`);
+                logger.warn(`[MarketService] Fresh book fetch TIMED OUT for ${tokenId.slice(0, 12)}..., using cached`);
             } else {
-                console.warn(`[MarketService] Fresh book fetch error for ${tokenId.slice(0, 12)}...:`, getErrorMessage(error));
+                logger.warn(`[MarketService] Fresh book fetch error for ${tokenId.slice(0, 12)}...:`, getErrorMessage(error));
             }
             // Fall back to cached order book
             return this.getOrderBook(tokenId);
@@ -529,7 +531,7 @@ export class MarketService {
             clearTimeout(timeout);
 
             if (!res.ok) {
-                console.warn(`[MarketService] CLOB fetch failed (${res.status}) for ${tokenId.slice(0, 12)}...`);
+                logger.warn(`[MarketService] CLOB fetch failed (${res.status}) for ${tokenId.slice(0, 12)}...`);
                 return null;
             }
 
@@ -543,7 +545,7 @@ export class MarketService {
         } catch (error: unknown) {
             clearTimeout(timeout);
             if (getErrorName(error) === 'AbortError') {
-                console.warn(`[MarketService] CLOB fetch TIMED OUT for ${tokenId.slice(0, 12)}...`);
+                logger.warn(`[MarketService] CLOB fetch TIMED OUT for ${tokenId.slice(0, 12)}...`);
             }
             return null;
         }

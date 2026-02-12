@@ -46,7 +46,7 @@ const RISK_RULES = {
 };
 
 async function seed() {
-    console.log("Seeding Business Rules...");
+    console.warn("Seeding Business Rules...");
 
     // 1. Challenge Config
     await db.insert(businessRules).values({
@@ -70,7 +70,7 @@ async function seed() {
         set: { value: RISK_RULES, version: 2 }
     });
 
-    console.log("Seeding Complete. Rules v2 Active.");
+    console.warn("Seeding Complete. Rules v2 Active.");
     process.exit(0);
 }
 

@@ -5,6 +5,8 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth"; // Assuming auth setup is standard NextAuth
 
 import { requireAdmin } from "@/lib/admin-auth";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("Rules");
 
 export async function GET() {
     const { isAuthorized, response } = await requireAdmin();
@@ -15,7 +17,7 @@ export async function GET() {
 
         // Transform array into a keyed object for easier frontend consumption
         // { "challenge_config": { ... }, "risk_config": { ... } }
-        const configMap: Record<string, any> = {};
+        const configMap: Record<string, unknown> = {};
         rules.forEach(r => {
             configMap[r.key] = {
                 ...r.value as object,
@@ -29,7 +31,7 @@ export async function GET() {
 
         return NextResponse.json({ rules: configMap });
     } catch (error) {
-        console.error("Fetch Rules Error:", error);
+        logger.error("Fetch Rules Error:", error);
         return NextResponse.json({ error: "Failed to fetch rules" }, { status: 500 });
     }
 }
@@ -86,7 +88,7 @@ export async function PUT(req: Request) {
         return NextResponse.json({ success: true });
 
     } catch (error) {
-        console.error("Update Rules Error:", error);
+        logger.error("Update Rules Error:", error);
         return NextResponse.json({ error: "Failed to update rules" }, { status: 500 });
     }
 }

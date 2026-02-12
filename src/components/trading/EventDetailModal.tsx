@@ -552,7 +552,7 @@ function TradingSidebar({ market, eventTitle, onTradeComplete, isKalshi, initial
     const [amount, setAmount] = useState(0); // Dollar amount
     const [sellLoading, setSellLoading] = useState(false);
     const isSellRef = useRef(false);
-    const [userPosition, setUserPosition] = useState<any>(null);
+    const [userPosition, setUserPosition] = useState<{ id: string; shares: string; side: string; direction: string; entryPrice: string; currentValue: number; pnl: number; sizeAmount?: string } | null>(null);
     const [positionLoading, setPositionLoading] = useState(false);
     const [requotePrice, setRequotePrice] = useState<number | null>(null);
 

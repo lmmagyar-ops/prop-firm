@@ -3,6 +3,8 @@ import { auth } from "@/auth";
 import { db } from "@/db";
 import { discountCodes, discountRedemptions, challenges } from "@/db/schema";
 import { eq, and, sql } from "drizzle-orm";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("Validate");
 
 /**
  * Patterns that identify test/demo discount codes
@@ -45,7 +47,7 @@ export async function POST(req: NextRequest) {
 
         // SECURITY: Block test codes in production
         if (process.env.NODE_ENV === 'production' && isTestCode(normalizedCode)) {
-            console.warn(`[Security] Blocked test code attempt: ${normalizedCode}`);
+            logger.warn(`[Security] Blocked test code attempt: ${normalizedCode}`);
             return NextResponse.json({
                 valid: false,
                 error: "Invalid discount code"
@@ -203,7 +205,7 @@ export async function POST(req: NextRequest) {
         });
 
     } catch (error: unknown) {
-        console.error("[Discount Validation Error]:", error);
+        logger.error("[Discount Validation Error]:", error);
         return NextResponse.json(
             { error: "Failed to validate discount code" },
             { status: 500 }

@@ -2,6 +2,9 @@
 
 import { unstable_noStore as noStore } from "next/cache";
 import { getAllMarketData } from "@/lib/worker-client";
+import { createLogger } from "@/lib/logger";
+
+const logger = createLogger("MarketActions");
 
 export interface MarketMetadata {
     id: string;
@@ -33,7 +36,7 @@ export async function getActiveMarkets(): Promise<MarketMetadata[]> {
             currentPrice: market.currentPrice ?? market.basePrice ?? 0.5
         }));
     } catch (e) {
-        console.error("Failed to fetch active markets", e);
+        logger.error("Failed to fetch active markets", e);
         return [];
     }
 }
@@ -115,7 +118,7 @@ export async function getAllMarketsFlat(): Promise<MarketMetadata[]> {
 
         return allMarkets;
     } catch (e) {
-        console.error("Failed to fetch all markets flat", e);
+        logger.error("Failed to fetch all markets flat", e);
         return [];
     }
 }
@@ -202,7 +205,7 @@ export async function getMarketById(marketId: string): Promise<MarketMetadata | 
 
         return null;
     } catch (e) {
-        console.error("Failed to fetch market by ID", marketId, e);
+        logger.error("Failed to fetch market by ID", e, { marketId });
         return null;
     }
 }
@@ -254,7 +257,7 @@ export async function getEventInfoForMarket(marketId: string): Promise<{
         // Not found in any event - market is standalone (its own "event")
         return null;
     } catch (e) {
-        console.error("Failed to get event info for market", marketId, e);
+        logger.error("Failed to get event info for market", e, { marketId });
         return null;
     }
 }
@@ -470,15 +473,15 @@ export async function getActiveEvents(platform: Platform = "polymarket"): Promis
                     // Merge: Featured events first, then converted binary markets
                     filteredEvents = [...filteredEvents, ...convertedEvents];
 
-                    console.log(`[getActiveEvents] Merged ${convertedEvents.length} binary markets (skipped ${binaryMarkets.length - convertedEvents.length - existingTitles.size} 50% placeholders)`);
+                    logger.info(`Merged ${convertedEvents.length} binary markets`, { skipped: binaryMarkets.length - convertedEvents.length - existingTitles.size });
                 }
             } catch (err) {
                 // Silent fail - don't break if binary markets aren't available
-                console.error("[getActiveEvents] Failed to merge binary markets:", err);
+                logger.error("Failed to merge binary markets", err);
             }
         }
 
-        console.log(`[getActiveEvents] Returning ${filteredEvents.length} total events`);
+        logger.info(`Returning ${filteredEvents.length} total events`);
 
         // PARITY FIX: Overlay live WebSocket prices onto all market cards.
         // Without this, cards show ingestion-time prices (could be hours stale).
@@ -517,21 +520,21 @@ export async function getActiveEvents(platform: Platform = "polymarket"): Promis
                             markets: event.markets.filter(m => !removedMarketIds.includes(m.id))
                         }))
                         .filter(event => event.markets.length > 0);
-                    console.log(`[getActiveEvents] Removed ${removedMarketIds.length} resolved sub-markets via live price overlay`);
+                    logger.info(`Removed ${removedMarketIds.length} resolved sub-markets via live price overlay`);
                 }
 
                 if (updatedCount > 0) {
-                    console.log(`[getActiveEvents] Overlaid ${updatedCount} live WS prices onto market cards`);
+                    logger.info(`Overlaid ${updatedCount} live WS prices onto market cards`);
                 }
             }
         } catch (err) {
             // Non-fatal: if live prices unavailable, cards still show ingestion prices
-            console.error("[getActiveEvents] Failed to overlay live prices:", err);
+            logger.error("Failed to overlay live prices", err);
         }
 
         return filteredEvents;
     } catch (e) {
-        console.error(`Failed to fetch active events for ${platform}`, e);
+        logger.error(`Failed to fetch active events for ${platform}`, e);
         return [];
     }
 }

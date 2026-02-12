@@ -5,6 +5,8 @@ import { challenges, users, payouts, positions } from "@/db/schema";
 import { eq, and, gte, sql, count, inArray } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { requireAdmin } from "@/lib/admin-auth";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("QuickStats");
 
 export async function GET() {
     // SECURITY: Verify admin role before processing
@@ -152,7 +154,7 @@ export async function GET() {
             myActiveChallenge,
         });
     } catch (error) {
-        console.error("Quick stats error:", error);
+        logger.error("Quick stats error:", error);
         return NextResponse.json(
             { error: "Failed to fetch quick stats" },
             { status: 500 }

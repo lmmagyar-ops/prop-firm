@@ -9,6 +9,8 @@
 
 import Redis from "ioredis";
 import * as dotenv from "dotenv";
+import { createLogger } from "../lib/logger";
+const logger = createLogger("PriceMonitor");
 
 dotenv.config();
 
@@ -66,10 +68,10 @@ class PriceMonitor {
     }
 
     async start(): Promise<void> {
-        console.log("[PriceMonitor] Starting continuous price validation...");
-        console.log(`[PriceMonitor] Check interval: ${CHECK_INTERVAL_MS / 1000}s`);
-        console.log(`[PriceMonitor] Sample size: ${SAMPLE_SIZE} markets per cycle`);
-        console.log(`[PriceMonitor] Deviation threshold: ${(DEVIATION_THRESHOLD * 100).toFixed(1)}%`);
+        logger.info("[PriceMonitor] Starting continuous price validation...");
+        logger.info(`[PriceMonitor] Check interval: ${CHECK_INTERVAL_MS / 1000}s`);
+        logger.info(`[PriceMonitor] Sample size: ${SAMPLE_SIZE} markets per cycle`);
+        logger.info(`[PriceMonitor] Deviation threshold: ${(DEVIATION_THRESHOLD * 100).toFixed(1)}%`);
 
         this.running = true;
 
@@ -77,7 +79,7 @@ class PriceMonitor {
             try {
                 await this.runCheck();
             } catch (error) {
-                console.error("[PriceMonitor] Check failed:", error);
+                logger.error("[PriceMonitor] Check failed:", error);
             }
 
             // Wait for next cycle
@@ -86,26 +88,26 @@ class PriceMonitor {
     }
 
     async stop(): Promise<void> {
-        console.log("[PriceMonitor] Stopping...");
+        logger.info("[PriceMonitor] Stopping...");
         this.running = false;
         await this.redis.quit();
     }
 
     private async runCheck(): Promise<void> {
         const startTime = Date.now();
-        console.log(`\n[PriceMonitor] Running check at ${new Date().toISOString()}`);
+        logger.info(`\n[PriceMonitor] Running check at ${new Date().toISOString()}`);
 
         // Get cached prices
         const cachedPrices = await this.getCachedPrices();
         if (cachedPrices.size === 0) {
-            console.log("[PriceMonitor] No cached prices found, skipping check");
+            logger.info("[PriceMonitor] No cached prices found, skipping check");
             return;
         }
 
         // Get live prices from Polymarket
         const livePrices = await this.fetchLivePrices();
         if (livePrices.size === 0) {
-            console.log("[PriceMonitor] Failed to fetch live prices, skipping check");
+            logger.info("[PriceMonitor] Failed to fetch live prices, skipping check");
             return;
         }
 
@@ -141,8 +143,8 @@ class PriceMonitor {
         }
 
         const elapsedMs = Date.now() - startTime;
-        console.log(`[PriceMonitor] Checked ${sampleIds.length} markets in ${elapsedMs}ms`);
-        console.log(`[PriceMonitor] ✅ Matching: ${matchCount}, ⚠️ Deviations: ${deviations.length}`);
+        logger.info(`[PriceMonitor] Checked ${sampleIds.length} markets in ${elapsedMs}ms`);
+        logger.info(`[PriceMonitor] ✅ Matching: ${matchCount}, ⚠️ Deviations: ${deviations.length}`);
 
         // Publish alerts for deviations
         if (deviations.length > 0) {
@@ -169,7 +171,7 @@ class PriceMonitor {
                 }
             }
         } catch (error) {
-            console.error("[PriceMonitor] Failed to get cached prices:", error);
+            logger.error("[PriceMonitor] Failed to get cached prices:", error);
         }
 
         return results;
@@ -181,7 +183,7 @@ class PriceMonitor {
         try {
             const response = await fetch(POLYMARKET_API);
             if (!response.ok) {
-                console.error(`[PriceMonitor] Polymarket API error: ${response.status}`);
+                logger.error(`[PriceMonitor] Polymarket API error: ${response.status}`);
                 return results;
             }
 
@@ -198,7 +200,7 @@ class PriceMonitor {
                 }
             }
         } catch (error) {
-            console.error("[PriceMonitor] Failed to fetch live prices:", error);
+            logger.error("[PriceMonitor] Failed to fetch live prices:", error);
         }
 
         return results;
@@ -210,10 +212,10 @@ class PriceMonitor {
     }
 
     private async publishDeviationAlert(deviations: PriceDeviation[]): Promise<void> {
-        console.log("\n[PriceMonitor] 🚨 PRICE DEVIATIONS DETECTED:");
+        logger.info("\n[PriceMonitor] 🚨 PRICE DEVIATIONS DETECTED:");
         for (const d of deviations) {
-            console.log(`  - ${d.title.slice(0, 40)}...`);
-            console.log(`    Cached: ${(d.cachedPrice * 100).toFixed(1)}% | Live: ${(d.livePrice * 100).toFixed(1)}% | Deviation: ${(d.deviationPercent * 100).toFixed(2)}%`);
+            logger.info(`  - ${d.title.slice(0, 40)}...`);
+            logger.info(`    Cached: ${(d.cachedPrice * 100).toFixed(1)}% | Live: ${(d.livePrice * 100).toFixed(1)}% | Deviation: ${(d.deviationPercent * 100).toFixed(2)}%`);
         }
 
         // Publish admin event
@@ -227,7 +229,7 @@ class PriceMonitor {
                 },
             }));
         } catch (error) {
-            console.error("[PriceMonitor] Failed to publish event:", error);
+            logger.error("[PriceMonitor] Failed to publish event:", error);
         }
     }
 
@@ -236,7 +238,7 @@ class PriceMonitor {
             await this.redis.set("price_monitor:status", isHealthy ? "healthy" : "degraded");
             await this.redis.set("price_monitor:last_check", new Date().toISOString());
         } catch (error) {
-            console.error("[PriceMonitor] Failed to update health status:", error);
+            logger.error("[PriceMonitor] Failed to update health status:", error);
         }
     }
 }

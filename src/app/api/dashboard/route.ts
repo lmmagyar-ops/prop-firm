@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getDashboardData } from "@/lib/dashboard-service";
 import { auth } from "@/auth";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("Dashboard");
 
 export async function GET(req: Request) {
     const session = await auth();
@@ -29,7 +31,7 @@ export async function GET(req: Request) {
 
         return NextResponse.json(data);
     } catch (error) {
-        console.error("Dashboard API Error:", error);
+        logger.error("Dashboard API Error:", error);
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
     }
 }

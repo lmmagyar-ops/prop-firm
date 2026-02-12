@@ -1,5 +1,8 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
+import { createLogger } from "@/lib/logger";
+
+const logger = createLogger("DBPool");
 
 // Detect if we're in a serverless environment
 const isServerless = process.env.VERCEL === '1' || process.env.AWS_LAMBDA_FUNCTION_NAME;
@@ -24,13 +27,13 @@ const pool = new Pool({
 
 // Handle pool errors gracefully (prevents crash on lost connection)
 pool.on('error', (err) => {
-    console.error('[DB Pool] Unexpected error on idle client:', err.message);
+    logger.error('Unexpected error on idle client', err);
     // Don't throw - let the pool recover
 });
 
 // Add connection test on startup (non-blocking)
 pool.on('connect', () => {
-    console.log('[DB Pool] New client connected');
+    logger.info('New client connected');
 });
 
 import * as schema from "./schema";

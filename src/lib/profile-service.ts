@@ -114,8 +114,8 @@ export async function getPublicProfileData(userId: string) {
     // Add visibility flags to accounts
     const accountsWithVisibility = data.accounts.map(acc => ({
         ...acc,
-        isPublic: true, // TODO: Get from DB
-        showDropdown: true, // TODO: Get from DB
+        isPublic: true, // BACKLOG: Get from DB (needs schema column)
+        showDropdown: true, // BACKLOG: Get from DB (needs schema column)
     }));
 
     return {
@@ -169,7 +169,7 @@ function calculateMetrics(challenges: Challenge[], lifetimeProfitWithdrawn: numb
         lifetimeTradingVolume,
         fundedTradingVolume,
         currentWithdrawableProfit,
-        highestWinRateAsset: "Politics", // TODO: Calculate from trade history
+        highestWinRateAsset: "Politics", // BACKLOG: Calculate from trade history
         tradingWinRate,
         lifetimeProfitWithdrawn,
     };

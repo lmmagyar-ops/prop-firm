@@ -45,7 +45,7 @@ export async function sendVerificationEmail(email: string, code: string, decoys:
                 })
             });
         } catch (error) {
-            console.error("Failed to send email via Resend:", error);
+            logger.error("Failed to send email via Resend:", error);
         }
     }
 }
@@ -99,7 +99,7 @@ export async function sendPasswordResetEmail(email: string, token: string) {
                 })
             });
         } catch (error) {
-            console.error("Failed to send password reset email via Resend:", error);
+            logger.error("Failed to send password reset email via Resend:", error);
         }
     }
 }
@@ -153,7 +153,7 @@ export async function sendEmailVerificationLink(email: string, token: string) {
                 })
             });
         } catch (error) {
-            console.error("Failed to send email verification via Resend:", error);
+            logger.error("Failed to send email verification via Resend:", error);
         }
     }
 }

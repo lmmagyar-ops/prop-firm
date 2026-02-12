@@ -5,6 +5,8 @@ import { eq, and } from "drizzle-orm";
 import { MarketService } from "@/lib/market";
 import { getDirectionAdjustedPrice } from "@/lib/position-utils";
 import { auth } from "@/auth";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("Challenges");
 
 // Force dynamic - never cache this endpoint
 export const dynamic = "force-dynamic";
@@ -72,7 +74,7 @@ export async function GET(req: NextRequest) {
                             rawPrice = parsedLivePrice;
                         } else {
                             // Invalid price - use entry as fallback
-                            console.warn("[ChallengesAPI] Invalid price, using entry fallback:", {
+                            logger.warn("[ChallengesAPI] Invalid price, using entry fallback:", {
                                 marketId: pos.marketId.slice(0, 12),
                                 invalidPrice: livePrice.price
                             });
@@ -106,7 +108,7 @@ export async function GET(req: NextRequest) {
 
         return NextResponse.json({ challenges: challengesWithEquity });
     } catch (error) {
-        console.error("Failed to fetch challenges:", error);
+        logger.error("Failed to fetch challenges:", error);
         return NextResponse.json({ error: "Internal server error" }, { status: 500 });
     }
 }

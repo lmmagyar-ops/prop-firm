@@ -4,6 +4,8 @@ import { publishAdminEvent } from "@/lib/events";
 import { auth } from "@/auth";
 import { logTrade } from "@/lib/event-logger";
 import { getErrorMessage } from "@/lib/errors";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("Trade");
 
 export async function POST(req: Request) {
     try {
@@ -36,7 +38,7 @@ export async function POST(req: Request) {
 
             // 1. AUTO-PROVISION CHALLENGE & USER (Fallback for demo mode)
             if (error instanceof Error && "code" in error && error.code === "INVALID_CHALLENGE" && userId === "demo-user-1") {
-                console.log("[Auto-Provision] Creating new challenge for demo user...");
+                logger.info("[Auto-Provision] Creating new challenge for demo user...");
                 const { autoProvisionDemoChallenge } = await import("@/lib/dev-helpers");
                 const newChallengeId = await autoProvisionDemoChallenge(userId);
                 trade = await TradeExecutor.executeTrade(userId, newChallengeId, marketId, side, parseFloat(amount));
@@ -46,7 +48,7 @@ export async function POST(req: Request) {
             else if ((getErrorMessage(error) === "Market data unavailable" || getErrorMessage(error).includes("Book Not Found")) && userId === "demo-user-1") {
                 const { autoProvisionMarketData } = await import("@/lib/dev-helpers");
                 await autoProvisionMarketData(marketId);
-                console.log("[Auto-Provision] Retrying execution...");
+                logger.info("[Auto-Provision] Retrying execution...");
                 trade = await TradeExecutor.executeTrade(userId, challengeId, marketId, side, parseFloat(amount));
             } else {
                 // Log failed trade
@@ -85,7 +87,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: true, trade });
 
     } catch (error: unknown) {
-        console.error("Trade Execution Error:", error);
+        logger.error("Trade Execution Error:", error);
         return NextResponse.json({ error: getErrorMessage(error) || "Failed to execute trade" }, { status: 500 });
     }
 }

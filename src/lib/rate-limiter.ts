@@ -6,6 +6,8 @@
  */
 
 import { kvIncr } from "./worker-client";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("RateLimiter");
 
 // Rate limit tiers (requests per window)
 export const RATE_LIMITS = {
@@ -116,7 +118,7 @@ export async function checkRateLimit(
         const remaining = Math.max(0, limit - count);
 
         if (!allowed) {
-            console.warn(`[RateLimit] BLOCKED: ${identifier} hit ${tier} limit (${count}/${limit})`);
+            logger.warn(`[RateLimit] BLOCKED: ${identifier} hit ${tier} limit (${count}/${limit})`);
         }
 
         return { allowed, remaining, resetInSeconds: windowSeconds, tier };
@@ -124,12 +126,12 @@ export async function checkRateLimit(
     } catch (error) {
         if (FAIL_CLOSED_TIERS.has(tier)) {
             // Financial path — reject the request when we can't verify the limit
-            console.error(`[RateLimit] Worker unreachable, failing CLOSED for ${tier}:`, error);
+            logger.error(`[RateLimit] Worker unreachable, failing CLOSED for ${tier}:`, error);
             return { allowed: false, remaining: 0, resetInSeconds: windowSeconds, tier };
         }
 
         // Non-financial path — fail open to not block page loads
-        console.error(`[RateLimit] Worker unreachable, failing open for ${tier}:`, error);
+        logger.error(`[RateLimit] Worker unreachable, failing open for ${tier}:`, error);
         return { allowed: true, remaining: limit, resetInSeconds: windowSeconds, tier };
     }
 }

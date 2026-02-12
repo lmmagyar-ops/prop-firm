@@ -3,6 +3,8 @@ import { db } from "@/db";
 import { discountCodes, discountRedemptions, users } from "@/db/schema";
 import { eq, desc, sql } from "drizzle-orm";
 import { requireAdmin } from "@/lib/admin-auth";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("Discounts");
 
 /**
  * GET /api/admin/discounts
@@ -57,7 +59,7 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ discounts: codesWithStats });
 
     } catch (error: unknown) {
-        console.error("[Admin Discounts List Error]:", error);
+        logger.error("[Admin Discounts List Error]:", error);
         return NextResponse.json(
             { error: "Failed to fetch discount codes" },
             { status: 500 }
@@ -168,7 +170,7 @@ export async function POST(req: NextRequest) {
         });
 
     } catch (error: unknown) {
-        console.error("[Admin Create Discount Error]:", error);
+        logger.error("[Admin Create Discount Error]:", error);
         return NextResponse.json(
             { error: "Failed to create discount code" },
             { status: 500 }

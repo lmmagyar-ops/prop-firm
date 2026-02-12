@@ -47,7 +47,7 @@ export function AchievementBadgesSection({
             name: "10% Profit",
             description: "Achieved 10% account growth",
             icon: <TrendingUp className="w-8 h-8" />,
-            earned: false, // TODO: Calculate from account performance
+            earned: false, // BACKLOG: Calculate from account performance
         },
         {
             id: "marksman",

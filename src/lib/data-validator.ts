@@ -9,6 +9,8 @@
  */
 
 import type { EventMetadata, SubMarket } from "../app/actions/market";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("DataValidator");
 
 export interface ValidationResult {
     isValid: boolean;
@@ -175,16 +177,16 @@ export function logValidationIssues(
 ): void {
     if (invalidEvents.length === 0) return;
 
-    console.log(`\n${prefix} ❌ ${invalidEvents.length} events failed validation:`);
+    logger.info(`\n${prefix} ❌ ${invalidEvents.length} events failed validation:`);
 
     for (const event of invalidEvents.slice(0, 5)) { // Show max 5
-        console.log(`  "${event.eventTitle}"`);
+        logger.info(`  "${event.eventTitle}"`);
         for (const error of event.errors.slice(0, 3)) {
-            console.log(`    ❌ ${error}`);
+            logger.info(`    ❌ ${error}`);
         }
     }
 
     if (invalidEvents.length > 5) {
-        console.log(`  ... and ${invalidEvents.length - 5} more`);
+        logger.info(`  ... and ${invalidEvents.length - 5} more`);
     }
 }

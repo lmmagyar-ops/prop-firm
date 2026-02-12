@@ -4,6 +4,8 @@ import { db } from "@/db";
 import { trades, challenges } from "@/db/schema";
 import { eq, desc, and } from "drizzle-orm";
 import { getAllMarketData } from "@/lib/worker-client";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("History");
 
 // Enrich trade records with market titles from worker HTTP API
 async function enrichTrades(tradeRecords: (typeof trades.$inferSelect)[]) {
@@ -104,7 +106,7 @@ export async function GET(req: Request) {
 
         return NextResponse.json({ trades: await enrichTrades(limitedTrades) });
     } catch (error) {
-        console.error("[API] Trade history error:", error);
+        logger.error("[API] Trade history error:", error);
         return NextResponse.json({ error: "Failed to fetch trade history" }, { status: 500 });
     }
 }

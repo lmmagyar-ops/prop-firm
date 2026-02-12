@@ -9,6 +9,8 @@ import { generateTrader, Trader } from './trader-behavior';
 import { runChallenge, ChallengeResult } from './challenge-simulator';
 import { calculateCashFlow, CashFlowProjection } from './cash-flow';
 import { TRADER_ARCHETYPES, FirmConfig, TraderArchetype, DEFAULT_DISTRIBUTION } from './config';
+import { createLogger } from '@/lib/logger';
+const logger = createLogger('MonteCarlo');
 
 export interface MonteCarloConfig {
     iterations: number;
@@ -61,7 +63,7 @@ export interface MonteCarloResults {
 export function runMonteCarloSimulation(config: MonteCarloConfig): MonteCarloResults {
     const runs: SimulationRun[] = [];
 
-    console.log(`🎲 Running ${config.iterations} Monte Carlo simulations...`);
+    logger.info(`🎲 Running ${config.iterations} Monte Carlo simulations...`);
 
     for (let i = 0; i < config.iterations; i++) {
         // Generate traders for this run
@@ -86,11 +88,11 @@ export function runMonteCarloSimulation(config: MonteCarloConfig): MonteCarloRes
 
         // Progress indicator
         if ((i + 1) % 100 === 0) {
-            console.log(`  ... ${i + 1}/${config.iterations} complete`);
+            logger.info(`  ... ${i + 1}/${config.iterations} complete`);
         }
     }
 
-    console.log(`✅ Monte Carlo complete!`);
+    logger.info(`✅ Monte Carlo complete!`);
 
     // Calculate statistics
     const statistics = calculateStatistics(runs);
@@ -203,7 +205,7 @@ export function findOptimalFee(
     maxFee: number,
     iterations: number = 100
 ): { optimalFee: number; projectedCashFlow: number } {
-    console.log(`🔍 Searching for optimal fee between $${minFee} and $${maxFee}...`);
+    logger.info(`🔍 Searching for optimal fee between $${minFee} and $${maxFee}...`);
 
     let bestFee = minFee;
     let bestCashFlow = -Infinity;
@@ -223,7 +225,7 @@ export function findOptimalFee(
         const results = runMonteCarloSimulation(config);
         const avgCashFlow = results.statistics.netCashFlow.mean;
 
-        console.log(`  Fee $${Math.round(fee)}: Avg cash flow = $${Math.round(avgCashFlow)}`);
+        logger.info(`  Fee $${Math.round(fee)}: Avg cash flow = $${Math.round(avgCashFlow)}`);
 
         if (avgCashFlow > bestCashFlow) {
             bestCashFlow = avgCashFlow;
@@ -231,7 +233,7 @@ export function findOptimalFee(
         }
     }
 
-    console.log(`✅ Optimal fee: $${bestFee} (projected: $${Math.round(bestCashFlow)})`);
+    logger.info(`✅ Optimal fee: $${bestFee} (projected: $${Math.round(bestCashFlow)})`);
 
     return {
         optimalFee: bestFee,

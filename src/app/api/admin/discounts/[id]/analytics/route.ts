@@ -3,6 +3,8 @@ import { db } from "@/db";
 import { discountCodes, discountRedemptions } from "@/db/schema";
 import { eq, sql, desc } from "drizzle-orm";
 import { requireAdmin } from "@/lib/admin-auth";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("Analytics");
 
 /**
  * GET /api/admin/discounts/[id]/analytics
@@ -61,9 +63,9 @@ export async function GET(
             discount,
             analytics: {
                 totalRedemptions,
-                revenue: parseFloat(stats?.totalRevenue as any || "0"),
-                totalSavings: parseFloat(stats?.totalSavings as any || "0"),
-                avgDiscountAmount: parseFloat(stats?.avgDiscountAmount as any || "0"),
+                revenue: parseFloat(String(stats?.totalRevenue ?? "0")),
+                totalSavings: parseFloat(String(stats?.totalSavings ?? "0")),
+                avgDiscountAmount: parseFloat(String(stats?.avgDiscountAmount ?? "0")),
                 uniqueUsers: Number(stats?.uniqueUsers || 0),
                 utilizationRate: Math.round(utilizationRate * 100) / 100,
                 recentRedemptions: recentRedemptions.map(r => ({
@@ -78,7 +80,7 @@ export async function GET(
         });
 
     } catch (error: unknown) {
-        console.error("[Admin Discount Analytics Error]:", error);
+        logger.error("[Admin Discount Analytics Error]:", error);
         return NextResponse.json(
             { error: "Failed to fetch discount analytics" },
             { status: 500 }

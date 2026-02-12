@@ -9,8 +9,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ChallengeEvaluator } from '@/lib/evaluator';
 
 // Mock the database
-vi.mock('@/db', () => ({
-    db: {
+vi.mock('@/db', () => {
+    const mockDb = {
         query: {
             challenges: {
                 findFirst: vi.fn(),
@@ -21,11 +21,14 @@ vi.mock('@/db', () => ({
         },
         update: vi.fn(() => ({
             set: vi.fn(() => ({
-                where: vi.fn(),
+                where: vi.fn().mockResolvedValue({ rowCount: 1 }),
             })),
         })),
-    },
-}));
+        transaction: vi.fn(),
+    };
+    mockDb.transaction.mockImplementation(async (cb: (tx: typeof mockDb) => Promise<void>) => cb(mockDb));
+    return { db: mockDb };
+});
 
 // Mock MarketService for live prices
 vi.mock('@/lib/market', () => ({
@@ -51,6 +54,25 @@ vi.mock('@/lib/outage-manager', () => ({
             isGraceWindow: false,
         }),
     },
+}));
+
+// Mock BalanceManager (used during funded transitions)
+vi.mock('@/lib/trading/BalanceManager', () => ({
+    BalanceManager: {
+        creditProceeds: vi.fn().mockResolvedValue(undefined),
+        resetBalance: vi.fn().mockResolvedValue(undefined),
+    },
+}));
+
+// Mock logger
+vi.mock('@/lib/logger', () => ({
+    createLogger: () => ({
+        info: vi.fn(),
+        warn: vi.fn(),
+        error: vi.fn(),
+        debug: vi.fn(),
+        withContext: vi.fn(),
+    }),
 }));
 
 import { db } from '@/db';

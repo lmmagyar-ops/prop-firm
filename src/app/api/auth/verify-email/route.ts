@@ -3,6 +3,8 @@ import { users, verificationTokens } from "@/db/schema";
 import { eq, and, gt } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import crypto from "crypto";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("VerifyEmail");
 
 export async function GET(request: Request) {
     try {
@@ -30,7 +32,7 @@ export async function GET(request: Request) {
             .limit(1);
 
         if (tokenRecord.length === 0) {
-            console.log("[VerifyEmail] Token not found or expired");
+            logger.info("[VerifyEmail] Token not found or expired");
             const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
             return NextResponse.redirect(`${appUrl}/login?error=invalid_token`);
         }
@@ -54,13 +56,13 @@ export async function GET(request: Request) {
                 )
             );
 
-        console.log("[VerifyEmail] Email verified successfully:", email);
+        logger.info("[VerifyEmail] Email verified successfully:", email);
 
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
         return NextResponse.redirect(`${appUrl}/login?verified=true`);
 
     } catch (error) {
-        console.error("[VerifyEmail] Error:", error);
+        logger.error("[VerifyEmail] Error:", error);
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
         return NextResponse.redirect(`${appUrl}/login?error=verification_failed`);
     }

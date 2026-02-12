@@ -10,20 +10,24 @@
  * - Memory bounds for collections
  */
 
+// Logger must be imported BEFORE global error handlers that reference it
+import { createLogger } from "../lib/logger";
+const logger = createLogger("Ingestion");
+
 // ═══════════════════════════════════════════════════════════════════════════
 // GLOBAL ERROR HANDLERS - Must be first! Prevents process crash.
 // ═══════════════════════════════════════════════════════════════════════════
 process.on('uncaughtException', (err: Error) => {
-    console.error('[FATAL] Uncaught Exception:', err.message);
-    console.error(err.stack);
+    logger.error('[FATAL] Uncaught Exception:', err.message);
+    if (err.stack) logger.error(err.stack);
     // Don't exit - keep running in degraded mode
 });
 
 process.on('unhandledRejection', (reason: unknown) => {
     const message = reason instanceof Error ? reason.message : String(reason);
-    console.error('[FATAL] Unhandled Rejection:', message);
+    logger.error('[FATAL] Unhandled Rejection:', message);
     if (reason instanceof Error && reason.stack) {
-        console.error(reason.stack);
+        logger.error(reason.stack);
     }
 });
 
@@ -173,8 +177,8 @@ class IngestionWorker {
         if (process.env.REDIS_HOST && process.env.REDIS_PASSWORD) {
             // Debug: Log actual env var values (port only, not password)
             const rawPort = process.env.REDIS_PORT;
-            console.log(`[Ingestion] REDIS_HOST: ${process.env.REDIS_HOST}`);
-            console.log(`[Ingestion] REDIS_PORT raw value: "${rawPort}" (type: ${typeof rawPort})`);
+            logger.info(`[Ingestion] REDIS_HOST: ${process.env.REDIS_HOST}`);
+            logger.info(`[Ingestion] REDIS_PORT raw value: "${rawPort}" (type: ${typeof rawPort})`);
 
             // Defensive port parsing - handle NaN, empty, undefined
             let port = 6379; // Default fallback
@@ -183,13 +187,13 @@ class IngestionWorker {
                 if (!isNaN(parsed) && parsed > 0 && parsed < 65536) {
                     port = parsed;
                 } else {
-                    console.warn(`[Ingestion] Invalid REDIS_PORT "${rawPort}", using default 6379`);
+                    logger.warn(`[Ingestion] Invalid REDIS_PORT "${rawPort}", using default 6379`);
                 }
             } else {
-                console.log(`[Ingestion] REDIS_PORT not set, using default 6379`);
+                logger.info(`[Ingestion] REDIS_PORT not set, using default 6379`);
             }
 
-            console.log(`[Ingestion] Connecting to Redis via HOST/PORT/PASS config (port: ${port})...`);
+            logger.info(`[Ingestion] Connecting to Redis via HOST/PORT/PASS config (port: ${port})...`);
             this.redis = new Redis({
                 host: process.env.REDIS_HOST,
                 port: port,
@@ -198,11 +202,11 @@ class IngestionWorker {
                 // Institutional retry config
                 retryStrategy: (times: number) => {
                     if (times > 20) {
-                        console.error('[Redis] Max retries (20) exceeded');
+                        logger.error('[Redis] Max retries (20) exceeded');
                         return null; // Stop retrying
                     }
                     const delay = Math.min(times * 500, 30000); // Max 30s backoff
-                    console.log(`[Redis] Retry attempt ${times}, waiting ${delay}ms`);
+                    logger.info(`[Redis] Retry attempt ${times}, waiting ${delay}ms`);
                     return delay;
                 },
                 maxRetriesPerRequest: 3,
@@ -211,7 +215,7 @@ class IngestionWorker {
             });
         } else {
             const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6380";
-            console.log(`[Ingestion] Connecting to Redis via URL...`);
+            logger.info(`[Ingestion] Connecting to Redis via URL...`);
             this.redis = new Redis(REDIS_URL, {
                 retryStrategy: (times: number) => {
                     if (times > 20) return null;
@@ -225,13 +229,13 @@ class IngestionWorker {
 
         // Redis connection monitoring
         this.redis.on('error', (err) => {
-            console.error('[Redis] Connection error:', err.message);
+            logger.error('[Redis] Connection error:', err.message);
         });
         this.redis.on('reconnecting', () => {
-            console.log('[Redis] Attempting reconnection...');
+            logger.info('[Redis] Attempting reconnection...');
         });
         this.redis.on('connect', () => {
-            console.log('[Redis] Connected successfully');
+            logger.info('[Redis] Connected successfully');
         });
 
         // Initialize leader election
@@ -264,7 +268,7 @@ class IngestionWorker {
             if (this.isShuttingDown) return;
             this.isShuttingDown = true;
 
-            console.log(`[Ingestion] ${signal} received, shutting down gracefully...`);
+            logger.info(`[Ingestion] ${signal} received, shutting down gracefully...`);
 
             try {
                 // 1. Stop accepting new work
@@ -301,11 +305,11 @@ class IngestionWorker {
                 // 7. Close Redis connection
                 await this.redis.quit();
 
-                console.log('[Ingestion] Shutdown complete.');
+                logger.info('[Ingestion] Shutdown complete.');
                 process.exit(0);
             } catch (err: unknown) {
                 const message = err instanceof Error ? err.message : String(err);
-                console.error('[Ingestion] Shutdown error:', message);
+                logger.error('[Ingestion] Shutdown error:', message);
                 process.exit(1);
             }
         };
@@ -333,7 +337,7 @@ class IngestionWorker {
                 );
             } catch (err: unknown) {
                 const message = err instanceof Error ? err.message : String(err);
-                console.error('[Heartbeat] Failed to write:', message);
+                logger.error('[Heartbeat] Failed to write:', message);
             }
         }, 60000); // Every 60 seconds (was 30s)
     }
@@ -345,10 +349,10 @@ class IngestionWorker {
         this.isLeader = await this.leaderElection.tryBecomeLeader();
 
         if (this.isLeader) {
-            console.log('[Ingestion] 🟢 This worker is the LEADER - starting ingestion...');
+            logger.info('[Ingestion] 🟢 This worker is the LEADER - starting ingestion...');
             // Start renewal and handle leadership loss
             this.leaderElection.startRenewal(() => {
-                console.error('[Ingestion] 🔴 Lost leadership! Stopping ingestion...');
+                logger.error('[Ingestion] 🔴 Lost leadership! Stopping ingestion...');
                 this.isLeader = false;
                 this.ws?.close();
                 this.ws = null;
@@ -367,16 +371,16 @@ class IngestionWorker {
      * Enter standby mode - poll for leader failure
      */
     private enterStandbyMode(): void {
-        console.log(`[Ingestion] 🟡 Entering STANDBY mode (waiting for leader to fail)...`);
+        logger.info(`[Ingestion] 🟡 Entering STANDBY mode (waiting for leader to fail)...`);
 
         const standbyInterval = setInterval(async () => {
             const becameLeader = await this.leaderElection.tryBecomeLeader();
             if (becameLeader) {
                 clearInterval(standbyInterval);
-                console.log('[Ingestion] 🟢 Became leader! Starting ingestion...');
+                logger.info('[Ingestion] 🟢 Became leader! Starting ingestion...');
                 this.isLeader = true;
                 this.leaderElection.startRenewal(() => {
-                    console.error('[Ingestion] 🔴 Lost leadership! Stopping ingestion...');
+                    logger.error('[Ingestion] 🔴 Lost leadership! Stopping ingestion...');
                     this.isLeader = false;
                     this.ws?.close();
                     this.ws = null;
@@ -390,7 +394,7 @@ class IngestionWorker {
     }
 
     private async init() {
-        console.log('[Ingestion] 🚀 CODE VERSION: 2026-02-06-v4 (supá bowl encoding fix)');
+        logger.info('[Ingestion] 🚀 CODE VERSION: 2026-02-06-v4 (supá bowl encoding fix)');
         await this.fetchFeaturedEvents(); // Fetch curated trending events first
         await this.fetchActiveMarkets(); // Then fetch remaining markets
         await pruneResolvedMarkets(this.redis); // Prune any resolved markets immediately
@@ -403,7 +407,7 @@ class IngestionWorker {
         const MARKET_REFRESH_INTERVAL = 300000; // 5 minutes
         setInterval(async () => {
             try {
-                console.log('[Ingestion] 🔄 Periodic market refresh...');
+                logger.info('[Ingestion] 🔄 Periodic market refresh...');
                 await this.fetchFeaturedEvents();
                 await this.fetchActiveMarkets();
                 await pruneResolvedMarkets(this.redis); // Prune after every refresh
@@ -412,7 +416,7 @@ class IngestionWorker {
                     this.subscribeWS();
                 }
             } catch (err) {
-                console.error('[Ingestion] Periodic refresh failed:', err);
+                logger.error('[Ingestion] Periodic refresh failed:', err);
             }
         }, MARKET_REFRESH_INTERVAL);
 
@@ -428,7 +432,7 @@ class IngestionWorker {
                 try {
                     await checkPriceDrift(this.redis);
                 } catch (err) {
-                    console.error('[Ingestion] Price drift check failed:', err);
+                    logger.error('[Ingestion] Price drift check failed:', err);
                 }
             }, DRIFT_CHECK_INTERVAL);
         }, DRIFT_CHECK_OFFSET);
@@ -440,7 +444,7 @@ class IngestionWorker {
      */
     private async fetchFeaturedEvents() {
         try {
-            console.log("[Ingestion] Fetching High-Volume Events (Sorted by 24h Volume)...");
+            logger.info("[Ingestion] Fetching High-Volume Events (Sorted by 24h Volume)...");
 
             // Primary query: high-volume active events sorted by recent activity
             // Increased limit from 100 to 250 for broader coverage of important events
@@ -449,12 +453,12 @@ class IngestionWorker {
             const events = await response.json();
 
             if (!Array.isArray(events)) {
-                console.error("[Ingestion] Invalid response from Events API");
+                logger.error("[Ingestion] Invalid response from Events API");
                 return;
             }
 
             // Secondary query: "breaking" tagged events to catch brand-new markets
-            console.log("[Ingestion] Fetching breaking news markets...");
+            logger.info("[Ingestion] Fetching breaking news markets...");
             const breakingUrl = "https://gamma-api.polymarket.com/events?tag=breaking&active=true&closed=false&limit=30";
             const breakingRes = await fetch(breakingUrl);
             const breakingEvents = await breakingRes.json();
@@ -466,12 +470,12 @@ class IngestionWorker {
                         events.push(be);
                     }
                 }
-                console.log(`[Ingestion] Added ${(breakingEvents as PolymarketEvent[]).filter((be) => !seenSlugs.has(be.slug)).length} breaking events.`);
+                logger.info(`[Ingestion] Added ${(breakingEvents as PolymarketEvent[]).filter((be) => !seenSlugs.has(be.slug)).length} breaking events.`);
             }
 
             // Tertiary query: Force-include important events that may not be in top volume
             // This ensures events like Portugal election are always fetched
-            console.log("[Ingestion] Fetching force-include events by keyword...");
+            logger.info("[Ingestion] Fetching force-include events by keyword...");
             const existingSlugs = new Set(events.map((e: PolymarketEvent) => e.slug));
             let forceIncludedCount = 0;
 
@@ -495,7 +499,7 @@ class IngestionWorker {
                     // Silent fail for individual keyword fetches
                 }
             }
-            console.log(`[Ingestion] Force-included ${forceIncludedCount} additional events by keyword.`);
+            logger.info(`[Ingestion] Force-included ${forceIncludedCount} additional events by keyword.`);
 
             const processedEvents: ProcessedEvent[] = [];
             const allEventTokenIds: string[] = [];
@@ -657,38 +661,38 @@ class IngestionWorker {
                     });
                 } catch (e) {
                     // Log errors for debugging instead of silently skipping
-                    console.error(`[Ingestion] Error processing event ${event?.title || event?.slug || 'unknown'}:`, e);
+                    logger.error(`[Ingestion] Error processing event ${event?.title || event?.slug || 'unknown'}:`, e);
                 }
             }
 
             // Store events in Redis
             await this.redis.set("event:active_list", JSON.stringify(processedEvents), 'EX', 600);
-            console.log(`[Ingestion] Stored ${processedEvents.length} featured events (${allEventTokenIds.length} total markets).`);
+            logger.info(`[Ingestion] Stored ${processedEvents.length} featured events (${allEventTokenIds.length} total markets).`);
 
             // Add event token IDs to active polling (with memory bounds)
             const combined = [...this.activeTokenIds, ...allEventTokenIds];
             this.activeTokenIds = combined.slice(0, this.MAX_ACTIVE_TOKENS);
 
         } catch (err) {
-            console.error("[Ingestion] Failed to fetch featured events:", err);
+            logger.error("[Ingestion] Failed to fetch featured events:", err);
         }
     }
 
 
     private async fetchActiveMarkets() {
         try {
-            console.log("[Ingestion] Fetching Diverse Markets (Category-Balanced)...");
+            logger.info("[Ingestion] Fetching Diverse Markets (Category-Balanced)...");
 
             // Fetch a large pool of active markets (high number to account for spam filtering)
             // Note: Removed end_date filter to get more variety
             const url = `https://gamma-api.polymarket.com/markets?limit=1000&active=true&closed=false`;
-            console.log(`[Ingestion] Fetching pool of 1000 markets...`);
+            logger.info(`[Ingestion] Fetching pool of 1000 markets...`);
 
             const response = await fetch(url);
             const data = await response.json();
 
             if (!Array.isArray(data)) {
-                console.error("[Ingestion] Invalid response from Gamma API");
+                logger.error("[Ingestion] Invalid response from Gamma API");
                 return;
             }
 
@@ -799,12 +803,12 @@ class IngestionWorker {
             const combined = [...new Set([...this.activeTokenIds, ...binaryTokenIds])]; // Dedupe
             this.activeTokenIds = combined.slice(0, this.MAX_ACTIVE_TOKENS);
 
-            console.log(`[Ingestion] Stored ${allMarkets.length} diverse markets in Redis.`);
-            console.log(`[Ingestion] Tracking ${this.activeTokenIds.length} total tokens for order books (events + binary).`);
-            console.log(`[Ingestion] Category breakdown:`, categoryCounts);
+            logger.info(`[Ingestion] Stored ${allMarkets.length} diverse markets in Redis.`);
+            logger.info(`[Ingestion] Tracking ${this.activeTokenIds.length} total tokens for order books (events + binary).`);
+            logger.info(`[Ingestion] Category breakdown:`, categoryCounts);
 
         } catch (err) {
-            console.error("[Ingestion] Failed to fetch markets:", err);
+            logger.error("[Ingestion] Failed to fetch markets:", err);
         }
     }
 
@@ -821,11 +825,11 @@ class IngestionWorker {
             this.wsPingInterval = null;
         }
 
-        console.log(`[Ingestion] WS Connecting...`);
+        logger.info(`[Ingestion] WS Connecting...`);
         this.ws = new WebSocket(CLOB_WS_URL);
 
         this.ws.on("open", () => {
-            console.log("[Ingestion] WS Connected.");
+            logger.info("[Ingestion] WS Connected.");
             this.subscribeWS();
 
             // Start ping/pong keep-alive - prevents server from closing idle connections
@@ -849,7 +853,7 @@ class IngestionWorker {
                 await this.processMessage(parsed);
             } catch (err: unknown) {
                 const message = err instanceof Error ? err.message : String(err);
-                console.error("[WS] Message processing error:", message);
+                logger.error("[WS] Message processing error:", message);
                 // Don't re-throw - keep connection alive
             }
         });
@@ -861,7 +865,7 @@ class IngestionWorker {
                 this.wsPingInterval = null;
             }
 
-            console.log("[Ingestion] WS Closed. Reconnecting...");
+            logger.info("[Ingestion] WS Closed. Reconnecting...");
             // Only reconnect if not shutting down
             if (!this.isShuttingDown) {
                 setTimeout(() => this.connectWS(), this.reconnectInterval);
@@ -870,7 +874,7 @@ class IngestionWorker {
 
         this.ws.on("error", (err) => {
             // Error handler MUST exist to prevent Node crash on WS errors
-            console.error("[WS] Connection error:", err.message);
+            logger.error("[WS] Connection error:", err.message);
             // Close will be triggered automatically, which will trigger reconnect
         });
     }
@@ -940,7 +944,7 @@ class IngestionWorker {
             // Clear buffer after successful flush
             this.priceBuffer.clear();
         } catch (err) {
-            console.error('[Ingestion] Flush error:', err);
+            logger.error('[Ingestion] Flush error:', err);
         }
     }
 
@@ -949,7 +953,7 @@ class IngestionWorker {
         // Poll every 5 MINUTES - order books are for slippage estimation, not real-time
         // This reduces Redis calls from 1,272/min to ~7/5min = 84/hour = 2,016/day
         const BOOK_POLL_INTERVAL = 300000; // 5 minutes
-        console.log(`[Ingestion] Starting Order Book Poller (${BOOK_POLL_INTERVAL / 1000}s interval)...`);
+        logger.info(`[Ingestion] Starting Order Book Poller (${BOOK_POLL_INTERVAL / 1000}s interval)...`);
 
         // Initial fetch
         this.fetchAllOrderBooks();
@@ -986,9 +990,9 @@ class IngestionWorker {
         if (Object.keys(books).length > 0) {
             try {
                 await this.redis.set('market:orderbooks', JSON.stringify(books), 'EX', 600);
-                console.log(`[Ingestion] Updated ${Object.keys(books).length} order books (single key).`);
+                logger.info(`[Ingestion] Updated ${Object.keys(books).length} order books (single key).`);
             } catch (err) {
-                console.error("[Ingestion] Book write error:", err);
+                logger.error("[Ingestion] Book write error:", err);
             }
         }
     }

@@ -3,6 +3,8 @@ import { db } from "@/db";
 import { challenges, users, affiliates, affiliateReferrals, discountRedemptions, discountCodes } from "@/db/schema";
 import { requireAdmin } from "@/lib/admin-auth";
 import { getTierPrice } from "@/lib/admin-utils";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("Metrics");
 
 /**
  * GET /api/admin/growth/metrics
@@ -140,7 +142,7 @@ export async function GET() {
             discountLeaderboard,
         });
     } catch (error) {
-        console.error("[Growth Metrics API Error]:", error);
+        logger.error("[Growth Metrics API Error]:", error);
         return NextResponse.json(
             { error: "Failed to fetch growth metrics" },
             { status: 500 }

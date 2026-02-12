@@ -4,6 +4,8 @@ import { eq, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 import { requireAdmin } from "@/lib/admin-auth";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("Analytics");
 
 export async function GET() {
     const { isAuthorized, response } = await requireAdmin();
@@ -65,7 +67,7 @@ export async function GET() {
         });
 
     } catch (error) {
-        console.error("Analytics Error:", error);
+        logger.error("Analytics Error:", error);
         return NextResponse.json({ error: "Failed to fetch analytics" }, { status: 500 });
     }
 }

@@ -3,6 +3,8 @@ import { db } from "@/db";
 import { affiliates, users } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { requireAdmin } from "@/lib/admin-auth";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("Approve");
 
 /**
  * PATCH /api/admin/affiliates/[id]/approve
@@ -71,7 +73,7 @@ export async function PATCH(
         });
 
     } catch (error: unknown) {
-        console.error("[Admin Approve Affiliate Error]:", error);
+        logger.error("[Admin Approve Affiliate Error]:", error);
         return NextResponse.json(
             { error: "Failed to approve affiliate" },
             { status: 500 }

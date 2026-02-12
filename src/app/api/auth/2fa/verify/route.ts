@@ -6,6 +6,8 @@ import { user2FA, users } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import * as crypto from "crypto";
 import * as bcrypt from "bcrypt";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("Verify");
 
 function generateBackupCodes(count: number = 8): string[] {
     const codes = [];
@@ -81,7 +83,7 @@ export async function POST(request: NextRequest) {
             backupCodes, // Return plain text codes (user must save them)
         });
     } catch (error) {
-        console.error("2FA verification error:", error);
+        logger.error("2FA verification error:", error);
         return NextResponse.json({ error: "Failed to verify code" }, { status: 500 });
     }
 }

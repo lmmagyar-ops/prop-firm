@@ -10,7 +10,24 @@
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { ResolutionDetector } from "@/lib/resolution-detector";
+import { db } from "@/db";
+import { PolymarketOracle } from "@/lib/polymarket-oracle";
+import { MarketService } from "@/lib/market";
+
+// Mock logger before importing resolution-detector
+const { mockError, mockInfo } = vi.hoisted(() => ({
+    mockError: vi.fn(),
+    mockInfo: vi.fn(),
+}));
+vi.mock("@/lib/logger", () => ({
+    createLogger: () => ({
+        info: mockInfo,
+        warn: vi.fn(),
+        error: mockError,
+        debug: vi.fn(),
+        withContext: vi.fn(),
+    }),
+}));
 
 // ── Mock dependencies ───────────────────────────────────────────
 
@@ -37,8 +54,7 @@ vi.mock("@/lib/funded-rules", () => ({
     FUNDED_RULES: {},
 }));
 
-import { db } from "@/db";
-import { PolymarketOracle } from "@/lib/polymarket-oracle";
+import { ResolutionDetector } from "@/lib/resolution-detector";
 
 // =====================================================================
 // isResolutionEvent — Oracle Primary
@@ -107,15 +123,13 @@ describe("ResolutionDetector.isResolutionEvent", () => {
 
     it("returns safe default on error (not resolved)", async () => {
         vi.mocked(PolymarketOracle.getResolutionStatus).mockRejectedValue(
-            new Error("Network unreachable")
+            new Error("Network error")
         );
-
-        const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => { });
         const result = await ResolutionDetector.isResolutionEvent("mkt-error");
 
         expect(result.isResolution).toBe(false);
         expect(result.source).toBe("heuristic");
-        expect(consoleSpy).toHaveBeenCalled();
+        expect(mockError).toHaveBeenCalled();
     });
 });
 
@@ -195,13 +209,11 @@ describe("ResolutionDetector.getExcludedPnL", () => {
         vi.mocked(db.query.positions.findMany).mockRejectedValue(
             new Error("DB connection lost")
         );
-
-        const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => { });
         const result = await ResolutionDetector.getExcludedPnL("ch-1");
 
         expect(result.totalExcluded).toBe(0);
         expect(result.excludedPositions).toHaveLength(0);
-        expect(consoleSpy).toHaveBeenCalled();
+        expect(mockError).toHaveBeenCalled();
     });
 });
 

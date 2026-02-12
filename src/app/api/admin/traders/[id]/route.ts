@@ -4,6 +4,8 @@ import { eq, desc } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 import { requireAdmin } from "@/lib/admin-auth";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("[id]");
 
 export async function GET(
     req: Request,
@@ -110,7 +112,7 @@ export async function GET(
         });
 
     } catch (error) {
-        console.error("Trader Detail Error:", error);
+        logger.error("Trader Detail Error:", error);
         return NextResponse.json({ error: "Failed to fetch trader details" }, { status: 500 });
     }
 }

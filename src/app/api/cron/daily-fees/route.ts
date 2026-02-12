@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { runFeeSweep } from "@/workers/fees";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("DailyFees");
 
 /**
  * Daily Fee Cron - Triggered at 00:00 UTC
@@ -27,7 +29,7 @@ export async function GET(request: Request) {
     }
 
     try {
-        console.log("🕛 [Cron] Daily fee sweep triggered at", new Date().toISOString());
+        logger.info("🕛 [Cron] Daily fee sweep triggered at", new Date().toISOString());
 
         await runFeeSweep();
 
@@ -38,7 +40,7 @@ export async function GET(request: Request) {
         });
 
     } catch (error) {
-        console.error("🕛 [Cron] Daily fee sweep failed:", error);
+        logger.error("🕛 [Cron] Daily fee sweep failed:", error);
         return NextResponse.json({
             success: false,
             error: error instanceof Error ? error.message : "Unknown error"

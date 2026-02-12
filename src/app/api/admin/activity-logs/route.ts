@@ -3,6 +3,8 @@ import { auth } from "@/auth";
 import { db } from "@/db";
 import { activityLogs, users } from "@/db/schema";
 import { desc, eq, sql, and, gte } from "drizzle-orm";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("ActivityLogs");
 
 export const dynamic = "force-dynamic";
 
@@ -89,7 +91,7 @@ export async function GET(request: Request) {
             since: since.toISOString(),
         });
     } catch (error) {
-        console.error("[Activity Logs API]", error);
+        logger.error("[Activity Logs API]", error);
         return NextResponse.json({ error: "Failed to fetch logs" }, { status: 500 });
     }
 }

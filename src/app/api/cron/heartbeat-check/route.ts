@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getHeartbeat } from "@/lib/worker-client";
 import { alerts } from "@/lib/alerts";
 import { OutageManager } from "@/lib/outage-manager";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("HeartbeatCheck");
 
 /**
  * Heartbeat Check Cron
@@ -69,7 +71,7 @@ export async function GET(request: NextRequest) {
         });
 
     } catch (error) {
-        console.error("[HeartbeatCheck] ❌ Error:", error);
+        logger.error("[HeartbeatCheck] ❌ Error:", error);
         return NextResponse.json(
             { status: "error", error: String(error) },
             { status: 500 }

@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { challenges, trades, positions } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("BalanceAudit");
 
 /**
  * BALANCE INTEGRITY CRON JOB
@@ -36,7 +38,7 @@ export async function GET(req: Request) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    console.log(`[BALANCE_AUDIT] Starting daily balance integrity check...`);
+    logger.info(`[BALANCE_AUDIT] Starting daily balance integrity check...`);
 
     try {
         // Get all active challenges
@@ -44,7 +46,7 @@ export async function GET(req: Request) {
             where: eq(challenges.status, "active")
         });
 
-        console.log(`[BALANCE_AUDIT] Auditing ${activeChallenges.length} active challenges`);
+        logger.info(`[BALANCE_AUDIT] Auditing ${activeChallenges.length} active challenges`);
 
         const auditResults: BalanceAuditResult[] = [];
         const alerts: BalanceAuditResult[] = [];
@@ -131,9 +133,9 @@ export async function GET(req: Request) {
 
             if (isSuspicious) {
                 alerts.push(result);
-                console.error(`[BALANCE_ALERT] 🚨 ${suspiciousReason}`);
-                console.error(`[BALANCE_ALERT] Challenge: ${challenge.id}`);
-                console.error(`[BALANCE_ALERT] Stored: $${storedBalance}, Calculated: $${calculatedBalance}, Discrepancy: $${discrepancy}`);
+                logger.error(`[BALANCE_ALERT] 🚨 ${suspiciousReason}`);
+                logger.error(`[BALANCE_ALERT] Challenge: ${challenge.id}`);
+                logger.error(`[BALANCE_ALERT] Stored: $${storedBalance}, Calculated: $${calculatedBalance}, Discrepancy: $${discrepancy}`);
             }
         }
 
@@ -144,8 +146,8 @@ export async function GET(req: Request) {
             status: alerts.length === 0 ? "HEALTHY" : "ALERTS_FOUND"
         };
 
-        console.log(`[BALANCE_AUDIT] Complete. ${alerts.length} alerts found.`);
-        console.log(`[BALANCE_AUDIT] ${JSON.stringify(summary)}`);
+        logger.info(`[BALANCE_AUDIT] Complete. ${alerts.length} alerts found.`);
+        logger.info(`[BALANCE_AUDIT] ${JSON.stringify(summary)}`);
 
         return NextResponse.json({
             summary,
@@ -154,7 +156,7 @@ export async function GET(req: Request) {
         });
 
     } catch (error) {
-        console.error("[BALANCE_AUDIT] Error:", error);
+        logger.error("[BALANCE_AUDIT] Error:", error);
         return NextResponse.json({ error: "Audit failed" }, { status: 500 });
     }
 }

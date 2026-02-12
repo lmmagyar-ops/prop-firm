@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { challenges } from "@/db/schema";
-import { eq, and, gte } from "drizzle-orm";
+import { challenges, discountCodes, discountRedemptions } from "@/db/schema";
+import { eq, and, gte, sql } from "drizzle-orm";
 import crypto from "crypto";
 import { buildRulesConfig, getTierConfig } from "@/config/tiers";
+import { createLogger } from "@/lib/logger";
+
+const logger = createLogger("ConfirmoWebhook");
 
 /**
  * Verify Confirmo webhook signature using HMAC-SHA256
@@ -37,24 +40,27 @@ export async function POST(req: NextRequest) {
         const callbackPassword = process.env.CONFIRMO_CALLBACK_PASSWORD;
         if (callbackPassword) {
             if (!verifySignature(bodyText, signature, callbackPassword)) {
-                console.error("[Confirmo] Invalid webhook signature");
+                logger.error("[Confirmo] Invalid webhook signature");
                 return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
             }
         } else if (process.env.NODE_ENV === "production") {
-            console.error("[Confirmo] CONFIRMO_CALLBACK_PASSWORD not configured!");
+            logger.error("[Confirmo] CONFIRMO_CALLBACK_PASSWORD not configured!");
             return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
         }
 
         const payload = JSON.parse(bodyText);
-        console.log("[Confirmo Webhook] Received:", payload.status, payload.reference);
+        logger.info("[Confirmo Webhook] Received", { status: payload.status, reference: payload.reference });
 
         // Status: "paid", "confirmed", "complete"
         if (payload.status === "paid" || payload.status === "confirmed") {
-            // Parse reference: userId:tier:platform (or fallback for legacy: just userId)
+            // Parse reference: userId:tier:platform[:discountCode:discountAmount:originalPrice]
             const refParts = payload.reference.split(":");
             const userId = refParts[0];
             const tier = refParts[1] || "10k"; // Default to 10k if not specified
             const platform = refParts[2] || "polymarket";
+            const discountCode = refParts[3] || null;
+            const discountAmount = refParts[4] ? parseFloat(refParts[4]) : 0;
+            const originalPrice = refParts[5] ? parseFloat(refParts[5]) : 0;
 
             // Get tier-specific config from canonical source
             const tierConfig = getTierConfig(tier);
@@ -69,10 +75,17 @@ export async function POST(req: NextRequest) {
             const expectedPrice = tierPrices[tier];
             const paidAmount = parseFloat(payload.amount || "0");
 
-            if (expectedPrice && paidAmount < expectedPrice * 0.95) { // 5% tolerance for fees
-                console.error(`[Confirmo] Payment mismatch! Expected $${expectedPrice}, got $${paidAmount} for tier ${tier}`);
+            // Account for discount: if a discount was applied, expect the reduced price
+            const effectiveExpectedPrice = discountCode && discountAmount > 0
+                ? (originalPrice || expectedPrice) - discountAmount
+                : expectedPrice;
+
+            if (effectiveExpectedPrice && paidAmount < effectiveExpectedPrice * 0.95) { // 5% tolerance for fees
+                logger.error("Payment mismatch", null, {
+                    expected: effectiveExpectedPrice, paid: paidAmount, tier, discountCode,
+                });
                 return NextResponse.json(
-                    { error: `Payment amount mismatch: expected $${expectedPrice}, received $${paidAmount}` },
+                    { error: `Payment amount mismatch: expected $${effectiveExpectedPrice}, received $${paidAmount}` },
                     { status: 400 }
                 );
             }
@@ -89,7 +102,7 @@ export async function POST(req: NextRequest) {
             });
 
             if (existingChallenge) {
-                console.log(`[Confirmo] ⚠️ Duplicate webhook detected — challenge ${existingChallenge.id.slice(0, 8)} already exists for user ${userId.slice(0, 8)} (created ${existingChallenge.startedAt?.toISOString()}). Skipping.`);
+                logger.info(`[Confirmo] ⚠️ Duplicate webhook detected — challenge ${existingChallenge.id.slice(0, 8)} already exists for user ${userId.slice(0, 8)} (created ${existingChallenge.startedAt?.toISOString()}). Skipping.`);
                 return NextResponse.json({ received: true, deduplicated: true });
             }
 
@@ -106,22 +119,57 @@ export async function POST(req: NextRequest) {
                 platform,
             });
 
+            // DISCOUNT REDEMPTION: Redeem after payment confirmation (not before)
+            // This prevents discount codes from being consumed when payment is abandoned.
+            if (discountCode) {
+                try {
+                    // Find the discount code
+                    const [discount] = await db
+                        .select()
+                        .from(discountCodes)
+                        .where(eq(discountCodes.code, discountCode));
+
+                    if (discount) {
+                        // Record redemption
+                        await db.insert(discountRedemptions).values({
+                            discountCodeId: discount.id,
+                            userId,
+                            originalPrice: (originalPrice || expectedPrice).toString(),
+                            discountAmount: discountAmount.toString(),
+                            finalPrice: ((originalPrice || expectedPrice) - discountAmount).toString(),
+                        });
+
+                        // Increment usage counter
+                        await db.update(discountCodes)
+                            .set({ currentUses: sql`${discountCodes.currentUses} + 1` })
+                            .where(eq(discountCodes.id, discount.id));
+
+                        logger.info("Discount redeemed post-payment", {
+                            code: discountCode, userId: userId.slice(0, 8), discountAmount,
+                        });
+                    } else {
+                        logger.warn("Discount code not found during redemption", { code: discountCode });
+                    }
+                } catch (discountError) {
+                    // Non-blocking: log but don't fail the webhook
+                    logger.error("Discount redemption failed", discountError, { code: discountCode });
+                }
+            }
+
             // FORENSIC LOGGING: Track webhook-provisioned challenge
-            console.log(`[BALANCE_FORENSIC] ${JSON.stringify({
-                timestamp: new Date().toISOString(),
-                operation: 'WEBHOOK_PROVISION',
+            logger.info("Challenge provisioned", {
                 userId: userId.slice(0, 8),
                 tier,
                 startingBalance: `$${startingBalance}`,
                 platform,
                 paidAmount: `$${paidAmount}`,
-                source: 'webhooks/confirmo'
-            })}`);
+                discountCode: discountCode || "none",
+            });
         }
 
         return NextResponse.json({ received: true });
     } catch (err) {
-        console.error("Webhook Error:", err);
+        logger.error("Webhook Error:", err);
         return NextResponse.json({ error: "Webhook Handler Failed" }, { status: 500 });
     }
 }

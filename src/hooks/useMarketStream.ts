@@ -48,7 +48,6 @@ export function useMarketStream(options: UseMarketStreamOptions = {}) {
             eventSourceRef.current = es;
 
             es.onopen = () => {
-                console.log('[useMarketStream] Connected');
                 setConnected(true);
                 setError(null);
                 retryCount.current = 0;

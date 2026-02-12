@@ -17,6 +17,8 @@ import { positions, trades } from "@/db/schema";
 import { eq, and, gte } from "drizzle-orm";
 import { PolymarketOracle } from "./polymarket-oracle";
 import { RESOLUTION_CONFIG } from "./funded-rules";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("ResolutionDetector");
 
 export interface ResolutionEvent {
     marketId: string;
@@ -64,11 +66,11 @@ export class ResolutionDetector {
             }
 
             // Fallback: Use legacy price-move heuristic
-            console.log(`[ResolutionDetector] Oracle unavailable for ${marketId.slice(0, 12)}, using heuristic`);
+            logger.info(`[ResolutionDetector] Oracle unavailable for ${marketId.slice(0, 12)}, using heuristic`);
             return this.legacyPriceHeuristic(marketId);
 
         } catch (error) {
-            console.error(`[ResolutionDetector] Error checking market ${marketId}:`, error);
+            logger.error(`[ResolutionDetector] Error checking market ${marketId}:`, error);
             return { marketId, priceChange: 0, isResolution: false, detectedAt: new Date(), source: 'heuristic' };
         }
     }
@@ -134,9 +136,9 @@ export class ResolutionDetector {
                 }
             }
 
-            console.log(`[ResolutionDetector] Challenge ${challengeId.slice(0, 8)}: Excluded $${totalExcluded.toFixed(2)} from ${excludedPositions.length} positions`);
+            logger.info(`[ResolutionDetector] Challenge ${challengeId.slice(0, 8)}: Excluded $${totalExcluded.toFixed(2)} from ${excludedPositions.length} positions`);
         } catch (error) {
-            console.error(`[ResolutionDetector] Error calculating excluded P&L:`, error);
+            logger.error(`[ResolutionDetector] Error calculating excluded P&L:`, error);
         }
 
         return { totalExcluded, excludedPositions };
@@ -166,7 +168,7 @@ export class ResolutionDetector {
                 }
             }
         } catch (error) {
-            console.error(`[ResolutionDetector] Error getting resolution events:`, error);
+            logger.error(`[ResolutionDetector] Error getting resolution events:`, error);
         }
 
         return events;

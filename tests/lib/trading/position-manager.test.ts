@@ -157,7 +157,7 @@ describe("PositionManager.addToPosition", () => {
         expect(parseFloat(setCall.sizeAmount)).toBeCloseTo(155, 2);
     });
 
-    it("updates currentPrice to latest trade price", async () => {
+    it("does NOT update currentPrice during add-to-position (price refresh is separate)", async () => {
         const existingPosition = {
             id: "pos-001",
             shares: "100",
@@ -171,7 +171,8 @@ describe("PositionManager.addToPosition", () => {
         await PositionManager.addToPosition(tx, "pos-001", 50, 0.65, 32.50);
 
         const setCall = tx.update.mock.results[0].value.set.mock.calls[0][0];
-        expect(setCall.currentPrice).toBe("0.65");
+        // currentPrice is NOT set during add-to-position
+        expect(setCall.currentPrice).toBeUndefined();
     });
 
     it("throws when position not found", async () => {

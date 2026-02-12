@@ -1,6 +1,8 @@
 import { auth } from "@/auth";
 import { ChallengeManager } from "@/lib/challenges";
 import { NextResponse } from "next/server";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("Mock");
 
 export async function POST() {
     const session = await auth();
@@ -21,7 +23,7 @@ export async function POST() {
 
         return NextResponse.json({ success: true, challengeId: challenge.id });
     } catch (error) {
-        console.error("Mock Payment Error:", error);
+        logger.error("Mock Payment Error:", error);
         // Even if db fails (due to docker), return success for UI verification if needed
         // But ideally we want DB to works.
         return NextResponse.json({ success: true, mock: true });

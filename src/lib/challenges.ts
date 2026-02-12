@@ -2,6 +2,8 @@ import { db } from "@/db";
 import { challenges, businessRules } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { addDays } from "date-fns";
+import { createLogger } from "@/lib/logger";
+const logger = createLogger("Challenges");
 
 // Default config for the MVP $10k Challenge
 const DEFAULT_RULES = {
@@ -61,7 +63,7 @@ export class ChallengeManager {
             .returning();
 
         // FORENSIC LOGGING: Track challenge creation balance
-        console.log(`[BALANCE_FORENSIC] ${JSON.stringify({
+        logger.info(`[BALANCE_FORENSIC] ${JSON.stringify({
             timestamp: new Date().toISOString(),
             operation: 'CHALLENGE_CREATED',
             challengeId: newChallenge.id.slice(0, 8),
@@ -90,6 +92,6 @@ export class ChallengeManager {
             .set({ status: "failed" })
             .where(eq(challenges.id, challengeId));
 
-        console.log(`[ChallengeManager] Challenge ${challengeId} FAILED: ${reason}`);
+        logger.info(`[ChallengeManager] Challenge ${challengeId} FAILED: ${reason}`);
     }
 }

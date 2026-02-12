@@ -1,6 +1,8 @@
 import { db } from "@/db";
 import { challenges } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { createLogger } from "../lib/logger";
+const logger = createLogger("DailyReset");
 
 /**
  * DailyResetWorker: The Risk Snapshotter.
@@ -15,7 +17,7 @@ async function runDailyReset() {
         return; // Not midnight UTC, skip
     }
 
-    console.log("[DailyReset] 🌅 Starting Daily Snapshot...");
+    logger.info("[DailyReset] 🌅 Starting Daily Snapshot...");
 
     // Get today's date in UTC (YYYY-MM-DD)
     const todayUTC = new Date().toISOString().split('T')[0];
@@ -23,7 +25,7 @@ async function runDailyReset() {
     // 1. Fetch all ACTIVE challenges
     const activeChallenges = await db.select().from(challenges).where(eq(challenges.status, "active"));
 
-    console.log(`[DailyReset] Checking ${activeChallenges.length} active accounts.`);
+    logger.info(`[DailyReset] Checking ${activeChallenges.length} active accounts.`);
 
     let resetCount = 0;
     let skippedCount = 0;
@@ -47,11 +49,11 @@ async function runDailyReset() {
         resetCount++;
     }
 
-    console.log(`[DailyReset] ✅ Snapshots complete. Reset: ${resetCount}, Skipped (already done): ${skippedCount}`);
+    logger.info(`[DailyReset] ✅ Snapshots complete. Reset: ${resetCount}, Skipped (already done): ${skippedCount}`);
 }
 
 // Daemon Check
-console.log("[DailyReset] Daemon started.");
+logger.info("[DailyReset] Daemon started.");
 
 // In PROD: Use node-cron or simple setInterval check for hour === 0
 // DEMO MODE: specific interval
