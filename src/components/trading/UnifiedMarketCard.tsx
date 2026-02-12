@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { TrendingUp, Users, Bookmark } from "lucide-react";
 // Note: Design tokens available for future refactoring: import { colors, components } from "@/lib/design-tokens";
 import { getCleanOutcomeName as extractOutcomeLabel } from "@/lib/market-utils";
+import { formatPrice } from "@/lib/formatters";
 import type { EventMetadata, SubMarket } from "@/app/actions/market";
 
 // ============================================================================
@@ -47,7 +48,6 @@ interface OutcomeRowProps {
 }
 
 function OutcomeRow({ market, eventTitle, onTrade }: OutcomeRowProps) {
-    const percentage = Math.round(market.price * 100);
     const label = extractOutcomeLabel(market.question, eventTitle);
 
     const getPriceColor = (price: number) => {
@@ -64,7 +64,7 @@ function OutcomeRow({ market, eventTitle, onTrade }: OutcomeRowProps) {
                     {label}
                 </span>
                 <span className={cn("text-[13px] font-bold tabular-nums shrink-0", getPriceColor(market.price))}>
-                    {percentage}%
+                    {formatPrice(market.price)}
                 </span>
             </div>
 
@@ -105,7 +105,6 @@ function BinaryLayout({ event, onTrade }: { event: EventMetadata; onTrade: Unifi
 
     const yesPrice = market.price < 0.01 ? 0.5 : market.price;
     const noPrice = 1 - yesPrice;
-    const percentage = Math.round(yesPrice * 100);
     const yesCents = (yesPrice * 100).toFixed(1);
     const noCents = (noPrice * 100).toFixed(1);
 
@@ -121,9 +120,9 @@ function BinaryLayout({ event, onTrade }: { event: EventMetadata; onTrade: Unifi
                 </h3>
                 <div className={cn(
                     "shrink-0 px-2.5 py-1.5 rounded-lg text-xs font-bold text-center",
-                    percentage >= 50 ? "bg-emerald-500/20 text-emerald-400" : "bg-rose-500/20 text-rose-400"
+                    yesPrice >= 0.5 ? "bg-emerald-500/20 text-emerald-400" : "bg-rose-500/20 text-rose-400"
                 )}>
-                    {percentage}%
+                    {formatPrice(yesPrice)}
                     <div className="text-[10px] opacity-70">chance</div>
                 </div>
             </div>

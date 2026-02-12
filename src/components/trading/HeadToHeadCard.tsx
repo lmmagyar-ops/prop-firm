@@ -3,6 +3,7 @@
 import { memo } from "react";
 import { TrendingUp, Users } from "lucide-react";
 import Image from "next/image";
+import { formatPrice } from "@/lib/formatters";
 import type { EventMetadata } from "@/app/actions/market";
 
 interface HeadToHeadCardProps {
@@ -35,8 +36,8 @@ export const HeadToHeadCard = memo(function HeadToHeadCard({ event, onTrade }: H
     const team1Name = extractTeamName(team1.question);
     const team2Name = extractTeamName(team2.question);
 
-    const team1Pct = Math.round(team1.price * 100);
-    const team2Pct = Math.round(team2.price * 100);
+    const team1Pct = formatPrice(team1.price);
+    const team2Pct = formatPrice(team2.price);
 
     const formatVolume = (volume: number) => {
         if (volume >= 1_000_000) return `$${(volume / 1_000_000).toFixed(1)}m`;
@@ -84,7 +85,7 @@ export const HeadToHeadCard = memo(function HeadToHeadCard({ event, onTrade }: H
                 <div className="flex items-center justify-between mb-4">
                     <div className="text-center flex-1">
                         <div className="text-2xl font-bold text-white tabular-nums">
-                            {team1Pct}%
+                            {team1Pct}
                         </div>
                         <div className="text-xs text-zinc-400 mt-1 truncate px-1">
                             {team1Name}
@@ -97,7 +98,7 @@ export const HeadToHeadCard = memo(function HeadToHeadCard({ event, onTrade }: H
 
                     <div className="text-center flex-1">
                         <div className="text-2xl font-bold text-white tabular-nums">
-                            {team2Pct}%
+                            {team2Pct}
                         </div>
                         <div className="text-xs text-zinc-400 mt-1 truncate px-1">
                             {team2Name}
@@ -127,7 +128,7 @@ export const HeadToHeadCard = memo(function HeadToHeadCard({ event, onTrade }: H
                         onClick={() => onTrade(event.markets[2].id, 'yes')}
                         className="w-full mt-2 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-400 text-xs font-medium transition-colors"
                     >
-                        Draw {Math.round(event.markets[2].price * 100)}%
+                        Draw {formatPrice(event.markets[2].price)}
                     </button>
                 )}
             </div>

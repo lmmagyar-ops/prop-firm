@@ -2,6 +2,7 @@
 
 import { memo } from "react";
 import { cn } from "@/lib/utils";
+import { formatPrice } from "@/lib/formatters";
 import Image from "next/image";
 import type { EventMetadata } from "@/app/actions/market";
 
@@ -22,7 +23,7 @@ export const BinaryEventCard = memo(function BinaryEventCard({ event, onTrade }:
     const rawYesPrice = market.price;
     const yesPrice = rawYesPrice < 0.01 ? 0.5 : rawYesPrice; // Fallback to 50% for display
     const noPrice = 1 - yesPrice;
-    const percentage = Math.round(yesPrice * 100);
+    const percentage = formatPrice(yesPrice);
     const yesCents = (yesPrice * 100).toFixed(1);
     const noCents = (noPrice * 100).toFixed(1);
 
@@ -55,11 +56,11 @@ export const BinaryEventCard = memo(function BinaryEventCard({ event, onTrade }:
                 {/* Percentage Badge */}
                 <div className={cn(
                     "shrink-0 px-2.5 py-1.5 rounded-lg text-xs font-bold text-center",
-                    percentage >= 50
+                    yesPrice >= 0.5
                         ? "bg-emerald-500/20 text-emerald-400"
                         : "bg-rose-500/20 text-rose-400"
                 )}>
-                    {percentage}%
+                    {percentage}
                     <div className="text-[10px] opacity-70">chance</div>
                 </div>
             </div>

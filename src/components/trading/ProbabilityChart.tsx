@@ -144,7 +144,7 @@ export function ProbabilityChart({ tokenId, currentPrice, outcome }: Probability
                 },
             },
             localization: {
-                priceFormatter: (price: number) => `${Math.round(price * 100)}%`,
+                priceFormatter: (price: number) => `${(price * 100).toFixed(1)}%`,
             },
             crosshair: {
                 vertLine: {

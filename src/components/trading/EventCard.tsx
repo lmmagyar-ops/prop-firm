@@ -112,7 +112,7 @@ interface OutcomeRowProps {
 }
 
 function OutcomeRow({ market, label, onSelect }: OutcomeRowProps) {
-    const percentage = Math.round(market.price * 100);
+    const percentage = formatPrice(market.price);
 
     // Color based on probability
     const getColor = (price: number) => {
@@ -132,7 +132,7 @@ function OutcomeRow({ market, label, onSelect }: OutcomeRowProps) {
             </span>
             <div className="flex items-center gap-3">
                 <span className={cn("text-sm font-bold tabular-nums", getColor(market.price))}>
-                    {percentage}%
+                    {percentage}
                 </span>
                 <div className="flex gap-1">
                     <span className="px-2 py-1 text-xs font-medium rounded bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30">

@@ -4,6 +4,7 @@ import { memo } from "react";
 import { cn } from "@/lib/utils";
 import { TrendingUp, Users } from "lucide-react";
 import Image from "next/image";
+import { formatPrice } from "@/lib/formatters";
 import type { EventMetadata, SubMarket } from "@/app/actions/market";
 
 interface MultiRunnerCardProps {
@@ -137,7 +138,7 @@ interface OutcomeRowProps {
 }
 
 const OutcomeRow = memo(function OutcomeRow({ market, label, onTrade }: OutcomeRowProps) {
-    const percentage = Math.round(market.price * 100);
+    const percentage = formatPrice(market.price);
 
     // Color based on probability
     const getColor = (price: number) => {
@@ -155,7 +156,7 @@ const OutcomeRow = memo(function OutcomeRow({ market, label, onTrade }: OutcomeR
                     {label}
                 </span>
                 <span className={cn("text-[13px] font-bold tabular-nums shrink-0 opacity-80", getColor(market.price))}>
-                    {percentage}%
+                    {percentage}
                 </span>
             </div>
 

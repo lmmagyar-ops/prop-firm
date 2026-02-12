@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, Component, type ReactNode } from "react";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { X, TrendingUp, Calendar, Loader2 } from "lucide-react";
+import { formatPrice } from "@/lib/formatters";
 import Image from "next/image";
 import dynamic from "next/dynamic";
 import { cn } from "@/lib/utils";
@@ -171,7 +172,7 @@ export function EventDetailModal({ event, open, onClose, onTrade, platform = "po
                                 </span>
                                 <span className="flex items-center gap-1.5">
                                     <Calendar className="w-3.5 h-3.5" />
-                                    {new Date(event.openTime || Date.now()).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                    {new Date(event.endDate || event.openTime || Date.now()).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                                 </span>
                                 {isKalshi && (
                                     <>
@@ -215,7 +216,7 @@ export function EventDetailModal({ event, open, onClose, onTrade, platform = "po
                                 "text-3xl font-bold tabular-nums",
                                 event.markets[0].price >= 0.5 ? "text-emerald-400" : "text-rose-400"
                             )}>
-                                {Math.round(event.markets[0].price * 100)}% chance
+                                {formatPrice(event.markets[0].price)} chance
                             </span>
                             <span className={cn(
                                 "text-sm font-medium",
@@ -391,7 +392,7 @@ interface OutcomeRowProps {
 }
 
 function OutcomeRow({ market, eventTitle, isSelected, onSelect, onTrade, isKalshi }: OutcomeRowProps) {
-    const percentage = Math.round(market.price * 100);
+    const percentage = formatPrice(market.price);
     const yesCents = (market.price * 100).toFixed(1);
     const noCents = ((1 - market.price) * 100).toFixed(1);
 
@@ -446,20 +447,20 @@ function OutcomeRow({ market, eventTitle, isSelected, onSelect, onTrade, isKalsh
             < div className="w-20 text-right mr-6 flex flex-col items-end justify-center" >
                 <span className={cn(
                     "text-lg font-bold tabular-nums leading-none",
-                    percentage >= 50
+                    market.price >= 0.5
                         ? (isKalshi ? "text-[#00C896]" : "text-emerald-400")
                         : (isKalshi ? "text-slate-400" : "text-zinc-400")
                 )}>
-                    {percentage}%
+                    {percentage}
                 </span>
                 {/* Change indicator - deterministic based on price */}
                 {
                     isKalshi && (
                         <span className={cn(
                             "text-[10px] font-medium mt-1 flex items-center tabular-nums",
-                            percentage >= 50 ? "text-emerald-500" : "text-rose-500"
+                            market.price >= 0.5 ? "text-emerald-500" : "text-rose-500"
                         )}>
-                            {percentage >= 50 ? '▲' : '▼'} {Math.round(percentage * 0.03)}%
+                            {market.price >= 0.5 ? '▲' : '▼'} {Math.round(market.price * 100 * 0.03)}%
                         </span>
                     )
                 }

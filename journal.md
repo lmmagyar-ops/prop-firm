@@ -4,6 +4,25 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ---
 
+## Feb 12, 2026 — Price Formatting Refactor + Event Date Fix
+
+**Problem:** Mat reported (1) share prices still showing whole numbers on some card types, (2) event dates showing today's date instead of resolution date.
+
+**Root Cause:**
+1. Round 1 fixed `formatPrice()` and buy/sell buttons, but missed the `percentage` display variable — a separate `Math.round(price * 100)` used on card faces across 7 components.
+2. `EventDetailModal` line 174 used `event.openTime || Date.now()` — Polymarket events rarely have `openTime`, so it defaulted to today.
+
+**Fix:**
+- Refactored 17 inline `Math.round/floor(price * 100)` spots across 8 files to use `formatPrice()` from `src/lib/formatters.ts`
+- Fixed event date to use `event.endDate || event.openTime || Date.now()` (endDate is the resolution date, always populated from API)
+- Added "Price Display Convention" to CLAUDE.md — bans inline price formatting, points to `formatPrice()` as single source of truth
+
+**Files modified:** `UnifiedMarketCard.tsx`, `EventDetailModal.tsx`, `BinaryEventCard.tsx`, `HeadToHeadCard.tsx`, `MultiRunnerCard.tsx`, `EventCard.tsx`, `ProbabilityChart.tsx`, `CLAUDE.md`
+
+**Verification:** `tsc --noEmit` ✅ | `test:engine` (53 assertions) ✅ | `next build` ✅
+
+---
+
 ## 2026-02-12
 ### ☀️ Morning Checklist (8:20 AM)
 

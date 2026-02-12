@@ -635,6 +635,11 @@ Record: what was wrong, root cause, fix applied, files modified.
 
 ## Coding Conventions
 
+### Price Display Convention
+
+> [!CAUTION]
+> **NEVER use inline `Math.round(price * 100)` for price display.** Always use `formatPrice()` from `src/lib/formatters.ts`. This is the single source of truth for price formatting (handles ¢ vs %, decimals, edge cases). Inline formatting creates scattered bugs that are impossible to grep reliably.
+
 ### Result\<T\> Pattern (for new code)
 
 > [!IMPORTANT]
