@@ -32,6 +32,16 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 - **Fix:** Added `eq(challenges.phase, 'challenge')` to the WHERE clause (`evaluator.ts`). Now only the first call succeeds; the second sees `phase = 'funded'` and skips.
 - **Commit:** `cd136b1`
 
+### Post-Deploy Hardening (3 Fixes)
+| # | Issue | Resolution | Files |
+|---|-------|-----------|-------|
+| 1 | Lifecycle test flaky (73/74) | **Fixed** — fire-and-forget `evaluate()` from `executeTrade()` raced with test's explicit `evaluate()`. Added 600ms delay in Phases 4/5. Now reliably 74/74. | `verify-lifecycle.ts` |
+| 2 | Dead `winston` dependency | **Removed** — zero imports remain after console-based logger rewrite | `package.json` |
+| 3 | SSE reconnect storms → 429s | **Fixed** — backoff 1s→5s, added max 10 retries to prevent infinite reconnection | `useMarketStream.ts` |
+
+**Verification:** Build ✅, lifecycle 74/74 ✅, engine 53/53 ✅, safety 44/44 ✅  
+**Commit:** `93debf6`
+
 ---
 
 ## Feb 12, 2026 — Team Feedback Sprint (7 Items)
