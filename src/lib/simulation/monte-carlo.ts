@@ -9,12 +9,9 @@ import { generateTrader, Trader } from './trader-behavior';
 import { runChallenge, ChallengeResult } from './challenge-simulator';
 import { calculateCashFlow, CashFlowProjection } from './cash-flow';
 import { TRADER_ARCHETYPES, FirmConfig, TraderArchetype, DEFAULT_DISTRIBUTION } from './config';
-// Client-safe logger — this module is imported by 'use client' pages (admin/simulation).
-// Cannot use winston (Node.js only). Console calls are sufficient for simulation output.
-const logger = {
-    info: (msg: string) => console.warn(`[MonteCarlo] ${msg}`),
-    error: (msg: string) => console.error(`[MonteCarlo] ${msg}`),
-};
+import { createLogger } from '@/lib/logger';
+
+const logger = createLogger('MonteCarlo');
 
 export interface MonteCarloConfig {
     iterations: number;

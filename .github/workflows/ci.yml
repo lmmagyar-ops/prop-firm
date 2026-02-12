@@ -81,6 +81,76 @@ jobs:
           fail_ci_if_error: false
         continue-on-error: true
 
+  integration:
+    name: Integration Tests (Engine + Safety + Lifecycle)
+    runs-on: ubuntu-latest
+    needs: [quality, test]
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: propfirm_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Push schema to test database
+        run: npm run db:push
+        env:
+          DATABASE_URL: postgres://test:test@localhost:5432/propfirm_test
+
+      - name: Run engine verification
+        run: npx tsx src/scripts/verify-engine.ts
+        env:
+          DATABASE_URL: postgres://test:test@localhost:5432/propfirm_test
+          REDIS_URL: redis://localhost:6379
+          AUTH_SECRET: ci-test-secret
+
+      - name: Run safety verification
+        run: npx tsx src/scripts/verify-safety.ts
+        env:
+          DATABASE_URL: postgres://test:test@localhost:5432/propfirm_test
+          REDIS_URL: redis://localhost:6379
+          AUTH_SECRET: ci-test-secret
+
+      - name: Run lifecycle verification
+        run: npx tsx src/scripts/verify-lifecycle.ts
+        env:
+          DATABASE_URL: postgres://test:test@localhost:5432/propfirm_test
+          REDIS_URL: redis://localhost:6379
+          AUTH_SECRET: ci-test-secret
+
   # Heavy simulation tests - only run on schedule or manual trigger
   simulation:
     name: Simulation Tests (Nightly)

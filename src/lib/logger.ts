@@ -1,65 +1,88 @@
-import winston from 'winston';
+/**
+ * Isomorphic Logger — Console-based
+ * 
+ * Safe to import from ANY context: server components, client components,
+ * API routes, workers, scripts, middleware.
+ * 
+ * Uses structured console output with context prefixes. Console output is
+ * captured by Vercel's log drain in production, so no log data is lost.
+ * 
+ * Previous implementation used winston (Node.js only), which caused
+ * "Module not found: Can't resolve 'fs'" build failures when imported
+ * from 'use client' pages.
+ */
 
-const { combine, timestamp, printf, colorize, json } = winston.format;
+export interface LoggerInstance {
+    info: (message: string, meta?: string | object) => void;
+    warn: (message: string, meta?: string | object) => void;
+    error: (message: string, error?: unknown, meta?: string | object) => void;
+    debug: (message: string, meta?: string | object) => void;
+    withContext: (extra: Record<string, unknown>) => LoggerInstance;
+}
 
-// Custom format for local development
-const consoleFormat = printf(({ level, message, timestamp, ...metadata }) => {
-    let metaStr = '';
-    if (Object.keys(metadata).length > 0) {
-        metaStr = JSON.stringify(metadata, null, 2);
+export type Logger = LoggerInstance;
+
+const formatMeta = (meta: unknown): string => {
+    if (!meta) return '';
+    if (typeof meta === 'string') return meta;
+    if (typeof meta === 'object' && Object.keys(meta as object).length > 0) {
+        return JSON.stringify(meta);
     }
-    return `${timestamp} [${level}]: ${message} ${metaStr}`;
-});
+    return '';
+};
 
-export const logger = winston.createLogger({
-    level: process.env.LOG_LEVEL || 'info',
-    format: combine(
-        timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-        process.env.NODE_ENV === 'production' ? json() : combine(colorize(), consoleFormat)
-    ),
-    transports: [
-        new winston.transports.Console()
-    ],
-});
-
-export type Logger = ReturnType<typeof createLogger>;
-
-// Wrapper for consistent context logging
-export const createLogger = (context: string, baseContext: Record<string, unknown> = {}) => {
-    const ctx = { context, ...baseContext };
-
-    // Normalize meta: if a string was passed (from migrated console.log calls), wrap it
-    const normalizeMeta = (meta: unknown): object => {
-        if (typeof meta === 'string') return { detail: meta };
-        if (meta && typeof meta === 'object') return meta as object;
-        return {};
+export const createLogger = (context: string, baseContext: Record<string, unknown> = {}): LoggerInstance => {
+    const prefix = `[${context}]`;
+    const mergedMeta = (meta: string | object = {}): object => {
+        const normalized = typeof meta === 'string' ? { detail: meta } : meta;
+        return Object.keys(baseContext).length > 0
+            ? { ...baseContext, ...normalized }
+            : normalized;
     };
 
     return {
-        info: (message: string, meta: string | object = {}) =>
-            logger.info(message, { ...ctx, ...normalizeMeta(meta) }),
-        warn: (message: string, meta: string | object = {}) =>
-            logger.warn(message, { ...ctx, ...normalizeMeta(meta) }),
+        // eslint-disable-next-line no-console
+        info: (message: string, meta: string | object = {}) => {
+            const m = mergedMeta(meta);
+            const metaStr = formatMeta(m);
+            // eslint-disable-next-line no-console
+            console.log(prefix, message, metaStr || '');
+        },
+        // eslint-disable-next-line no-console
+        warn: (message: string, meta: string | object = {}) => {
+            const m = mergedMeta(meta);
+            const metaStr = formatMeta(m);
+            // eslint-disable-next-line no-console
+            console.warn(prefix, message, metaStr || '');
+        },
         error: (message: string, error?: unknown, meta: string | object = {}) => {
+            const m = mergedMeta(meta);
             if (error instanceof Error) {
-                logger.error(message, { ...ctx, error: error.message, stack: error.stack, ...normalizeMeta(meta) });
+                // eslint-disable-next-line no-console
+                console.error(prefix, message, { ...m, error: error.message, stack: error.stack });
+            } else if (error) {
+                // eslint-disable-next-line no-console
+                console.error(prefix, message, { ...m, error });
             } else {
-                logger.error(message, { ...ctx, error, ...normalizeMeta(meta) });
+                const metaStr = formatMeta(m);
+                // eslint-disable-next-line no-console
+                console.error(prefix, message, metaStr || '');
             }
         },
-        debug: (message: string, meta: string | object = {}) =>
-            logger.debug(message, { ...ctx, ...normalizeMeta(meta) }),
-
-        /**
-         * Create a child logger with additional context fields pre-attached.
-         * Every log line from the child includes these fields automatically.
-         * 
-         * Usage:
-         *   const log = createLogger('TradeAPI').withContext({ userId, challengeId });
-         *   log.info('Trade requested', { marketId, amount });
-         *   // Output: { context: "TradeAPI", userId: "abc", challengeId: "ch-1", ... }
-         */
+        // eslint-disable-next-line no-console
+        debug: (message: string, meta: string | object = {}) => {
+            const m = mergedMeta(meta);
+            const metaStr = formatMeta(m);
+            // eslint-disable-next-line no-console
+            console.debug(prefix, message, metaStr || '');
+        },
         withContext: (extra: Record<string, unknown>) =>
             createLogger(context, { ...baseContext, ...extra }),
     };
 };
+
+/**
+ * Root logger instance (for modules that import { logger } directly).
+ * Prefer createLogger('YourModule') for structured context.
+ */
+export const logger = createLogger('root');

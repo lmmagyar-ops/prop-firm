@@ -9,11 +9,9 @@ import { generateTrader, Trader } from './trader-behavior';
 import { runChallenge, ChallengeResult } from './challenge-simulator';
 import { calculateCashFlow } from './cash-flow';
 import { TRADER_ARCHETYPES, FirmConfig } from './config';
-// Client-safe logger — sibling modules are imported by 'use client' pages.
-const logger = {
-    info: (msg: string) => console.warn(`[StressTests] ${msg}`),
-    error: (msg: string) => console.error(`[StressTests] ${msg}`),
-};
+import { createLogger } from '@/lib/logger';
+
+const logger = createLogger('StressTests');
 
 export interface StressScenario {
     name: string;

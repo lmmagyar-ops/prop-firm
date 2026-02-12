@@ -4,6 +4,22 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ---
 
+## Feb 12, 2026 — Infrastructure Hardening Sprint (3 Items)
+
+**Scope:** Post-deploy hardening to eliminate systemic risks exposed during team feedback deployment.
+
+| # | Issue | Resolution | Files |
+|---|-------|-----------|-------|
+| 1 | Logger not isomorphic (winston breaks client builds) | **Fixed** — rewrote `logger.ts` as console-based (zero Node.js deps), reverted 3 band-aid files | `logger.ts`, `api-fetch.ts`, `monte-carlo.ts`, `stress-tests.ts` |
+| 2 | Client import tree audit | **Verified** — `npm run build` passes with zero `Module not found` across all 35 `'use client'` pages | N/A (resolved by #1) |
+| 3 | CI integration tests don't run | **Fixed** — added Postgres+Redis service containers + integration test job to CI | `.github/workflows/ci.yml` |
+| 4 | 0% win rate on dashboard | **Not a bug** — all closed positions were losers (accurate data) | N/A |
+
+**Build:** `npm run build` — zero errors, all routes compiled.
+**Tests:** 783/783 passed, 0 failures.
+
+---
+
 ## Feb 12, 2026 — Team Feedback Sprint (7 Items)
 
 **Scope:** Address all feedback from Mat + MP review session. 7 items triaged P0 → P2.
