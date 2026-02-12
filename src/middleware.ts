@@ -76,11 +76,14 @@ export async function middleware(request: NextRequest) {
 
     // Only apply rate limiting to API routes
     if (pathname.startsWith('/api')) {
-        // Skip rate limiting for webhooks (external callbacks, need different protection)
-        // and cron jobs (internal, protected by Vercel headers)
+        // Skip rate limiting for:
+        // - webhooks (external callbacks, need different protection)
+        // - cron jobs (internal, protected by Vercel headers)
+        // - auth routes (NextAuth OAuth callbacks + session — blocking these breaks login)
         if (
             pathname.startsWith('/api/webhooks') ||
-            pathname.startsWith('/api/cron')
+            pathname.startsWith('/api/cron') ||
+            pathname.startsWith('/api/auth')
         ) {
             const response = NextResponse.next();
             return addSecurityHeaders(response);
