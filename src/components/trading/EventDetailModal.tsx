@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Component, type ReactNode } from "react";
+import { useState, useEffect, useRef, Component, type ReactNode } from "react";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { X, TrendingUp, Calendar, Loader2 } from "lucide-react";
@@ -550,6 +550,7 @@ function TradingSidebar({ market, eventTitle, onTradeComplete, isKalshi, initial
     const [mode, setMode] = useState<'buy' | 'sell'>('buy');
     const [amount, setAmount] = useState(0); // Dollar amount
     const [sellLoading, setSellLoading] = useState(false);
+    const isSellRef = useRef(false);
     const [userPosition, setUserPosition] = useState<any>(null);
     const [positionLoading, setPositionLoading] = useState(false);
     const [requotePrice, setRequotePrice] = useState<number | null>(null);
@@ -628,6 +629,8 @@ function TradingSidebar({ market, eventTitle, onTradeComplete, isKalshi, initial
 
     const handleSell = async () => {
         if (!userPosition) return;
+        if (isSellRef.current) return;
+        isSellRef.current = true;
         setSellLoading(true);
         try {
             const res = await fetch('/api/trade/close', {
@@ -636,6 +639,12 @@ function TradingSidebar({ market, eventTitle, onTradeComplete, isKalshi, initial
                 credentials: 'include',
                 body: JSON.stringify({ positionId: userPosition.id, idempotencyKey: crypto.randomUUID() }),
             });
+            if (res.status === 401) {
+                const { toast } = await import('sonner');
+                toast.error("Session expired — please log in again");
+                window.location.href = "/login";
+                return;
+            }
             const data = await res.json();
             if (data.success) {
                 const { toast } = await import('sonner');
@@ -653,6 +662,7 @@ function TradingSidebar({ market, eventTitle, onTradeComplete, isKalshi, initial
             toast.error('Network error');
         } finally {
             setSellLoading(false);
+            isSellRef.current = false;
         }
     };
 

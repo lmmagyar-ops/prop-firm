@@ -72,6 +72,13 @@ export function useTradeExecution(options: UseTradeExecutionOptions = {}) {
             const data = await response.json();
 
             if (!response.ok) {
+                // Session expired — redirect to login
+                if (response.status === 401) {
+                    toast.error("Session expired — please log in again");
+                    window.location.href = "/login";
+                    return { success: false, error: "Session expired" };
+                }
+
                 const errorMsg = data.error || "Trade failed";
 
                 // LAYER 3: Handle MARKET_RESOLVED — fundamentally untradable state

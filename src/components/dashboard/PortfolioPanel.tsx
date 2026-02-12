@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Briefcase, X, RefreshCw, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -30,6 +30,7 @@ export function PortfolioPanel() {
     const [isOpen, setIsOpen] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [closingId, setClosingId] = useState<string | null>(null);
+    const isClosingRef = useRef(false);
     const [positions, setPositions] = useState<Position[]>([]);
     const [summary, setSummary] = useState<AccountSummary>({ equity: 0, cash: 0, positionValue: 0 });
 
@@ -42,6 +43,8 @@ export function PortfolioPanel() {
     // Close position — same pattern as OpenPositions.tsx
     const handleClosePosition = async (e: React.MouseEvent, positionId: string) => {
         e.stopPropagation(); // Don't navigate to market
+        if (isClosingRef.current) return;
+        isClosingRef.current = true;
         setClosingId(positionId);
         try {
             const response = await fetch('/api/trade/close', {
@@ -49,6 +52,11 @@ export function PortfolioPanel() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ positionId, idempotencyKey: crypto.randomUUID() }),
             });
+            if (response.status === 401) {
+                toast.error("Session expired — please log in again");
+                window.location.href = "/login";
+                return;
+            }
             if (!response.ok) {
                 const error = await response.json();
                 throw new Error(error.error || 'Failed to close position');
@@ -69,6 +77,7 @@ export function PortfolioPanel() {
             toast.error(message);
         } finally {
             setClosingId(null);
+            isClosingRef.current = false;
         }
     };
 

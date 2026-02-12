@@ -150,9 +150,10 @@ function CheckoutContent() {
 
             const data = await res.json();
 
-            // NOTE: Redemption is called before payment redirect. In production,
-            // consider moving this to a webhook handler that fires after confirmed payment.
-            // Current implementation is fine for low-volume MVP phase.
+            // TODO (HARDENING): Discount is redeemed BEFORE payment confirmation.
+            // If user abandons payment, the discount code is consumed with no challenge provisioned.
+            // FIX: Move this call to api/webhooks/confirmo handler, triggered after confirmed payment.
+            // Acceptable at MVP volume — tracked as a known limitation.
             if (appliedDiscount && data.challengeId) {
                 try {
                     await fetch("/api/discount/redeem", {

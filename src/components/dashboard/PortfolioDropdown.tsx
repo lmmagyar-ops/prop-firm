@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Briefcase, ArrowRight, X, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,7 @@ export function PortfolioDropdown() {
     const [positions, setPositions] = useState<Position[]>([]);
 
     const [closingId, setClosingId] = useState<string | null>(null);
+    const isClosingRef = useRef(false);
 
     // Navigate to trade page with market
     const handleNavigateToMarket = (marketId: string) => {
@@ -37,6 +38,8 @@ export function PortfolioDropdown() {
     // Close position handler
     const handleClosePosition = async (positionId: string, e: React.MouseEvent) => {
         e.stopPropagation(); // Prevent dropdown from closing
+        if (isClosingRef.current) return;
+        isClosingRef.current = true;
         setClosingId(positionId);
         try {
             const response = await fetch(`/api/trade/close`, {
@@ -44,6 +47,12 @@ export function PortfolioDropdown() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ positionId, idempotencyKey: crypto.randomUUID() }),
             });
+
+            if (response.status === 401) {
+                toast.error("Session expired — please log in again");
+                window.location.href = "/login";
+                return;
+            }
 
             if (!response.ok) {
                 const error = await response.json();
@@ -66,6 +75,7 @@ export function PortfolioDropdown() {
             toast.error(message);
         } finally {
             setClosingId(null);
+            isClosingRef.current = false;
         }
     };
 

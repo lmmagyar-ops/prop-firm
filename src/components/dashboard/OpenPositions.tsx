@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
     Table,
@@ -38,13 +38,15 @@ export function OpenPositions({ positions: initialPositions }: OpenPositionsProp
     const router = useRouter();
     const [positions, setPositions] = useState(initialPositions);
     const [closingId, setClosingId] = useState<string | null>(null);
+    const isClosingRef = useRef(false);
 
     useEffect(() => {
         setPositions(initialPositions);
     }, [initialPositions]);
 
     const handleClosePosition = async (positionId: string) => {
-        console.log("[ClosePosition] Starting close for:", positionId);
+        if (isClosingRef.current) return;
+        isClosingRef.current = true;
         setClosingId(positionId);
         try {
             const response = await fetch(`/api/trade/close`, {
@@ -53,7 +55,11 @@ export function OpenPositions({ positions: initialPositions }: OpenPositionsProp
                 body: JSON.stringify({ positionId, idempotencyKey: crypto.randomUUID() }),
             });
 
-            console.log("[ClosePosition] Response status:", response.status);
+            if (response.status === 401) {
+                toast.error("Session expired — please log in again");
+                window.location.href = "/login";
+                return;
+            }
 
             if (!response.ok) {
                 const error = await response.json();
@@ -77,6 +83,7 @@ export function OpenPositions({ positions: initialPositions }: OpenPositionsProp
             toast.error(message);
         } finally {
             setClosingId(null);
+            isClosingRef.current = false;
         }
     };
 
