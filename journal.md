@@ -6,6 +6,16 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ## 2026-02-11
 
+### 🛡️ App Hardening Audit (Phase 2)
+
+**Close-Position Re-Entry Guards:** Added `useRef`-based synchronous re-entry guards to all 4 close-position handlers (OpenPositions, PortfolioPanel, PortfolioDropdown, EventDetailModal). Matches the pattern already used in `useTradeExecution` for buys.
+
+**401 Session Expiry Handling:** Added session expiry detection to `useTradeExecution` and all 4 close handlers. On 401, shows toast and redirects to `/login` instead of a generic error.
+
+**Checkout Discount Race:** Documented the discount-before-payment race condition as a known MVP limitation with explicit TODO path (move to webhook handler).
+
+**Verification:** tsc (0 errors), test:engine (53/53), test:safety (44/44), test:financial (24/24), smoke (4/4 runnable). Deployed to prod via fast-forward merge (8c50c95).
+
 ### 🔒 Financial Hardening Sprint (5 Fixes)
 
 Deep audit of all financial code paths (`trade.ts`, `PositionManager.ts`, `BalanceManager.ts`, `risk.ts`, `evaluator.ts`, `settlement.ts`, `position-utils.ts`, `close/route.ts`). Found 6 edge cases, fixed 5 (issue 2 is a feature enhancement, deferred).
