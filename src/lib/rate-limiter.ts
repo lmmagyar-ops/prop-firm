@@ -11,7 +11,7 @@ import { kvIncr } from "./worker-client";
 export const RATE_LIMITS = {
     // Critical financial endpoints - very strict (POST only)
     TRADE_EXECUTE: { limit: 10, windowSeconds: 60 },  // 10 trade executions/min
-    TRADE_READ: { limit: 300, windowSeconds: 60 },    // 300 position/history reads/min (read-only, each page fires ~5 concurrent fetches)
+    TRADE_READ: { limit: 600, windowSeconds: 60 },    // 600 position/history reads/min (read-only, each page fires ~5 concurrent fetches)
     PAYOUT: { limit: 5, windowSeconds: 60 },           // 5 payout requests/min
 
     // Auth endpoints - prevent brute force
@@ -20,8 +20,8 @@ export const RATE_LIMITS = {
     AUTH_VERIFY: { limit: 10, windowSeconds: 60 },  // 10 verifications/min
 
     // Read-heavy endpoints - more permissive
-    MARKETS: { limit: 300, windowSeconds: 60 },     // 300 reads/min (SSE + polling)
-    DASHBOARD: { limit: 300, windowSeconds: 60 },   // 300 dashboard loads/min
+    MARKETS: { limit: 600, windowSeconds: 60 },     // 600 reads/min (SSE + polling)
+    DASHBOARD: { limit: 600, windowSeconds: 60 },   // 600 dashboard loads/min
 
     // Default for everything else
     DEFAULT: { limit: 100, windowSeconds: 60 },     // 100 req/min
