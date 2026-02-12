@@ -4,6 +4,21 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ---
 
+## 2026-02-12
+### 🐛 Trade Display Bug Fix (Rate Limiter Exemptions)
+
+**Bugs:** "Recent Trades" widget showed "No trades yet", Trade History page was empty, Portfolio dropdown showed $0.00 for Equity/Cash/Positions. All three symptoms had the same root cause.
+
+**Root Cause:** Rate limiter was blocking GET requests to read-only endpoints (`/api/trade/positions`, `/api/trades/history`, `/api/trade/markets`, `/api/user/balance`). Components silently treated 429 errors as empty data, displaying "No trades yet" / $0.00 instead of showing an error.
+
+**Fix:** Exempted all read-only GET endpoints from rate limiting in `middleware.ts`. POST requests (trade execution) remain rate-limited via `TRADE_EXECUTE` tier.
+
+**Commits:** `837f3e2` (trade read exemptions), `b80497d` (add `/api/user/balance` exemption)
+
+**Verification:** Dashboard Recent Trades ✅ | Trade History page ✅ | Portfolio positions ✅ | Portfolio summary pending deployment
+
+---
+
 ## 2026-02-11
 ### 🔐 Auth Rate Limiter Fix
 
