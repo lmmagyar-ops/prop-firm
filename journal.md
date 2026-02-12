@@ -5,6 +5,11 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 ---
 
 ## 2026-02-11
+### 🔐 Auth Rate Limiter Fix
+
+**Bug:** `/api/auth/*` routes (NextAuth signin, callback, session) were not exempted from rate limiting. They fell through to the DEFAULT tier (100 req/min), and dashboard polling exhausted the shared bucket — blocking login with 429.
+
+**Fix:** Added `/api/auth` to the middleware bypass list in `middleware.ts` alongside `/api/webhooks` and `/api/cron`. Deployed via `b5ac829`.
 
 ### 🛡️ App Hardening Audit (Phase 2)
 
