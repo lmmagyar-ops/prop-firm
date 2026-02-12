@@ -80,10 +80,17 @@ export async function middleware(request: NextRequest) {
         // - webhooks (external callbacks, need different protection)
         // - cron jobs (internal, protected by Vercel headers)
         // - auth routes (NextAuth OAuth callbacks + session — blocking these breaks login)
+        // - trade READ endpoints on GET (positions, history, markets listing — all read-only DB selects)
+        //   POST requests (trade execution) remain rate-limited via TRADE_EXECUTE tier.
         if (
             pathname.startsWith('/api/webhooks') ||
             pathname.startsWith('/api/cron') ||
-            pathname.startsWith('/api/auth')
+            pathname.startsWith('/api/auth') ||
+            (request.method === 'GET' && (
+                pathname.startsWith('/api/trade/positions') ||
+                pathname.startsWith('/api/trades/history') ||
+                pathname.startsWith('/api/trade/markets')
+            ))
         ) {
             const response = NextResponse.next();
             return addSecurityHeaders(response);
