@@ -5,6 +5,25 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 ---
 
 ## 2026-02-12
+### 🧪 Pre-Handoff Smoke Test (`test:handoff`)
+
+**Problem:** No automated test verifies authenticated API responses return real data. Mat keeps hitting silent failures ($0.00, "No trades yet") that only appear when a real user navigates the dashboard.
+
+**Solution:** Created `src/scripts/verify-handoff.ts` — a hybrid smoke test that:
+1. Looks up the user in the DB (works for Google OAuth users, no password needed)
+2. Mints a valid NextAuth JWE session token using `@auth/core/jwt` encode
+3. Fires authenticated HTTP requests against production endpoints
+4. Cross-checks API responses against DB data (e.g., API balance matches DB balance)
+
+**Checks:** 6 authenticated checks — Challenges API, Balance API, Positions API, Trade History API, Live Stats API, Dashboard page render. Also verifies DB data presence before hitting APIs.
+
+**Bonus fix:** Discovered `/api/challenges` was NOT exempt from rate limiting (429). Added it to the middleware prefix convention alongside `/api/trade/`, `/api/trades/`, `/api/user/`.
+
+**Verification:** `tsc --noEmit` ✅ | 20/23 checks pass pre-deploy (3 fail from challenges 429, fixed in middleware pending deploy)
+
+---
+
+## 2026-02-12
 ### 🛡️ Fetch Layer Hardening (3-Phase Silent Failure Fix)
 
 **Problem:** Components silently swallowed API errors (429s, 5xx), displaying misleading "$0.00" or "No trades yet" instead of error states.

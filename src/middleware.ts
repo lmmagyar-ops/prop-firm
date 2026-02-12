@@ -93,7 +93,8 @@ export async function middleware(request: NextRequest) {
             (request.method === 'GET' && (
                 pathname.startsWith('/api/trade/') ||
                 pathname.startsWith('/api/trades/') ||
-                pathname.startsWith('/api/user/')
+                pathname.startsWith('/api/user/') ||
+                pathname.startsWith('/api/challenges')
             ))
         ) {
             const response = NextResponse.next();
