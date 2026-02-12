@@ -94,7 +94,8 @@ export async function middleware(request: NextRequest) {
                 pathname.startsWith('/api/trade/') ||
                 pathname.startsWith('/api/trades/') ||
                 pathname.startsWith('/api/user/') ||
-                pathname.startsWith('/api/challenges')
+                pathname.startsWith('/api/challenges') ||
+                pathname.startsWith('/api/stats')
             ))
         ) {
             const response = NextResponse.next();
