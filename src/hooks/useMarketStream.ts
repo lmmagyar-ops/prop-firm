@@ -78,8 +78,13 @@ export function useMarketStream(options: UseMarketStreamOptions = {}) {
                 setError('Connection lost');
                 es.close();
 
-                // Exponential backoff retry (max 30s)
-                const delay = Math.min(1000 * Math.pow(2, retryCount.current), 30000);
+                // Exponential backoff retry (start at 5s, max 30s, give up after 10 retries)
+                if (retryCount.current >= 10) {
+                    console.warn('[useMarketStream] Max retries reached, giving up');
+                    setError('Unable to connect to market stream');
+                    return;
+                }
+                const delay = Math.min(5000 * Math.pow(2, retryCount.current), 30000);
                 retryCount.current++;
 
                 retryTimeoutRef.current = setTimeout(() => {

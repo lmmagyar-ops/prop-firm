@@ -244,6 +244,9 @@ async function phase4() {
     const balAfterBuy = await getBalance(cid);
     assertApprox(balAfterBuy, 9800, 5, 'Balance after $200 BUY ≈ $9800');
 
+    // Wait for fire-and-forget post-trade evaluate() to settle before mutating balance
+    await new Promise(r => setTimeout(r, 600));
+
     // Simulate a massive cash loss (as if other trades lost money)
     await db.update(challenges)
         .set({ currentBalance: '8800' }) // $1,200 total loss → past 10% DD limit ($1,000)
@@ -286,6 +289,9 @@ async function phase5() {
     // Open a position
     await refreshPrices();
     await TradeExecutor.executeTrade(uid, cid, MARKET_A, 'BUY', 200, 'YES');
+
+    // Wait for fire-and-forget post-trade evaluate() to settle before mutating balance
+    await new Promise(r => setTimeout(r, 600));
 
     // Simulate accumulated cash profits from other trades
     // Cash $10,800 + position ~$200 ≈ $11,000 → target hit ($1,000 profit)
