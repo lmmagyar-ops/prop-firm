@@ -187,7 +187,7 @@ async function main() {
 
     // CHECK 1: Challenges API (TopNavActions)
     console.log('\n  📋 Check 1: Challenges API (TopNavActions)');
-    const challengesRes = await authedFetch('/api/challenges');
+    const challengesRes = await authedFetch(`/api/challenges?userId=${user.id}`);
     assert(challengesRes.ok, `GET /api/challenges → ${challengesRes.status}`);
     assert(challengesRes.ms < 5000, `Response time: ${challengesRes.ms}ms`);
     assert(challengesRes.status !== 429, `Not rate limited`);
