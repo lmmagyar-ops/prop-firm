@@ -18,6 +18,20 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 **Build:** `npm run build` — zero errors, all routes compiled.
 **Tests:** 783/783 passed, 0 failures.
 
+### Production Deployment
+- **Staging verified:** Dashboard loads, balance $9,951.78, sidebar intact, zero `fs`/`Module not found` console errors
+- **Merged to main:** `fd31ada..931a521` (fast-forward)
+- **Production verified:** Identical to staging, zero module resolution errors
+- **Post-deploy integration tests:**
+  - `test:engine` — 53/53 ✅
+  - `test:safety` — 44/44 ✅
+  - `test:lifecycle` — 73/74 ⚠️ (non-deterministic, passes 2/3 runs — environmental timing)
+
+### Race Condition Fix: Funded Transition Double-Execution
+- **Root cause:** Evaluator's funded transition WHERE clause only checked `status = 'active'`, but funded transition **keeps** status as `active`. Two concurrent `evaluate()` calls both pass the guard.
+- **Fix:** Added `eq(challenges.phase, 'challenge')` to the WHERE clause (`evaluator.ts`). Now only the first call succeeds; the second sees `phase = 'funded'` and skips.
+- **Commit:** `cd136b1`
+
 ---
 
 ## Feb 12, 2026 — Team Feedback Sprint (7 Items)
