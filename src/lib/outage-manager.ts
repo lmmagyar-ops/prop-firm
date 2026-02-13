@@ -189,7 +189,8 @@ export class OutageManager {
             if (!heartbeat) return false;
             const age = Date.now() - heartbeat.timestamp;
             return age < STALE_THRESHOLD_MS;
-        } catch {
+        } catch (e) {
+            logger.warn('Heartbeat check failed', { error: String(e) });
             return false;
         }
     }

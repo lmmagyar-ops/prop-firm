@@ -7,6 +7,7 @@ import { eq, and } from "drizzle-orm";
 import { createLogger } from "@/lib/logger";
 import { checkIdempotency, cacheIdempotencyResult } from "@/lib/trade-idempotency";
 import { getErrorMessage } from "@/lib/errors";
+import { alerts } from "@/lib/alerts";
 
 const log = createLogger("TradeAPI");
 
@@ -160,6 +161,13 @@ export async function POST(req: NextRequest) {
         const data = (error instanceof Error && "data" in error ? (error as Record<string, unknown>).data : {}) || {};
 
         log.error(`Trade execution failed [${code}]`, error);
+
+        // Alert on unexpected failures (not user-facing validation errors like risk limits)
+        if (status === 500 || code === 'UNKNOWN') {
+            alerts.tradeFailed(userId, getErrorMessage(error) || 'Unknown error', {
+                marketId, outcome, amount, code,
+            });
+        }
 
         // SECURITY: Only expose error messages from structured domain errors (e.g. MARKET_RESOLVED, PRICE_MOVED)
         // Never expose raw database/ORM error messages to the client

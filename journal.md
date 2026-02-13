@@ -4,6 +4,50 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ---
 
+## Feb 12, 2026 — Production Hardening (Phases 1-3, 5)
+
+**Financial verification:** `test:financial` 24/24 ✅, `test:engine` 53/53 ✅, `test:safety` 44/44 ✅
+
+**Changes shipped:**
+1. **CLAUDE.md** — Fixed 2 stale Winston references → now says "console structured logging" and "Console → Sentry → Slack"
+2. **Trade error alerting** — Added `alerts.tradeFailed()` to `execute/route.ts` catch block (fires on 500/UNKNOWN only). Import added. Purely additive, no control flow change.
+3. **Silent catch block audit** — Added `logger.warn` to 3 previously-silent catch blocks:
+   - `ingestion.ts` line 776 (price parse) and line 792 (market processing)
+   - `outage-manager.ts` line 192 (heartbeat check)
+
+**Verification:** tsc 0 errors, build clean, all 121+ assertions passing.
+
+**Still pending (user action):** Phase 1a (set `SLACK_WEBHOOK_URL` env var), Phase 7 (load test).
+
+**Phase 4 — Email DNS:** All 3 records propagated ✅ (MX, SPF, DKIM with full RSA key).
+
+**Phase 6 — DB Index Audit:** All 5 critical queries use Seq Scan BUT execute in <0.2ms. Table sizes: challenges=4 rows, positions=16, trades=39. At this scale the planner correctly chooses Seq Scan over index lookup (faster for <100 rows). Existing indexes (`challenges_user_status_idx`, `positions_challenge_status_idx`, `trades_challenge_idx`) will automatically kick in when tables hit ~1000+ rows. **No action needed now.**
+
+---
+
+## Feb 12, 2026 — Email DNS Setup (predictionsfirm.com)
+
+Mat reported no email delivery. Namecheap Private Email subscription was active but missing DNS records.
+Added via Namecheap Advanced DNS:
+1. **MX Record** — `@` → `mx1.privateemail.com` (priority 10)
+2. **MX Record** — `@` → `mx2.privateemail.com` (priority 10)
+3. **SPF TXT Record** — `@` → `v=spf1 include:spf.privateemail.com ~all`
+4. **Mail Settings** — switched to "Custom MX"
+
+DNS propagation may take up to 4 hours per Namecheap.
+
+---
+
+## Feb 12, 2026 — QA Runbook Cleanup
+
+Fixed two artifacts in the QA Runbook Google Doc left over from a previous browser subagent timeout:
+1. **TEST_END typo** — "TEST_ENDt page price" replaced with "[] Current price shown matches the market page price" via Find & Replace
+2. **Duplicate truncated line** — Stray "[] Current price shown matches the marke" (truncated leftover) deleted from Section 3b
+
+Runbook is now clean and ready for Mat. All 6 sections intact.
+
+---
+
 ## Feb 12, 2026 — Infrastructure Hardening Sprint (3 Items)
 
 **Scope:** Post-deploy hardening to eliminate systemic risks exposed during team feedback deployment.

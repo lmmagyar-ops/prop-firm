@@ -773,7 +773,9 @@ class IngestionWorker {
                             if (yesPrice >= 0.95 || yesPrice <= 0.05) {
                                 continue;
                             }
-                        } catch { }
+                        } catch (e) {
+                            logger.warn('[Ingestion] Price parse failed for market, using default', { id: m.conditionId, error: String(e) });
+                        }
 
                         allMarkets.push({
                             id: yesToken,
@@ -789,8 +791,8 @@ class IngestionWorker {
                             accepting_orders: m.accepting_orders
                         });
                     }
-                } catch {
-                    // Skip invalid market
+                } catch (e) {
+                    logger.warn('[Ingestion] Skipped invalid market', { error: String(e) });
                 }
             }
 

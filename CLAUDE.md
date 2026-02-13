@@ -97,7 +97,7 @@ DATABASE_URL="..." npx tsx scripts/grant-admin.ts email@example.com
 | **UI** | Tailwind v4, Shadcn/ui, Framer Motion |
 | **Real-time** | Redis pub/sub, WebSocket streams |
 | **Markets** | Polymarket CLOB, Kalshi API |
-| **Monitoring** | Sentry (all runtimes), Winston structured logging |
+| **Monitoring** | Sentry (all runtimes), console structured logging |
 
 ### Project Structure
 
@@ -376,7 +376,7 @@ Configured across all runtimes: `sentry.client.config.ts` (session replay + priv
 
 ### Alerting
 
-`src/lib/alerts.ts` provides centralized alerts: `alerts.tradeFailed()`, `alerts.ingestionStale()`, `alerts.redisConnectionLost()`, `alerts.resolvedMarketDetected()`, `alerts.priceDrift()`, etc. Flow: Winston → Sentry → Slack (for critical).
+`src/lib/alerts.ts` provides centralized alerts: `alerts.tradeFailed()`, `alerts.ingestionStale()`, `alerts.redisConnectionLost()`, `alerts.resolvedMarketDetected()`, `alerts.priceDrift()`, etc. Flow: Console → Sentry → Slack (for critical).
 
 ### Market Integrity Guards
 
