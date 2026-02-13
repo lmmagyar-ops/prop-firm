@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>Email Template Preview — Apple Polish Pass</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #000;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            color: white;
+        }
+
+        .preview-header {
+            text-align: center;
+            padding: 40px 20px 20px;
+        }
+
+        .preview-header h1 {
+            font-size: 32px;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            margin-bottom: 8px;
+        }
+
+        .preview-header p {
+            color: #6B7280;
+            font-size: 15px;
+        }
+
+        .tabs {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            padding: 20px;
+        }
+
+        .tab {
+            padding: 10px 24px;
+            border-radius: 100px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            background: #111;
+            color: #9CA3AF;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .tab.active {
+            background: #F5F5F7;
+            color: #000;
+            border-color: #F5F5F7;
+        }
+
+        .tab:hover:not(.active) {
+            border-color: rgba(255, 255, 255, 0.12);
+            color: white;
+        }
+
+        .email-frame {
+            max-width: 700px;
+            margin: 20px auto;
+            padding: 0 20px 60px;
+        }
+
+        .email-container {
+            display: none;
+        }
+
+        .email-container.active {
+            display: block;
+        }
+
+        .label {
+            text-align: center;
+            padding: 16px;
+            font-size: 12px;
+            color: #4B5563;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="preview-header">
+        <h1>Email Template Preview</h1>
+        <p>Apple-grade polish pass — all 5 fixes applied</p>
+    </div>
+
+    <div class="tabs">
+        <div class="tab active" onclick="showEmail('verify')">Verify Email</div>
+        <div class="tab" onclick="showEmail('login')">Login Challenge</div>
+        <div class="tab" onclick="showEmail('reset')">Password Reset</div>
+    </div>
+
+    <div class="email-frame">
+        <!-- 1. Email Verification -->
+        <div class="email-container active" id="verify">
+            <div class="label">Subject: Verify Your Email — Predictions Firm</div>
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                style="background-color: #0A0A0A;">
+                <tr>
+                    <td align="center" style="padding: 40px 20px 20px;">
+                        <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0"
+                            style="max-width: 560px;">
+                            <tr>
+                                <td align="center" style="padding-bottom: 32px;">
+                                    <a href="#" style="text-decoration: none;">
+                                        <img src="public/logo-wordmark-white.png" alt="Predictions Firm" width="200"
+                                            style="display: block; height: auto; max-width: 200px;" />
+                                    </a>
+                                </td>
+                            </tr>
+                        </table>
+                        <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0"
+                            style="max-width: 560px; background-color: #111111; border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; overflow: hidden;">
+                            <tr>
+                                <td style="padding: 48px 40px;">
+                                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                                        <tr>
+                                            <td align="center" style="padding-bottom: 24px;">
+                                                <div
+                                                    style="width: 48px; height: 48px; border-radius: 12px; background-color: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); line-height: 48px; text-align: center;">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                        fill="none" stroke="#F5F5F7" stroke-width="1.5"
+                                                        stroke-linecap="round" stroke-linejoin="round"
+                                                        style="vertical-align: middle;">
+                                                        <rect x="2" y="4" width="20" height="16" rx="2" />
+                                                        <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+                                                    </svg>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                    <h1
+                                        style="margin: 0 0 12px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 28px; font-weight: 700; line-height: 34px; color: #FFFFFF; text-align: center; letter-spacing: -0.03em;">
+                                        Verify Your Email</h1>
+                                    <p
+                                        style="margin: 0 0 32px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 15px; line-height: 24px; color: #9CA3AF; text-align: center;">
+                                        Welcome to Predictions Firm — the world's first prediction market prop firm. Tap
+                                        below to verify your email and start trading.</p>
+                                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                                        <tr>
+                                            <td align="center" style="padding: 8px 0 0;">
+                                                <a href="#"
+                                                    style="display: inline-block; padding: 16px 40px; background-color: #F5F5F7; color: #000000; text-decoration: none; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 15px; font-weight: 600; border-radius: 100px; letter-spacing: -0.01em;">
+                                                    Verify Email
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                    <p
+                                        style="margin: 24px 0 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 12px; line-height: 18px; color: #4B5563; text-align: center;">
+                                        This link expires in 1 hour. If you didn't create an account, you can safely
+                                        ignore this email.</p>
+                                    <p
+                                        style="margin: 16px 0 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 12px; line-height: 18px; color: #4B5563; text-align: center;">
+                                        <a href="#" style="color: #9CA3AF; text-decoration: underline;">Or verify here
+                                            →</a></p>
+                                </td>
+                            </tr>
+                        </table>
+                        <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0"
+                            style="max-width: 560px;">
+                            <tr>
+                                <td style="padding: 32px 40px 0;">
+                                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                                        <tr>
+                                            <td style="border-top: 1px solid #1F2937; padding-top: 24px;">
+                                                <p
+                                                    style="margin: 0 0 8px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 13px; line-height: 20px; color: #6B7280; text-align: center;">
+                                                    <a href="#"
+                                                        style="color: #9CA3AF; text-decoration: none;">Dashboard</a>
+                                                    &nbsp;&nbsp;·&nbsp;&nbsp;
+                                                    <a href="#" style="color: #9CA3AF; text-decoration: none;">FAQ</a>
+                                                    &nbsp;&nbsp;·&nbsp;&nbsp;
+                                                    <a href="#" style="color: #9CA3AF; text-decoration: none;">About</a>
+                                                </p>
+                                                <p
+                                                    style="margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 12px; line-height: 18px; color: #4B5563; text-align: center;">
+                                                    © 2026 Predictions Firm. All rights reserved.
+                                                </p>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- 2. Login Challenge -->
+        <div class="email-container" id="login">
+            <div class="label">Subject: Verify Your Login — Predictions Firm</div>
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                style="background-color: #0A0A0A;">
+                <tr>
+                    <td align="center" style="padding: 40px 20px 20px;">
+                        <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0"
+                            style="max-width: 560px;">
+                            <tr>
+                                <td align="center" style="padding-bottom: 32px;">
+                                    <a href="#" style="text-decoration: none;">
+                                        <img src="public/logo-wordmark-white.png" alt="Predictions Firm" width="200"
+                                            style="display: block; height: auto; max-width: 200px;" />
+                                    </a>
+                                </td>
+                            </tr>
+                        </table>
+                        <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0"
+                            style="max-width: 560px; background-color: #111111; border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; overflow: hidden;">
+                            <tr>
+                                <td style="padding: 48px 40px;">
+                                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                                        <tr>
+                                            <td align="center" style="padding-bottom: 24px;">
+                                                <div
+                                                    style="width: 48px; height: 48px; border-radius: 12px; background-color: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); line-height: 48px; text-align: center;">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                        fill="none" stroke="#F5F5F7" stroke-width="1.5"
+                                                        stroke-linecap="round" stroke-linejoin="round"
+                                                        style="vertical-align: middle;">
+                                                        <rect x="3" y="11" width="18" height="11" rx="2" />
+                                                        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                                                    </svg>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                    <h1
+                                        style="margin: 0 0 12px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 28px; font-weight: 700; line-height: 34px; color: #FFFFFF; text-align: center; letter-spacing: -0.03em;">
+                                        Verify Your Identity</h1>
+                                    <p
+                                        style="margin: 0 0 32px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 15px; line-height: 24px; color: #9CA3AF; text-align: center;">
+                                        To complete your login, tap the number below that matches what you see on your
+                                        screen.</p>
+
+                                    <!-- Code buttons — centered -->
+                                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                                        <tr>
+                                            <td align="center">
+                                                <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                                                    <tr>
+                                                        <td align="center" style="padding: 0 8px;">
+                                                            <a href="#"
+                                                                style="display: inline-block; width: 80px; height: 64px; line-height: 64px; text-align: center; background-color: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: #FFFFFF; text-decoration: none; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 24px; font-weight: 700; border-radius: 14px; letter-spacing: -0.02em;">47</a>
+                                                        </td>
+                                                        <td align="center" style="padding: 0 8px;">
+                                                            <a href="#"
+                                                                style="display: inline-block; width: 80px; height: 64px; line-height: 64px; text-align: center; background-color: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: #FFFFFF; text-decoration: none; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 24px; font-weight: 700; border-radius: 14px; letter-spacing: -0.02em;">82</a>
+                                                        </td>
+                                                        <td align="center" style="padding: 0 8px;">
+                                                            <a href="#"
+                                                                style="display: inline-block; width: 80px; height: 64px; line-height: 64px; text-align: center; background-color: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: #FFFFFF; text-decoration: none; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 24px; font-weight: 700; border-radius: 14px; letter-spacing: -0.02em;">15</a>
+                                                        </td>
+                                                    </tr>
+                                                </table>
+                                            </td>
+                                        </tr>
+                                    </table>
+
+                                    <p
+                                        style="margin: 24px 0 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 12px; line-height: 18px; color: #4B5563; text-align: center;">
+                                        Only tap a number if you just attempted to sign in. This code expires in 10
+                                        minutes.</p>
+                                </td>
+                            </tr>
+                        </table>
+                        <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0"
+                            style="max-width: 560px;">
+                            <tr>
+                                <td style="padding: 32px 40px 0;">
+                                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                                        <tr>
+                                            <td style="border-top: 1px solid #1F2937; padding-top: 24px;">
+                                                <p
+                                                    style="margin: 0 0 8px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 13px; line-height: 20px; color: #6B7280; text-align: center;">
+                                                    <a href="#"
+                                                        style="color: #9CA3AF; text-decoration: none;">Dashboard</a>
+                                                    &nbsp;&nbsp;·&nbsp;&nbsp;
+                                                    <a href="#" style="color: #9CA3AF; text-decoration: none;">FAQ</a>
+                                                    &nbsp;&nbsp;·&nbsp;&nbsp;
+                                                    <a href="#" style="color: #9CA3AF; text-decoration: none;">About</a>
+                                                </p>
+                                                <p
+                                                    style="margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 12px; line-height: 18px; color: #4B5563; text-align: center;">
+                                                    © 2026 Predictions Firm. All rights reserved.
+                                                </p>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- 3. Password Reset -->
+        <div class="email-container" id="reset">
+            <div class="label">Subject: Reset Your Password — Predictions Firm</div>
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                style="background-color: #0A0A0A;">
+                <tr>
+                    <td align="center" style="padding: 40px 20px 20px;">
+                        <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0"
+                            style="max-width: 560px;">
+                            <tr>
+                                <td align="center" style="padding-bottom: 32px;">
+                                    <a href="#" style="text-decoration: none;">
+                                        <img src="public/logo-wordmark-white.png" alt="Predictions Firm" width="200"
+                                            style="display: block; height: auto; max-width: 200px;" />
+                                    </a>
+                                </td>
+                            </tr>
+                        </table>
+                        <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0"
+                            style="max-width: 560px; background-color: #111111; border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; overflow: hidden;">
+                            <tr>
+                                <td style="padding: 48px 40px;">
+                                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                                        <tr>
+                                            <td align="center" style="padding-bottom: 24px;">
+                                                <div
+                                                    style="width: 48px; height: 48px; border-radius: 12px; background-color: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); line-height: 48px; text-align: center;">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                        fill="none" stroke="#F5F5F7" stroke-width="1.5"
+                                                        stroke-linecap="round" stroke-linejoin="round"
+                                                        style="vertical-align: middle;">
+                                                        <circle cx="7.5" cy="15.5" r="5.5" />
+                                                        <path d="m11.5 11.5 5-5" />
+                                                        <path d="M16 7l2 2" />
+                                                        <path d="M14.5 8.5l2 2" />
+                                                    </svg>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                    <h1
+                                        style="margin: 0 0 12px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 28px; font-weight: 700; line-height: 34px; color: #FFFFFF; text-align: center; letter-spacing: -0.03em;">
+                                        Reset Your Password</h1>
+                                    <p
+                                        style="margin: 0 0 32px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 15px; line-height: 24px; color: #9CA3AF; text-align: center;">
+                                        We received a request to reset your password. Tap below to choose a new one. If
+                                        you didn't make this request, you can safely ignore this email.</p>
+                                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                                        <tr>
+                                            <td align="center" style="padding: 8px 0 0;">
+                                                <a href="#"
+                                                    style="display: inline-block; padding: 16px 40px; background-color: #F5F5F7; color: #000000; text-decoration: none; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 15px; font-weight: 600; border-radius: 100px; letter-spacing: -0.01em;">
+                                                    Reset Password
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                    <p
+                                        style="margin: 24px 0 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 12px; line-height: 18px; color: #4B5563; text-align: center;">
+                                        This link expires in 1 hour.</p>
+                                    <p
+                                        style="margin: 16px 0 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 12px; line-height: 18px; color: #4B5563; text-align: center;">
+                                        <a href="#" style="color: #9CA3AF; text-decoration: underline;">Or reset here
+                                            →</a></p>
+                                </td>
+                            </tr>
+                        </table>
+                        <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0"
+                            style="max-width: 560px;">
+                            <tr>
+                                <td style="padding: 32px 40px 0;">
+                                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                                        <tr>
+                                            <td style="border-top: 1px solid #1F2937; padding-top: 24px;">
+                                                <p
+                                                    style="margin: 0 0 8px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 13px; line-height: 20px; color: #6B7280; text-align: center;">
+                                                    <a href="#"
+                                                        style="color: #9CA3AF; text-decoration: none;">Dashboard</a>
+                                                    &nbsp;&nbsp;·&nbsp;&nbsp;
+                                                    <a href="#" style="color: #9CA3AF; text-decoration: none;">FAQ</a>
+                                                    &nbsp;&nbsp;·&nbsp;&nbsp;
+                                                    <a href="#" style="color: #9CA3AF; text-decoration: none;">About</a>
+                                                </p>
+                                                <p
+                                                    style="margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 12px; line-height: 18px; color: #4B5563; text-align: center;">
+                                                    © 2026 Predictions Firm. All rights reserved.
+                                                </p>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        function showEmail(id) {
+            document.querySelectorAll('.email-container').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            event.target.classList.add('active');
+        }
+    </script>
+</body>
+
+</html>

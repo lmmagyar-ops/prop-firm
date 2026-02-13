@@ -4,6 +4,20 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ---
 
+## Feb 12, 2026 — Apple-Grade Email Polish Pass
+
+Applied 5 fixes from Apple Senior Designer critique to bring emails from 7.5/10 → 9/10:
+
+1. **SVG icons replace emoji** — Clean line-art icons (envelope, lock, key) as data-URI `<img>` tags instead of emoji glyphs
+2. **CTA button → Apple Silver** — Changed from neon green `#4ADE80` to `#F5F5F7` with black text (Apple's signature)
+3. **Card border softened** — From hard `#1E1E1E` to barely-visible `rgba(255,255,255,0.06)`
+4. **Code tiles centered** — Nested table centering fix for login challenge number tiles
+5. **Fallback link cleaned** — Replaced raw URL dump with elegant "Or verify here →" text link
+
+All changes in `src/lib/email.ts`. Build passes, visually verified.
+
+---
+
 ## Feb 13, 2026 — Resend DNS Setup & Email Test
 
 **All 4 DNS records added to Namecheap:**
