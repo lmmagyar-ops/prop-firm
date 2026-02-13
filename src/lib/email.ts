@@ -147,24 +147,30 @@ function fallbackLink(url: string, label: string = 'Or verify here →'): string
 
 // ─── Send Helper ───────────────────────────────────────────────────
 async function sendEmail(to: string, subject: string, html: string, label: string): Promise<void> {
-    if (!process.env.RESEND_API_KEY) {
+    const apiKey = process.env.RESEND_API_KEY;
+    logger.info(`[Email] sendEmail called — label=${label}, to=${to}, apiKey=${apiKey ? `set (${apiKey.substring(0, 8)}...)` : 'MISSING'}, from=${EMAIL_FROM}`);
+
+    if (!apiKey) {
         logger.warn(`[Email] RESEND_API_KEY not set — ${label} to ${to} was NOT sent`);
         return;
     }
     try {
+        logger.info(`[Email] About to fetch Resend API for ${label}...`);
         const res = await fetch("https://api.resend.com/emails", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                "Authorization": `Bearer ${process.env.RESEND_API_KEY}`,
+                "Authorization": `Bearer ${apiKey}`,
             },
             body: JSON.stringify({ from: EMAIL_FROM, to: [to], subject, html }),
         });
+        logger.info(`[Email] Resend API responded: status=${res.status} for ${label}`);
         if (!res.ok) {
             const body = await res.text();
             logger.error(`[Email] Resend API error ${res.status} for ${label}: ${body}`);
         } else {
-            logger.info(`[Email] ${label} sent to ${to}`);
+            const result = await res.json();
+            logger.info(`[Email] ${label} sent to ${to} — id=${result.id}`);
         }
     } catch (error) {
         logger.error(`[Email] Failed to send ${label}:`, error);
