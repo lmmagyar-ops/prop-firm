@@ -2,6 +2,7 @@ import { createLogger } from "./logger";
 
 const logger = createLogger('Email');
 const isDev = process.env.NODE_ENV === 'development';
+const EMAIL_FROM = process.env.EMAIL_FROM || "Predictions Firm <onboarding@resend.dev>";
 
 export async function sendVerificationEmail(email: string, code: string, decoys: string[]) {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
@@ -15,14 +16,14 @@ export async function sendVerificationEmail(email: string, code: string, decoys:
 
     if (process.env.RESEND_API_KEY) {
         try {
-            await fetch("https://api.resend.com/emails", {
+            const res = await fetch("https://api.resend.com/emails", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                     "Authorization": `Bearer ${process.env.RESEND_API_KEY}`
                 },
                 body: JSON.stringify({
-                    from: "Predictions Firm <onboarding@resend.dev>", // Default Resend domain for testing
+                    from: EMAIL_FROM,
                     to: [email],
                     subject: "Authenticate Your Predictions Firm Account",
                     html: `
@@ -44,9 +45,17 @@ export async function sendVerificationEmail(email: string, code: string, decoys:
                     `
                 })
             });
+            if (!res.ok) {
+                const body = await res.text();
+                logger.error(`[Email] Resend API error ${res.status}: ${body}`);
+            } else {
+                logger.info(`[Email] Resend API success for ${email}`);
+            }
         } catch (error) {
             logger.error("Failed to send email via Resend:", error);
         }
+    } else {
+        logger.warn(`[Email] RESEND_API_KEY not set — verification email to ${email} was NOT sent`);
     }
 }
 
@@ -62,14 +71,14 @@ export async function sendPasswordResetEmail(email: string, token: string) {
 
     if (process.env.RESEND_API_KEY) {
         try {
-            await fetch("https://api.resend.com/emails", {
+            const res = await fetch("https://api.resend.com/emails", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                     "Authorization": `Bearer ${process.env.RESEND_API_KEY}`
                 },
                 body: JSON.stringify({
-                    from: "Predictions Firm <onboarding@resend.dev>",
+                    from: EMAIL_FROM,
                     to: [email],
                     subject: "Reset Your Predictions Firm Password",
                     html: `
@@ -98,9 +107,17 @@ export async function sendPasswordResetEmail(email: string, token: string) {
                     `
                 })
             });
+            if (!res.ok) {
+                const body = await res.text();
+                logger.error(`[Email] Resend API error ${res.status}: ${body}`);
+            } else {
+                logger.info(`[Email] Resend API success for ${email}`);
+            }
         } catch (error) {
             logger.error("Failed to send password reset email via Resend:", error);
         }
+    } else {
+        logger.warn(`[Email] RESEND_API_KEY not set — password reset email to ${email} was NOT sent`);
     }
 }
 
@@ -116,14 +133,14 @@ export async function sendEmailVerificationLink(email: string, token: string) {
 
     if (process.env.RESEND_API_KEY) {
         try {
-            await fetch("https://api.resend.com/emails", {
+            const res = await fetch("https://api.resend.com/emails", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                     "Authorization": `Bearer ${process.env.RESEND_API_KEY}`
                 },
                 body: JSON.stringify({
-                    from: "Predictions Firm <onboarding@resend.dev>",
+                    from: EMAIL_FROM,
                     to: [email],
                     subject: "Verify Your Predictions Firm Email",
                     html: `
@@ -152,8 +169,16 @@ export async function sendEmailVerificationLink(email: string, token: string) {
                     `
                 })
             });
+            if (!res.ok) {
+                const body = await res.text();
+                logger.error(`[Email] Resend API error ${res.status}: ${body}`);
+            } else {
+                logger.info(`[Email] Resend API success for ${email}`);
+            }
         } catch (error) {
             logger.error("Failed to send email verification via Resend:", error);
         }
+    } else {
+        logger.warn(`[Email] RESEND_API_KEY not set — email verification to ${email} was NOT sent`);
     }
 }
