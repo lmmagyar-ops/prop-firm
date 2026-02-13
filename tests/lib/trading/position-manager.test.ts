@@ -1,23 +1,21 @@
-/**
- * PositionManager Tests
- *
- * Tests the financial core: opening, averaging, and closing positions.
- * Every dollar flows through these functions. Getting the math wrong
- * here means corrupted P&L, wrong balances, and incorrect payouts.
- */
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import { PositionManager } from "@/lib/trading/PositionManager";
 import type { Transaction } from "@/db/types";
 
 // ── Mock Drizzle transaction ────────────────────────────────────
 // PositionManager takes `tx` as first arg — we mock the DB ops it uses.
-// Cast as `unknown as Transaction` because test mocks are partial implementations.
+// MockTransaction gives test assertions type-safe access to .mock properties.
+
+interface MockTransaction extends Transaction {
+    insert: Mock;
+    update: Mock;
+}
 
 function createMockTx(overrides: {
-    insertReturning?: any[];
-    findFirst?: any;
-    updateResult?: any;
-} = {}): Transaction {
+    insertReturning?: unknown[];
+    findFirst?: unknown;
+    updateResult?: unknown;
+} = {}): MockTransaction {
     const tx = {
         insert: vi.fn().mockReturnValue({
             values: vi.fn().mockReturnValue({
@@ -47,7 +45,7 @@ function createMockTx(overrides: {
             }),
         }),
     };
-    return tx as unknown as Transaction;
+    return tx as unknown as MockTransaction;
 }
 
 // =====================================================================

@@ -17,6 +17,7 @@ interface AchievementBadgesSectionProps {
     totalPayouts: number;
     isFunded: boolean;
     activeDays: number;
+    hasAchievedTenPercentGrowth: boolean;
 }
 
 export function AchievementBadgesSection({
@@ -24,7 +25,8 @@ export function AchievementBadgesSection({
     winRate,
     totalPayouts,
     isFunded,
-    activeDays
+    activeDays,
+    hasAchievedTenPercentGrowth
 }: AchievementBadgesSectionProps) {
 
     const achievements: Achievement[] = [
@@ -47,7 +49,7 @@ export function AchievementBadgesSection({
             name: "10% Profit",
             description: "Achieved 10% account growth",
             icon: <TrendingUp className="w-8 h-8" />,
-            earned: false, // FUTURE(v2): compute from (currentBalance / startingBalance) >= 1.10
+            earned: hasAchievedTenPercentGrowth,
         },
         {
             id: "marksman",

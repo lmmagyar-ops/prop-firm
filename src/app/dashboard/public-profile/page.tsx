@@ -53,7 +53,7 @@ export default async function PublicProfilePage() {
     // Get user's challenge IDs for trade queries
     const userChallenges = await db.query.challenges.findMany({
         where: eq(challenges.userId, session.user.id),
-        columns: { id: true },
+        columns: { id: true, currentBalance: true, startingBalance: true },
     });
     const challengeIds = userChallenges.map(c => c.id);
 
@@ -180,6 +180,13 @@ export default async function PublicProfilePage() {
                         totalPayouts={totalPayouts}
                         isFunded={isFunded}
                         activeDays={activeDays}
+                        hasAchievedTenPercentGrowth={
+                            userChallenges.length > 0 && userChallenges.some(c => {
+                                const current = parseFloat(c.currentBalance);
+                                const starting = parseFloat(c.startingBalance);
+                                return starting > 0 && current / starting >= 1.10;
+                            })
+                        }
                     />
                 </div>
             </section>

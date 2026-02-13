@@ -4,6 +4,31 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ---
 
+## Feb 13, 2026 — Fix `position-manager.test.ts` Mock Types
+
+### Problem
+Pre-existing tsc errors: `.mock` property access on `tx.insert`/`tx.update` failed type-checking because `createMockTx()` returned `Transaction` (Drizzle type) which doesn't have Vitest mock properties. This blocked the husky pre-commit hook, forcing `--no-verify` on every commit.
+
+### Fix
+- Created `MockTransaction extends Transaction` with `insert: Mock` and `update: Mock`.
+- Replaced `any` types in overrides with `unknown` (no-`any` rule).
+- Result: 0 tsc errors, 16/16 tests pass, husky hook unblocked.
+
+---
+
+## Feb 13, 2026 — Achievement Badge: 10% Growth
+
+### Problem
+"10% Profit" badge always showed locked (`earned: false`) with a `FUTURE(v2)` stub in `AchievementBadgesSection.tsx`.
+
+### Fix
+- Added `hasAchievedTenPercentGrowth` boolean prop to the component.
+- Expanded existing `userChallenges` query in `public-profile/page.tsx` to include `currentBalance` and `startingBalance`.
+- Computed `currentBalance / startingBalance >= 1.10` across all user challenges.
+- Full suite: 819 tests pass, 0 failures.
+
+---
+
 ## Feb 13, 2026 — Profile Service: `highestWinRateAsset`
 
 ### Problem
