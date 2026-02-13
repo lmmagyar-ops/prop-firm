@@ -147,24 +147,19 @@ function fallbackLink(url: string, label: string = 'Or verify here →'): string
 
 // ─── Send Helper ───────────────────────────────────────────────────
 async function sendEmail(to: string, subject: string, html: string, label: string): Promise<void> {
-    const apiKey = process.env.RESEND_API_KEY;
-    logger.info(`[Email] sendEmail called — label=${label}, to=${to}, apiKey=${apiKey ? `set (${apiKey.substring(0, 8)}...)` : 'MISSING'}, from=${EMAIL_FROM}`);
-
-    if (!apiKey) {
+    if (!process.env.RESEND_API_KEY) {
         logger.warn(`[Email] RESEND_API_KEY not set — ${label} to ${to} was NOT sent`);
         return;
     }
     try {
-        logger.info(`[Email] About to fetch Resend API for ${label}...`);
         const res = await fetch("https://api.resend.com/emails", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                "Authorization": `Bearer ${apiKey}`,
+                "Authorization": `Bearer ${process.env.RESEND_API_KEY}`,
             },
             body: JSON.stringify({ from: EMAIL_FROM, to: [to], subject, html }),
         });
-        logger.info(`[Email] Resend API responded: status=${res.status} for ${label}`);
         if (!res.ok) {
             const body = await res.text();
             logger.error(`[Email] Resend API error ${res.status} for ${label}: ${body}`);
