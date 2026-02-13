@@ -18,7 +18,7 @@ const BRAND = {
     gray600: '#4B5563',
     gray700: '#374151',
     gray800: '#1F2937',
-    siteUrl: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+    siteUrl: process.env.NEXT_PUBLIC_APP_URL || 'https://prop-firmx.vercel.app',
     logoUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'https://prop-firmx.vercel.app'}/logo-wordmark-white.png`,
 } as const;
 

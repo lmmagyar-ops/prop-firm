@@ -12,7 +12,7 @@ export async function GET(request: Request) {
         const token = searchParams.get("token");
 
         if (!token) {
-            const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+            const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://prop-firmx.vercel.app";
             return NextResponse.redirect(`${appUrl}/login?error=missing_token`);
         }
 
@@ -33,7 +33,7 @@ export async function GET(request: Request) {
 
         if (tokenRecord.length === 0) {
             logger.info("[VerifyEmail] Token not found or expired");
-            const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+            const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://prop-firmx.vercel.app";
             return NextResponse.redirect(`${appUrl}/login?error=invalid_token`);
         }
 
@@ -58,12 +58,12 @@ export async function GET(request: Request) {
 
         logger.info("[VerifyEmail] Email verified successfully:", email);
 
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://prop-firmx.vercel.app";
         return NextResponse.redirect(`${appUrl}/login?verified=true`);
 
     } catch (error) {
         logger.error("[VerifyEmail] Error:", error);
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://prop-firmx.vercel.app";
         return NextResponse.redirect(`${appUrl}/login?error=verification_failed`);
     }
 }

@@ -4,6 +4,35 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ---
 
+## Feb 13, 2026 — HOTFIX: Verification emails sending localhost URLs
+
+### Problem
+Mat reported that clicking "Verify Email" in production sends users to `http://localhost:3000/api/auth/verify-email?token=...`. Production-breaking bug.
+
+### Root Cause
+`NEXT_PUBLIC_APP_URL` env var not set on Vercel production. `email.ts` line 21 and `verify-email/route.ts` (4 occurrences) all had `|| 'http://localhost:3000'` fallbacks. Ironically, `logoUrl` on the very next line had the correct fallback (`https://prop-firmx.vercel.app`).
+
+### Fix
+Changed all 5 localhost fallbacks to `https://prop-firmx.vercel.app`. Also need to set `NEXT_PUBLIC_APP_URL` on Vercel env vars to prevent this class of bug.
+
+---
+
+## Feb 13, 2026 — CLV Brainstorm (Deferred)
+
+### Key Insight
+The existing `clv-calculator.ts` (161 lines) is orphaned — never imported anywhere. Before adding schema columns, we need to settle the **conceptual definition** of "closing line" for prediction markets:
+
+- **Approach A: Exit price** — just realized P&L repackaged, doesn't measure skill
+- **Approach B: Resolution price (0 or 1)** — measures whether trader was *right* + had good entry price. This is the correct metric for prop firm evaluation.
+- **Approach C: Price at market close** — closest to sports betting CLV
+
+**Recommendation:** Don't migrate schema yet. The semantic question (A vs B vs C) is a business decision. Instead, compute CLV on-the-fly using existing `closedPrice` on positions + resolution data. Persist only when CLV drives a real product decision (e.g., flagging sharp bettors).
+
+### See Also
+Full implementation plan: `implementation_plan.md` in agent artifacts.
+
+---
+
 ## Feb 13, 2026 — Per-Account Visibility Flags
 
 ### Problem
