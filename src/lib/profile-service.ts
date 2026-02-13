@@ -61,6 +61,8 @@ export async function getPrivateProfileData(userId: string) {
         accountNumber: `CH-${c.startedAt ? new Date(c.startedAt).getFullYear() : 'XXXX'}-${String(idx + 1).padStart(3, '0')}`,
         accountType: `$${parseFloat(c.startingBalance).toLocaleString()} Challenge`,
         status: c.status,
+        isPublicOnProfile: c.isPublicOnProfile,
+        showDropdownOnProfile: c.showDropdownOnProfile,
     }));
 
     // 7. Get socials
@@ -81,11 +83,11 @@ export async function getPublicProfileData(userId: string) {
     // Add public-specific fields
     const showOnLeaderboard = data.user.showOnLeaderboard || false;
 
-    // Add visibility flags to accounts
+    // Map visibility flags from DB columns to public profile format
     const accountsWithVisibility = data.accounts.map(acc => ({
         ...acc,
-        isPublic: true, // FUTURE(v2): per-account visibility from DB
-        showDropdown: true, // FUTURE(v2): per-account dropdown toggle from DB
+        isPublic: acc.isPublicOnProfile ?? true,
+        showDropdown: acc.showDropdownOnProfile ?? true,
     }));
 
     return {

@@ -4,6 +4,19 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ---
 
+## Feb 13, 2026 — Per-Account Visibility Flags
+
+### Problem
+Public profile hardcoded `isPublic: true` and `showDropdown: true` for all accounts with `FUTURE(v2)` stubs. The DB columns `isPublicOnProfile` and `showDropdownOnProfile` already existed in the challenges schema but were never read.
+
+### Fix
+- Added `isPublicOnProfile` and `showDropdownOnProfile` to `Challenge` interface in `types/user.ts`.
+- Included both fields in the accounts array built in `getPrivateProfileData`.
+- Mapped to `isPublic`/`showDropdown` in `getPublicProfileData` using DB values with `true` fallback.
+- Full suite: 819 tests pass, 0 failures.
+
+---
+
 ## Feb 13, 2026 — Fix `position-manager.test.ts` Mock Types
 
 ### Problem

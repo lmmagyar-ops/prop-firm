@@ -55,6 +55,8 @@ export interface Challenge {
     currentBalance: string;
     status: string;
     startedAt: Date | null;
+    isPublicOnProfile: boolean;
+    showDropdownOnProfile: boolean;
 }
 
 export interface PublicProfileData {
