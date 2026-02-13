@@ -26,6 +26,16 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 **Blockers:** Email won't work until DNS propagates and Resend verifies the domain. Once verified, re-test signup flow.
 
+**Email template redesign (commit `f9c1b69`):**
+- Replaced all 3 basic inline-HTML templates with a world-class modular design system
+- Brand-consistent dark theme (#0A0A0A bg, #111 card, #1E1E1E borders) matching landing page
+- Logo wordmark header, pill-shaped neon green (#4ADE80) CTA buttons, Apple system fonts
+- Table-based layout for Gmail/Outlook/Apple Mail cross-client compatibility
+- Outlook VML fallback for rounded buttons
+- Shared `emailShell()` + component helpers (`ctaButton`, `heading`, `bodyText`, `finePrint`, `fallbackLink`)
+- Consolidated `sendEmail()` helper with error logging (DRY'd 3 separate implementations)
+- Professional footer: Dashboard · FAQ · About links + copyright
+
 ---
 
 ## Feb 12, 2026 — Signup Flow Fixes (QA Feedback from Mat)
