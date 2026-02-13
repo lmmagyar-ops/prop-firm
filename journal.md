@@ -4,6 +4,40 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ---
 
+## Feb 13, 2026 — Resend DNS Setup & Email Test
+
+**All 4 DNS records added to Namecheap:**
+1. ✅ TXT `resend._domainkey` — DKIM key for Resend
+2. ✅ TXT `_dmarc` — DMARC policy (`v=DMARC1; p=none;`)
+3. ✅ MX `send` → `feedback-smtp.us-east-1.amazonses.com` (priority 10)
+4. ✅ TXT `send` → `v=spf1 include:amazonses.com ~all` (added via jQuery select2 API)
+
+**Resend domain verification:** All DNS records still **Pending** (DNS propagation in progress)
+
+**Vercel env vars set:**
+- ✅ `RESEND_API_KEY` = `re_TBZ96FG2_6URXWYeazMtaF6n38hAq8GX` (All Environments)
+- ✅ `EMAIL_FROM` = `Predictions Firm <noreply@predictionsfirm.com>` (All Environments) — fixed underscore issue
+
+**Signup test result:**
+- ✅ Account created for `oversightresearch@protonmail.com` (201 Created)
+- ❌ No verification email delivered — Resend shows "No sent emails yet"
+- **Root cause:** Resend API response was silently discarded. All 3 email functions did `await fetch(...)` but never checked the response. If Resend returned a 403 (domain not verified), it was invisible in logs.
+- **Fix deployed (commit `3549c5a`):** Added `res.status` + `res.text()` logging on non-2xx responses to all 3 email functions. Next signup attempt will show the exact Resend error in Vercel logs.
+
+**Blockers:** Email won't work until DNS propagates and Resend verifies the domain. Once verified, re-test signup flow.
+
+---
+
+## Feb 12, 2026 — Signup Flow Fixes (QA Feedback from Mat)
+
+1. **Bot verification** — Replaced 6 subjective emoji/culture questions ("What does 💎🙌 mean?") with 8 objective math questions ("What is 15 + 27?"). Still trading-themed where appropriate.
+2. **Email delivery** — Root cause: `RESEND_API_KEY` not set in Vercel production env vars. Also all 3 email functions hardcoded `onboarding@resend.dev` (Resend test domain — only delivers to account owner). Fixed:
+   - Added `EMAIL_FROM` env var support with fallback
+   - Added `logger.warn` for all 3 functions when `RESEND_API_KEY` is missing (no more silent skips)
+   - **User action needed:** Set `RESEND_API_KEY` and `EMAIL_FROM` in Vercel env vars, and add `predictionsfirm.com` as verified domain in Resend dashboard.
+
+---
+
 ## Feb 12, 2026 — Production Hardening (Phases 1-3, 5)
 
 **Financial verification:** `test:financial` 24/24 ✅, `test:engine` 53/53 ✅, `test:safety` 44/44 ✅
