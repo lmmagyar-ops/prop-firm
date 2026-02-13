@@ -12,46 +12,60 @@ interface TraderBotGuardProps {
 // Trading-themed challenges
 const CHALLENGES = [
     {
-        type: "emoji",
-        question: "Which emoji represents a winning trade?",
-        options: ["🐻", "📉", "🐂", "💀"],
-        answer: "🐂",
-        hint: "Think bullish..."
-    },
-    {
-        type: "emoji",
-        question: "Click the symbol for profit:",
-        options: ["📈", "📉", "⏸️", "🔄"],
-        answer: "📈",
-        hint: "Green means go!"
+        type: "math",
+        question: "What is 15 + 27?",
+        options: ["32", "42", "38", "44"],
+        answer: "42",
+        hint: "Add the tens, then the ones"
     },
     {
         type: "math",
-        question: "If you buy at 0.40 and sell at 0.70, what's your profit per share?",
+        question: "If you buy at $0.40 and sell at $0.70, what's your profit?",
         options: ["$0.20", "$0.30", "$0.40", "$1.10"],
         answer: "$0.30",
         hint: "Sell price minus buy price"
     },
     {
-        type: "emoji",
-        question: "Which animal do traders want to see?",
-        options: ["🐻", "🦆", "🐂", "🐍"],
-        answer: "🐂",
-        hint: "Bulls charge forward!"
+        type: "math",
+        question: "What is 8 × 7?",
+        options: ["54", "48", "56", "63"],
+        answer: "56",
+        hint: "Think: 8 × 7"
     },
     {
         type: "math",
-        question: "You bet $100 on YES at 0.50. What's your payout if you win?",
-        options: ["$50", "$100", "$150", "$200"],
-        answer: "$200",
-        hint: "$100 / 0.50 = ?"
+        question: "A share costs $0.50. How many can you buy with $10?",
+        options: ["15", "20", "25", "50"],
+        answer: "20",
+        hint: "$10 ÷ $0.50"
     },
     {
-        type: "emoji",
-        question: "What does 💎🙌 mean?",
-        options: ["Selling fast", "Holding strong", "Taking profit", "Cutting losses"],
-        answer: "Holding strong",
-        hint: "Diamond hands never fold"
+        type: "math",
+        question: "What is 100 - 37?",
+        options: ["53", "67", "63", "73"],
+        answer: "63",
+        hint: "Subtract from 100"
+    },
+    {
+        type: "math",
+        question: "You invest $200 and earn 50% profit. What's your total?",
+        options: ["$250", "$300", "$350", "$400"],
+        answer: "$300",
+        hint: "50% of $200 = $100"
+    },
+    {
+        type: "math",
+        question: "What is 144 ÷ 12?",
+        options: ["11", "12", "13", "14"],
+        answer: "12",
+        hint: "A dozen squared"
+    },
+    {
+        type: "math",
+        question: "If a stock drops 20% from $50, what's the new price?",
+        options: ["$30", "$35", "$40", "$45"],
+        answer: "$40",
+        hint: "20% of $50 = $10"
     }
 ];
 

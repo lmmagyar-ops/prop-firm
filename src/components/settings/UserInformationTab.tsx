@@ -179,7 +179,7 @@ export function UserInformationTab({ user, onTabChange }: UserInformationTabProp
                     <ProfilePictureUpload
                         currentImageUrl={user.image}
                         onUpload={(file) => {
-                            // BACKLOG: Implement file upload logic
+                            // FUTURE(v2): implement file upload to S3/Cloudflare R2
                             toast.info("Image upload coming soon");
                         }}
                     />

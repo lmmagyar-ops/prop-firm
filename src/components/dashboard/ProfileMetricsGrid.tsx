@@ -49,7 +49,7 @@ interface ProfileMetricsGridProps {
         lifetimeTradingVolume: number;
         fundedTradingVolume: number;
         currentWithdrawableProfit: number;
-        highestWinRateAsset: string;
+        highestWinRateAsset: string | null;
         tradingWinRate: number;
         lifetimeProfitWithdrawn: number;
     };
@@ -87,7 +87,7 @@ export function ProfileMetricsGrid({ metrics, isPublic = false }: ProfileMetrics
 
             <MetricCard
                 title="Best Asset"
-                value={metrics.highestWinRateAsset}
+                value={metrics.highestWinRateAsset || 'N/A'}
                 icon={<BarChart2 className="w-5 h-5 text-purple-400" />}
                 delay={300}
             />

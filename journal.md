@@ -4,6 +4,122 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ---
 
+## Feb 13, 2026 — Profile Service: `highestWinRateAsset`
+
+### Problem
+Public profile's "Highest Win Rate Asset" stat showed null because `profile-service.ts:calculateMetrics` had a `FUTURE(v2)` stub.
+
+### Fix
+- **Reused** `computeBestMarketCategory` from `dashboard-service.ts` — zero new logic, pure plumbing.
+- Added `marketId` to `TradeRecord` interface.
+- Fetches market titles via `MarketService.getBatchTitles()` in `getPrivateProfileData` (already async).
+- Full suite: 819 tests pass, 0 failures.
+
+---
+
+## Feb 13, 2026 — Dashboard Data Gap: `bestMarketCategory`
+
+### Problem
+Dashboard "Best Market Category" stat showed "N/A" because `dashboard-service.ts` hardcoded `bestMarketCategory: null` with a `FUTURE(v2)` stub.
+
+### Fix
+- **New pure function** `computeBestMarketCategory()` — groups SELL trades by category (via keyword classifier), picks highest win-rate category with ≥2 trades.
+- **Trade query expanded** to include `marketId` (was only `id, type, realizedPnL, executedAt`).
+- **Reuses existing infrastructure**: `MarketService.getBatchTitles()` for market names, `getCategories()` from `market-classifier.ts` (same engine as risk system).
+- **No schema or Redis changes** — pure computation from data that was already available.
+
+### Tests
+7 new behavioral tests for `computeBestMarketCategory`: empty input, unclassifiable titles → "Other", missing titles → null, win-rate ranking, min-trade threshold, tie-breaking by volume, zero/negative PnL as loss. Full suite: 819 tests pass, 0 failures.
+
+---
+
+## Feb 13, 2026 — Email Delivery Root Cause Analysis
+
+Mat is blocked on email verification. Full investigation found **three issues**:
+
+### Root Causes
+
+1. **Resend domain name field is empty (`""`)** — the domain `predictionsfirm.com` was added to Resend 7 days ago but the API shows `"name": ""` (no domain name). Resend can't verify DNS for a nameless domain. All 3 DNS records (DKIM TXT, SPF TXT, MX for `send` subdomain) are correctly propagated (confirmed via `dig`). DMARC also present.
+
+2. **"Prop Firm" API key is invalid** — the key `re_TBZ96FG2...` (created ~13 hours ago) returns `400 "API key is invalid"` when used. This means production emails are 100% failing silently. The "Landing Page" key `re_YeG5XSUz...` works and was used to trigger domain re-verification.
+
+3. **Domain verification stuck at Pending** — triggered re-verification via Resend API (`POST /domains/:id/verify`), but domain is still polling. Likely won't verify until the empty name issue is fixed.
+
+### Fix Plan — COMPLETED ✅
+
+1. ~~Delete domain in Resend → re-add with correct name~~ **Done** — deleted via `curl DELETE`, re-added as `predictionsfirm.com` (new ID: `b5d0a30c-...`). Updated DKIM at Namecheap. All 3 records verified.
+2. ~~Generate new API key → update Vercel~~ **Done** — new key `re_YUwNuiS5...` created. First Vercel update failed (browser JS didn't trigger React state). Second attempt with Cmd+A → type replacement worked. Redeployed.
+3. ~~Unblock existing users~~ **Done** — bulk-verified all 9 unverified users via DB script.
+4. ~~End-to-end test~~ **Done** — test signup → Resend processed email (bounced as expected for fake address). Diagnostic logs confirmed API key is correct, cleaned up after.
+
+---
+
+## Feb 13, 2026 — Codebase Cleanup, Behavioral Tests & Browser Smoke Test
+
+Tonight's session: cleaned all "vibe coded" artifacts (12 files), wrote behavioral tests for the two riskiest changes, ran full suite, and visually verified every affected page.
+
+### Cleanup (12 files, 3 tiers)
+
+**Type Safety:** `PositionManager.ts` `any` → `Transaction`, `Position` interface aligned with Drizzle schema, `highestWinRateAsset: string` → `string | null`.
+
+**Dead Code:** Re-enabled email verification guard in `auth.ts` (was `TEMPORARILY DISABLED`). Removed demo mock data from `profile-service.ts` (hardcoded `"Politics"` → `null`). Removed 40-line dead WebSocket block from `PriceTicker.tsx`. Updated `ProfileMetricsGrid.tsx` to accept `null` with `"N/A"` fallback.
+
+**Consistency:** Standardized all `BACKLOG` → `FUTURE(v2)` across 8 files. Zero `BACKLOG` markers remaining.
+
+### Behavioral Tests (29 tests, 2 files)
+
+**`credential-authorize.test.ts` (16 tests):** All 7 rejection paths (missing creds, user not found, suspended, no password, **email unverified**, wrong password, DB error) + 4 success variants. The email verification tests specifically guard the re-enabled security check.
+
+**`profile-service.test.ts` (13 tests):** Demo user bypass returns `null` without DB query. Win rate, volume, and `highestWinRateAsset: null` calculations. Public profile delegation with visibility flags. Two tests initially failed because empty challenge arrays caused the `trades` query to be skipped — fixed by providing challenge mocks.
+
+### Browser Smoke Test (5 pages verified)
+
+| Page | Result |
+|------|--------|
+| Login | ✅ Form renders, credential auth works |
+| Dashboard | ✅ "N/A" for Best Market Category (null handling confirmed) |
+| Public Profile | ✅ "N/A" for Best Asset, full metrics grid renders |
+| Settings | ✅ User information form populates correctly |
+| Trade | ✅ Markets load, charts render, order panel functional |
+
+### Verification
+
+812 tests passed, 3 skipped, 0 failures across 52 test files. Build clean. No visual regressions.
+
+### Discovery: PriceTicker Not Rendered
+
+`PriceTicker.tsx` exists and fetches data correctly, but is **not imported by any layout or page component**. The component is orphaned — it will need to be wired into a layout (likely `DashboardShell.tsx` or the trade page header) to be visible.
+
+---
+
+## 🌅 Tomorrow Morning — Anthropic Engineer's Priority Stack
+
+Thinking about what moves the needle most, ranked by **leverage × risk**:
+
+### 1. Wire PriceTicker into the UI (30 min)
+The component exists, fetches data, but is imported nowhere. This is the single highest-ROI task — it's a feature that's 95% done and just needs one import line + positioning decision. Should go in `DashboardShell.tsx` header bar or trade page top. Quick visual verification after.
+
+### 2. `bestMarketCategory` — Replace Null Stub with Real Computation (1-2 hrs)
+Dashboard shows "N/A" for Best Market Category. The data is there — each trade has a market, each market has a category. This is a query + aggregation in `dashboard-service.ts` (currently line 302: `bestMarketCategory: null`). The approach: join trades → markets → categories, group by category, pick the one with the highest win rate or most volume. This makes the dashboard feel data-rich instead of empty.
+
+### 3. Triage the 13 `FUTURE(v2)` Stubs (1 hr)
+There are 13 `FUTURE(v2)` markers across the codebase. Some are truly v2 (file upload, CLV calculator schema columns). But some are low-hanging fruit that could ship now:
+- `DashboardView.tsx` positions wiring — positions data already exists in context
+- `AchievementBadgesSection.tsx` — the math is a one-liner (`currentBalance / startingBalance >= 1.10`)
+- `profile-service.ts` visibility flags — could ship with a simple user preferences column
+
+Triage them into "ship now" vs "truly v2" and knock out the quick ones.
+
+### 4. Resend Domain Verification Follow-Up
+DNS records were added yesterday. Check if Resend has verified `predictionsfirm.com`. If yes, test the full signup → email verification flow end-to-end. If no, check propagation status and troubleshoot.
+
+### 5. Consider: Integration Test for the Authorize Path
+We have 16 unit tests for `authorize()`, but no integration test that exercises the full NextAuth credential flow through the API route. A single Playwright test that: registers → gets verification email (or manually verifies) → logs in → sees dashboard would catch any wiring issues between our tested `authorize` function and NextAuth's actual invocation of it.
+
+---
+
+
+
 ## Feb 12, 2026 — Apple-Grade Email Polish Pass
 
 Applied 5 fixes from Apple Senior Designer critique to bring emails from 7.5/10 → 9/10:

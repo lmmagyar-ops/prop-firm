@@ -2,6 +2,37 @@
 
 > **Funded Prediction** — A simulated trading platform where users trade on Polymarket/Kalshi data with firm capital.
 
+## ⚙️ Engineering Standards (Anthropic-Grade)
+
+### Core Principles
+- **One variable per change.** Never mix refactors with behavioral changes. Each commit should be independently revertable.
+- **Fail closed on financial/security paths.** If you can't verify something is safe, block it. Never fail open on money or auth.
+- **Behavioral tests over unit tests.** Test what the system DOES, not how it's wired. Mock at boundaries, not internals. Beware "mocking mirages" — tests that pass because mocks mirror assumptions, not reality.
+- **No dead code.** Don't comment things out "for later." Delete it. Git remembers.
+
+### Before Writing Code
+- Always read CLAUDE.md (or equivalent project docs) before making changes.
+- Grep for existing patterns before inventing new ones. If there's a `formatPrice()`, use it — don't write `Math.round(price * 100)`.
+- Check if the thing you're about to build already exists but isn't wired up (like an orphaned component).
+
+### Code Quality
+- No `any` types in production code. Use `unknown` + type narrowing.
+- No silent catch blocks. Log or rethrow — never swallow errors.
+- No hardcoded values in business logic. Constants belong in config.
+- Mark incomplete work with a consistent tag (e.g., `FUTURE(v2):`) — never bare `TODO` without context.
+
+### Verification Discipline
+- Run the full test suite after every change, not just the file you edited.
+- Browser smoke test any UI change — screenshots prove more than type-checks.
+- Cross-reference numbers: if a value appears in the API response AND the DB AND the UI, verify all three match.
+
+### Communication
+- Always leave a journal.md entry when completing work.
+- When handing off, leave a "Tomorrow Morning" section with prioritized next steps ranked by leverage × risk.
+- Document root causes, not just fixes. Future agents need the "why."
+
+---
+
 ## 🧠 New Agent? Start Here
 
 1. **Read this file** — full architecture, risk rules, debugging protocols

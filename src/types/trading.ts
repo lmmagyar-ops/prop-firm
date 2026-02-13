@@ -19,19 +19,20 @@ export interface ChallengeRules {
 
 export interface Position {
     id: string;
-    challengeId: string;
+    challengeId: string | null;
     marketId: string;
-    direction: 'YES' | 'NO';
+    direction: string;
     sizeAmount: string;
     shares: string;
     entryPrice: string;
     currentPrice: string | null;
-    status: 'OPEN' | 'CLOSED';
-    pnl: string;
+    status: string | null;
+    pnl: string | null;
     lastFeeChargedAt: Date | null;
-    feesPaid: string;
-    openedAt: Date;
+    feesPaid: string | null;
+    openedAt: Date | null;
     closedAt: Date | null;
+    closedPrice: string | null;
 }
 
 export interface Challenge {

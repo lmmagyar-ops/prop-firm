@@ -181,7 +181,7 @@ export function DashboardView({ initialBalance = null, demoMode = false, userId 
 
                 {/* 4. Open Positions */}
                 <OpenPositions
-                    positions={[]} // BACKLOG: Wire up real positions from API/Context
+                    positions={[]} // Demo mode — real positions rendered via LivePositions on /dashboard
                 />
 
             </div>

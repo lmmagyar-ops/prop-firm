@@ -6,6 +6,7 @@ import { calculatePositionMetrics } from "@/lib/position-utils";
 import { normalizeRulesConfig } from "@/lib/normalize-rules";
 import { safeParseFloat } from "./safe-parse";
 import { softInvariant } from "./invariant";
+import { getCategories } from "@/workers/market-classifier";
 
 // ── Lightweight DB row interfaces (fields accessed by pure functions) ──
 interface DbChallengeRow {
@@ -164,6 +165,71 @@ export function getEquityStats(challenge: DbChallengeRow, equity: number, starti
     return { totalPnL, dailyPnL, drawdownUsage, dailyDrawdownUsage, profitProgress, drawdownAmount, dailyDrawdownAmount };
 }
 
+// ─── Trade-level category stats (pure function) ───────────────────
+
+interface TradeForCategory {
+    marketId: string;
+    realizedPnL: string | null;
+}
+
+/**
+ * Compute the user's best market category from their SELL trade history.
+ * "Best" = highest win rate among categories with ≥2 closed trades.
+ * Ties broken by total trade count (more trades = more confidence).
+ * Pure function — no I/O.
+ */
+export function computeBestMarketCategory(
+    sellTrades: TradeForCategory[],
+    marketTitles: Map<string, string>,
+): string | null {
+    if (sellTrades.length === 0) return null;
+
+    // Group trades by category
+    const categoryStats = new Map<string, { wins: number; total: number }>();
+
+    for (const trade of sellTrades) {
+        const title = marketTitles.get(trade.marketId);
+        if (!title) continue;
+
+        // Classify using the same keyword engine as the risk system
+        const categories = getCategories(null, title);
+        if (categories.length === 0) continue;
+
+        const isWin = safeParseFloat(trade.realizedPnL) > 0;
+
+        for (const category of categories) {
+            // Skip meta-categories that aren't trading categories
+            if (category === 'Breaking' || category === 'New') continue;
+
+            const existing = categoryStats.get(category) || { wins: 0, total: 0 };
+            existing.total++;
+            if (isWin) existing.wins++;
+            categoryStats.set(category, existing);
+        }
+    }
+
+    // Find category with highest win rate (min 2 trades to avoid noise)
+    let bestCategory: string | null = null;
+    let bestWinRate = -1;
+    let bestTotalTrades = 0;
+
+    for (const [category, stats] of categoryStats) {
+        if (stats.total < 2) continue;
+
+        const winRate = stats.wins / stats.total;
+        if (
+            winRate > bestWinRate ||
+            (winRate === bestWinRate && stats.total > bestTotalTrades)
+        ) {
+            bestCategory = category;
+            bestWinRate = winRate;
+            bestTotalTrades = stats.total;
+        }
+    }
+
+    return bestCategory;
+}
+
 /**
  * Calculate funded account stats (tier, payout eligibility, cycle timing).
  * Pure function — no I/O.
@@ -252,7 +318,7 @@ export async function getDashboardData(userId: string) {
     // 2b. Calculate REAL trade-level stats from trades table
     // Get all challenge IDs for this user
     const challengeIds = allChallenges.map(c => c.id);
-    type TradeRow = { id: string; type: string; realizedPnL: string | null; executedAt: Date | null };
+    type TradeRow = { id: string; type: string; marketId: string; realizedPnL: string | null; executedAt: Date | null };
     const allTradesResult: TradeRow[] = [];
 
     if (challengeIds.length > 0) {
@@ -260,7 +326,7 @@ export async function getDashboardData(userId: string) {
         for (const cId of challengeIds) {
             const chTrades = await db.query.trades.findMany({
                 where: eq(trades.challengeId, cId),
-                columns: { id: true, type: true, realizedPnL: true, executedAt: true },
+                columns: { id: true, type: true, marketId: true, realizedPnL: true, executedAt: true },
                 orderBy: [desc(trades.executedAt)],
             });
             allTradesResult.push(...(chTrades as TradeRow[]));
@@ -293,13 +359,21 @@ export async function getDashboardData(userId: string) {
     // Sum realized PnL from all SELL trades
     const totalRealizedPnL = sellTrades.reduce((sum: number, t: TradeRow) => sum + safeParseFloat(t.realizedPnL), 0);
 
+    // Compute best market category from SELL trade history + market titles
+    const sellTradeMarketIds = [...new Set(sellTrades.map(t => t.marketId))];
+    const marketModule = await import("./market");
+    const tradeMarketTitles = sellTradeMarketIds.length > 0
+        ? await marketModule.MarketService.getBatchTitles(sellTradeMarketIds)
+        : new Map<string, string>();
+    const bestMarketCategory = computeBestMarketCategory(sellTrades, tradeMarketTitles);
+
     const lifetimeStats = {
         totalChallengesStarted,
         challengesCompleted,
         challengesFailed,
         successRate,
         totalProfitEarned: totalProfitEarned > 0 ? totalProfitEarned : Math.max(0, totalRealizedPnL),
-        bestMarketCategory: null as string | null, // BACKLOG: implement category analysis (requires per-trade Redis lookup)
+        bestMarketCategory,
         currentWinStreak,
         avgTradeWinRate: tradeWinRate,
         // NEW: trade-level stats

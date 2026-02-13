@@ -1,16 +1,14 @@
 import { positions } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import type { Position } from '@/types/trading';
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type DbTransaction = any; // Drizzle transaction - generic for flexibility
+import { type Transaction } from '@/db/types';
 
 export class PositionManager {
     /**
      * Opens a new position
      */
     static async openPosition(
-        tx: DbTransaction,
+        tx: Transaction,
         challengeId: string,
         marketId: string,
         shares: number,
@@ -42,7 +40,7 @@ export class PositionManager {
      * Adds to an existing position (averaging)
      */
     static async addToPosition(
-        tx: DbTransaction,
+        tx: Transaction,
         positionId: string,
         additionalShares: number,
         additionalPrice: number,
@@ -73,7 +71,7 @@ export class PositionManager {
      * @param exitPrice Optional live exit price - if not provided, falls back to position.currentPrice
      */
     static async reducePosition(
-        tx: DbTransaction,
+        tx: Transaction,
         positionId: string,
         sharesToSell: number,
         exitPrice?: number

@@ -7,15 +7,17 @@
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { PositionManager } from "@/lib/trading/PositionManager";
+import type { Transaction } from "@/db/types";
 
 // ── Mock Drizzle transaction ────────────────────────────────────
 // PositionManager takes `tx` as first arg — we mock the DB ops it uses.
+// Cast as `unknown as Transaction` because test mocks are partial implementations.
 
 function createMockTx(overrides: {
     insertReturning?: any[];
     findFirst?: any;
     updateResult?: any;
-} = {}) {
+} = {}): Transaction {
     const tx = {
         insert: vi.fn().mockReturnValue({
             values: vi.fn().mockReturnValue({
@@ -45,7 +47,7 @@ function createMockTx(overrides: {
             }),
         }),
     };
-    return tx;
+    return tx as unknown as Transaction;
 }
 
 // =====================================================================

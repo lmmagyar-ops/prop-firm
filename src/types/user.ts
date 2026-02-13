@@ -63,7 +63,7 @@ export interface PublicProfileData {
         lifetimeTradingVolume: number;
         fundedTradingVolume: number;
         currentWithdrawableProfit: number;
-        highestWinRateAsset: string;
+        highestWinRateAsset: string | null;
         tradingWinRate: number;
         lifetimeProfitWithdrawn: number;
     };

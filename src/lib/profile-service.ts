@@ -3,50 +3,12 @@ import { db } from "@/db";
 import { users, challenges, payouts, trades } from "@/db/schema";
 import { eq, and, inArray } from "drizzle-orm";
 import type { Challenge } from "@/types/user";
+import { computeBestMarketCategory } from "@/lib/dashboard-service";
 
 export async function getPrivateProfileData(userId: string) {
-    // MOCK DATA BYPASS FOR DEMO USER
+    // Demo users have no real profile data
     if (userId.startsWith("demo-user")) {
-        return {
-            user: {
-                id: userId,
-                displayName: "Demo Trader",
-                email: "demo@projectx.com",
-                image: null,
-                createdAt: new Date(),
-                emailVerified: new Date(),
-                showOnLeaderboard: true,
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any -- demo mock data bypass
-            } as any, // Cast to avoid full type matching for demo
-            metrics: {
-                lifetimeTradingVolume: 1500000,
-                fundedTradingVolume: 500000,
-                currentWithdrawableProfit: 12500,
-                highestWinRateAsset: "Politics",
-                tradingWinRate: 68.5,
-                lifetimeProfitWithdrawn: 5000,
-            },
-            accounts: [
-                {
-                    id: "acc-1",
-                    date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-                    accountNumber: "CH-2024-001",
-                    accountType: "$50,000 Challenge",
-                    status: "passed",
-                },
-                {
-                    id: "acc-2",
-                    date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-                    accountNumber: "CH-2024-002",
-                    accountType: "$100,000 Challenge",
-                    status: "active",
-                }
-            ],
-            socials: {
-                twitter: "demotrader",
-                discord: "demo#1234",
-            }
-        };
+        return null;
     }
 
     // 1. Get user
@@ -81,10 +43,18 @@ export async function getPrivateProfileData(userId: string) {
         })
         : [];
 
-    // 5. Calculate metrics with actual trade data
-    const metrics = calculateMetrics(allChallenges, lifetimeProfitWithdrawn, allTrades);
+    // 5. Fetch market titles for category classification
+    const sellTrades = allTrades.filter(t => t.realizedPnL !== null);
+    const sellMarketIds = [...new Set(sellTrades.map(t => t.marketId))];
+    const { MarketService } = await import("./market");
+    const marketTitles = sellMarketIds.length > 0
+        ? await MarketService.getBatchTitles(sellMarketIds)
+        : new Map<string, string>();
 
-    // 5. Format accounts
+    // 6. Calculate metrics with actual trade data
+    const metrics = calculateMetrics(allChallenges, lifetimeProfitWithdrawn, allTrades, marketTitles);
+
+    // 7. Format accounts
     const accounts = allChallenges.map((c, idx) => ({
         id: c.id,
         date: c.startedAt || new Date(),
@@ -93,7 +63,7 @@ export async function getPrivateProfileData(userId: string) {
         status: c.status,
     }));
 
-    // 6. Get socials
+    // 7. Get socials
     const socials = {
         twitter: user.twitter || undefined,
         discord: user.discord || undefined,
@@ -114,8 +84,8 @@ export async function getPublicProfileData(userId: string) {
     // Add visibility flags to accounts
     const accountsWithVisibility = data.accounts.map(acc => ({
         ...acc,
-        isPublic: true, // BACKLOG: Get from DB (needs schema column)
-        showDropdown: true, // BACKLOG: Get from DB (needs schema column)
+        isPublic: true, // FUTURE(v2): per-account visibility from DB
+        showDropdown: true, // FUTURE(v2): per-account dropdown toggle from DB
     }));
 
     return {
@@ -127,12 +97,13 @@ export async function getPublicProfileData(userId: string) {
 
 interface TradeRecord {
     id: string;
+    marketId: string;
     challengeId: string | null;
     amount: string;
     realizedPnL: string | null;
 }
 
-function calculateMetrics(challenges: Challenge[], lifetimeProfitWithdrawn: number, allTrades: TradeRecord[]) {
+function calculateMetrics(challenges: Challenge[], lifetimeProfitWithdrawn: number, allTrades: TradeRecord[], marketTitles: Map<string, string>) {
     // Calculate ACTUAL trading volume from trades (sum of all trade amounts)
     const lifetimeTradingVolume = allTrades.reduce((sum, t) =>
         sum + parseFloat(t.amount || "0"), 0
@@ -169,7 +140,7 @@ function calculateMetrics(challenges: Challenge[], lifetimeProfitWithdrawn: numb
         lifetimeTradingVolume,
         fundedTradingVolume,
         currentWithdrawableProfit,
-        highestWinRateAsset: "Politics", // BACKLOG: Calculate from trade history
+        highestWinRateAsset: computeBestMarketCategory(tradesWithPnL, marketTitles),
         tradingWinRate,
         lifetimeProfitWithdrawn,
     };

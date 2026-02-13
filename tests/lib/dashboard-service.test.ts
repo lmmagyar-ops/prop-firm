@@ -4,6 +4,7 @@ import {
     getPositionsWithPnL,
     getEquityStats,
     getFundedStats,
+    computeBestMarketCategory,
 } from "@/lib/dashboard-service";
 
 // ─── mapChallengeHistory ────────────────────────────────────────────
@@ -352,5 +353,104 @@ describe("getFundedStats", () => {
         // Should fall back to FUNDED_RULES["10k"] defaults
         expect(stats.profitSplit).toBe(0.80);
         expect(stats.payoutCap).toBe(10000);
+    });
+});
+
+// ─── computeBestMarketCategory ──────────────────────────────────────
+
+describe("computeBestMarketCategory", () => {
+    function mkTrade(marketId: string, pnl: string | null) {
+        return { marketId, realizedPnL: pnl };
+    }
+
+    function mkTitles(entries: Record<string, string>): Map<string, string> {
+        return new Map(Object.entries(entries));
+    }
+
+    it("returns null for empty trade list", () => {
+        expect(computeBestMarketCategory([], new Map())).toBeNull();
+    });
+
+    it("classifies unrecognized titles as 'Other'", () => {
+        // Titles that don't match any keyword get classified as "Other"
+        const trades = [
+            mkTrade("m1", "10"),
+            mkTrade("m1", "5"),
+        ];
+        const titles = mkTitles({ m1: "Zxqwv blah nonsense" });
+        expect(computeBestMarketCategory(trades, titles)).toBe("Other");
+    });
+
+    it("returns null when market title is not found", () => {
+        const trades = [mkTrade("m1", "10"), mkTrade("m1", "-5")];
+        // Empty titles map — no title for m1
+        expect(computeBestMarketCategory(trades, new Map())).toBeNull();
+    });
+
+    it("picks the category with highest win rate (min 2 trades)", () => {
+        const trades = [
+            // Politics: 2 wins, 1 loss → 66.7%
+            mkTrade("m1", "50"),
+            mkTrade("m1", "30"),
+            mkTrade("m1", "-20"),
+            // Crypto: 2 wins, 0 losses → 100%
+            mkTrade("m2", "100"),
+            mkTrade("m2", "40"),
+        ];
+        const titles = mkTitles({
+            m1: "Will Biden win the election?",
+            m2: "Will Bitcoin reach $100k?",
+        });
+
+        expect(computeBestMarketCategory(trades, titles)).toBe("Crypto");
+    });
+
+    it("requires minimum 2 trades for a category to qualify", () => {
+        const trades = [
+            // Crypto: 1 winning trade (below threshold)
+            mkTrade("m1", "100"),
+            // Politics: 2 trades, both winning
+            mkTrade("m2", "50"),
+            mkTrade("m2", "30"),
+        ];
+        const titles = mkTitles({
+            m1: "Will Bitcoin reach $100k?",
+            m2: "Will Trump win the election?",
+        });
+
+        // Crypto has 100% win rate but only 1 trade — should pick Politics
+        expect(computeBestMarketCategory(trades, titles)).toBe("Politics");
+    });
+
+    it("breaks ties by total trade count", () => {
+        const trades = [
+            // Politics: 2 wins out of 2 → 100%
+            mkTrade("m1", "50"),
+            mkTrade("m1", "30"),
+            // Sports: 3 wins out of 3 → 100%
+            mkTrade("m2", "10"),
+            mkTrade("m2", "20"),
+            mkTrade("m2", "30"),
+        ];
+        const titles = mkTitles({
+            m1: "Will the president sign the bill?",
+            m2: "Lakers vs Celtics NBA finals",
+        });
+
+        // Same win rate, but Sports has more trades → Sports wins
+        expect(computeBestMarketCategory(trades, titles)).toBe("Sports");
+    });
+
+    it("treats negative or zero PnL as a loss", () => {
+        const trades = [
+            mkTrade("m1", "0"),     // zero = loss
+            mkTrade("m1", "-5"),    // negative = loss
+            mkTrade("m1", "10"),    // positive = win
+        ];
+        const titles = mkTitles({ m1: "Will Bitcoin reach $200k?" });
+
+        // 1 win, 2 losses → 33.3% but still the only category ≥2 trades
+        const result = computeBestMarketCategory(trades, titles);
+        expect(result).toBe("Crypto");
     });
 });

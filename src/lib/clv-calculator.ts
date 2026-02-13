@@ -1,6 +1,10 @@
 /**
  * CLV Calculator (Closing Line Value)
  * 
+ * FUTURE(v2): Not wired into v1 — requires clvPercent and closingPrice
+ * columns in the trades schema. Core logic is implemented and tested,
+ * but persistence is deferred until the schema migration.
+ * 
  * Measures trader skill by comparing entry price to closing price.
  * CLV > 0 = trader "beat the market" (skill)
  * CLV < 0 = trader "lost to the market" (luck or anti-skill)
@@ -74,7 +78,7 @@ export class CLVCalculator {
 
         const clvPercent = ((closingPrice - entryPrice) / entryPrice) * 100;
 
-        // BACKLOG: Add closingPrice and clvPercent columns to trades schema to persist CLV data
+        // FUTURE(v2): Add closingPrice and clvPercent columns to trades schema to persist CLV data
         // For now, we calculate but don't persist (schema migration needed)
         // await db.update(trades)
         //     .set({
@@ -103,7 +107,7 @@ export class CLVCalculator {
 
         const closingPrice = parseFloat(marketData.price);
 
-        // BACKLOG: clvPercent column doesn't exist in trades schema yet
+        // FUTURE(v2): clvPercent column doesn't exist in trades schema yet
         // For now, calculate CLV for all trades in this market (no filtering by null clvPercent)
         const pendingTrades = await db.query.trades.findMany({
             where: eq(trades.marketId, marketId),
@@ -124,7 +128,7 @@ export class CLVCalculator {
      * Get CLV summary for a trader (challenge).
      * Used for trader classification (sharp vs gambler).
      * 
-     * BACKLOG: Requires clvPercent column in trades schema to function properly.
+     * FUTURE(v2): Requires clvPercent column in trades schema to function properly.
      * Currently returns 'unknown' classification for all traders.
      */
     static async getSummary(challengeId: string): Promise<CLVSummary> {
@@ -132,7 +136,7 @@ export class CLVCalculator {
             where: eq(trades.challengeId, challengeId),
         });
 
-        // BACKLOG: clvPercent column doesn't exist yet in trades schema
+        // FUTURE(v2): clvPercent column doesn't exist yet in trades schema
         // Return unknown classification until schema migration is complete
         return {
             totalTrades: allTrades.length,
