@@ -66,7 +66,10 @@ export async function POST(req: NextRequest) {
         const marketData = await MarketService.getLatestPrice(position.marketId);
 
         if (!marketData) {
-            return NextResponse.json({ error: "Market data unavailable" }, { status: 500 });
+            return NextResponse.json(
+                { error: "Price temporarily unavailable — please try again in a moment" },
+                { status: 503 }
+            );
         }
 
         const currentPrice = parseFloat(marketData.price);

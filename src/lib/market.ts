@@ -194,36 +194,11 @@ export class MarketService {
         }
     }
 
-    /**
-     * Demo mode fallback data - used when ALL other sources are unavailable
-     */
-    private static getDemoPrice(assetId: string): MarketPrice {
-        return {
-            price: "0.55",
-            asset_id: assetId,
-            timestamp: Date.now()
-        };
-    }
-
-    private static getDemoOrderBook(): OrderBook {
-        // PARITY FIX (Jan 2026): Reduced from 50K to 5K shares for realistic depth
-        return {
-            bids: [
-                { price: "0.55", size: "5000" },
-                { price: "0.53", size: "5000" },
-                { price: "0.51", size: "5000" }
-            ],
-            asks: [
-                { price: "0.57", size: "5000" },
-                { price: "0.59", size: "5000" },
-                { price: "0.61", size: "5000" }
-            ]
-        };
-    }
 
     /**
      * Fetches the latest price for an asset from the worker's market data cache.
-     * Falls back to event list data, then demo data if worker is unavailable.
+     * Falls back to event list data, then Gamma API.
+     * Returns null when no real price source is available — never fabricates a price.
      */
     static async getLatestPrice(assetId: string): Promise<MarketPrice | null> {
         try {
@@ -245,15 +220,15 @@ export class MarketService {
             const eventPrice = await this.lookupPriceFromEvents(assetId);
             if (eventPrice) return { ...eventPrice, source: 'event_list' as const };
 
-            // Try Gamma API before falling back to demo
+            // Try Gamma API as last resort
             const gammaPrice = await this.getGammaApiPrice(assetId);
             if (gammaPrice) return gammaPrice;
 
-            logger.info(`[MarketService] No price data for ${assetId}, using demo fallback`);
-            return { ...this.getDemoPrice(assetId), source: 'demo' as const };
+            logger.warn(`[MarketService] No price data for ${assetId} — all sources exhausted`);
+            return null;
         } catch (error: unknown) {
-            logger.error(`[MarketService] Worker error, using demo fallback:`, getErrorMessage(error));
-            return { ...this.getDemoPrice(assetId), source: 'demo' as const };
+            logger.error(`[MarketService] Worker error, no fallback available:`, getErrorMessage(error));
+            return null;
         }
     }
 
@@ -297,19 +272,14 @@ export class MarketService {
                         asset_id: marketId,
                         timestamp: Date.now()
                     });
-                } else {
-                    // Fallback to demo price if not found
-                    results.set(marketId, this.getDemoPrice(marketId));
                 }
+                // If not found, skip — downstream consumers handle missing prices
             }
 
             logger.info(`[MarketService] Batch fetched ${results.size}/${marketIds.length} prices`);
         } catch (error: unknown) {
-            logger.error(`[MarketService] Batch price error:`, getErrorMessage(error));
-            // Fallback to demo prices for all
-            for (const marketId of marketIds) {
-                results.set(marketId, this.getDemoPrice(marketId));
-            }
+            logger.error(`[MarketService] Batch price error — returning partial results:`, getErrorMessage(error));
+            // Return whatever we have (possibly empty). Never fabricate prices.
         }
 
         return results;
@@ -353,35 +323,34 @@ export class MarketService {
                     }
                 }
 
-                // Fallback: try event list price (better than demo)
+                // Fallback: try event list price
                 const eventPrice = await this.lookupPriceFromEvents(marketId);
                 if (eventPrice) {
                     results.set(marketId, { ...eventPrice, source: 'event_list' });
                 } else {
-                    // Try Gamma API before demo fallback
+                    // Try Gamma API as last resort
                     const gammaPrice = await this.getGammaApiPrice(marketId);
                     if (gammaPrice) {
                         results.set(marketId, gammaPrice);
-                    } else {
-                        results.set(marketId, { ...this.getDemoPrice(marketId), source: 'demo' });
                     }
+                    // If no source has data, skip — never fabricate a price
                 }
             }
 
             logger.info(`[MarketService] Batch fetched ${results.size}/${marketIds.length} order book prices`);
         } catch (error: unknown) {
-            logger.error(`[MarketService] Batch order book error:`, getErrorMessage(error));
-            // Fallback to event list prices, then Gamma API
+            logger.error(`[MarketService] Batch order book error — returning partial results:`, getErrorMessage(error));
+            // Return whatever we have. For markets with no price, try event list / Gamma
             for (const marketId of marketIds) {
-                const eventPrice = await this.lookupPriceFromEvents(marketId);
-                if (eventPrice) {
-                    results.set(marketId, { ...eventPrice, source: 'event_list' });
-                } else {
-                    const gammaPrice = await this.getGammaApiPrice(marketId);
-                    if (gammaPrice) {
-                        results.set(marketId, gammaPrice);
+                if (!results.has(marketId)) {
+                    const eventPrice = await this.lookupPriceFromEvents(marketId);
+                    if (eventPrice) {
+                        results.set(marketId, { ...eventPrice, source: 'event_list' });
                     } else {
-                        results.set(marketId, { ...this.getDemoPrice(marketId), source: 'demo' });
+                        const gammaPrice = await this.getGammaApiPrice(marketId);
+                        if (gammaPrice) {
+                            results.set(marketId, gammaPrice);
+                        }
                     }
                 }
             }
@@ -519,7 +488,8 @@ export class MarketService {
 
     /**
      * Fetches the full Order Book from worker's cache.
-     * Falls back to synthetic book from event list price, then demo data.
+     * Falls back to synthetic book from event list price.
+     * Returns null when no real data is available — never fabricates an order book.
      */
     static async getOrderBook(assetId: string): Promise<OrderBook | null> {
         try {
@@ -536,11 +506,11 @@ export class MarketService {
                 logger.info(`[MarketService] Building synthetic orderbook for ${assetId.slice(0, 12)}... at price ${price}`);
                 return { ...this.buildSyntheticOrderBookPublic(price), source: 'synthetic' as const };
             }
-            logger.info(`[MarketService] No orderbook for ${assetId}, using demo fallback`);
-            return { ...this.getDemoOrderBook(), source: 'demo' as const };
+            logger.warn(`[MarketService] No orderbook for ${assetId} — all sources exhausted`);
+            return null;
         } catch (error: unknown) {
-            logger.error(`[MarketService] Orderbook error, using demo fallback:`, getErrorMessage(error));
-            return { ...this.getDemoOrderBook(), source: 'demo' as const };
+            logger.error(`[MarketService] Orderbook error, no fallback available:`, getErrorMessage(error));
+            return null;
         }
     }
 
