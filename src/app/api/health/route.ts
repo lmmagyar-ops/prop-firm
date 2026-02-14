@@ -8,6 +8,7 @@
  * 1. Database connection is alive
  * 2. No active challenges with NaN/null balances
  * 3. No open positions with negative or NaN shares
+ * 4. No open positions using demo fallback price (stale price canary)
  */
 
 import { NextResponse } from "next/server";
@@ -76,6 +77,36 @@ export async function GET() {
         }
     } catch {
         issues.push({ check: "position_integrity", detail: "Query failed" });
+    }
+
+    // 4. No open positions relying on demo fallback price (stale price detection)
+    try {
+        const openPositions = await db
+            .select({ id: positions.id, marketId: positions.marketId })
+            .from(positions)
+            .where(eq(positions.status, "OPEN"))
+            .limit(50);
+
+        if (openPositions.length > 0) {
+            const { MarketService } = await import("@/lib/market");
+            const marketIds = [...new Set(openPositions.map(p => p.marketId))];
+            const prices = await MarketService.getBatchOrderBookPrices(marketIds);
+
+            const demoPricedMarkets: string[] = [];
+            for (const [marketId, priceData] of prices) {
+                if (priceData.source === 'demo') {
+                    demoPricedMarkets.push(marketId.slice(0, 12) + '...');
+                }
+            }
+
+            if (demoPricedMarkets.length > 0) {
+                const detail = `${demoPricedMarkets.length} open position market(s) using demo fallback price: ${demoPricedMarkets.join(', ')}`;
+                issues.push({ check: "stale_price", detail });
+                await alerts.anomaly("demo_price_fallback", { markets: demoPricedMarkets, count: demoPricedMarkets.length });
+            }
+        }
+    } catch {
+        issues.push({ check: "stale_price", detail: "Query failed" });
     }
 
     if (issues.length > 0) {
