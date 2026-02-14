@@ -1,7 +1,7 @@
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { challenges, positions } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { challenges, positions, trades } from "@/db/schema";
+import { eq, and, inArray } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { MarketService } from "@/lib/market";
@@ -156,6 +156,7 @@ async function getBatchMarketTitles(marketIds: string[]): Promise<Map<string, st
         }
 
         // Get titles for each market
+        const missingIds: string[] = [];
         for (const marketId of marketIds) {
             const market = kalshiMarkets.get(marketId) || polyMarkets.get(marketId);
             if (market) {
@@ -165,7 +166,24 @@ async function getBatchMarketTitles(marketIds: string[]): Promise<Map<string, st
                 const parts = marketId.split("-");
                 results.set(marketId, parts[parts.length - 1]);
             } else {
-                results.set(marketId, marketId.slice(0, 20) + "...");
+                missingIds.push(marketId);
+            }
+        }
+
+        // DB fallback: look up titles from trades table for resolved markets
+        if (missingIds.length > 0) {
+            const tradeRecords = await db.query.trades.findMany({
+                where: inArray(trades.marketId, missingIds),
+                columns: { marketId: true, marketTitle: true }
+            });
+            const dbTitles = new Map<string, string>();
+            for (const t of tradeRecords) {
+                if (t.marketTitle && !dbTitles.has(t.marketId)) {
+                    dbTitles.set(t.marketId, t.marketTitle);
+                }
+            }
+            for (const marketId of missingIds) {
+                results.set(marketId, dbTitles.get(marketId) || marketId.slice(0, 20) + "...");
             }
         }
 
