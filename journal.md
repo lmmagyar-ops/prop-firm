@@ -27,11 +27,15 @@ We kept "fixing" the same bug because each fix only addressed one layer (display
 - Production: `currentPrice: 0.9595`, `priceSource: gamma_api` ✅
 - Commits: `57a1bd2` (display fix), `88c015d` (sell flow fix)
 
-### Rate Limit Fix — Exempt ALL GETs
-The middleware used a fragile allowlist of exempt GET path prefixes. `/api/health`, admin routes, etc. were missing → hit DEFAULT tier (100 req/min). Simplified to `request.method === 'GET'` — only POST/PUT/DELETE now go through the rate limiter. This is safe because all financial/destructive actions are POST routes. Eliminates the recurring "new GET endpoint hits 429" class of bugs. Commit: `59c2e24`.
+### ⚠️ Account Confusion — Warsh Position Is NOT Mat's
+Mat replied: *"i still cant find it. what warsh position. i have no warsh position."* The browser was logged into **our** (Les's) account the whole time. The Kevin Warsh position belongs to Les, not Mat. The AI assumed the positions API was showing Mat's data — it was showing ours.
+
+**The Gamma API fallback fix is still valid** — it fixes the 55¢ demo price for ALL uncached markets regardless of account. But the entire debugging session was based on a wrong assumption about whose data we were looking at. We have not yet identified what specific bug Mat is experiencing.
+
+**Next step: Need to check Mat's actual account** to see what positions he has and what prices/errors he's seeing.
 
 ### Tomorrow Morning (prioritized by leverage × risk)
-1. **Sell test** — Waiting for Mat to attempt selling the Warsh position (message sent)
+1. **Mat's actual bug** — Need to look at Mat's real account data, not ours
 2. **Worker coverage** — Investigate why certain markets aren't ingested by the worker
 
 ---
