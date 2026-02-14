@@ -6,6 +6,7 @@ import { calculatePositionMetrics } from "@/lib/position-utils";
 import { normalizeRulesConfig } from "@/lib/normalize-rules";
 import { safeParseFloat } from "./safe-parse";
 import { softInvariant } from "./invariant";
+import { isValidMarketPrice } from "./price-validation";
 import { getCategories } from "@/workers/market-classifier";
 
 // ── Lightweight DB row interfaces (fields accessed by pure functions) ──
@@ -88,7 +89,7 @@ export function getPositionsWithPnL(
 
         if (livePrice) {
             const parsedLivePrice = safeParseFloat(livePrice.price);
-            if (parsedLivePrice >= 0 && parsedLivePrice <= 1 && !isNaN(parsedLivePrice)) {
+            if (isValidMarketPrice(parsedLivePrice)) {
                 rawPrice = parsedLivePrice;
                 needsDirectionAdjustment = true;
             } else {

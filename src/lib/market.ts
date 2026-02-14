@@ -1,4 +1,5 @@
 import { isBookDead as _isBookDead, invertOrderBook as _invertOrderBook, buildSyntheticOrderBook, calculateImpact as _calculateImpact } from "./order-book-engine";
+import { isValidMarketPrice } from "./price-validation";
 import { getErrorMessage, getErrorName } from "./errors";
 import { getAllMarketData, getAllOrderBooks, getComplement, type AllMarketData } from "./worker-client";
 import { createLogger } from "@/lib/logger";
@@ -96,7 +97,7 @@ export class MarketService {
                 const market = event.markets?.find((m: EventMarket) => m.id === marketId);
                 if (market) {
                     const price = parseFloat(market.price);
-                    if (Number.isFinite(price) && price >= 0 && price <= 1) {
+                    if (isValidMarketPrice(price)) {
                         return price;
                     }
                 }
@@ -107,7 +108,7 @@ export class MarketService {
                 const market = event.markets?.find((m: EventMarket) => m.id === marketId);
                 if (market) {
                     const price = parseFloat(market.price);
-                    if (Number.isFinite(price) && price >= 0 && price <= 1) {
+                    if (isValidMarketPrice(price)) {
                         return price;
                     }
                 }
@@ -120,7 +121,7 @@ export class MarketService {
                 const market = markets.find((m: EventMarket) => m.id === marketId);
                 if (market) {
                     const price = market.currentPrice ?? market.basePrice;
-                    if (Number.isFinite(price) && price !== undefined && price >= 0 && price <= 1) {
+                    if (price !== undefined && isValidMarketPrice(price)) {
                         return price;
                     }
                 }
@@ -130,7 +131,7 @@ export class MarketService {
             const gammaPrice = await this.getGammaApiPrice(marketId);
             if (gammaPrice) {
                 const price = parseFloat(gammaPrice.price);
-                if (Number.isFinite(price) && price >= 0 && price <= 1) {
+                if (isValidMarketPrice(price)) {
                     logger.info(`[MarketService] getCanonicalPrice using Gamma API for ${marketId.slice(0, 12)}...: ${price}`);
                     return price;
                 }
@@ -175,7 +176,7 @@ export class MarketService {
                 const prices = JSON.parse(market.outcomePrices) as string[];
                 const yesPrice = parseFloat(prices[0] || '0.5');
 
-                if (Number.isFinite(yesPrice) && yesPrice >= 0 && yesPrice <= 1) {
+                if (isValidMarketPrice(yesPrice)) {
                     logger.info(`[MarketService] ✅ Gamma API price for ${assetId.slice(0, 12)}...: ${yesPrice}`);
                     return {
                         price: yesPrice.toString(),
@@ -338,7 +339,7 @@ export class MarketService {
 
                     // CRITICAL: Validate price is in valid range for active markets
                     // Allow full 0-1 range including resolution prices (0 and 1)
-                    if (bidPrice >= 0 && bidPrice <= 1) {
+                    if (isValidMarketPrice(bidPrice)) {
                         results.set(marketId, {
                             price: bestBid,
                             asset_id: marketId,
@@ -461,7 +462,7 @@ export class MarketService {
                 if (market) {
                     const price = parseFloat(market.price);
                     // Accept full 0-1 range including resolution prices
-                    if (price >= 0 && price <= 1) {
+                    if (isValidMarketPrice(price)) {
                         return {
                             price: market.price.toString(),
                             asset_id: marketId,
@@ -478,7 +479,7 @@ export class MarketService {
                 if (market) {
                     const price = parseFloat(market.price);
                     // Accept full 0-1 range including resolution prices
-                    if (price >= 0 && price <= 1) {
+                    if (isValidMarketPrice(price)) {
                         return {
                             price: market.price.toString(),
                             asset_id: marketId,
@@ -497,7 +498,7 @@ export class MarketService {
                 if (market) {
                     const price = market.currentPrice ?? market.basePrice ?? 0.5;
                     // Accept full 0-1 range including resolution prices
-                    if (price >= 0 && price <= 1) {
+                    if (isValidMarketPrice(price)) {
                         return {
                             price: price.toString(),
                             asset_id: marketId,
