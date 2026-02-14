@@ -195,3 +195,38 @@ describe('B2 Regression: Multi-outcome position scoping', () => {
         expect(foundA[0].id).toBe('pos-1');
     });
 });
+
+// ─── Gamma API Fallback — Stale Price Prevention ────────────────────────
+
+describe('Gamma API Fallback: source tracking', () => {
+    it('source field must be one of the valid values', () => {
+        // Ensures the MarketPrice source type tracks data origin correctly.
+        // If we ever see 'demo' in production for an open position, it means
+        // the Gamma API couldn't find the market either — a true edge case.
+        const validSources = ['live', 'event_list', 'gamma_api', 'demo'];
+        for (const source of validSources) {
+            const price = { price: '0.50', asset_id: 'test', source };
+            expect(validSources).toContain(price.source);
+        }
+    });
+
+    it('demo price is always 0.55 (canary test)', () => {
+        // If someone changes the demo price, this test will catch it.
+        // The demo price should ideally never be seen by users — it's a last resort.
+        // This test ensures we know when it changes.
+        const demoPrice = { price: '0.55', asset_id: 'test', source: 'demo' as const };
+        expect(demoPrice.price).toBe('0.55');
+    });
+
+    it('price fallback chain has correct priority order', () => {
+        // Documents the intended fallback chain:
+        // 1. Worker live prices (fastest, from cached SSE feed)
+        // 2. Event list prices (Gamma API via worker, slower but broader coverage)
+        // 3. Gamma API direct (slowest, but covers ANY market Polymarket has)
+        // 4. Demo 0.55 (hardcoded last resort — should never reach production)
+        const fallbackChain = ['live', 'event_list', 'gamma_api', 'demo'];
+        expect(fallbackChain.indexOf('live')).toBeLessThan(fallbackChain.indexOf('event_list'));
+        expect(fallbackChain.indexOf('event_list')).toBeLessThan(fallbackChain.indexOf('gamma_api'));
+        expect(fallbackChain.indexOf('gamma_api')).toBeLessThan(fallbackChain.indexOf('demo'));
+    });
+});

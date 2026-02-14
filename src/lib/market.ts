@@ -8,7 +8,7 @@ export interface MarketPrice {
     price: string;
     asset_id: string;
     timestamp?: number;
-    source?: 'live' | 'event_list' | 'demo';  // Track data origin for integrity checks
+    source?: 'live' | 'event_list' | 'gamma_api' | 'demo';  // Track data origin for integrity checks
 }
 
 export interface OrderLevel {
@@ -134,7 +134,57 @@ export class MarketService {
     }
 
     /**
-     * Demo mode fallback data - used when worker is unavailable
+     * Gamma API fallback — fetches real price directly from Polymarket Gamma API.
+     * Used when worker cache AND event lists don't have this market.
+     * This is the last-resort before the hardcoded demo price.
+     */
+    private static async getGammaApiPrice(assetId: string): Promise<MarketPrice | null> {
+        try {
+            const url = `https://gamma-api.polymarket.com/markets?clob_token_ids=${assetId}`;
+            const res = await fetch(url, {
+                headers: { 'Accept': 'application/json' },
+                signal: AbortSignal.timeout(5000)
+            });
+
+            if (!res.ok) {
+                logger.warn(`[MarketService] Gamma API returned ${res.status} for ${assetId.slice(0, 12)}...`);
+                return null;
+            }
+
+            const markets = await res.json();
+
+            if (!Array.isArray(markets) || markets.length === 0) {
+                logger.info(`[MarketService] Market ${assetId.slice(0, 12)}... not found in Gamma API`);
+                return null;
+            }
+
+            const market = markets[0];
+
+            // Parse outcomePrices to get YES price
+            if (market.outcomePrices) {
+                const prices = JSON.parse(market.outcomePrices) as string[];
+                const yesPrice = parseFloat(prices[0] || '0.5');
+
+                if (Number.isFinite(yesPrice) && yesPrice > 0 && yesPrice < 1) {
+                    logger.info(`[MarketService] ✅ Gamma API price for ${assetId.slice(0, 12)}...: ${yesPrice}`);
+                    return {
+                        price: yesPrice.toString(),
+                        asset_id: assetId,
+                        timestamp: Date.now(),
+                        source: 'gamma_api' as const
+                    };
+                }
+            }
+
+            return null;
+        } catch (error: unknown) {
+            logger.warn(`[MarketService] Gamma API fallback error for ${assetId.slice(0, 12)}...:`, getErrorMessage(error));
+            return null;
+        }
+    }
+
+    /**
+     * Demo mode fallback data - used when ALL other sources are unavailable
      */
     private static getDemoPrice(assetId: string): MarketPrice {
         return {
@@ -183,6 +233,10 @@ export class MarketService {
             // Try to look up from event lists (already loaded, no additional call)
             const eventPrice = await this.lookupPriceFromEvents(assetId);
             if (eventPrice) return { ...eventPrice, source: 'event_list' as const };
+
+            // Try Gamma API before falling back to demo
+            const gammaPrice = await this.getGammaApiPrice(assetId);
+            if (gammaPrice) return gammaPrice;
 
             logger.info(`[MarketService] No price data for ${assetId}, using demo fallback`);
             return { ...this.getDemoPrice(assetId), source: 'demo' as const };
@@ -293,20 +347,31 @@ export class MarketService {
                 if (eventPrice) {
                     results.set(marketId, { ...eventPrice, source: 'event_list' });
                 } else {
-                    results.set(marketId, { ...this.getDemoPrice(marketId), source: 'demo' });
+                    // Try Gamma API before demo fallback
+                    const gammaPrice = await this.getGammaApiPrice(marketId);
+                    if (gammaPrice) {
+                        results.set(marketId, gammaPrice);
+                    } else {
+                        results.set(marketId, { ...this.getDemoPrice(marketId), source: 'demo' });
+                    }
                 }
             }
 
             logger.info(`[MarketService] Batch fetched ${results.size}/${marketIds.length} order book prices`);
         } catch (error: unknown) {
             logger.error(`[MarketService] Batch order book error:`, getErrorMessage(error));
-            // Fallback to event list prices
+            // Fallback to event list prices, then Gamma API
             for (const marketId of marketIds) {
                 const eventPrice = await this.lookupPriceFromEvents(marketId);
                 if (eventPrice) {
                     results.set(marketId, { ...eventPrice, source: 'event_list' });
                 } else {
-                    results.set(marketId, { ...this.getDemoPrice(marketId), source: 'demo' });
+                    const gammaPrice = await this.getGammaApiPrice(marketId);
+                    if (gammaPrice) {
+                        results.set(marketId, gammaPrice);
+                    } else {
+                        results.set(marketId, { ...this.getDemoPrice(marketId), source: 'demo' });
+                    }
                 }
             }
         }
@@ -519,7 +584,15 @@ export class MarketService {
                     return { ...this.buildSyntheticOrderBookPublic(price), source: 'synthetic' as const };
                 }
 
-                logger.warn(`[MarketService] No event list price either — returning dead book for ${tokenId.slice(0, 12)}...`);
+                // Try Gamma API as last resort before returning dead book
+                const gammaPrice = await this.getGammaApiPrice(tokenId);
+                if (gammaPrice) {
+                    const price = parseFloat(gammaPrice.price);
+                    logger.info(`[MarketService] 🔧 Building SYNTHETIC book from Gamma API price (${price}) for ${tokenId.slice(0, 12)}...`);
+                    return { ...this.buildSyntheticOrderBookPublic(price), source: 'synthetic' as const };
+                }
+
+                logger.warn(`[MarketService] No event list or Gamma price — returning dead book for ${tokenId.slice(0, 12)}...`);
             }
 
             logger.info(`[MarketService] ✅ Fresh order book fetched for ${tokenId.slice(0, 12)}... (${book.bids?.length || 0} bids, ${book.asks?.length || 0} asks)`);
