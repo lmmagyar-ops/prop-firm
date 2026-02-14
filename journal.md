@@ -3374,3 +3374,16 @@ Extracted exact DNS records from Resend via browser automation (including handli
 
 **Verification:** `npm run test:engine` → **32/32 assertions** ✅
 
+
+## 2026-02-13 — Market Title Display Fix
+
+**Root cause:** `MarketService.getBatchTitles()` and the positions API route only searched live Redis event lists. Resolved markets aren't cached, so titles fell through to truncated IDs.
+
+**Fix:** Added DB fallback — for any market IDs not found in event lists, queries `trades` table for stored `marketTitle`. Applied to both the SSR path (`market.ts`) and the API route (`positions/route.ts`). Also backfilled 48 trades with proper titles from Gamma API.
+
+**Verification:** Type check ✅, engine 60/60 ✅, deploy 12/12 ✅, browser confirmed titles now display correctly in Open Positions, Trade History, and Recent Trades.
+
+### Tomorrow Morning
+1. **Monitor** — Watch for any new markets that resolve and verify titles persist correctly
+2. **Clean up** — The `/api/user/positions` route is dead code (nothing calls it) — delete it
+3. **Widen coverage** — Consider caching Gamma API titles at settlement time so the backfill pattern isn't needed again
