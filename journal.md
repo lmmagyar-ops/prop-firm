@@ -4,6 +4,26 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ---
 
+## Feb 14, 2026 — Anthropic-Grade Price Hardening (3 Pillars)
+
+### Why
+The ghost position bug revealed a systemic problem: 10+ scattered price filters drifted independently, and a silent demo fallback (55¢) masked every data gap as a plausible-looking price. We kept fixing symptoms instead of structure.
+
+### What Changed
+1. **Single Validation Function** — `isValidMarketPrice()` in `price-validation.ts` replaces all inline checks
+2. **Demo Fallback Deleted** — `getDemoPrice()` and `getDemoOrderBook()` removed. All paths return `null` or skip when no real data exists. Trade close returns 503 "price temporarily unavailable"
+3. **23 New Tests** — Parameterized boundary tests (`test.each` at every price 0→1), pipeline tests, and a demo-leak invariant (`expect(price).not.toBe(0.55)`)
+
+### Result
+870 tests pass (up from 847). The system **structurally cannot** produce a fake 55¢ price.
+
+### Commits
+- `f358d91` — Pillar 1: `isValidMarketPrice()` extraction
+- `33c0eb9` — Pillar 2: demo fallback deletion
+- `0388695` — Pillar 3: parameterized boundary + invariant tests
+
+---
+
 ## Feb 14, 2026 — Resolved Market Ghost Position Fix
 
 ### Root Cause: 10 Price Filters Rejected Resolution Prices (0 and 1)
