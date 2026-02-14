@@ -4,6 +4,26 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ---
 
+## Feb 14, 2026 — Gamma API Fallback (Critical Price Fix)
+
+### Root Cause: Markets Active but Not Cached → 55¢ Demo Price
+Mat's positions showed $0.55 for all prices and sells were blocked. The Kevin Warsh market (real price: 96¢) was active on Polymarket but not in our worker's event list cache. The fallback chain ended at `getDemoPrice()` → hardcoded "0.55".
+
+### Fix: `getGammaApiPrice()` in `market.ts`
+Added Gamma API as a fallback source before demo. New chain: **worker live → event list → Gamma API → demo**. Wired into `getLatestPrice`, `getBatchOrderBookPrices`, `getOrderBookFresh`. For dead CLOB books (sell path), builds synthetic order book from Gamma price.
+
+### Verification
+- tsc clean, 842 Vitest pass, 60 engine pass, 51 safety pass
+- Production: `currentPrice: 0.9595`, `priceSource: gamma_api` ✅
+- Commit: `57a1bd2`
+
+### Tomorrow Morning (prioritized by leverage × risk)
+1. **Sell test** — Have Mat attempt to sell the Warsh position to verify end-to-end
+2. **Health check** — Add demo-source detection to `/api/health` for early warning
+3. **Worker coverage** — Investigate why certain markets aren't ingested by the worker
+
+---
+
 ## Feb 14, 2026 — Hardening Sprint (Afternoon)
 
 ### Test Suite: 0 Failures → 839 Passing
