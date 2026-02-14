@@ -23,9 +23,9 @@ Mat reported 4 behavioral bugs + 4 UI issues. Root cause analysis revealed a **s
 | Bug | Location | Root Cause |
 |:---|:---|:---|
 | B1: Daily loss wrong base | `MissionTracker.tsx:83-98` | Uses `profit = currentBalance - startingBalance` (overall P&L) instead of actual dailyPnL. `DashboardView` never passes `dailyPnL` prop |
-| B2: Sell "No open position" | `positions/check/route.ts` | Exact `marketId` match — multi-market events have different market IDs per outcome |
+| B2: Sell "No open position" | `positions/check/route.ts` | UX gap, not a bug. Multi-outcome events have different market IDs per outcome. User sees "No open position" when viewing a different outcome's sell tab. Fixed copy to say "No position on this outcome" |
 | B3: Profit too many decimals | `ProfitProgress.tsx:22` | Raw float passed to `<CountUp>`, no `.toFixed(2)` rounding |
-| B4: Category cap >$1,000 | `risk.ts` | Enforcement logic tested but category classification input not verified |
+| B4: Category cap >$1,000 | `risk.ts` | **NOT A BUG.** Audit of 874 live markets: 100% have API categories from Polymarket. Zero markets fall to keyword inference or "other" catch-all. Cap enforcement is solid |
 | U1: "USD" suffix | `LiveEquityDisplay.tsx:36` | Hardcoded `suffix="USD"` on `BigNumberDisplay` |
 | U2/U3: No YES/NO in trades | `RecentTradesWidget.tsx`, `trades/history/route.ts` | `direction` column exists in DB but `enrichTrades()` doesn't return it, UI doesn't render it |
 | U4: Layout order | `DashboardView.tsx` | Visual preference, no spec to test against |

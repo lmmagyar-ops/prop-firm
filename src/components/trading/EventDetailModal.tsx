@@ -785,8 +785,8 @@ function TradingSidebar({ market, eventTitle, onTradeComplete, isKalshi, initial
                             "text-center py-8 space-y-2",
                             isKalshi ? "text-slate-400" : "text-zinc-500"
                         )}>
-                            <p className="text-sm font-medium">No open position</p>
-                            <p className="text-xs">Buy shares first to sell them later.</p>
+                            <p className="text-sm font-medium">No position on this outcome</p>
+                            <p className="text-xs">Check your open positions on the Dashboard to find and close existing trades.</p>
                         </div>
                     )}
                 </div>
