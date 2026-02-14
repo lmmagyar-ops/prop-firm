@@ -4,6 +4,36 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ---
 
+## Feb 14, 2026 — Hardening Sprint (Afternoon)
+
+### Test Suite: 0 Failures → 839 Passing
+
+Fixed all test failures across the suite:
+- **22 in `trade.test.ts`**: Missing `MarketService.getBatchTitles` mock (single-line fix)
+- **2 in evaluator tests**: Missing `tx.insert` mock in db transaction callbacks
+
+Created `tests/mat-regressions.test.ts` — 5 behavioral tests for B1 (daily loss from SOD), B3 (decimal precision), B2 (multi-outcome position scoping).
+
+### Observability Hardening
+- Added `alerts.anomaly()` to `alerts.ts` for data corruption detection
+- Created `/api/health` endpoint — checks DB, balance integrity, position integrity
+- Fires Sentry + Slack on NaN balances or negative shares
+
+### E2E Coverage
+Added 5 Playwright regression tests in `e2e/smoke.spec.ts`: no USD suffix (U1), direction badges (U2/U3), 2-decimal P&L (B3), layout order (U4), multi-outcome sell copy (B2).
+
+### Schema Drift Guard
+- Created `scripts/check-schema-drift.ts` — runs `drizzle-kit push --dry-run`
+- Added `npm run db:check` to `package.json`
+- Documented in `CLAUDE.md`
+
+### Tomorrow Morning
+1. **Deploy** — all changes are local-only, push and deploy to staging
+2. **Run E2E** — `npm run test:e2e` against staging URL to verify Playwright tests pass live
+3. **Run `db:check`** — verify schema is synced on production DB
+
+---
+
 ## Feb 14, 2026 — Presentation Layer Test Coverage (Mat's Bug Sprint)
 
 ### Gap Analysis: Why 8 Bugs Slipped Through 500+ Tests

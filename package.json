@@ -11,6 +11,7 @@
     "test:coverage": "vitest run --coverage",
     "type-check": "tsc --noEmit",
     "db:push": "drizzle-kit push",
+    "db:check": "node --env-file=.env.local --import=tsx scripts/check-schema-drift.ts",
     "test:engine": "node --env-file=.env.local --import=tsx src/scripts/verify-engine.ts",
     "test:balances": "node --env-file=.env.local --import=tsx src/scripts/verify-balances.ts",
     "test:financial": "node --env-file=.env.local --import=tsx src/scripts/verify-financial-consistency.ts",

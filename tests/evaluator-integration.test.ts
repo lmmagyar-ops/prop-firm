@@ -24,6 +24,9 @@ vi.mock('@/db', () => {
                 where: vi.fn().mockResolvedValue({ rowCount: 1 }),
             })),
         })),
+        insert: vi.fn(() => ({
+            values: vi.fn().mockResolvedValue({ rowCount: 1 }),
+        })),
         transaction: vi.fn(),
     };
     mockDb.transaction.mockImplementation(async (cb: (tx: typeof mockDb) => Promise<void>) => cb(mockDb));

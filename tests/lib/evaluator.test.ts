@@ -19,6 +19,9 @@ vi.mock("@/db", () => {
                 where: vi.fn().mockResolvedValue({ rowCount: 1 })
             }))
         })),
+        insert: vi.fn(() => ({
+            values: vi.fn().mockResolvedValue({ rowCount: 1 })
+        })),
         transaction: vi.fn(),
     };
     // transaction calls the callback with db itself as the tx context

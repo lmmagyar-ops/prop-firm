@@ -269,3 +269,128 @@ test.describe('Admin Panel', () => {
         }
     });
 });
+
+// ─── 9. Mat's Regression Suite (Feb 13, 2026) ──────────────────────────────
+// Regressions for bugs B1-B3 and UX items U1-U4 from Mat's feedback round.
+
+test.describe("Mat's Regressions", () => {
+
+    test('U1: balance shows no "USD" suffix', async ({ page }) => {
+        await navigateAndWait(page, '/dashboard');
+
+        if (page.url().includes('auth') || page.url().includes('login')) {
+            test.skip();
+            return;
+        }
+
+        const balance = page.getByTestId('account-balance');
+        if (await balance.isVisible({ timeout: 5000 }).catch(() => false)) {
+            const text = await balance.textContent() || '';
+            expect(text).not.toContain('USD');
+        }
+    });
+
+    test('U2/U3: recent trades show YES/NO direction badges', async ({ page }) => {
+        await navigateAndWait(page, '/dashboard');
+
+        if (page.url().includes('auth') || page.url().includes('login')) {
+            test.skip();
+            return;
+        }
+
+        // Wait for recent trades widget to load
+        await page.waitForTimeout(2000);
+
+        // Look for direction badges in the recent trades section
+        const recentTrades = page.getByTestId('recent-trades');
+        if (await recentTrades.isVisible({ timeout: 5000 }).catch(() => false)) {
+            const tradeItems = recentTrades.locator('[data-testid="trade-item"]');
+            const count = await tradeItems.count();
+
+            if (count > 0) {
+                // Each trade should contain either "YES" or "NO" badge
+                for (let i = 0; i < Math.min(count, 3); i++) {
+                    const tradeText = await tradeItems.nth(i).textContent() || '';
+                    const hasDirection = tradeText.includes('YES') || tradeText.includes('NO');
+                    expect(hasDirection, `Trade ${i} should show YES/NO direction badge`).toBe(true);
+                }
+            }
+        }
+    });
+
+    test('B3: profit values show exactly 2 decimal places', async ({ page }) => {
+        await navigateAndWait(page, '/dashboard');
+
+        if (page.url().includes('auth') || page.url().includes('login')) {
+            test.skip();
+            return;
+        }
+
+        // Check all P&L displays match N.NN pattern
+        const pnlElements = page.locator('[data-testid*="pnl"], [data-testid*="profit"]');
+        const count = await pnlElements.count();
+
+        for (let i = 0; i < count; i++) {
+            const text = await pnlElements.nth(i).textContent() || '';
+            // Extract dollar amounts from text
+            const dollarMatches = text.match(/\$[\d,]+\.?\d*/g);
+            if (dollarMatches) {
+                for (const match of dollarMatches) {
+                    // Every dollar amount should have exactly 2 decimal places
+                    expect(match, `PnL display "${match}" should have 2 decimal places`).toMatch(/\$[\d,]+\.\d{2}$/);
+                }
+            }
+        }
+    });
+
+    test('U4: dashboard layout — "Go Bigger" before "Trader Performance"', async ({ page }) => {
+        await navigateAndWait(page, '/dashboard');
+
+        if (page.url().includes('auth') || page.url().includes('login')) {
+            test.skip();
+            return;
+        }
+
+        const body = page.locator('main');
+        const bodyText = await body.textContent() || '';
+
+        const goBiggerIdx = bodyText.indexOf('Go Bigger');
+        const traderPerfIdx = bodyText.indexOf('Trader Performance');
+
+        // Both should exist (or both should not, if no active challenge)
+        if (goBiggerIdx >= 0 && traderPerfIdx >= 0) {
+            expect(
+                goBiggerIdx,
+                '"Go Bigger" should appear BEFORE "Trader Performance" in the DOM'
+            ).toBeLessThan(traderPerfIdx);
+        }
+    });
+
+    test('B2: multi-outcome sell shows "No position on this outcome"', async ({ page }) => {
+        await navigateAndWait(page, '/dashboard/trade');
+
+        if (page.url().includes('auth') || page.url().includes('login')) {
+            test.skip();
+            return;
+        }
+
+        // Wait for market cards
+        await page.waitForTimeout(2000);
+
+        // Find a market card and click it
+        const marketCard = page.locator('[data-testid="market-card"]').first();
+        if (await marketCard.isVisible({ timeout: 5000 }).catch(() => false)) {
+            await marketCard.click();
+            await page.waitForTimeout(1000);
+
+            // If "No position on this outcome" text appears, it should use the correct copy
+            const pageText = await page.locator('body').textContent() || '';
+            if (pageText.includes('No position')) {
+                // Should say "No position on this outcome" NOT "No open position"
+                expect(pageText).toContain('No position on this outcome');
+                expect(pageText).not.toContain('No open position');
+            }
+        }
+    });
+});
+

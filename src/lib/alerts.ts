@@ -179,4 +179,15 @@ export const alerts = {
         message: `"${title}" drifted ${((Math.abs(cached - live)) * 100).toFixed(1)}%`,
         metadata: { marketId, cached, live, deviation: Math.abs(cached - live) },
     }),
+
+    /**
+     * Alert on data anomalies that indicate corruption or logic errors.
+     * Examples: NaN balances, negative shares, balance-sum mismatches.
+     */
+    anomaly: (type: string, details: Record<string, unknown>) => sendAlert({
+        severity: 'critical',
+        title: `Data Anomaly: ${type}`,
+        message: `Data integrity violation detected: ${type}`,
+        metadata: { anomalyType: type, ...details, detectedAt: new Date().toISOString() },
+    }),
 };

@@ -58,6 +58,8 @@ vi.mock("@/lib/market", () => ({
     MarketService: {
         // NEW: Single source of truth for trade execution
         getCanonicalPrice: vi.fn(() => 0.50), // Default: 50¢
+        // Batch title fetcher (used in trade execution to store market title)
+        getBatchTitles: vi.fn(() => new Map()),
         // Synthetic book builder
         buildSyntheticOrderBookPublic: vi.fn((price: number) => ({
             bids: [{ price: (price - 0.01).toFixed(2), size: "10000" }],

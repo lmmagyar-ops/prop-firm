@@ -68,6 +68,7 @@ cd propshot-waitlist && npm run dev -- -p 3002
 
 # Database
 npm run db:push      # Push Drizzle schema to PostgreSQL (no migration files)
+npm run db:check     # Detect schema drift (dry-run push — exits 1 if drift found)
 
 # Testing
 npm run test                                    # All Vitest unit tests
