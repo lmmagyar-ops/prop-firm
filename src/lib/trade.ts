@@ -91,8 +91,10 @@ export class TradeExecutor {
             );
         }
 
-        // Resolution guard: reject trades on markets at ≥95¢ or ≤5¢
-        if (canonicalPrice >= 0.95 || canonicalPrice <= 0.05) {
+        // Resolution guard: reject BUY trades on markets at ≥95¢ or ≤5¢
+        // SELL orders are ALWAYS allowed — blocking a user from closing a winning
+        // position is worse than the risk of trading a near-resolved market.
+        if (side === "BUY" && (canonicalPrice >= 0.95 || canonicalPrice <= 0.05)) {
             throw new TradingError(
                 `This market has nearly resolved (${(canonicalPrice * 100).toFixed(0)}¢) and can no longer be traded.`,
                 'MARKET_RESOLVED',

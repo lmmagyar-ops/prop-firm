@@ -126,6 +126,16 @@ export class MarketService {
                 }
             }
 
+            // Gamma API fallback: fetch directly for markets not in worker cache
+            const gammaPrice = await this.getGammaApiPrice(marketId);
+            if (gammaPrice) {
+                const price = parseFloat(gammaPrice.price);
+                if (Number.isFinite(price) && price > 0 && price < 1) {
+                    logger.info(`[MarketService] getCanonicalPrice using Gamma API for ${marketId.slice(0, 12)}...: ${price}`);
+                    return price;
+                }
+            }
+
             return null;
         } catch (error) {
             logger.error('[MarketService] getCanonicalPrice error:', error);
