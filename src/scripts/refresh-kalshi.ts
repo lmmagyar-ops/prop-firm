@@ -19,7 +19,7 @@ dotenv.config();
 // Use same Redis config as the app
 const getRedisConfig = () => {
     if (process.env.REDIS_HOST && process.env.REDIS_PASSWORD) {
-        console.log(`[Kalshi Refresh] Using Upstash Redis at ${process.env.REDIS_HOST}`);
+        console.log(`[Kalshi Refresh] Using Railway Redis at ${process.env.REDIS_HOST}`);
         return {
             host: process.env.REDIS_HOST,
             port: parseInt(process.env.REDIS_PORT || "6379"),

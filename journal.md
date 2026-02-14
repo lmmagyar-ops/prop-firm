@@ -4,6 +4,53 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ---
 
+## Feb 13, 2026 — Settlement Audit Trail Fix (Position Close Invariant)
+
+### Root Cause
+`settlement.ts` and `risk-monitor.ts` close positions (market resolution, breach/pass liquidation) and correctly update balances, but **never created SELL trade records**. This made settlement PnL invisible in trade history and "Your Profit" display. Found during Mat's PnL audit — his balance was mathematically correct ($9,145.49) but $1,111.11 in settlement proceeds were invisible.
+
+### Changes
+1. **Schema** — Added `closureReason` column to `trades` table (`null` = manual, `'market_settlement'` | `'breach_liquidation'` | `'pass_liquidation'`)
+2. **settlement.ts** — Now inserts SELL trade record within the same atomic transaction that closes positions
+3. **risk-monitor.ts** — `closeAllPositions()` now accepts `closureReason` param and inserts SELL trade records for each position
+4. **Trade history API** — Includes `closureReason` in enriched response
+5. **CLAUDE.md** — Added **Position Close Invariant**: every code path that closes a position MUST also insert a SELL trade record (3 paths documented)
+6. **Backfill** — Created 3 missing SELL trade records for Mat's settled positions (all PnL verified MATCH)
+7. **Schema pushed** — `market_title` + `closure_reason` columns now live in production
+
+### Verification
+- test:engine — 53/53 ✅
+- test:lifecycle — 74/74 ✅
+- test:safety — 44/44 ✅
+- Backfill verification — all 5 closed positions have matching SELL trades with correct PnL
+
+### Tomorrow Morning
+1. **Deploy to staging** — Push `develop` branch, verify trade history shows settlement trades
+2. **Run `/verify-financial`** — Confirm "Your Profit" and win rate now include settlement PnL
+3. **Browser smoke test** — Check Mat's trade history in production after deploy
+
+---
+
+## Feb 13, 2026 — Mat's Dashboard Bug Fixes + Trade History Durability
+
+### Changes
+1. **Market title durability** — Added `marketTitle` column to `trades` table. Title fetched via `MarketService.getBatchTitles()` at trade execution time and stored permanently. Trade history API now prefers DB title → Redis → truncated ID fallback. Root cause: resolved markets pruned from Redis = titles lost.
+2. **Removed "Days Remaining"** — No time limit on evaluations. Removed from `ChallengeHeader`, `MissionTracker`, `DashboardView`, and dashboard `page.tsx`.
+3. **Removed "Open Positions N/M"** — Mat: "less limitations better people will feel". Removed positions meter from `RiskMeters` (grid 3→2 col) and dashboard page.
+4. **PnL dashes** — Kept as-is. Dashes on BUY trades are correct (PnL realized on SELL). Mat confirmed cost display doesn't belong there.
+5. **Upstash → Railway** — Cleaned all 5 stale Upstash references.
+
+### Still Needed
+- `npx drizzle-kit push` against production DB to apply `marketTitle` column (no local Postgres available)
+- Old trades pre-migration will still show truncated IDs until a backfill script runs
+
+### Tomorrow Morning
+1. **Push schema migration** — `DATABASE_URL=<prod> npx drizzle-kit push` (high priority, blocks title fix)
+2. **Backfill old trades** — Script to populate `marketTitle` for existing trade rows where possible
+3. **Investigate PnL Today accuracy** — If Mat reports further discrepancies, audit `startOfDayBalance` update logic
+
+---
+
 ## Feb 13, 2026 — HOTFIX: Verification emails sending localhost URLs
 
 ### Problem

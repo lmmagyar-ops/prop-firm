@@ -23,7 +23,7 @@ Visit [localhost:3000](http://localhost:3000)
 
 - **Framework:** Next.js 16, React 19
 - **Database:** Prisma Postgres (Drizzle ORM)
-- **Cache:** Upstash Redis
+- **Cache:** Railway Redis
 - **Auth:** NextAuth v5
 - **Markets:** Polymarket, Kalshi
 
@@ -45,7 +45,7 @@ Visit [localhost:3000](http://localhost:3000)
 | Next.js App | Vercel | Frontend + API |
 | Ingestion Worker | Railway | 24/7 price feeds |
 | Database | Prisma Postgres | Data storage |
-| Cache | Upstash Redis | Real-time prices |
+| Cache | Railway Redis | Real-time prices |
 
 ## Scripts
 

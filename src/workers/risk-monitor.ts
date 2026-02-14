@@ -10,7 +10,7 @@
 
 import Redis from "ioredis";
 import { db } from "../db";
-import { challenges, positions, auditLogs } from "../db/schema";
+import { challenges, positions, auditLogs, trades } from "../db/schema";
 import { eq, and } from "drizzle-orm";
 import { FUNDED_RULES } from "../lib/funded-rules";
 import { normalizeRulesConfig } from "../lib/normalize-rules";
@@ -248,7 +248,7 @@ export class RiskMonitor {
                 }
 
                 // 2. Close all positions + settle proceeds (atomic)
-                await this.closeAllPositions(tx, challenge.id, openPositions, livePrices);
+                await this.closeAllPositions(tx, challenge.id, openPositions, livePrices, 'breach_liquidation');
 
                 // 3. Audit log
                 await tx.insert(auditLogs).values({
@@ -328,7 +328,7 @@ export class RiskMonitor {
                 }
 
                 // Close all positions + settle proceeds (atomic)
-                await this.closeAllPositions(tx, challenge.id, openPositions, livePrices);
+                await this.closeAllPositions(tx, challenge.id, openPositions, livePrices, 'pass_liquidation');
 
                 // Audit log
                 await tx.insert(auditLogs).values({
@@ -364,7 +364,8 @@ export class RiskMonitor {
         tx: Transaction,
         challengeId: string,
         openPositions: PositionRecord[],
-        livePrices: Map<string, number>
+        livePrices: Map<string, number>,
+        closureReason: 'breach_liquidation' | 'pass_liquidation' = 'breach_liquidation'
     ): Promise<void> {
         if (openPositions.length === 0) return;
 
@@ -395,6 +396,21 @@ export class RiskMonitor {
                     pnl: pnl.toFixed(2),
                 })
                 .where(eq(positions.id, pos.id));
+
+            // AUDIT TRAIL: Create SELL trade record so liquidation PnL is visible in trade history
+            await tx.insert(trades).values({
+                positionId: pos.id,
+                challengeId: challengeId,
+                marketId: pos.marketId,
+                type: 'SELL',
+                direction: pos.direction,
+                price: closePrice.toString(),
+                amount: proceeds.toFixed(2),
+                shares: shares.toString(),
+                realizedPnL: pnl.toFixed(2),
+                closureReason: closureReason,
+                executedAt: now,
+            });
         }
 
         // CRITICAL: Settle proceeds to currentBalance via BalanceManager

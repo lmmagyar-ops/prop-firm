@@ -292,6 +292,17 @@ Runs every 5 seconds in the ingestion worker:
 > [!IMPORTANT]
 > On breach, `currentBalance` is stored as-is — equity is **not** written to currentBalance (prevents double-counting unrealized P&L).
 
+> [!CAUTION]
+> **Position Close Invariant:** Every code path that closes a position **MUST** also insert a SELL trade record. There are exactly 3 closure paths:
+>
+> | Path | File | `closureReason` |
+> |------|------|-----------------|
+> | Manual SELL | `trade.ts` | `null` |
+> | Market settlement | `settlement.ts` | `'market_settlement'` |
+> | Breach/pass liquidation | `risk-monitor.ts` | `'breach_liquidation'` / `'pass_liquidation'` |
+>
+> If you add a new closure path, it **must** insert a trade record or PnL will be invisible in trade history.
+
 **File:** `src/workers/risk-monitor.ts`
 
 ### 4. Exchange Halt (Outage Protection)

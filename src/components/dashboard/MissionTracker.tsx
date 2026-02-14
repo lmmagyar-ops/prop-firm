@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Target, AlertTriangle, Shield, Clock } from "lucide-react";
+import { Target, AlertTriangle, Shield } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import CountUp from "@/components/reactbits/CountUp";
 
@@ -11,7 +11,7 @@ interface MissionTrackerProps {
     profitTarget: number;
     maxDrawdown: number;
     dailyLossLimit: number;
-    daysRemaining: number;
+
 }
 
 export function MissionTracker({
@@ -20,7 +20,7 @@ export function MissionTracker({
     profitTarget, // e.g., 500 (absolute $)
     maxDrawdown,  // e.g., 1000 (absolute $)
     dailyLossLimit,
-    daysRemaining
+
 }: MissionTrackerProps) {
     const profit = currentBalance - startingBalance;
     const isProfit = profit >= 0;
@@ -47,7 +47,7 @@ export function MissionTracker({
                     <div>
                         <div className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Mission Status</div>
                         <div className="text-white font-bold text-sm flex items-center gap-2">
-                            Phase 1 Evaluation <span className="text-zinc-600">|</span> <span className="text-primary">{daysRemaining} Days Left</span>
+                            Phase 1 Evaluation <span className="text-zinc-600">|</span> <span className="text-primary">No Time Limit</span>
                         </div>
                     </div>
                 </div>

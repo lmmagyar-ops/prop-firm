@@ -9,15 +9,15 @@ import { validateEventBatch, logValidationIssues } from "../lib/data-validator";
 
 dotenv.config();
 
-// Use same Redis config as the app - prioritize Upstash host/password with TLS
+// Use same Redis config as the app - prioritize Railway host/password with TLS
 const getRedisConfig = () => {
     if (process.env.REDIS_HOST && process.env.REDIS_PASSWORD) {
-        console.log(`[Refresh] Using Upstash Redis at ${process.env.REDIS_HOST}`);
+        console.log(`[Refresh] Using Railway Redis at ${process.env.REDIS_HOST}`);
         return {
             host: process.env.REDIS_HOST,
             port: parseInt(process.env.REDIS_PORT || "6379"),
             password: process.env.REDIS_PASSWORD,
-            tls: {} // Required for Upstash
+            tls: {} // TLS for Railway Redis
         };
     }
     console.log(`[Refresh] Using Redis URL: ${process.env.REDIS_URL || "redis://localhost:6380"}`);

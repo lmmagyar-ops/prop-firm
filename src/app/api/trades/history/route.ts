@@ -26,7 +26,8 @@ async function enrichTrades(tradeRecords: (typeof trades.$inferSelect)[]) {
     return tradeRecords.map(trade => ({
         id: trade.id,
         marketId: trade.marketId,
-        marketTitle: marketLookup[trade.marketId]?.title || `Market ${trade.marketId.slice(0, 8)}...`,
+        // Prefer DB-stored title (permanent) → Redis lookup (transient) → truncated ID (last resort)
+        marketTitle: trade.marketTitle || marketLookup[trade.marketId]?.title || `Market ${trade.marketId.slice(0, 8)}...`,
         eventTitle: marketLookup[trade.marketId]?.eventTitle,
         image: marketLookup[trade.marketId]?.image,
         type: trade.type,
@@ -34,6 +35,7 @@ async function enrichTrades(tradeRecords: (typeof trades.$inferSelect)[]) {
         amount: parseFloat(trade.amount),
         shares: parseFloat(trade.shares),
         realizedPnL: trade.realizedPnL ? parseFloat(trade.realizedPnL) : null,
+        closureReason: trade.closureReason || null, // null = manual | 'market_settlement' | 'breach_liquidation' | 'pass_liquidation'
         executedAt: trade.executedAt,
     }));
 }

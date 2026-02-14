@@ -198,7 +198,7 @@ class IngestionWorker {
                 host: process.env.REDIS_HOST,
                 port: port,
                 password: process.env.REDIS_PASSWORD,
-                tls: {}, // Required for Upstash
+                tls: {}, // TLS for Railway Redis
                 // Institutional retry config
                 retryStrategy: (times: number) => {
                     if (times > 20) {

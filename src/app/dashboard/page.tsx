@@ -73,9 +73,6 @@ export default async function DashboardPage() {
     const computedDaysActive = activeChallenge?.startedAt
         ? Math.ceil((now - new Date(activeChallenge.startedAt).getTime()) / (1000 * 60 * 60 * 24))
         : 1;
-    const computedDaysRemaining = activeChallenge?.endsAt
-        ? Math.ceil((new Date(activeChallenge.endsAt).getTime() - now) / (1000 * 60 * 60 * 24))
-        : 0;
 
     // Logic for Verification Status (Winner-Only Flow)
     // Reserved for future KYC and passed challenge checks
@@ -189,7 +186,6 @@ export default async function DashboardPage() {
                                 phase={activeChallenge.phase as "challenge" | "verification" | "funded"}
                                 status={activeChallenge.status as "active" | "failed" | "passed"}
                                 startingBalance={typeof activeChallenge.startingBalance === 'string' ? parseFloat(activeChallenge.startingBalance) : activeChallenge.startingBalance}
-                                daysRemaining={computedDaysRemaining}
                             />
 
                             {/* Equity + Profit Progress */}
@@ -231,8 +227,6 @@ export default async function DashboardPage() {
                                 drawdownUsedDollars={stats.drawdownAmount}
                                 dailyDrawdownUsedDollars={stats.dailyDrawdownAmount}
                                 equity={trueEquity}
-                                openPositionCount={positions?.length ?? 0}
-                                maxPositions={(activeChallenge.rulesConfig as Record<string, number>)?.maxOpenPositions ?? 10}
                             />
                         </>
                     )}
@@ -262,7 +256,6 @@ export default async function DashboardPage() {
                             phase="challenge"
                             status="active"
                             startingBalance={100000}
-                            daysRemaining={30}
                         />
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
                             <div className="lg:col-span-2">
@@ -272,7 +265,7 @@ export default async function DashboardPage() {
                                 <ProfitProgress totalPnL={4250.00} profitTarget={10000} profitProgress={42.5} startingBalance={100000} />
                             </div>
                         </div>
-                        <RiskMeters drawdownUsage={1.2} dailyDrawdownUsage={0.8} startOfDayBalance={103000} startingBalance={100000} maxDrawdownDollars={8000} dailyDrawdownDollars={5000} equity={104250} openPositionCount={3} maxPositions={10} />
+                        <RiskMeters drawdownUsage={1.2} dailyDrawdownUsage={0.8} startOfDayBalance={103000} startingBalance={100000} maxDrawdownDollars={8000} dailyDrawdownDollars={5000} equity={104250} />
 
                     </div>
 

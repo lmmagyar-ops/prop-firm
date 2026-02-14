@@ -70,6 +70,10 @@ export class TradeExecutor {
 
         const canonicalPrice = await MarketService.getCanonicalPrice(marketId);
 
+        // Fetch market title while it's still in Redis — store permanently in trade record
+        const titleMap = await MarketService.getBatchTitles([marketId]);
+        const marketTitle = titleMap.get(marketId) || null;
+
         if (canonicalPrice === null) {
             // EXCHANGE HALT: Check if this is an outage, and return a clear error
             const outageStatus = await OutageManager.getOutageStatus();
@@ -243,6 +247,7 @@ export class TradeExecutor {
             const [newTrade] = await tx.insert(trades).values({
                 challengeId: challenge.id,
                 marketId: marketId,
+                marketTitle: marketTitle, // Stored at trade time — survives market resolution
                 type: side,
                 direction: direction, // YES or NO — audit trail
                 amount: finalAmount.toString(), // Notional value

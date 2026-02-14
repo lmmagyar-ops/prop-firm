@@ -13,7 +13,7 @@
  */
 
 import { db } from "@/db";
-import { positions, challenges } from "@/db/schema";
+import { positions, challenges, trades } from "@/db/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { PolymarketOracle } from "@/lib/polymarket-oracle";
 import { createLogger } from "@/lib/logger";
@@ -127,6 +127,23 @@ export async function settleResolvedPositions(): Promise<SettlementResult> {
                         await BalanceManager.adjustBalance(
                             tx, challengeId, proceeds, 'market_settlement'
                         );
+                    }
+
+                    // AUDIT TRAIL: Create SELL trade record so settlement PnL is visible in trade history
+                    if (challengeId) {
+                        await tx.insert(trades).values({
+                            positionId: pos.id,
+                            challengeId: challengeId,
+                            marketId: pos.marketId,
+                            type: 'SELL',
+                            direction: pos.direction,
+                            price: settlementPrice.toString(),
+                            amount: proceeds.toFixed(2),
+                            shares: shares.toString(),
+                            realizedPnL: pnl.toFixed(2),
+                            closureReason: 'market_settlement',
+                            executedAt: now,
+                        });
                     }
                 });
 

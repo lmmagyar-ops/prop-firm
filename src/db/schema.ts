@@ -216,6 +216,7 @@ export const trades = pgTable("trades", {
     positionId: uuid("position_id").references(() => positions.id),
     challengeId: uuid("challenge_id").references(() => challenges.id),
     marketId: text("market_id").notNull(),
+    marketTitle: text("market_title"), // Stored at trade time — survives market resolution/pruning
 
     type: varchar("type", { length: 10 }).notNull(), // 'BUY', 'SELL'
     direction: varchar("direction", { length: 10 }), // 'YES', 'NO' — nullable for backward compat with existing rows
@@ -223,6 +224,7 @@ export const trades = pgTable("trades", {
     amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
     shares: decimal("shares", { precision: 12, scale: 2 }).notNull(),
     realizedPnL: decimal("realized_pnl", { precision: 12, scale: 2 }), // P&L for SELL trades
+    closureReason: varchar("closure_reason", { length: 30 }), // null = manual trade | 'market_settlement' | 'breach_liquidation' | 'pass_liquidation'
 
     executedAt: timestamp("executed_at").defaultNow(),
 }, (table) => ({

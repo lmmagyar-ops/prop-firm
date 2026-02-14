@@ -17,8 +17,6 @@ interface RiskMetersProps {
     drawdownUsedDollars?: number;
     dailyDrawdownUsedDollars?: number;
     equity: number;
-    openPositionCount: number;
-    maxPositions: number;
 }
 
 /** 3-zone color: green (0-50), amber (50-80), red (80+) */
@@ -44,8 +42,6 @@ export function RiskMeters({
     drawdownUsedDollars: rawDdUsed,
     dailyDrawdownUsedDollars: rawDailyUsed,
     equity,
-    openPositionCount,
-    maxPositions,
 }: RiskMetersProps) {
     const drawdownRounded = Math.round(drawdownUsage * 100) / 100;
     const dailyDrawdownRounded = Math.round(dailyDrawdownUsage * 100) / 100;
@@ -59,10 +55,6 @@ export function RiskMeters({
     const ddZone = getZone(drawdownRounded);
     const dailyZone = getZone(dailyDrawdownRounded);
 
-    // Positions zone
-    const positionUsage = maxPositions > 0 ? (openPositionCount / maxPositions) * 100 : 0;
-    const posZone = getZone(positionUsage);
-
     return (
         <div className="space-y-4">
             {/* Section header */}
@@ -71,7 +63,7 @@ export function RiskMeters({
                 <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Risk Monitor</span>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Max Drawdown */}
                 <SpotlightCard
                     className="bg-zinc-900/50 border border-white/10 rounded-2xl p-5"
@@ -129,38 +121,8 @@ export function RiskMeters({
                         Today&apos;s Floor: ${fmt(dailyLossFloor)}
                     </div>
                 </SpotlightCard>
-
-                {/* Positions */}
-                <SpotlightCard
-                    className="bg-zinc-900/50 border border-white/10 rounded-2xl p-5"
-                    spotlightColor={posZone.glow}
-                    spotlightSize={350}
-                >
-                    <div className="flex justify-between items-start mb-3">
-                        <div>
-                            <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Open Positions</span>
-                            <div className={`text-xs mt-0.5 font-semibold ${posZone.text}`}>
-                                {openPositionCount === 0 ? "NO EXPOSURE" : posZone.label}
-                            </div>
-                        </div>
-                        <span className={`text-lg font-mono font-bold ${posZone.text}`}>
-                            {openPositionCount}/{maxPositions}
-                        </span>
-                    </div>
-                    <div className="h-2 bg-zinc-800 rounded-full overflow-hidden mb-3">
-                        <div
-                            className={`h-full transition-all duration-700 rounded-full ${openPositionCount === 0 ? 'bg-zinc-700' : posZone.bar}`}
-                            style={{ width: `${Math.min(100, positionUsage)}%` }}
-                        />
-                    </div>
-                    <div className="flex justify-between text-xs text-zinc-500 font-mono">
-                        <span>Equity: ${fmt(equity)}</span>
-                    </div>
-                    <div className="text-xs text-zinc-600 mt-1 font-mono">
-                        Buying Power: ${fmt(Math.max(0, equity - (equity * 0.05 * openPositionCount)))}
-                    </div>
-                </SpotlightCard>
             </div>
         </div>
     );
 }
+
