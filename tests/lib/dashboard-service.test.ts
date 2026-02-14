@@ -248,6 +248,46 @@ describe("getPositionsWithPnL", () => {
         expect(result[0].currentPrice).toBe(0.01);
         expect(result[1].currentPrice).toBe(0.99);
     });
+
+    // ── Parameterized boundary test (Anthropic-grade) ──────────────
+    // Tests the FULL PIPELINE at every critical price point.
+    // This is the exact test that would have prevented the 55¢ ghost
+    // position bug — it catches upstream filters rejecting valid prices.
+    it.each([
+        [0, 'resolved NO'],
+        [0.01, 'near-resolution low'],
+        [0.25, 'low active'],
+        [0.5, 'mid active'],
+        [0.75, 'high active'],
+        [0.99, 'near-resolution high'],
+        [1, 'resolved YES'],
+    ])('pipeline accepts price %s (%s)', (price, _label) => {
+        const result = getPositionsWithPnL(
+            [mkDbPos({ marketId: "m1", entryPrice: "0.40", shares: "10" })],
+            mkPrices({ m1: String(price) }),
+            mkTitles({ m1: "Test Market" })
+        );
+
+        expect(result).toHaveLength(1);
+        expect(result[0].currentPrice).toBe(price);
+        expect(result[0].priceSource).toBe("gamma");
+    });
+
+    // ── Demo-leak invariant ────────────────────────────────────────
+    // If no live price is provided, the system must NEVER fabricate
+    // a 55¢ price. It should fall back to the stored entry price.
+    it('never fabricates 55¢ demo price when live price is missing', () => {
+        const result = getPositionsWithPnL(
+            [mkDbPos({ marketId: "m1", entryPrice: "0.40", shares: "10" })],
+            new Map(), // No live prices available
+            mkTitles({ m1: "Test Market" })
+        );
+
+        expect(result).toHaveLength(1);
+        expect(result[0].currentPrice).not.toBe(0.55);
+        expect(result[0].currentPrice).toBe(0.40); // Falls to stored entry price
+        expect(result[0].priceSource).toBe("stored");
+    });
 });
 
 // ─── getEquityStats ─────────────────────────────────────────────────
