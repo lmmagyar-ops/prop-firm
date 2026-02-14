@@ -27,13 +27,12 @@ We kept "fixing" the same bug because each fix only addressed one layer (display
 - Production: `currentPrice: 0.9595`, `priceSource: gamma_api` ✅
 - Commits: `57a1bd2` (display fix), `88c015d` (sell flow fix)
 
-### Health Check Guardrail (stale price canary)
-Added Check #4 to `/api/health`: queries all open positions, fetches batch prices, flags any with `source: 'demo'`. Fires anomaly alert if detected. This would have caught the 55¢ bug before Mat reported it. Commit: `2a1cf3d`.
+### Rate Limit Fix — Exempt ALL GETs
+The middleware used a fragile allowlist of exempt GET path prefixes. `/api/health`, admin routes, etc. were missing → hit DEFAULT tier (100 req/min). Simplified to `request.method === 'GET'` — only POST/PUT/DELETE now go through the rate limiter. This is safe because all financial/destructive actions are POST routes. Eliminates the recurring "new GET endpoint hits 429" class of bugs. Commit: `59c2e24`.
 
 ### Tomorrow Morning (prioritized by leverage × risk)
 1. **Sell test** — Waiting for Mat to attempt selling the Warsh position (message sent)
 2. **Worker coverage** — Investigate why certain markets aren't ingested by the worker
-3. **Health endpoint rate limit** — `/api/health` is hitting the rate limiter; should be exempt
 
 ---
 
