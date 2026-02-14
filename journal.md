@@ -94,10 +94,12 @@ Self-audit revealed 5 gaps against our Anthropic-grade engineering standards. Ro
 | `.agent/workflows/verify-ui.md` | NEW — mandatory UI verification workflow |
 | `CLAUDE.md:531` | Added Presentation Layer test suite row |
 
-### Tomorrow Morning
-1. **B2 multi-market sell** — needs reproduction with multi-outcome event (leverage: medium, risk: low)
-2. **B4 category cap** — needs market categorization audit with specific example from Mat (leverage: medium, risk: medium)  
-3. **U4 layout reorder** — visual only, lowest priority
+### Phase 5: Remaining Bug Resolution (Feb 14 afternoon)
+1. **B2 multi-market sell** — traced full path, confirmed NOT a backend bug (UX gap). Fixed copy: "No position on this outcome" (`2559bf9`)
+2. **B4 category cap** — ran `scripts/audit-categories.ts` against live Redis: 874 markets, 100% have API categories. NOT a bug (`2559bf9`)
+3. **U4 layout reorder** — moved TraderSpotlight + ChallengeHistoryTable below ScaleUpBanner per Mat's request (`436bd8b`)
+
+**All of Mat's items are now resolved.** ✅
 4. **Have Mat re-test** the fixed flows (B1, B3, U1, U2/U3)
 5. **Fix pre-existing trade.test.ts failures** — 24 tests failing on `MarketService.getBatchTitles` mock (leverage: high, risk: low)
 
