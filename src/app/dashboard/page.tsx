@@ -96,17 +96,6 @@ export default async function DashboardPage() {
             {/* Lifetime Stats Grid - ALWAYS VISIBLE */}
             <LifetimeStatsGrid stats={lifetimeStats} />
 
-            {/* Trader Spotlight Card - ONLY if hasActiveChallenge */}
-            {hasActiveChallenge && activeChallenge && stats && (
-                <TraderSpotlight
-                    totalTrades={lifetimeStats.totalTradeCount}
-                    winRate={lifetimeStats.tradeWinRate ?? 0}
-                    currentStreak={lifetimeStats.currentWinStreak || 0}
-                    daysActive={computedDaysActive}
-                    profitProgress={stats.profitProgress}
-                />
-            )}
-
             {/* Active Challenge Section - ONLY if hasActiveChallenge */}
             {hasActiveChallenge && activeChallenge && stats && (
                 <>
@@ -360,6 +349,17 @@ export default async function DashboardPage() {
             {/* Scale Up Banner — contextual purchase CTA for active traders */}
             {hasActiveChallenge && activeChallenge && (
                 <ScaleUpBanner currentTierSize={activeChallenge.startingBalance} />
+            )}
+
+            {/* Trader Spotlight Card - BELOW "Go Bigger" per Mat's request */}
+            {hasActiveChallenge && activeChallenge && stats && (
+                <TraderSpotlight
+                    totalTrades={lifetimeStats.totalTradeCount}
+                    winRate={lifetimeStats.tradeWinRate ?? 0}
+                    currentStreak={lifetimeStats.currentWinStreak || 0}
+                    daysActive={computedDaysActive}
+                    profitProgress={stats.profitProgress}
+                />
             )}
 
             {/* Challenge History Table - ALWAYS VISIBLE */}
