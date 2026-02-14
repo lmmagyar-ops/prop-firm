@@ -176,6 +176,78 @@ describe("getPositionsWithPnL", () => {
         expect(pos).toHaveProperty("openedAt");
         expect(pos).toHaveProperty("priceSource");
     });
+
+    // ── Resolution Price Boundaries ──────────────────────────────────
+    // These tests prevent the ghost position bug: resolved markets return
+    // prices of 0 (NO wins) or 1 (YES wins). The upstream filter must NOT
+    // reject these — they are valid, not "stale data."
+
+    it("accepts resolution price 0 (NO wins) as live price", () => {
+        const result = getPositionsWithPnL(
+            [mkDbPos({ entryPrice: "0.40", direction: "YES" })],
+            mkPrices({ "market-1": "0" }),
+            mkTitles({ "market-1": "Resolved Market" })
+        );
+
+        expect(result).toHaveLength(1);
+        expect(result[0].currentPrice).toBe(0);
+        expect(result[0].unrealizedPnL).toBeCloseTo(-4.0); // (0 - 0.40) * 10
+        expect(result[0].positionValue).toBeCloseTo(0);
+    });
+
+    it("accepts resolution price 1 (YES wins) as live price", () => {
+        const result = getPositionsWithPnL(
+            [mkDbPos({ entryPrice: "0.40", direction: "YES" })],
+            mkPrices({ "market-1": "1" }),
+            mkTitles({ "market-1": "Resolved Market" })
+        );
+
+        expect(result).toHaveLength(1);
+        expect(result[0].currentPrice).toBe(1);
+        expect(result[0].unrealizedPnL).toBeCloseTo(6.0); // (1 - 0.40) * 10
+        expect(result[0].positionValue).toBeCloseTo(10.0);
+    });
+
+    it("accepts resolution price 1 for NO position (full loss)", () => {
+        // YES price = 1 → NO price = 0 (NO side lost)
+        const result = getPositionsWithPnL(
+            [mkDbPos({ entryPrice: "0.60", direction: "NO" })],
+            mkPrices({ "market-1": "1" }),
+            mkTitles({ "market-1": "Resolved Market" })
+        );
+
+        expect(result).toHaveLength(1);
+        expect(result[0].currentPrice).toBe(0); // 1 - 1 = 0 (direction adjusted)
+        expect(result[0].unrealizedPnL).toBeCloseTo(-6.0); // (0 - 0.60) * 10
+    });
+
+    it("accepts resolution price 0 for NO position (full win)", () => {
+        // YES price = 0 → NO price = 1 (NO side won)
+        const result = getPositionsWithPnL(
+            [mkDbPos({ entryPrice: "0.40", direction: "NO" })],
+            mkPrices({ "market-1": "0" }),
+            mkTitles({ "market-1": "Resolved Market" })
+        );
+
+        expect(result).toHaveLength(1);
+        expect(result[0].currentPrice).toBe(1); // 1 - 0 = 1 (direction adjusted)
+        expect(result[0].unrealizedPnL).toBeCloseTo(6.0); // (1 - 0.40) * 10
+    });
+
+    it("accepts near-resolution prices 0.01 and 0.99 as valid", () => {
+        const result = getPositionsWithPnL(
+            [
+                mkDbPos({ id: "p1", marketId: "m1", entryPrice: "0.50" }),
+                mkDbPos({ id: "p2", marketId: "m2", entryPrice: "0.50" }),
+            ],
+            mkPrices({ m1: "0.01", m2: "0.99" }),
+            mkTitles({ m1: "Almost NO", m2: "Almost YES" })
+        );
+
+        expect(result).toHaveLength(2);
+        expect(result[0].currentPrice).toBe(0.01);
+        expect(result[1].currentPrice).toBe(0.99);
+    });
 });
 
 // ─── getEquityStats ─────────────────────────────────────────────────
