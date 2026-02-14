@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { challenges, positions } from "@/db/schema";
+import { challenges, positions, trades } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { publishAdminEvent } from "./events";
 import { ChallengeRules } from "@/types/trading";
@@ -250,6 +250,21 @@ export class ChallengeEvaluator {
                                 pnl: pnl.toFixed(2),
                             })
                             .where(eq(positions.id, pos.id));
+
+                        // AUDIT TRAIL: Create SELL trade record so funded-transition PnL is visible in trade history
+                        await tx.insert(trades).values({
+                            positionId: pos.id,
+                            challengeId: challengeId,
+                            marketId: pos.marketId,
+                            type: 'SELL',
+                            direction: pos.direction,
+                            price: closePrice.toString(),
+                            amount: proceeds.toFixed(2),
+                            shares: shares.toString(),
+                            realizedPnL: pnl.toFixed(2),
+                            closureReason: 'pass_liquidation',
+                            executedAt: now,
+                        });
                     }
 
                     // Credit proceeds before reset so BalanceManager logging shows the full flow

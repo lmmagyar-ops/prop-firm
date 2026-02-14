@@ -17,7 +17,7 @@ import dotenv from 'dotenv';
 dotenv.config({ path: '.env.local' });
 
 import { db } from '@/db';
-import { users, challenges, positions, payouts } from '@/db/schema';
+import { users, challenges, positions, payouts, trades } from '@/db/schema';
 import { eq, and, like } from 'drizzle-orm';
 import { PayoutService } from '@/lib/payout-service';
 import { ChallengeEvaluator } from '@/lib/evaluator';
@@ -423,6 +423,7 @@ async function cleanup() {
         // Delete positions and trades via challenge cascade
         const userChallenges = await db.select().from(challenges).where(eq(challenges.userId, user.id));
         for (const c of userChallenges) {
+            await db.delete(trades).where(eq(trades.challengeId, c.id));
             await db.delete(positions).where(eq(positions.challengeId, c.id));
         }
         await db.delete(challenges).where(eq(challenges.userId, user.id));
