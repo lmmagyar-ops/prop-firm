@@ -11,7 +11,7 @@ interface MissionTrackerProps {
     profitTarget: number;
     maxDrawdown: number;
     dailyLossLimit: number;
-
+    dailyPnL: number;
 }
 
 export function MissionTracker({
@@ -20,7 +20,7 @@ export function MissionTracker({
     profitTarget, // e.g., 500 (absolute $)
     maxDrawdown,  // e.g., 1000 (absolute $)
     dailyLossLimit,
-
+    dailyPnL,
 }: MissionTrackerProps) {
     const profit = currentBalance - startingBalance;
     const isProfit = profit >= 0;
@@ -76,26 +76,25 @@ export function MissionTracker({
                         </div>
                     </div>
 
-                    {/* Daily Loss Limit */}
+                    {/* Daily Loss Limit — uses dailyPnL (today only), NOT overall profit */}
                     <div className="space-y-2">
                         <div className="flex justify-between text-xs font-bold">
                             <span className="text-zinc-400">Daily Limit -${dailyLossLimit.toLocaleString()}</span>
-                            {/* Assuming profit acts as daily P&L for MVP Day 1 */}
-                            <span className={`${profit < -300 ? "text-red-500 animate-pulse" : "text-primary"}`}>
-                                {Math.max(0, dailyLossLimit + Math.min(profit, 0)).toFixed(0)} Left
+                            <span className={`${dailyPnL < -300 ? "text-red-500 animate-pulse" : "text-primary"}`}>
+                                {Math.max(0, dailyLossLimit + Math.min(dailyPnL, 0)).toFixed(0)} Left
                             </span>
                         </div>
                         <div className="h-2 bg-zinc-800 rounded-full overflow-hidden relative">
-                            {/* Fills up as you lose money */}
+                            {/* Fills up as you lose money today */}
                             <motion.div
                                 initial={{ width: 0 }}
-                                animate={{ width: `${Math.min(Math.abs(Math.min(profit, 0)) / dailyLossLimit * 100, 100)}%` }}
+                                animate={{ width: `${Math.min(Math.abs(Math.min(dailyPnL, 0)) / dailyLossLimit * 100, 100)}%` }}
                                 transition={{ duration: 1, ease: "easeOut" }}
-                                className={`h-full relative ${profit < -320 ? "bg-red-500" : "bg-orange-500"}`}
+                                className={`h-full relative ${dailyPnL < -320 ? "bg-red-500" : "bg-orange-500"}`}
                             />
                         </div>
                         <div className="text-[10px] text-zinc-500 text-right font-mono">
-                            -${Math.abs(Math.min(profit, 0)).toFixed(2)} Loss
+                            -${Math.abs(Math.min(dailyPnL, 0)).toFixed(2)} Today
                         </div>
                     </div>
 

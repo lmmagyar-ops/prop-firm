@@ -36,6 +36,7 @@ async function enrichTrades(tradeRecords: (typeof trades.$inferSelect)[]) {
         shares: parseFloat(trade.shares),
         realizedPnL: trade.realizedPnL ? parseFloat(trade.realizedPnL) : null,
         closureReason: trade.closureReason || null, // null = manual | 'market_settlement' | 'breach_liquidation' | 'pass_liquidation'
+        direction: trade.direction || null, // 'YES' | 'NO' — nullable for old rows
         executedAt: trade.executedAt,
     }));
 }

@@ -96,16 +96,19 @@ export async function GET(
 
         // 4. Calculate Stats
         const sellTrades = tradeHistory.filter(t => t.type === 'SELL');
-        const winningTrades = sellTrades.filter(t => Number(t.pnl) > 0).length;
-        const winRate = sellTrades.length > 0 ? (winningTrades / sellTrades.length) * 100 : 0;
+        const wins = sellTrades.filter(t => Number(t.pnl) > 0);
+        const losses = sellTrades.filter(t => Number(t.pnl) < 0);
+        const winRate = sellTrades.length > 0 ? (wins.length / sellTrades.length) * 100 : 0;
+        const avgWin = wins.length > 0 ? wins.reduce((sum, t) => sum + Number(t.pnl), 0) / wins.length : 0;
+        const avgLoss = losses.length > 0 ? losses.reduce((sum, t) => sum + Number(t.pnl), 0) / losses.length : 0;
 
         return NextResponse.json({
             challenge,
             stats: {
                 totalTrades: tradeHistory.length,
                 winRate,
-                avgWin: 0, // Todo
-                avgLoss: 0 // Todo
+                avgWin,
+                avgLoss,
             },
             trades: tradeHistory,
             timeline: timelineData

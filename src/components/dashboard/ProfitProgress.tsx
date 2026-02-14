@@ -19,7 +19,7 @@ export function ProfitProgress({ totalPnL, profitTarget, profitProgress, startin
                     <span className="text-sm font-bold text-zinc-400 uppercase tracking-wider block mb-1">Your Profit</span>
                     <span className="text-2xl font-mono text-white font-bold">
                         $<CountUp
-                            to={Math.max(0, totalPnL)}
+                            to={parseFloat(Math.max(0, totalPnL).toFixed(2))}
                             from={0}
                             duration={1.8}
                             className="text-2xl font-mono text-white font-bold"

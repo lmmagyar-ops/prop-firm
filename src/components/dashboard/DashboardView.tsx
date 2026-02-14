@@ -117,6 +117,7 @@ export function DashboardView({ initialBalance = null, demoMode = false, userId 
                     profitTarget={1000} // 10%
                     maxDrawdown={800} // 8%
                     dailyLossLimit={400} // 4%
+                    dailyPnL={0} // Default for demo/fallback view
                 />
 
                 {/* 3. Featured Market Card (Real data or CTA) */}

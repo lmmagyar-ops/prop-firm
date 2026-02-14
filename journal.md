@@ -4,6 +4,139 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ---
 
+## Feb 14, 2026 — Presentation Layer Test Coverage (Mat's Bug Sprint)
+
+### Gap Analysis: Why 8 Bugs Slipped Through 500+ Tests
+
+Mat reported 4 behavioral bugs + 4 UI issues. Root cause analysis revealed a **structural blind spot**: all 47 test files and 6 phases of manual E2E verification focused on engine math fidelity, never the dashboard presentation layer.
+
+| Layer | Coverage | What it caught |
+|:---|:---|:---|
+| Unit tests (47 files) | ✅ Deep | Engine math, risk logic, trade execution |
+| Integration (`verify-engine.ts`) | ✅ Full lifecycle | Buy→Hold→Sell→PnL round-trips |
+| Financial (`test:financial`) | ✅ Cross-reference | Balance/PnL consistency across systems |
+| Browser smoke tests | ❌ Shallow | "Does page load?" — never compared displayed values to expected |
+| Component wiring | ❌ Zero | Whether components consume correct data from parents |
+
+### Bug-by-Bug Root Cause
+
+| Bug | Location | Root Cause |
+|:---|:---|:---|
+| B1: Daily loss wrong base | `MissionTracker.tsx:83-98` | Uses `profit = currentBalance - startingBalance` (overall P&L) instead of actual dailyPnL. `DashboardView` never passes `dailyPnL` prop |
+| B2: Sell "No open position" | `positions/check/route.ts` | Exact `marketId` match — multi-market events have different market IDs per outcome |
+| B3: Profit too many decimals | `ProfitProgress.tsx:22` | Raw float passed to `<CountUp>`, no `.toFixed(2)` rounding |
+| B4: Category cap >$1,000 | `risk.ts` | Enforcement logic tested but category classification input not verified |
+| U1: "USD" suffix | `LiveEquityDisplay.tsx:36` | Hardcoded `suffix="USD"` on `BigNumberDisplay` |
+| U2/U3: No YES/NO in trades | `RecentTradesWidget.tsx`, `trades/history/route.ts` | `direction` column exists in DB but `enrichTrades()` doesn't return it, UI doesn't render it |
+| U4: Layout order | `DashboardView.tsx` | Visual preference, no spec to test against |
+
+### The Pattern
+
+Testing answered "Is the engine mathematically correct?" (yes, to the penny) but never "Does the UI correctly display what the engine computes?" Classic **mock mirage**: backend service calculates `dailyPnL` correctly, but the component consuming it ignores the value entirely.
+
+### Plan
+
+**TDD approach:** Write tests that reproduce each bug (expect them to fail), then fix the code to make them pass.
+
+Test targets:
+1. `MissionTracker` daily loss calculation uses the wrong variable
+2. `enrichTrades()` omits `direction` field from response
+3. `ProfitProgress` displays unrounded floats
+4. `LiveEquityDisplay` renders "USD" suffix
+5. `RecentTradesWidget` Trade interface lacks `direction`
+
+### Verification Results
+
+| Metric | Before | After |
+|:---|:---|:---|
+| Presentation-layer tests | 9/11 fail | **11/11 pass** |
+| Full test suite | 806 pass / 24 fail / 3 skip | **806 pass / 24 fail / 3 skip** |
+| Regressions introduced | — | **0** |
+
+24 pre-existing failures in `tests/lib/trade.test.ts` (`MarketService.getBatchTitles` mock). Not related to this sprint.
+
+### Files Changed
+| File | Change |
+|:---|:---|
+| `MissionTracker.tsx` | Added `dailyPnL` prop. Daily loss section now uses `dailyPnL` instead of `profit` |
+| `DashboardView.tsx` | Passes `dailyPnL={0}` to `MissionTracker` |
+| `ProfitProgress.tsx` | `to={parseFloat(Math.max(0, totalPnL).toFixed(2))}` — rounds to 2dp |
+| `LiveEquityDisplay.tsx` | Removed `suffix="USD"` from `BigNumberDisplay` |
+| `trades/history/route.ts` | `enrichTrades` now includes `direction: trade.direction \|\| null` |
+| `RecentTradesWidget.tsx` | Added `direction` to Trade interface + renders YES/NO badge |
+| `tests/presentation-layer.test.ts` | 11 tests covering B1, B3, U1, U2/U3, wiring, and math proofs |
+
+### Phase 4: Close Engineering Standards Gaps
+
+Self-audit revealed 5 gaps against our Anthropic-grade engineering standards. Root cause: the initial presentation-layer tests parsed source files as strings (structural) instead of rendering components (behavioral). This is fragile — a rename breaks the test even when behavior is correct.
+
+| Gap | Resolution |
+|:---|:---|
+| Tests are structural (string parsing) | **Rewrote as behavioral** — `tests/presentation-layer.test.tsx` (15 tests). Render via React Testing Library, assert DOM output |
+| No browser smoke test | Deferred to user (production dashboard open) |
+| No codified workflow | Created `.agent/workflows/verify-ui.md` — mandatory TDD + smoke test + cross-reference |
+| CLAUDE.md missing test suite | Added Presentation Layer row to Test Suites table |
+| No cross-referencing | Direction field verified across API mock → component render → DOM badge |
+
+**Key mock strategy for presentation tests:**
+- `CountUp` → renders `{to}` value directly (framer-motion springs don't work in jsdom)
+- `framer-motion` → passthrough HTML elements
+- `apiFetch` → returns Response-like `{ ok: true, json: () => data }`
+- Context providers → return deterministic test values
+
+**Verification:** 15/15 behavioral tests pass. Full suite: 810 pass / 24 fail (pre-existing) / 0 regressions.
+
+### Files Changed (Phase 4)
+| File | Change |
+|:---|:---|
+| `tests/presentation-layer.test.tsx` | NEW — behavioral tests replacing `.test.ts` structural version |
+| `tests/presentation-layer.test.ts` | DELETED — replaced by `.test.tsx` |
+| `.agent/workflows/verify-ui.md` | NEW — mandatory UI verification workflow |
+| `CLAUDE.md:531` | Added Presentation Layer test suite row |
+
+### Tomorrow Morning
+1. **B2 multi-market sell** — needs reproduction with multi-outcome event (leverage: medium, risk: low)
+2. **B4 category cap** — needs market categorization audit with specific example from Mat (leverage: medium, risk: medium)  
+3. **U4 layout reorder** — visual only, lowest priority
+4. **Have Mat re-test** the fixed flows (B1, B3, U1, U2/U3)
+5. **Fix pre-existing trade.test.ts failures** — 24 tests failing on `MarketService.getBatchTitles` mock (leverage: high, risk: low)
+
+---
+
+## Feb 13, 2026 — Backend Data Hygiene Cleanup
+
+### What Happened
+Position health check flagged 4 potential issues. Deep investigation revealed **2 false alarms** and **2 real items**.
+
+### False Alarms
+1. **NaN `execution_price`** — Diagnostic script selected non-existent column (`execution_price` instead of `price`). All trades correctly store $0.9700.
+2. **5 BUY trades for 1 position** — Correct `addToPosition` weighted-average accumulation. User placed 5 × $10 buys.
+
+### Fixes
+1. **Deleted dead `/api/user/positions`** — 69 lines, zero callers anywhere in codebase, hardcoded Trump 2024 title. Superseded by `/api/trade/positions`.
+2. **Pushed `closure_reason` column** to production `positions` table via `ALTER TABLE ADD COLUMN IF NOT EXISTS`. Was already present on `trades` but missing from `positions` (schema drift).
+
+### Additional Cleanup
+- Implemented `avgWin`/`avgLoss` in `admin/traders/[id]/route.ts` — was hardcoded to `0` with bare `// Todo`. Computed from existing sell trade PnL data. Type check clean.
+- Full codebase hygiene sweep: no bare TODOs remaining, no dead code, no FIXME/HACK, `as any` casts all have eslint-disable comments, silent catches are all haptics (correct).
+
+### Verification
+- `npx tsc --noEmit` — clean
+- `curl /api/user/positions` — 404 confirmed
+- Browser smoke test: dashboard equity, risk monitor, open positions, trade history — all clean
+
+### Tomorrow Morning (ranked leverage × risk)
+
+1. **Have Mat test the settlement audit trail** — He should check his trade history page for the 3 backfilled SELL trades (market settlements). His "Your Profit" number should now reflect the $1,111.11 in settled gains that were previously invisible. This was biggest fix of the day.
+
+2. **Deploy `avgWin`/`avgLoss` fix + dead route deletion** — Push to prod if not auto-deployed. Zero-risk changes but they need to ship.
+
+3. **Monitor the Fed Chair position** — User has 51.55 YES shares @ 97¢ entry, currently at 55¢. That's -$21.65 unrealized. If this market settles NO, the settlement engine will fire and create a proper SELL trade record (thanks to today's fix). Worth watching.
+
+4. **Consider adding `daily_snapshots` table** — The admin trader detail view simulates daily balance snapshots from trade aggregation (lines 63-95 of `admin/traders/[id]/route.ts`). Works for now but won't scale with volume. Low urgency.
+
+---
+
 ## Feb 13, 2026 — Settlement Audit Trail Fix (Position Close Invariant)
 
 ### Root Cause

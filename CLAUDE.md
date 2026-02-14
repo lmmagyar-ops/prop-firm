@@ -528,6 +528,7 @@ See `.agent/workflows/deploy.md` for the full deployment workflow.
 | **Financial Consistency** | `npm run test:financial` | Share count, PnL cross-check, risk limit messages, equity sync |
 | **Market Quality** | `npm run test:markets` | 22 assertions vs live Redis (optional — requires worker running) |
 | **E2E Smoke** | `npm run test:e2e` | 10 Playwright browser tests |
+| **Presentation Layer** | `npx vitest run tests/presentation-layer.test.tsx` | 15 behavioral tests — React Testing Library renders + DOM assertions |
 
 ### E2E Setup
 

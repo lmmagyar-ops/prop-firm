@@ -16,6 +16,7 @@ interface Trade {
     eventTitle?: string;
     image?: string;
     type: "BUY" | "SELL";
+    direction: "YES" | "NO" | null;
     price: number;
     amount: number;
     shares: number;
@@ -163,6 +164,16 @@ export function RecentTradesWidget() {
                                             )}>
                                                 {trade.type}
                                             </span>
+                                            {trade.direction && (
+                                                <span className={cn(
+                                                    "px-1.5 py-0.5 rounded font-bold",
+                                                    trade.direction === "YES"
+                                                        ? "bg-emerald-500/10 text-emerald-400"
+                                                        : "bg-rose-500/10 text-rose-400"
+                                                )}>
+                                                    {trade.direction}
+                                                </span>
+                                            )}
                                             <span>{trade.shares.toFixed(1)} @ {(trade.price * 100).toFixed(1)}¢</span>
                                             <span className="text-zinc-600">•</span>
                                             <span>{formatTime(trade.executedAt)}</span>
