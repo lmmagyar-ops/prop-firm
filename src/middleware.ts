@@ -80,23 +80,17 @@ export async function middleware(request: NextRequest) {
         // - webhooks (external callbacks, need different protection)
         // - cron jobs (internal, protected by Vercel headers)
         // - auth routes (NextAuth OAuth callbacks + session — blocking these breaks login)
-        // - ALL read-only GET requests under /api/trade/*, /api/trades/*, /api/user/*
+        // - ALL GET requests (read-only, can't mutate state)
         //
-        // CONVENTION: Any new GET endpoint under these prefixes is auto-exempt.
-        // Only POST/PUT/DELETE (mutations like trade execution) are rate-limited.
-        // This prevents the "$0.00 / No trades yet" silent failure class where
-        // rate-limited reads cause components to display empty/zero data.
+        // CONVENTION: Only POST/PUT/DELETE (mutations) are rate-limited.
+        // All financial/destructive actions are POST routes (trades, payouts, signups).
+        // GETs are read-only and blocking them causes the "silent empty data" failure
+        // class (components display $0.00 / "No trades yet" / 429 health checks).
         if (
             pathname.startsWith('/api/webhooks') ||
             pathname.startsWith('/api/cron') ||
             pathname.startsWith('/api/auth') ||
-            (request.method === 'GET' && (
-                pathname.startsWith('/api/trade/') ||
-                pathname.startsWith('/api/trades/') ||
-                pathname.startsWith('/api/user/') ||
-                pathname.startsWith('/api/challenges') ||
-                pathname.startsWith('/api/stats')
-            ))
+            request.method === 'GET'
         ) {
             const response = NextResponse.next();
             return addSecurityHeaders(response);
