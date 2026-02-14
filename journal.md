@@ -30,12 +30,16 @@ We kept "fixing" the same bug because each fix only addressed one layer (display
 ### ⚠️ Account Confusion — Warsh Position Is NOT Mat's
 Mat replied: *"i still cant find it. what warsh position. i have no warsh position."* The browser was logged into **our** (Les's) account the whole time. The Kevin Warsh position belongs to Les, not Mat. The AI assumed the positions API was showing Mat's data — it was showing ours.
 
-**The Gamma API fallback fix is still valid** — it fixes the 55¢ demo price for ALL uncached markets regardless of account. But the entire debugging session was based on a wrong assumption about whose data we were looking at. We have not yet identified what specific bug Mat is experiencing.
+**Mat's Actual Account (from admin):**
+- Email: `mattasa1m@gmail.com` | Role: ADMIN + TRADER
+- Active challenge: Balance $9,120.60 | P&L: +$880.31 | 28 trades
+- No open positions (he sold his recent trades at 1:30 PM today)
+- **Mat appears healthy** — actively trading, selling works for him
 
-**Next step: Need to check Mat's actual account** to see what positions he has and what prices/errors he's seeing.
+**The Gamma API fallback fix is still valid** — it fixes the 55¢ demo price for ALL uncached markets regardless of account. But the specific debugging trigger was us looking at our own data.
 
 ### Tomorrow Morning (prioritized by leverage × risk)
-1. **Mat's actual bug** — Need to look at Mat's real account data, not ours
+1. **Ask Mat what his actual bug is** — He's able to sell, his P&L is +$880. What was his original complaint?
 2. **Worker coverage** — Investigate why certain markets aren't ingested by the worker
 
 ---
