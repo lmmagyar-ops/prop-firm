@@ -96,7 +96,7 @@ export class MarketService {
                 const market = event.markets?.find((m: EventMarket) => m.id === marketId);
                 if (market) {
                     const price = parseFloat(market.price);
-                    if (Number.isFinite(price) && price > 0 && price < 1) {
+                    if (Number.isFinite(price) && price >= 0 && price <= 1) {
                         return price;
                     }
                 }
@@ -107,7 +107,7 @@ export class MarketService {
                 const market = event.markets?.find((m: EventMarket) => m.id === marketId);
                 if (market) {
                     const price = parseFloat(market.price);
-                    if (Number.isFinite(price) && price > 0 && price < 1) {
+                    if (Number.isFinite(price) && price >= 0 && price <= 1) {
                         return price;
                     }
                 }
@@ -120,7 +120,7 @@ export class MarketService {
                 const market = markets.find((m: EventMarket) => m.id === marketId);
                 if (market) {
                     const price = market.currentPrice ?? market.basePrice;
-                    if (Number.isFinite(price) && price !== undefined && price > 0 && price < 1) {
+                    if (Number.isFinite(price) && price !== undefined && price >= 0 && price <= 1) {
                         return price;
                     }
                 }
@@ -130,7 +130,7 @@ export class MarketService {
             const gammaPrice = await this.getGammaApiPrice(marketId);
             if (gammaPrice) {
                 const price = parseFloat(gammaPrice.price);
-                if (Number.isFinite(price) && price > 0 && price < 1) {
+                if (Number.isFinite(price) && price >= 0 && price <= 1) {
                     logger.info(`[MarketService] getCanonicalPrice using Gamma API for ${marketId.slice(0, 12)}...: ${price}`);
                     return price;
                 }
@@ -175,7 +175,7 @@ export class MarketService {
                 const prices = JSON.parse(market.outcomePrices) as string[];
                 const yesPrice = parseFloat(prices[0] || '0.5');
 
-                if (Number.isFinite(yesPrice) && yesPrice > 0 && yesPrice < 1) {
+                if (Number.isFinite(yesPrice) && yesPrice >= 0 && yesPrice <= 1) {
                     logger.info(`[MarketService] ✅ Gamma API price for ${assetId.slice(0, 12)}...: ${yesPrice}`);
                     return {
                         price: yesPrice.toString(),
@@ -337,8 +337,8 @@ export class MarketService {
                     const bidPrice = parseFloat(bestBid || '0');
 
                     // CRITICAL: Validate price is in valid range for active markets
-                    // Prices ≤0.01 or ≥0.99 indicate resolved/invalid data
-                    if (bidPrice > 0.01 && bidPrice < 0.99) {
+                    // Allow full 0-1 range including resolution prices (0 and 1)
+                    if (bidPrice >= 0 && bidPrice <= 1) {
                         results.set(marketId, {
                             price: bestBid,
                             asset_id: marketId,
@@ -460,8 +460,8 @@ export class MarketService {
                 const market = event.markets?.find((m: EventMarket) => m.id === marketId);
                 if (market) {
                     const price = parseFloat(market.price);
-                    // Skip invalid/stale prices that indicate resolved markets
-                    if (price > 0.01 && price < 0.99) {
+                    // Accept full 0-1 range including resolution prices
+                    if (price >= 0 && price <= 1) {
                         return {
                             price: market.price.toString(),
                             asset_id: marketId,
@@ -477,8 +477,8 @@ export class MarketService {
                 const market = event.markets?.find((m: EventMarket) => m.id === marketId);
                 if (market) {
                     const price = parseFloat(market.price);
-                    // Skip invalid/stale prices that indicate resolved markets
-                    if (price > 0.01 && price < 0.99) {
+                    // Accept full 0-1 range including resolution prices
+                    if (price >= 0 && price <= 1) {
                         return {
                             price: market.price.toString(),
                             asset_id: marketId,
@@ -496,8 +496,8 @@ export class MarketService {
                 const market = markets.find((m: EventMarket) => m.id === marketId);
                 if (market) {
                     const price = market.currentPrice ?? market.basePrice ?? 0.5;
-                    // Skip invalid/stale prices that indicate resolved markets
-                    if (price > 0.01 && price < 0.99) {
+                    // Accept full 0-1 range including resolution prices
+                    if (price >= 0 && price <= 1) {
                         return {
                             price: price.toString(),
                             asset_id: marketId,

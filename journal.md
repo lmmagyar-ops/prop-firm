@@ -4,6 +4,20 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ---
 
+## Feb 14, 2026 — Resolved Market Ghost Position Fix
+
+### Root Cause: 10 Price Filters Rejected Resolution Prices (0 and 1)
+Mat reported: "position was open on dashboard but couldn't find it on Polymarket or in our trades." The market had **resolved** — no order book, no live price. Our price validation filters (`> 0 && < 1` and `> 0.01 && < 0.99`) explicitly rejected 0 and 1 — which are the correct prices for resolved markets. This caused every resolved position to fall through to the 55¢ demo price.
+
+### Fix: Widen All Price Filters to `>= 0 && <= 1` (Inclusive)
+**10 instances fixed** across 2 files:
+- `market.ts`: lines 99, 110, 123, 133, 178, 341, 464, 481, 500
+- `dashboard-service.ts`: line 91
+
+The settlement cron (`*/10 * * * *`) handles closing resolved positions, but the price display was broken during the gap between resolution and settlement.
+
+---
+
 ## Feb 14, 2026 — Gamma API Fallback (Critical Price Fix)
 
 ### Root Cause: Markets Active but Not Cached → 55¢ Demo Price

@@ -88,7 +88,7 @@ export function getPositionsWithPnL(
 
         if (livePrice) {
             const parsedLivePrice = safeParseFloat(livePrice.price);
-            if (parsedLivePrice > 0.01 && parsedLivePrice < 0.99 && !isNaN(parsedLivePrice)) {
+            if (parsedLivePrice >= 0 && parsedLivePrice <= 1 && !isNaN(parsedLivePrice)) {
                 rawPrice = parsedLivePrice;
                 needsDirectionAdjustment = true;
             } else {
