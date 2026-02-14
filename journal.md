@@ -27,10 +27,13 @@ We kept "fixing" the same bug because each fix only addressed one layer (display
 - Production: `currentPrice: 0.9595`, `priceSource: gamma_api` ✅
 - Commits: `57a1bd2` (display fix), `88c015d` (sell flow fix)
 
+### Health Check Guardrail (stale price canary)
+Added Check #4 to `/api/health`: queries all open positions, fetches batch prices, flags any with `source: 'demo'`. Fires anomaly alert if detected. This would have caught the 55¢ bug before Mat reported it. Commit: `2a1cf3d`.
+
 ### Tomorrow Morning (prioritized by leverage × risk)
-1. **Sell test** — Have Mat attempt to sell the Warsh position to verify end-to-end
-2. **Health check** — Add demo-source detection to `/api/health` for early warning
-3. **Worker coverage** — Investigate why certain markets aren't ingested by the worker
+1. **Sell test** — Waiting for Mat to attempt selling the Warsh position (message sent)
+2. **Worker coverage** — Investigate why certain markets aren't ingested by the worker
+3. **Health endpoint rate limit** — `/api/health` is hitting the rate limiter; should be exempt
 
 ---
 
