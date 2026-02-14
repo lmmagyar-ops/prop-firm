@@ -13,10 +13,12 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 1. **Schema** — Added `closureReason` column to `trades` table (`null` = manual, `'market_settlement'` | `'breach_liquidation'` | `'pass_liquidation'`)
 2. **settlement.ts** — Now inserts SELL trade record within the same atomic transaction that closes positions
 3. **risk-monitor.ts** — `closeAllPositions()` now accepts `closureReason` param and inserts SELL trade records for each position
-4. **Trade history API** — Includes `closureReason` in enriched response
-5. **CLAUDE.md** — Added **Position Close Invariant**: every code path that closes a position MUST also insert a SELL trade record (3 paths documented)
-6. **Backfill** — Created 3 missing SELL trade records for Mat's settled positions (all PnL verified MATCH)
-7. **Schema pushed** — `market_title` + `closure_reason` columns now live in production
+4. **evaluator.ts** — Funded transition now inserts SELL trade records (4th closure path found by blast radius audit)
+5. **Trade history API** — Includes `closureReason` in enriched response
+6. **CLAUDE.md** — Added **Position Close Invariant**: every code path that closes a position MUST also insert a SELL trade record (4 paths documented)
+7. **Backfill** — Created 3 missing SELL trade records for Mat's settled positions (all PnL verified MATCH)
+8. **Schema pushed** — `market_title` + `closure_reason` columns now live in production
+9. **Blast radius audit** — Queried all users for orphaned positions: 0 found. 10 CLOSED positions, all 10 have linked SELL trades.
 
 ### Verification
 - test:engine — 53/53 ✅
