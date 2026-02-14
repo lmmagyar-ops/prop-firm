@@ -268,13 +268,35 @@ async function phase4() {
     const openPos = await getOpenPositions(cid);
     assert(openPos.length > 0, `Evaluator leaves ${openPos.length} positions open (monitor would close them)`);
 
-    // Manually close positions to match production behavior (where risk monitor does this)
+    // Manually close positions AND create SELL trade records to match production behavior
+    // (In production, the risk monitor does this atomically)
     for (const pos of openPos) {
+        const shares = parseFloat(pos.shares);
+        const entryPrice = parseFloat(pos.entryPrice);
+        const closePrice = parseFloat(MID); // Use current market price
+        const effectiveClose = pos.direction === 'NO' ? (1 - closePrice) : closePrice;
+        const effectiveEntry = pos.direction === 'NO' ? (1 - entryPrice) : entryPrice;
+        const pnl = (effectiveClose - effectiveEntry) * shares;
+
+        await db.insert(trades).values({
+            positionId: pos.id,
+            challengeId: cid,
+            marketId: pos.marketId,
+            type: 'SELL',
+            direction: pos.direction,
+            price: effectiveClose.toString(),
+            amount: (shares * effectiveClose).toFixed(2),
+            shares: shares.toString(),
+            realizedPnL: pnl.toFixed(2),
+            closureReason: 'breach_liquidation',
+            executedAt: new Date(),
+        });
+
         await db.update(positions)
-            .set({ status: 'CLOSED', pnl: '0', updatedAt: new Date() })
+            .set({ status: 'CLOSED', pnl: pnl.toFixed(2), closedAt: new Date(), closedPrice: effectiveClose.toString(), updatedAt: new Date() })
             .where(eq(positions.id, pos.id));
     }
-    console.log(`  ℹ️  Manually closed ${openPos.length} positions (simulating risk monitor cleanup)`);
+    console.log(`  ℹ️  Closed ${openPos.length} positions with SELL records (simulating risk monitor cleanup)`);
 }
 
 // ============================================================
@@ -406,6 +428,14 @@ async function phase7() {
         if (allTrades.length > 0) {
             assert(unlinked.length === 0,
                 `All ${allTrades.length} trades on ${c.id.slice(0, 8)} have positionId (${unlinked.length} unlinked)`);
+        }
+
+        // 7c2: POSITION CLOSE INVARIANT — every CLOSED position has a linked SELL trade
+        const sellTrades = allTrades.filter(t => t.type === 'SELL');
+        for (const pos of closed) {
+            const linkedSell = sellTrades.find(t => t.positionId === pos.id);
+            assert(linkedSell !== undefined,
+                `CLOSED position ${pos.id.slice(0, 8)} on ${c.id.slice(0, 8)} has linked SELL trade`);
         }
 
         // 7d: No negative shares

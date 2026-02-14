@@ -834,7 +834,17 @@ async function runVerification() {
         }
         assert(orphanedSells === 0, `Phase 11c: No orphaned sells without corresponding buys (found ${orphanedSells})`);
 
-        // 11d: Total trade count sanity
+        // 11d: POSITION CLOSE INVARIANT — every CLOSED position has a linked SELL trade
+        const closedPositions11 = await db.query.positions.findMany({
+            where: and(eq(positions.challengeId, challengeId), eq(positions.status, 'CLOSED'))
+        });
+        for (const pos of closedPositions11) {
+            const linkedSell = allTradesP11.find(t => t.type === 'SELL' && t.positionId === pos.id);
+            assert(linkedSell !== undefined,
+                `Phase 11d: CLOSED position ${pos.id.slice(0, 8)} has linked SELL trade`);
+        }
+
+        // 11e: Total trade count sanity
         console.log(`  Total trades across all phases: ${allTradesP11.length}`);
         console.log(`  Buys: ${allTradesP11.filter(t => t.type === 'BUY').length}, Sells: ${allSellsP11.length}`);
         console.log(`  Net PnL: $${totalPnLP11.toFixed(2)} | Final Balance: $${finalBalP11.toFixed(2)}`);

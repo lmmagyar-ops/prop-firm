@@ -303,6 +303,8 @@ Runs every 5 seconds in the ingestion worker:
 > | Funded transition | `evaluator.ts` | `'pass_liquidation'` |
 >
 > If you add a new closure path, it **must** insert a trade record or PnL will be invisible in trade history.
+>
+> **Machine enforcement:** All 3 test suites (`verify-engine`, `verify-lifecycle`, `verify-safety`) assert this invariant. Run `npm run reconcile` to check production for violations.
 
 **File:** `src/workers/risk-monitor.ts`
 

@@ -19,6 +19,7 @@
     "test:safety": "node --env-file=.env.local --import=tsx src/scripts/verify-safety.ts",
     "test:deploy": "node --import=tsx src/scripts/verify-deploy.ts",
     "test:handoff": "node --env-file=.env.local --import=tsx src/scripts/verify-handoff.ts",
+    "reconcile": "node --env-file=.env.local --import=tsx src/scripts/reconcile-trades.ts",
     "test:e2e": "npx playwright test e2e/smoke.spec.ts",
     "test:e2e:all": "npx playwright test",
     "prepare": "husky"

@@ -408,6 +408,18 @@ async function test4_evaluatorPositionLeak() {
     // Phase should be funded
     const c = await getChallenge(cid);
     assert(c!.phase === 'funded', `Phase is 'funded' (got '${c!.phase}')`);
+
+    // POSITION CLOSE INVARIANT: Every CLOSED position must have a SELL trade record
+    const sellTradesForChallenge = await db.query.trades.findMany({
+        where: and(eq(trades.challengeId, cid), eq(trades.type, 'SELL'))
+    });
+    assert(sellTradesForChallenge.length === 2, `2 SELL trade records created (got ${sellTradesForChallenge.length})`);
+    for (const t of sellTradesForChallenge) {
+        assert(t.closureReason === 'pass_liquidation',
+            `SELL trade ${t.id.slice(0, 8)} closureReason='${t.closureReason}' (expected 'pass_liquidation')`);
+        assert(t.realizedPnL !== null, `SELL trade ${t.id.slice(0, 8)} has realizedPnL`);
+        assert(t.positionId !== null, `SELL trade ${t.id.slice(0, 8)} has positionId linked`);
+    }
 }
 
 // ============================================================

@@ -21,10 +21,16 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 9. **Blast radius audit** — Queried all users for orphaned positions: 0 found. 10 CLOSED positions, all 10 have linked SELL trades.
 
 ### Verification
-- test:engine — 53/53 ✅
-- test:lifecycle — 74/74 ✅
-- test:safety — 44/44 ✅
-- Backfill verification — all 5 closed positions have matching SELL trades with correct PnL
+- test:engine — 60/60 ✅ (added 7 Position Close Invariant assertions)
+- test:lifecycle — 74/75 (1 pre-existing Phase 6 daily reset flaky, all invariant assertions pass)
+- test:safety — 51/51 ✅ (added 6 funded transition trade record assertions)
+- Backfill verification — all 12 closed positions have matching SELL trades with correct PnL
+
+### Post-Fix Hardening (Same Day)
+1. **Regression assertions** — All 3 test suites now machine-enforce the Position Close Invariant
+2. **Market title backfill** — 48 trades across 15 resolved Polymarket markets now have permanent titles (fetched from Gamma API)
+3. **Reconciliation script** — `npm run reconcile` detects orphaned CLOSED positions without SELL trades. Production: 0 violations, 12/12 healthy.
+4. **Lifecycle Phase 4 fix** — Test was simulating risk monitor cleanup with bare `db.update` (no trade records). Now matches production behavior.
 
 ### Tomorrow Morning
 1. **Deploy to staging** — Push `develop` branch, verify trade history shows settlement trades
