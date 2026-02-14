@@ -1,3 +1,5 @@
+// Env validation — must be first import. Crashes on missing critical vars.
+import '@/config/env';
 import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";

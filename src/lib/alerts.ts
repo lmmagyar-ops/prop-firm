@@ -22,6 +22,7 @@ interface AlertOptions {
 }
 
 // Base URL for internal webhook calls
+// Fail-closed in production: no silent localhost fallback
 const getBaseUrl = () => {
     if (process.env.VERCEL_URL) {
         return `https://${process.env.VERCEL_URL}`;
@@ -29,7 +30,10 @@ const getBaseUrl = () => {
     if (process.env.NEXT_PUBLIC_BASE_URL) {
         return process.env.NEXT_PUBLIC_BASE_URL;
     }
-    return 'http://localhost:3000';
+    if (process.env.NODE_ENV === 'development') {
+        return 'http://localhost:3000';
+    }
+    throw new Error('ALERT_BASE_URL: Neither VERCEL_URL nor NEXT_PUBLIC_BASE_URL is set in production');
 };
 
 /**

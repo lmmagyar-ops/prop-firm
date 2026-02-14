@@ -303,23 +303,41 @@ export class MarketService {
                 const book = allBooks?.[marketId];
 
                 if (book) {
-                    // Use best bid (what you could sell at) for mark-to-market
+                    // ROOT CAUSE FIX: Use mid-price for mark-to-market, not bestBid.
+                    // Trade execution uses the Gamma API canonical price (a mid-price).
+                    // Using bestBid here caused a data source mismatch: cash debited at
+                    // ask-like execution price, position valued at lower bid → phantom loss.
+                    // Mid-price = (bestBid + bestAsk) / 2 aligns valuation with execution.
                     const bestBid = book.bids?.[0]?.price;
+                    const bestAsk = book.asks?.[0]?.price;
                     const bidPrice = parseFloat(bestBid || '0');
+                    const askPrice = parseFloat(bestAsk || '0');
+
+                    // Compute mid-price when both sides exist; fall back to whichever exists
+                    let mtmPrice: number;
+                    if (bidPrice > 0 && askPrice > 0) {
+                        mtmPrice = (bidPrice + askPrice) / 2;
+                    } else if (bidPrice > 0) {
+                        mtmPrice = bidPrice;
+                    } else if (askPrice > 0) {
+                        mtmPrice = askPrice;
+                    } else {
+                        mtmPrice = 0;
+                    }
 
                     // CRITICAL: Validate price is in valid range for active markets
                     // Allow full 0-1 range including resolution prices (0 and 1)
-                    if (isValidMarketPrice(bidPrice)) {
+                    if (isValidMarketPrice(mtmPrice)) {
                         results.set(marketId, {
-                            price: bestBid,
+                            price: mtmPrice.toFixed(4),
                             asset_id: marketId,
                             timestamp: Date.now(),
                             source: 'live'
                         });
                         continue;
-                    } else if (bestBid) {
+                    } else if (bestBid || bestAsk) {
                         // Log invalid prices for debugging
-                        logger.warn(`[MarketService] Invalid order book price for ${marketId.slice(0, 12)}...: ${bestBid} (rejected, using fallback)`);
+                        logger.warn(`[MarketService] Invalid order book mid-price for ${marketId.slice(0, 12)}...: bid=${bestBid} ask=${bestAsk} (rejected, using fallback)`);
                     }
                 }
 

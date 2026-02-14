@@ -39,6 +39,7 @@ import { RiskMonitor } from "./risk-monitor";
 import { startHealthServer } from "./health-server";
 import { getCategories, sanitizeText, cleanOutcomeName, isSpamMarket } from "./market-classifier";
 import { pruneResolvedMarkets, checkPriceDrift } from "./market-integrity";
+import { MIN_MARKET_VOLUME } from "../config/trading-constants";
 
 dotenv.config();
 
@@ -586,12 +587,18 @@ class IngestionWorker {
                             await this.redis.hset('market:complements', tokenId, complementToken);
                         }
 
+                        const marketVolume = parseFloat(market.volume || "0");
+
+                        // VOLUME FILTER: Skip sub-markets below the trading threshold.
+                        // Without this, users see markets they can't trade (risk engine blocks at $100K).
+                        if (marketVolume < MIN_MARKET_VOLUME) continue;
+
                         subMarkets.push({
                             id: tokenId,
                             question: cleanOutcomeName(sanitizeText(market.question)),
                             outcomes: outcomes,
                             price: Math.max(yesPrice, 0.01),
-                            volume: parseFloat(market.volume || "0"),
+                            volume: marketVolume,
                             groupItemTitle: market.groupItemTitle || undefined,
                         });
                     }
@@ -696,8 +703,8 @@ class IngestionWorker {
                 return;
             }
 
-            // Minimum volume threshold for liquidity protection
-            const MIN_VOLUME = 50000; // $50k minimum
+            // Volume threshold — imported from trading-constants.ts (single source of truth)
+            // Previously hardcoded at $50K, now matches the risk engine's $100K threshold
 
             const categoryCounts: Record<string, number> = {};
             const allMarkets: StoredBinaryMarket[] = [];
@@ -718,7 +725,7 @@ class IngestionWorker {
 
                     // LIQUIDITY FILTER: Minimum volume to prevent manipulation
                     const volume = parseFloat(m.volume || "0");
-                    if (volume < MIN_VOLUME) continue;
+                    if (volume < MIN_MARKET_VOLUME) continue;
 
                     const clobTokens = JSON.parse(m.clobTokenIds);
                     const outcomes = JSON.parse(m.outcomes);

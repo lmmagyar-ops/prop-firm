@@ -10,7 +10,7 @@ import { isValidMarketPrice } from "./price-validation";
 import { getCategories } from "@/workers/market-classifier";
 
 // ── Lightweight DB row interfaces (fields accessed by pure functions) ──
-interface DbChallengeRow {
+export interface DbChallengeRow {
     id: string;
     startedAt: string | Date | null;
     endsAt: string | Date | null;
@@ -30,7 +30,7 @@ interface DbChallengeRow {
     payoutCycleStart?: string | Date | null;
 }
 
-interface DbPositionRow {
+export interface DbPositionRow {
     id: string;
     marketId: string;
     direction: string;
@@ -163,7 +163,14 @@ export function getEquityStats(challenge: DbChallengeRow, equity: number, starti
 
     const profitProgress = Math.max(0, Math.min(100, (totalPnL / profitTarget) * 100));
 
-    return { totalPnL, dailyPnL, drawdownUsage, dailyDrawdownUsage, profitProgress, drawdownAmount, dailyDrawdownAmount };
+    // DYNAMIC DENOMINATOR: Mat's formula — shows how much room exists between
+    // start-of-day equity and the absolute floor, not the static max drawdown.
+    // floor = startingBalance - maxDrawdownLimit (e.g., $10K - $1K = $9K)
+    // allowance = startOfDayBalance - floor (dynamic, grows with profits)
+    const floor = startingBalance - maxDrawdownLimit;
+    const maxDrawdownAllowance = Math.max(0, startOfDayBalance - floor);
+
+    return { totalPnL, dailyPnL, drawdownUsage, dailyDrawdownUsage, profitProgress, drawdownAmount, dailyDrawdownAmount, maxDrawdownAllowance };
 }
 
 // ─── Trade-level category stats (pure function) ───────────────────

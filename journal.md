@@ -4,6 +4,60 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ---
 
+## Feb 14, 2026 — Mat's Drawdown Bug Fixes (2 Bugs)
+
+**Bug 1: Dynamic Drawdown Denominator** — Meter showed static $1K denominator. Mat correctly identified it should be `startOfDayBalance - floor` (grows with profits). Added `maxDrawdownAllowance` to `getEquityStats()`, used it in `page.tsx`.
+
+**Bug 2: Phantom Equity Drop on Buy** — Root cause: price source mismatch. Trade execution uses Gamma API canonical price, but dashboard MTM used Polymarket CLOB `bestBid`. For thin markets, these disagreed enough to show instant losses. Fix: `getBatchOrderBookPrices()` now uses mid-price `(bestBid + bestAsk) / 2` instead of bestBid alone, aligning MTM with execution-path pricing. Initial attempt (entry-price valuation floor) was rejected because it blocked legitimate resolution losses.
+
+**Files changed:** `dashboard-service.ts`, `market.ts`, `page.tsx`
+**Tests:** 8 new behavioral tests, 891/891 pass (0 failures)
+
+---
+
+## Feb 14, 2026 — Volume Filter Gap Fix (Untradeable Markets in UI)
+
+### Why
+User tried to trade the S&P 500 Feb 17 market ($40K volume) and got an "insufficient volume" error. Cross-referenced against Polymarket — the volume was accurate. The market shouldn't have been visible at all.
+
+### Root Cause
+Three separate volume thresholds, none aligned. Ingestion used $50K for binary markets, **no filter** for event sub-markets, but the risk engine blocked trades at $100K. Markets in the $0–$100K range were displayed but untradeable.
+
+### What Changed
+- **New `src/config/trading-constants.ts`** — extracted `MIN_MARKET_VOLUME = 100_000` as single source of truth
+- **`src/workers/ingestion.ts`** — applied $100K filter to both pipelines (events + binary). Previously: binary=$50K, events=none
+- **New `tests/volume-filter.test.ts`** — 6 behavioral tests including the $50K–$100K dead zone regression guard
+
+### Verification
+- 6/6 new tests pass, 883/883 full suite passes
+- S&P 500 ($40K), BitBoy ($19.7K), Rockets vs Hornets ($35K) all confirmed below threshold via Polymarket
+
+### Tomorrow Morning
+1. **Deploy + verify** — after deploy, refresh trade page and confirm low-volume markets (S&P 500 Feb 17) no longer appear
+2. **Soak test Day 2** — check daily reset, carry fees, PnL accuracy on the 3 open positions
+3. **Env validation guard** — implement the approved plan (from earlier today)
+
+---
+
+## Feb 14, 2026 — Env Validation Guard (Structural Fix for Config Drift)
+
+### Why
+Pattern analysis of Mat's 48-hour bug history revealed 4 issues caused by env/config drift: `NEXT_PUBLIC_APP_URL` unset → localhost in emails, `RESEND_API_KEY` invalid → zero emails sent, domain verification stuck, `VERCEL_URL` unset → alerts hitting localhost. All were "fail-open" — the system silently produced garbage instead of crashing.
+
+### Root Cause
+No startup validation. Each env var was checked individually at point-of-use with silent fallbacks. When a var was missing, the code continued with a wrong default — a localhost URL, a skipped email, a mock payment — and the failure was invisible until a user reported it.
+
+### What Changed
+1. **`src/config/env.ts`** — Startup validator that runs at import time. 3 required vars (`DATABASE_URL`, `NEXTAUTH_URL`, `NEXTAUTH_SECRET`) crash the app if missing. 4 warned vars (`RESEND_API_KEY`, `CONFIRMO_API_KEY`, `NEXT_PUBLIC_APP_URL`, `SENTRY_DSN`) log warnings. Skipped in test mode.
+2. **`src/lib/alerts.ts`** — Eliminated `localhost:3000` fallback in production. Now throws if neither `VERCEL_URL` nor `NEXT_PUBLIC_BASE_URL` is set. Dev mode still gets localhost.
+3. **`src/app/layout.tsx`** — Wired `import '@/config/env'` as first import so validation runs before any page renders.
+4. **`tests/env-validation.test.ts`** — 7 behavioral tests: missing required crashes, missing warned only warns, happy path zero warnings.
+
+### Result
+877 tests pass (up from 870). Full green. The system now **fails closed on config drift** — a misconfigured deployment crashes immediately with a clear error instead of silently producing broken behavior for hours until a user reports it.
+
+---
+
 ## Feb 14, 2026 — Anthropic-Grade Price Hardening (3 Pillars)
 
 ### Why
