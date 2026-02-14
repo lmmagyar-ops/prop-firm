@@ -12,10 +12,20 @@ Mat's positions showed $0.55 for all prices and sells were blocked. The Kevin Wa
 ### Fix: `getGammaApiPrice()` in `market.ts`
 Added Gamma API as a fallback source before demo. New chain: **worker live → event list → Gamma API → demo**. Wired into `getLatestPrice`, `getBatchOrderBookPrices`, `getOrderBookFresh`. For dead CLOB books (sell path), builds synthetic order book from Gamma price.
 
+### Second Fix (found by tracing the actual sell path):
+The first fix only fixed **price display**. Two more bugs blocked the actual **sell flow**:
+1. `getCanonicalPrice()` (used by `TradeExecutor`) had NO Gamma API fallback — returned `null` for uncached markets → "market unavailable" error
+2. Resolution guard blocked ALL trades at ≥95¢ — including SELL orders. Mat literally couldn't sell his 96¢ Warsh position because the code treated it as "nearly resolved"
+
+Fixed both: added Gamma API fallback to `getCanonicalPrice`, changed resolution guard to only block BUY orders. Commit: `88c015d`.
+
+### Lesson Learned
+We kept "fixing" the same bug because each fix only addressed one layer (display, then price resolution, then execution guard). **An Anthropic engineer traces the entire code path end-to-end before claiming a fix.** Test at the output the user sees, not the layer you changed.
+
 ### Verification
 - tsc clean, 842 Vitest pass, 60 engine pass, 51 safety pass
 - Production: `currentPrice: 0.9595`, `priceSource: gamma_api` ✅
-- Commit: `57a1bd2`
+- Commits: `57a1bd2` (display fix), `88c015d` (sell flow fix)
 
 ### Tomorrow Morning (prioritized by leverage × risk)
 1. **Sell test** — Have Mat attempt to sell the Warsh position to verify end-to-end
