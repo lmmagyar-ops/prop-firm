@@ -93,8 +93,6 @@ export default async function DashboardPage() {
             )}
 
 
-            {/* Lifetime Stats Grid - ALWAYS VISIBLE */}
-            <LifetimeStatsGrid stats={lifetimeStats} />
 
             {/* Active Challenge Section - ONLY if hasActiveChallenge */}
             {hasActiveChallenge && activeChallenge && stats && (
@@ -350,6 +348,9 @@ export default async function DashboardPage() {
             {hasActiveChallenge && activeChallenge && (
                 <ScaleUpBanner currentTierSize={activeChallenge.startingBalance} />
             )}
+
+            {/* Lifetime Stats Grid ("Trader Performance") - BELOW "Go Bigger" per Mat's request */}
+            <LifetimeStatsGrid stats={lifetimeStats} />
 
             {/* Trader Spotlight Card - BELOW "Go Bigger" per Mat's request */}
             {hasActiveChallenge && activeChallenge && stats && (
