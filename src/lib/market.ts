@@ -315,7 +315,7 @@ export class MarketService {
     }
 
     /**
-     * Batch fetch market titles from event lists
+     * Batch fetch market titles from event lists, with DB fallback for resolved markets
      */
     static async getBatchTitles(marketIds: string[]): Promise<Map<string, string>> {
         const results = new Map<string, string>();
@@ -340,6 +340,27 @@ export class MarketService {
                     if (marketIds.includes(market.id)) {
                         results.set(market.id, market.title || event.title || market.id);
                     }
+                }
+            }
+
+            // DB fallback: resolved markets won't be in live event lists
+            const missingIds = marketIds.filter(id => !results.has(id));
+            if (missingIds.length > 0) {
+                try {
+                    const { db } = await import("@/db");
+                    const { trades } = await import("@/db/schema");
+                    const { inArray } = await import("drizzle-orm");
+                    const tradeRecords = await db.query.trades.findMany({
+                        where: inArray(trades.marketId, missingIds),
+                        columns: { marketId: true, marketTitle: true }
+                    });
+                    for (const t of tradeRecords) {
+                        if (t.marketTitle && !results.has(t.marketId)) {
+                            results.set(t.marketId, t.marketTitle);
+                        }
+                    }
+                } catch (dbError: unknown) {
+                    logger.error(`[MarketService] DB title fallback error:`, getErrorMessage(dbError));
                 }
             }
         } catch (error: unknown) {
