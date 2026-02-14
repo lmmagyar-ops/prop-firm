@@ -97,7 +97,7 @@ Self-audit revealed 5 gaps against our Anthropic-grade engineering standards. Ro
 ### Phase 5: Remaining Bug Resolution (Feb 14 afternoon)
 1. **B2 multi-market sell** — traced full path, confirmed NOT a backend bug (UX gap). Fixed copy: "No position on this outcome" (`2559bf9`)
 2. **B4 category cap** — ran `scripts/audit-categories.ts` against live Redis: 874 markets, 100% have API categories. NOT a bug (`2559bf9`)
-3. **U4 layout reorder** — moved TraderSpotlight + ChallengeHistoryTable below ScaleUpBanner per Mat's request (`436bd8b`)
+3. **U4 layout reorder** — moved LifetimeStatsGrid ("Trader Performance") + TraderSpotlight ("Stay Disciplined") below ScaleUpBanner ("Go Bigger") per Mat's request. Initial fix (`436bd8b`) only moved TraderSpotlight; corrected in `eeabc29` to also move LifetimeStatsGrid.
 
 **All of Mat's items are now resolved.** ✅
 4. **Have Mat re-test** the fixed flows (B1, B3, U1, U2/U3)
