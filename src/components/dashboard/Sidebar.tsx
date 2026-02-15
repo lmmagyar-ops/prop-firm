@@ -189,14 +189,13 @@ export function Sidebar({
                         isActive={activePage === "FAQ"}
                         collapsed={isCollapsed}
                     />
-                    {/* FUTURE(v2): Re-enable when leaderboard is wired to real DB data. Currently 100% hardcoded mock. */}
-                    {/* <NavItem
+                    <NavItem
                         icon={Trophy}
                         label="Leaderboard"
                         href="/dashboard/leaderboard"
                         isActive={activePage === "Leaderboard"}
                         collapsed={isCollapsed}
-                    /> */}
+                    />
                 </div>
             </nav>
 

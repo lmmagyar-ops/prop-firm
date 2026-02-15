@@ -4,6 +4,21 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ---
 
+## 2026-02-15 (2:50pm CST) — Safety Test Fix: 50/51 → 51/51 ✅
+
+### What Changed
+1. **Updated safety test 3** (`verify-safety.ts`) — test asserted trailing drawdown for challenge phase, but evaluator uses static drawdown per Mat's business rule. Fixed test to assert static drawdown for both phases.
+2. **Fixed funded transition balance reset** (`evaluator.ts`) — `creditProceeds` before `resetBalance` was leaving $146.55 in stale position proceeds due to transaction ordering. Removed the credit (it's a no-op before reset).
+
+### Root Cause
+- **Test 3**: Test was written for the old trailing HWM model. Mat changed to static drawdown ("Floor for a 10k = $9k. Below it = fail. That's it."). Test never updated.
+- **Test 4**: `creditProceeds` added proceeds to balance, then `resetBalance` should have overwritten it. In the Drizzle ORM transaction, the credit persisted after the absolute reset.
+
+### Business Tradeoff (Documented)
+Static drawdown = trader can profit to $15k then bleed to $9,001 without failing ($5,999 drawdown on $10k). Most prop firms use trailing to prevent this. Static was Mat's deliberate choice.
+
+---
+
 ## 2026-02-15 (1:55pm CST) — Fake Data Cleanup ✅
 
 ### What Changed
