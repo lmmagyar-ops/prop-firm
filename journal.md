@@ -4,6 +4,39 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ---
 
+## 2026-02-15 (11:00am CST) — Phantom PnL Fix: Unified Price Validation + Env Cleanup
+
+### Root Cause
+The `positions/route.ts` and `challenges/route.ts` APIs used ad-hoc price validation (`≤0.01 || ≥0.99`) that rejected legitimate prices near market resolution. Market `685747269796` at price `$0.996` (99.6% YES) was being rejected, falling back to entry price `$0.92`, which masked a real $0.076/share gain. This was producing **60 warnings per 30 minutes** in Vercel logs.
+
+### Fix Applied (commit `321dfd7`)
+1. **Unified price validation:** Replaced 2 ad-hoc `≤0.01/≥0.99` checks with centralized `isValidMarketPrice (0 ≤ p ≤ 1)` from `price-validation.ts`
+2. **Purged zombie env vars:** Removed `NEXTAUTH_URL`/`NEXTAUTH_SECRET` from env guard — the app uses Auth.js v5 with `AUTH_SECRET`, not NextAuth v4
+3. **Replaced all `NEXTAUTH_URL` refs** with `NEXT_PUBLIC_APP_URL` in `layout.tsx`, `sitemap.ts`, `robots.ts`, and `confirmo webhook`
+4. **Updated tests:** Removed all NEXTAUTH assertions from `env-validation.test.ts`
+
+### Files Changed (8)
+- `src/app/api/trade/positions/route.ts` — unified price check
+- `src/app/api/challenges/route.ts` — unified price check
+- `src/config/env.ts` — removed NEXTAUTH from WARNED_VARS
+- `src/app/layout.tsx` — NEXTAUTH_URL → NEXT_PUBLIC_APP_URL
+- `src/app/sitemap.ts` — NEXTAUTH_URL → NEXT_PUBLIC_APP_URL
+- `src/app/robots.ts` — NEXTAUTH_URL → NEXT_PUBLIC_APP_URL
+- `src/app/api/checkout/create-confirmo-invoice/route.ts` — NEXTAUTH_URL → NEXT_PUBLIC_APP_URL
+- `tests/env-validation.test.ts` — removed all NEXTAUTH assertions
+
+### Results
+- 914 tests pass (0 fail)
+- Net change: +10 / -40 lines
+- Expected: "Invalid live price" warnings in Vercel logs should disappear completely
+
+### Tomorrow Morning
+1. **Verify Vercel logs** — confirm the "Invalid live price" warnings stopped after deploy
+2. **Check dashboard equity** — verify the PnL now reflects real market prices (may show different values than before)
+3. **Monitor for new edge cases** — markets at exactly 0.0 or 1.0 post-resolution
+
+---
+
 ## 2026-02-15 (10:30am CST) — Emergency Prod Restore + Phantom PnL Root Cause Found
 
 ### What Happened
