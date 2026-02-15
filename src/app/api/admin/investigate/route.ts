@@ -62,6 +62,14 @@ export async function GET(req: NextRequest) {
                     }
                 }
 
+                const sellPnlSum = challengeTrades
+                    .filter(t => t.type === 'SELL' && t.realizedPnL !== null)
+                    .reduce((sum, t) => sum + parseFloat(t.realizedPnL || '0'), 0);
+
+                const sellVolumeSum = challengeTrades
+                    .filter(t => t.type === 'SELL' && t.realizedPnL !== null)
+                    .reduce((sum, t) => sum + parseFloat(t.amount), 0);
+
                 return {
                     id: challenge.id,
                     status: challenge.status,
@@ -74,6 +82,11 @@ export async function GET(req: NextRequest) {
                     startOfDayBalance: challenge.startOfDayBalance,
                     startedAt: challenge.startedAt,
                     pnl: parseFloat(challenge.currentBalance) - startingBalance,
+                    leaderboardContribution: {
+                        realizedProfit: sellPnlSum,
+                        tradingVolume: sellVolumeSum,
+                        sellTradesWithPnl: challengeTrades.filter(t => t.type === 'SELL' && t.realizedPnL !== null).length,
+                    },
                     trades: challengeTrades.map(t => ({
                         id: t.id,
                         marketId: t.marketId?.slice(0, 12) + '...',
@@ -81,6 +94,7 @@ export async function GET(req: NextRequest) {
                         amount: parseFloat(t.amount),
                         shares: parseFloat(t.shares),
                         price: parseFloat(t.price),
+                        realizedPnL: t.realizedPnL ? parseFloat(t.realizedPnL) : null,
                         executedAt: t.executedAt,
                     })),
                     positions: challengePositions.map(p => ({
