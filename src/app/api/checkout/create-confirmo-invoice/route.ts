@@ -150,8 +150,8 @@ export async function POST(req: NextRequest) {
                     ? `${userId}:${tier}:${selectedPlatform}:${discountCode}:${discountAmount || 0}:${price}`
                     : `${userId}:${tier}:${selectedPlatform}`,
                 // Webhooks
-                notify_url: `${process.env.NEXTAUTH_URL}/api/webhooks/confirmo`,
-                return_url: `${process.env.NEXTAUTH_URL}/onboarding/setup?status=success`
+                notify_url: `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/confirmo`,
+                return_url: `${process.env.NEXT_PUBLIC_APP_URL}/onboarding/setup?status=success`
             })
         });
 

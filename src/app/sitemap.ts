@@ -12,7 +12,7 @@ import { MetadataRoute } from "next";
  */
 
 export default function sitemap(): MetadataRoute.Sitemap {
-    const baseUrl = process.env.NEXTAUTH_URL || "https://predictionsfirm.com";
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://predictionsfirm.com";
 
     // Static pages with their priorities
     const staticPages = [
