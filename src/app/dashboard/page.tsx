@@ -1,4 +1,4 @@
-import { XCircle, Trophy } from "lucide-react";
+import { XCircle, Trophy, Lock } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 import { auth } from "@/auth";
@@ -7,7 +7,7 @@ import { LifetimeStatsGrid } from "@/components/dashboard/LifetimeStatsGrid";
 import { ChallengeHistoryTable } from "@/components/dashboard/ChallengeHistoryTable";
 import { ChallengeHeader } from "@/components/dashboard/ChallengeHeader";
 import { LiveEquityDisplay } from "@/components/dashboard/LiveEquityDisplay";
-import { EquityDisplay } from "@/components/dashboard/EquityDisplay";
+
 import { ProfitProgress } from "@/components/dashboard/ProfitProgress";
 import { RiskMeters } from "@/components/dashboard/RiskMeters";
 import { LivePositions } from "@/components/dashboard/LivePositions";
@@ -230,30 +230,14 @@ export default async function DashboardPage() {
             {/* Locked State - Preview Mode or Pending Challenge */}
             {!hasActiveChallenge && (
                 <div className="relative">
-                    {/* 1. Content Layer (Blurred & Unreachable) ... removed content for brevity as it's just blurred BG ... */}
-                    <div className="filter blur-sm pointer-events-none opacity-40 select-none grayscale-[0.5] transition-all duration-1000">
-                        {/* ... Reusing existing blurred content structure ... */}
-                        <div className="border-t border-white/5 pt-6 mt-8">
-                            <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-                                <span className="w-2 h-2 rounded-full bg-green-500" />
-                                Active Challenge
-                            </h2>
-                        </div>
-                        <ChallengeHeader
-                            phase="challenge"
-                            status="active"
-                            startingBalance={100000}
-                        />
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
-                            <div className="lg:col-span-2">
-                                <EquityDisplay currentBalance={104250.00} dailyPnL={1250.50} />
-                            </div>
-                            <div>
-                                <ProfitProgress totalPnL={4250.00} profitTarget={10000} profitProgress={42.5} startingBalance={100000} />
+                    {/* Visual depth layer — no fake data, just ambient texture */}
+                    <div className="pointer-events-none select-none opacity-20">
+                        <div className="h-64 rounded-2xl bg-gradient-to-br from-[#1A232E] to-[#0E1217] border border-[#2E3A52]/50 flex items-center justify-center">
+                            <div className="text-center space-y-3">
+                                <Lock className="w-8 h-8 text-zinc-600 mx-auto" />
+                                <p className="text-xs text-zinc-700 uppercase tracking-widest font-semibold">Dashboard Preview</p>
                             </div>
                         </div>
-                        <RiskMeters drawdownUsage={1.2} dailyDrawdownUsage={0.8} startOfDayBalance={103000} startingBalance={100000} maxDrawdownDollars={8000} dailyDrawdownDollars={5000} equity={104250} />
-
                     </div>
 
                     {/* 2. Overlay Layer (Dynamic CTA) */}
