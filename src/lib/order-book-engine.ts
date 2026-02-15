@@ -19,8 +19,11 @@ export function isBookDead(book: OrderBook): boolean {
 
     if (asks.length === 0 || bids.length === 0) return true;
 
-    const bestAsk = parseFloat(asks[0].price);
-    const bestBid = parseFloat(bids[0].price);
+    // SORT ORDER FIX: Polymarket CLOB API does NOT guarantee [0] is best price.
+    // Bids may be ascending (worst first), asks may be descending (worst first).
+    // Use Math.min/max to robustly find best prices regardless of sort order.
+    const bestAsk = Math.min(...asks.map(a => parseFloat(a.price)));
+    const bestBid = Math.max(...bids.map(b => parseFloat(b.price)));
     const spread = bestAsk - bestBid;
 
     // Dead if spread > 50¢ or best ask is in resolution territory
@@ -100,11 +103,20 @@ export function buildSyntheticOrderBook(price: number): OrderBook {
  */
 export function calculateImpact(book: OrderBook, side: "BUY" | "SELL", notionalAmount: number): ExecutionSimulation {
     // 1. Select the side of the book to consume
-    const levels = side === "BUY" ? book.asks : book.bids;
+    const rawLevels = side === "BUY" ? book.asks : book.bids;
 
-    if (!levels || levels.length === 0) {
+    if (!rawLevels || rawLevels.length === 0) {
         return { executedPrice: 0, totalShares: 0, slippagePercent: 0, filled: false, reason: "No Liquidity" };
     }
+
+    // SORT ORDER FIX: Polymarket CLOB API does NOT guarantee sort order.
+    // BUY: sort asks ascending (consume cheapest first)
+    // SELL: sort bids descending (consume highest first)
+    const levels = [...rawLevels].sort((a, b) => {
+        const pa = parseFloat(a.price);
+        const pb = parseFloat(b.price);
+        return side === "BUY" ? pa - pb : pb - pa;
+    });
 
     let remainingAmount = notionalAmount;
     let totalSharesObj = 0;
@@ -142,7 +154,7 @@ export function calculateImpact(book: OrderBook, side: "BUY" | "SELL", notionalA
 
     const avgPrice = totalCostObj / totalSharesObj;
 
-    // Slippage calc: Compare Avg vs Top of Book
+    // Slippage calc: Compare Avg vs Top of Book (best price, now sorted correctly)
     const topPrice = parseFloat(levels[0].price);
     const slippage = Math.abs((avgPrice - topPrice) / topPrice);
 

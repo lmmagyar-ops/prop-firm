@@ -4,7 +4,30 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ---
 
-## 2026-02-15 (11:35am CST) — Remaining Soak Test Bug Fixes (commit `9b3ddaf`)
+## 2026-02-15 (12:10pm CST) — Order Book Sort Order Bug Fix (CRITICAL)
+
+### Root Cause
+
+**All portfolio positions showed `currentPrice: 0.50` (50¢) regardless of actual market value.** Root cause: Polymarket's CLOB API returns bids sorted **ascending** (0.001→0.276) and asks sorted **descending** (0.999→0.278). The code used `book.bids[0]` and `book.asks[0]` assuming these were the best prices, but they were the **worst**. This produced `mid = (0.001 + 0.999) / 2 = 0.50` for every single market.
+
+### Fix (3 files, same root cause)
+
+1. **`src/lib/market.ts` — `getBatchOrderBookPrices`**: Replaced `book.bids[0]` / `book.asks[0]` with `Math.max(…bidPrices)` / `Math.min(…askPrices)` to find true best bid/ask regardless of sort order.
+2. **`src/lib/order-book-engine.ts` — `isBookDead`**: Same fix. Previously always detected books as "dead" (spread = 0.998), forcing unnecessary synthetic book fallbacks during trade execution.
+3. **`src/lib/order-book-engine.ts` — `calculateImpact`**: Added pre-sort step so BUY walks asks ascending (cheapest first) and SELL walks bids descending (highest first). Without this, VWAP simulation filled at worst prices first.
+
+### Impact
+
+- **PnL display**: All markets showed 50¢ → now shows actual market prices (e.g., Newsom: 27.7¢, Arsenal: varies)
+- **Dead book detection**: Every live book was falsely detected as dead → now correctly identifies healthy books
+- **Trade execution**: VWAP simulation gave inflated execution prices → now correctly consumes best prices first
+
+### Verification
+
+- Tests: 915 pass, 0 fail, 3 skipped
+- Directly verified Polymarket CLOB API for Newsom token: bestBid=0.276, bestAsk=0.278, lastTrade=0.276. Expected mid=0.277, not 0.50.
+
+---
 
 ### Bugs Fixed
 
