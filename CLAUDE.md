@@ -25,6 +25,8 @@
 - Run the full test suite after every change, not just the file you edited.
 - Browser smoke test any UI change — screenshots prove more than type-checks.
 - Cross-reference numbers: if a value appears in the API response AND the DB AND the UI, verify all three match.
+- **State transition tests, not just snapshots.** Any metric shown in the UI must have at least one test that exercises a *state change* end-to-end (e.g., win rate going from "—" → "100%" → "50%"), not just asserting a static value at one point in time.
+- **Cross-service consistency.** When two services compute the same metric (e.g., `profile-service` and `dashboard-service` both calculate win rate), diff their logic. If one returns `null` for empty data and the other returns `0`, that's a bug — pick one pattern and enforce it everywhere.
 
 ### Communication
 - Always leave a journal.md entry when completing work.
@@ -527,6 +529,7 @@ See `.agent/workflows/deploy.md` for the full deployment workflow.
 | **Deploy Smoke** | `npm run test:deploy -- <url>` | HTTP-only production smoke: homepage, cron status, heartbeat, login |
 | **Balance Integrity** | `npm run test:balances` | Balance audit checks |
 | **Financial Consistency** | `npm run test:financial` | Share count, PnL cross-check, risk limit messages, equity sync |
+| **Win Rate E2E** | `node --env-file=.env.local --import=tsx src/scripts/verify-winrate-e2e.ts` | 15 assertions — round-trip trade: null → 100% → 50% win rate across DB + profile-service |
 | **Market Quality** | `npm run test:markets` | 22 assertions vs live Redis (optional — requires worker running) |
 | **E2E Smoke** | `npm run test:e2e` | 10 Playwright browser tests |
 | **Presentation Layer** | `npx vitest run tests/presentation-layer.test.tsx` | 15 behavioral tests — React Testing Library renders + DOM assertions |

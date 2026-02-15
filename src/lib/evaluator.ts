@@ -44,7 +44,8 @@ export class ChallengeEvaluator {
 
         const currentBalance = parseFloat(challenge.currentBalance);
         const startingBalance = parseFloat(challenge.startingBalance);
-        const highWaterMark = parseFloat(challenge.highWaterMark || challenge.startingBalance);
+        // NOTE: HWM column still exists in DB but is NOT used for drawdown.
+        // Per Mat: drawdown is always static from startingBalance. No trailing.
         const startOfDayBalance = parseFloat(challenge.startOfDayBalance || challenge.startingBalance);
         const rules = challenge.rulesConfig as unknown as ChallengeRules;
         const isFunded = challenge.phase === 'funded';
@@ -58,11 +59,12 @@ export class ChallengeEvaluator {
         const normalized = normalizeRulesConfig(rules as unknown as Record<string, unknown>, startingBalance);
         const profitTarget = normalized.profitTarget;
 
-        // FUNDED PHASE: Use static drawdown from initial balance (not HWM-based trailing)
-        // This is more lenient - a trader can profit, give some back, and not fail
+        // STATIC DRAWDOWN: Per Mat — drawdown floor is always from startingBalance.
+        // "Floor for a 10k account is $9k. Below it = fail. That's it."
+        // No trailing HWM. Both funded and challenge use the same static model.
         const maxDrawdown = isFunded
             ? fundedRules.maxTotalDrawdown  // Static: e.g. $1000 for 10k tier
-            : normalized.maxDrawdown;  // Trailing for challenge phase
+            : normalized.maxDrawdown;       // Static: e.g. $800 for 10k challenge
 
         // Daily loss limit from percentage
         const maxDailyLoss = isFunded
@@ -118,11 +120,10 @@ export class ChallengeEvaluator {
         }
 
         // === CHECK MAX DRAWDOWN ===
-        // FUNDED PHASE: Static drawdown from initial balance (more lenient)
-        // CHALLENGE PHASE: Trailing drawdown from High Water Mark (stricter)
-        const drawdownBase = isFunded ? startingBalance : highWaterMark;
-        const drawdownAmount = drawdownBase - equity;
-        const drawdownType = isFunded ? 'Total' : 'Trailing';
+        // STATIC DRAWDOWN: Always measured from startingBalance (per Mat)
+        // No trailing HWM — a trader can profit and give some back without failing.
+        const drawdownAmount = startingBalance - equity;
+        const drawdownType = 'Total';
 
         if (drawdownAmount >= maxDrawdown) {
             logger.info('Challenge failed: drawdown breach', { challengeId: challengeId.slice(0, 8), phase: isFunded ? 'funded' : 'challenge', drawdownType, drawdownAmount, maxDrawdown });
@@ -198,6 +199,7 @@ export class ChallengeEvaluator {
                         phase: 'funded',
                         status: 'active',
                         highWaterMark: startingBalance.toString(),
+                        startOfDayBalance: startingBalance.toString(),
                         profitSplit: tierRules.profitSplit.toString(),
                         payoutCap: tierRules.payoutCap.toString(),
                         payoutCycleStart: now,
@@ -291,13 +293,8 @@ export class ChallengeEvaluator {
             return { status: 'passed', reason: `Congratulations! You are now FUNDED. Profit: $${profit.toFixed(0)}`, equity };
         }
 
-        // === UPDATE HIGH WATER MARK ===
-        if (equity > highWaterMark) {
-            await db.update(challenges)
-                .set({ highWaterMark: equity.toString() })
-                .where(eq(challenges.id, challengeId));
-            logger.info('New high water mark', { challengeId: challengeId.slice(0, 8), equity: equity.toFixed(2) });
-        }
+        // HWM update removed — drawdown is static from startingBalance per Mat.
+        // Column kept in DB for historical data but no longer written to by evaluator.
 
         return { status: 'active', equity };
     }

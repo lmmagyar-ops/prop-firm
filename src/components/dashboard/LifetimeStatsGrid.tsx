@@ -9,7 +9,7 @@ import ScrollReveal from "@/components/reactbits/ScrollReveal";
 interface LifetimeStatsGridProps {
     stats: {
         totalChallengesStarted: number;
-        successRate: number;
+        successRate: number | null;
         totalProfitEarned: number;
         bestMarketCategory: string | null;
         currentWinStreak: number | null;
@@ -47,10 +47,10 @@ export function LifetimeStatsGrid({ stats }: LifetimeStatsGridProps) {
                     {/* Card 2: Success Rate */}
                     <StatCard
                         label="Success Rate"
-                        numericValue={successRate}
+                        numericValue={successRate ?? 0}
                         suffix="%"
                         decimals={1}
-                        valueColor={successRate > 50 ? 'text-green-500' : 'text-zinc-400'}
+                        valueColor={successRate !== null && successRate > 50 ? 'text-green-500' : 'text-zinc-400'}
                         icon={<TrendingUp className="w-4 h-4" />}
                     />
 

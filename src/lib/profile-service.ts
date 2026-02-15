@@ -4,6 +4,7 @@ import { users, challenges, payouts, trades } from "@/db/schema";
 import { eq, and, inArray } from "drizzle-orm";
 import type { Challenge } from "@/types/user";
 import { computeBestMarketCategory } from "@/lib/dashboard-service";
+import { computeWinRate } from "@/lib/position-utils";
 
 export async function getPrivateProfileData(userId: string) {
     // Demo users have no real profile data
@@ -44,7 +45,8 @@ export async function getPrivateProfileData(userId: string) {
         : [];
 
     // 5. Fetch market titles for category classification
-    const sellTrades = allTrades.filter(t => t.realizedPnL !== null);
+    // ALIGNED: Use type === 'SELL' to match dashboard-service pattern (not realizedPnL !== null)
+    const sellTrades = allTrades.filter(t => t.type === 'SELL');
     const sellMarketIds = [...new Set(sellTrades.map(t => t.marketId))];
     const { MarketService } = await import("./market");
     const marketTitles = sellMarketIds.length > 0
@@ -101,6 +103,7 @@ interface TradeRecord {
     id: string;
     marketId: string;
     challengeId: string | null;
+    type: string;
     amount: string;
     realizedPnL: string | null;
 }
@@ -132,17 +135,15 @@ function calculateMetrics(challenges: Challenge[], lifetimeProfitWithdrawn: numb
         return sum + withdrawable;
     }, 0);
 
-    // Calculate win rate from trades with realized P&L
-    const tradesWithPnL = allTrades.filter(t => t.realizedPnL !== null);
-    const winningTrades = tradesWithPnL.filter(t => parseFloat(t.realizedPnL || "0") > 0).length;
-    const totalTradesWithPnL = tradesWithPnL.length;
-    const tradingWinRate = totalTradesWithPnL > 0 ? (winningTrades / totalTradesWithPnL) * 100 : 0;
+    // Calculate win rate from SELL trades using single-source-of-truth utility
+    const sellTradesForMetrics = allTrades.filter(t => t.type === 'SELL');
+    const tradingWinRate = computeWinRate(allTrades);
 
     return {
         lifetimeTradingVolume,
         fundedTradingVolume,
         currentWithdrawableProfit,
-        highestWinRateAsset: computeBestMarketCategory(tradesWithPnL, marketTitles),
+        highestWinRateAsset: computeBestMarketCategory(sellTradesForMetrics, marketTitles),
         tradingWinRate,
         lifetimeProfitWithdrawn,
     };

@@ -90,7 +90,7 @@ async function fetchPolymarketPrices(): Promise<Map<string, { title: string; pri
                 if (yesToken) {
                     results.set(yesToken.token_id, {
                         title: market.question || "Unknown",
-                        price: parseFloat(yesToken.price || "0.5"),
+                        price: parseFloat(yesToken.price || "0"),
                     });
                 }
             }
@@ -157,7 +157,7 @@ async function getCachedPrices(redis: Redis): Promise<Map<string, { price: numbe
             for (const event of events) {
                 for (const market of event.markets || []) {
                     results.set(market.id, {
-                        price: parseFloat(market.price || "0.5"),
+                        price: parseFloat(market.price || "0"),
                         timestamp: Date.now(), // Event lists don't have per-market timestamps
                     });
                 }
@@ -169,7 +169,7 @@ async function getCachedPrices(redis: Redis): Promise<Map<string, { price: numbe
             for (const event of events) {
                 for (const market of event.markets || []) {
                     results.set(market.id, {
-                        price: parseFloat(market.price || "0.5"),
+                        price: parseFloat(market.price || "0"),
                         timestamp: Date.now(),
                     });
                 }

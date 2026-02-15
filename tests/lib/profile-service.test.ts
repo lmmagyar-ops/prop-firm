@@ -76,6 +76,8 @@ function validTrade(overrides: Record<string, unknown> = {}) {
     return {
         id: "trade-001",
         challengeId: "ch-001",
+        type: "SELL",
+        marketId: "market-001",
         amount: "100",
         realizedPnL: "25",
         ...overrides,
@@ -147,35 +149,36 @@ describe("getPrivateProfileData", () => {
     // ── Metrics calculation ─────────────────────────────────────
 
     describe("calculateMetrics", () => {
-        it("computes win rate from trades with realized PnL", async () => {
+        it("computes win rate from SELL trades", async () => {
             vi.mocked(db.query.users.findFirst).mockResolvedValue(validUser() as any);
             // Must have at least one challenge — trades query only runs when challengeIds is non-empty
             vi.mocked(db.query.challenges.findMany).mockResolvedValue([validChallenge()] as any);
             vi.mocked(db.query.payouts.findMany).mockResolvedValue([]);
             vi.mocked(db.query.trades.findMany).mockResolvedValue([
-                validTrade({ realizedPnL: "50" }),   // win
-                validTrade({ id: "t2", realizedPnL: "-20" }),  // loss
-                validTrade({ id: "t3", realizedPnL: "30" }),   // win
-                validTrade({ id: "t4", realizedPnL: null }),   // no PnL (excluded)
+                validTrade({ type: "SELL", realizedPnL: "50" }),   // win
+                validTrade({ id: "t2", type: "SELL", realizedPnL: "-20" }),  // loss
+                validTrade({ id: "t3", type: "SELL", realizedPnL: "30" }),   // win
+                validTrade({ id: "t4", type: "BUY", realizedPnL: null }),   // BUY — excluded from win rate
             ] as any);
 
             const result = await getPrivateProfileData("user-001");
 
-            // 2 wins out of 3 trades with PnL = 66.67%
+            // 2 wins out of 3 SELL trades = 66.67%
             expect(result!.metrics.tradingWinRate).toBeCloseTo(66.67, 0);
         });
 
-        it("returns 0% win rate when no trades have realized PnL", async () => {
+        it("returns null win rate when no SELL trades exist", async () => {
             vi.mocked(db.query.users.findFirst).mockResolvedValue(validUser() as any);
             vi.mocked(db.query.challenges.findMany).mockResolvedValue([] as any);
             vi.mocked(db.query.payouts.findMany).mockResolvedValue([]);
             vi.mocked(db.query.trades.findMany).mockResolvedValue([
-                validTrade({ realizedPnL: null }),
+                validTrade({ type: "BUY", realizedPnL: null }),
             ] as any);
 
             const result = await getPrivateProfileData("user-001");
 
-            expect(result!.metrics.tradingWinRate).toBe(0);
+            // null = no closed trades yet (UI shows "—" instead of misleading "0%")
+            expect(result!.metrics.tradingWinRate).toBeNull();
         });
 
         it("highestWinRateAsset is null (FUTURE(v2))", async () => {

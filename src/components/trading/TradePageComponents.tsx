@@ -24,7 +24,7 @@ export function MarketCardClient({ market, balance, userId }: { market: MockMark
             id: market.id,
             question: market.question,
             outcomes: ['Yes', 'No'], // Binary market outcomes
-            price: market.currentPrice ?? 0.5,
+            price: market.currentPrice ?? 0,
             volume: market.volume || 0,
         }],
         isMultiOutcome: false,

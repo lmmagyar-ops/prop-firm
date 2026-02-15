@@ -21,7 +21,7 @@ interface TraderDetailData {
         currentBalance: string | number;
         rulesConfig?: Record<string, string | number>;
     };
-    stats: { totalTrades: number; winRate: number };
+    stats: { totalTrades: number; winRate: number | null };
     timeline: Array<{ balance: number; date: string }>;
     trades: Array<{
         id: string;
@@ -116,7 +116,7 @@ export default function TraderDeepDivePage() {
                             <Target className="h-4 w-4 text-zinc-400" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold">{stats.winRate.toFixed(1)}%</div>
+                            <div className="text-2xl font-bold">{stats.winRate !== null ? `${stats.winRate.toFixed(1)}%` : '—'}</div>
                             <p className="text-xs text-zinc-400">
                                 {stats.totalTrades} Total Trades
                             </p>

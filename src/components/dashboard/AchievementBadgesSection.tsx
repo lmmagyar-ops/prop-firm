@@ -13,7 +13,7 @@ interface Achievement {
 
 interface AchievementBadgesSectionProps {
     totalTrades: number;
-    winRate: number;
+    winRate: number | null;
     totalPayouts: number;
     isFunded: boolean;
     activeDays: number;
@@ -56,7 +56,7 @@ export function AchievementBadgesSection({
             name: "Marksman",
             description: "Achieved 90%+ win rate",
             icon: <Target className="w-8 h-8" />,
-            earned: winRate >= 90,
+            earned: (winRate ?? 0) >= 90,
         },
         {
             id: "streak",

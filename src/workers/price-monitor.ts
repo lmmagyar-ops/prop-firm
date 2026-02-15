@@ -164,8 +164,9 @@ class PriceMonitor {
                 const events = JSON.parse(polyData);
                 for (const event of events) {
                     for (const market of event.markets || []) {
+                        if (!market.price) continue; // Skip markets with no price — never fabricate
                         results.set(market.id, {
-                            price: parseFloat(market.price || "0.5"),
+                            price: parseFloat(market.price),
                         });
                     }
                 }
@@ -191,10 +192,10 @@ class PriceMonitor {
             for (const market of markets) {
                 if (market.tokens && market.tokens.length > 0) {
                     const yesToken = market.tokens.find((t: { outcome: string }) => t.outcome === "Yes");
-                    if (yesToken) {
+                    if (yesToken && yesToken.price) {
                         results.set(yesToken.token_id, {
                             title: market.question || "Unknown",
-                            price: parseFloat(yesToken.price || "0.5"),
+                            price: parseFloat(yesToken.price),
                         });
                     }
                 }
