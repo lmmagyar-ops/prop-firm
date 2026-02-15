@@ -26,6 +26,17 @@ export class MarketCacheService {
      */
     static async saveSnapshot(marketsData: unknown, pricesData?: unknown): Promise<void> {
         try {
+            // Guard: reject payloads that would exceed Postgres JSONB practical limits
+            const estimatedSize = JSON.stringify(marketsData).length + JSON.stringify(pricesData ?? null).length;
+            const MAX_PAYLOAD_BYTES = 500_000; // 500KB — generous but bounded
+            if (estimatedSize > MAX_PAYLOAD_BYTES) {
+                logger.warn('Market cache payload too large, skipping save', {
+                    sizeKB: Math.round(estimatedSize / 1024),
+                    limitKB: Math.round(MAX_PAYLOAD_BYTES / 1024),
+                });
+                return;
+            }
+
             await db.insert(marketCache)
                 .values({
                     id: 'current',

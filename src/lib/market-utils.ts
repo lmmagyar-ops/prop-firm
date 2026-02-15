@@ -81,10 +81,17 @@ export function getCleanOutcomeName(question: string, eventTitle?: string): stri
         return fedMatch[1].trim();
     }
 
+    // Filler words that should never be extracted as outcome names
+    // e.g., "Will there be no change..." should NOT return "there"
+    const FILLER_WORDS = ['there', 'it', 'they', 'this', 'that', 'the'];
+
     // Pattern 4: "Will [Name] be..." → extract Name
     const willBeMatch = cleaned.match(/^Will (.+?) be/i);
     if (willBeMatch) {
-        return willBeMatch[1].trim();
+        const extracted = willBeMatch[1].trim();
+        if (!FILLER_WORDS.includes(extracted.toLowerCase())) {
+            return extracted;
+        }
     }
 
     // Pattern 5: General extraction for "[Subject] [verb] [rest of question]"
@@ -94,7 +101,7 @@ export function getCleanOutcomeName(question: string, eventTitle?: string): stri
     if (generalMatch) {
         const extracted = generalMatch[1].trim();
         // Only use if it's reasonably short (likely a name, not a full clause)
-        if (extracted.length < 50 && !extracted.includes(' the ') && !extracted.includes(' a ')) {
+        if (extracted.length < 50 && !extracted.includes(' the ') && !extracted.includes(' a ') && !FILLER_WORDS.includes(extracted.toLowerCase())) {
             return extracted;
         }
     }
