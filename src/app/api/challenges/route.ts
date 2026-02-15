@@ -4,6 +4,7 @@ import { challenges, positions } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { MarketService } from "@/lib/market";
 import { getDirectionAdjustedPrice } from "@/lib/position-utils";
+import { isValidMarketPrice } from "@/lib/price-validation";
 import { auth } from "@/auth";
 import { createLogger } from "@/lib/logger";
 const logger = createLogger("Challenges");
@@ -69,8 +70,7 @@ export async function GET(req: NextRequest) {
                     let rawPrice: number;
                     if (livePrice) {
                         const parsedLivePrice = parseFloat(livePrice.price);
-                        // SANITY CHECK: Validate price is in valid range
-                        if (parsedLivePrice > 0.01 && parsedLivePrice < 0.99 && !isNaN(parsedLivePrice)) {
+                        if (isValidMarketPrice(parsedLivePrice)) {
                             rawPrice = parsedLivePrice;
                         } else {
                             // Invalid price - use entry as fallback

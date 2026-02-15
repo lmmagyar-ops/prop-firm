@@ -49,7 +49,7 @@ export const metadata: Metadata = {
   publisher: "Predictions Firm",
 
   // Canonical
-  metadataBase: new URL(process.env.NEXTAUTH_URL || "https://predictionsfirm.com"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://predictionsfirm.com"),
   alternates: {
     canonical: "/",
   },

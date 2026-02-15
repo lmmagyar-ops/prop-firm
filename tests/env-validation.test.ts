@@ -29,22 +29,15 @@ describe('Environment Validation Guard', () => {
 
     it('reports missing when DATABASE_URL is absent', () => {
         delete process.env.DATABASE_URL;
-        delete process.env.NEXTAUTH_URL;
-        delete process.env.NEXTAUTH_SECRET;
 
         const result = validateEnvironment();
 
         expect(result.valid).toBe(false);
         expect(result.missing).toContain('DATABASE_URL');
-        // NEXTAUTH vars are now warned, not required
-        expect(result.warnings.some(w => w.includes('NEXTAUTH_URL'))).toBe(true);
-        expect(result.warnings.some(w => w.includes('NEXTAUTH_SECRET'))).toBe(true);
     });
 
     it('reports valid when all required vars are set', () => {
         process.env.DATABASE_URL = 'postgresql://localhost:5432/test';
-        process.env.NEXTAUTH_URL = 'https://example.com';
-        process.env.NEXTAUTH_SECRET = 'test-secret-value';
 
         const result = validateEnvironment();
 
@@ -54,8 +47,6 @@ describe('Environment Validation Guard', () => {
 
     it('reports valid even if only required vars are set (warned vars optional)', () => {
         process.env.DATABASE_URL = 'postgresql://localhost:5432/test';
-        process.env.NEXTAUTH_URL = 'https://example.com';
-        process.env.NEXTAUTH_SECRET = 'test-secret-value';
         // Intentionally NOT setting RESEND_API_KEY, CONFIRMO_API_KEY, etc.
 
         const result = validateEnvironment();
@@ -68,8 +59,6 @@ describe('Environment Validation Guard', () => {
 
     it('warns but does not invalidate when RESEND_API_KEY is missing', () => {
         process.env.DATABASE_URL = 'postgresql://localhost:5432/test';
-        process.env.NEXTAUTH_URL = 'https://example.com';
-        process.env.NEXTAUTH_SECRET = 'test-secret-value';
         delete process.env.RESEND_API_KEY;
 
         const result = validateEnvironment();
@@ -80,8 +69,6 @@ describe('Environment Validation Guard', () => {
 
     it('warns about CONFIRMO_API_KEY with correct impact message', () => {
         process.env.DATABASE_URL = 'postgresql://localhost:5432/test';
-        process.env.NEXTAUTH_URL = 'https://example.com';
-        process.env.NEXTAUTH_SECRET = 'test-secret-value';
         delete process.env.CONFIRMO_API_KEY;
 
         const result = validateEnvironment();
@@ -94,8 +81,6 @@ describe('Environment Validation Guard', () => {
 
     it('produces zero warnings when all vars are set', () => {
         process.env.DATABASE_URL = 'postgresql://localhost:5432/test';
-        process.env.NEXTAUTH_URL = 'https://example.com';
-        process.env.NEXTAUTH_SECRET = 'test-secret-value';
         process.env.RESEND_API_KEY = 're_test123';
         process.env.CONFIRMO_API_KEY = 'confirmo_test';
         process.env.NEXT_PUBLIC_APP_URL = 'https://example.com';
@@ -108,17 +93,4 @@ describe('Environment Validation Guard', () => {
         expect(result.warnings).toHaveLength(0);
     });
 
-    // ─── NEXTAUTH vars are warned, not fatal ────────────────────────
-
-    it('warns but does not invalidate when NEXTAUTH vars are missing', () => {
-        process.env.DATABASE_URL = 'postgresql://localhost:5432/test';
-        delete process.env.NEXTAUTH_URL;
-        delete process.env.NEXTAUTH_SECRET;
-
-        const result = validateEnvironment();
-
-        expect(result.valid).toBe(true);
-        expect(result.warnings.some(w => w.includes('NEXTAUTH_URL'))).toBe(true);
-        expect(result.warnings.some(w => w.includes('NEXTAUTH_SECRET'))).toBe(true);
-    });
 });

@@ -7,6 +7,7 @@ import { cookies } from "next/headers";
 import { MarketService } from "@/lib/market";
 import { createLogger } from "@/lib/logger";
 import { getDirectionAdjustedPrice } from "@/lib/position-utils";
+import { isValidMarketPrice } from "@/lib/price-validation";
 import { getAllMarketData } from "@/lib/worker-client";
 
 const log = createLogger("PositionsAPI");
@@ -81,9 +82,8 @@ export async function GET() {
         const marketData = priceMap.get(pos.marketId);
         let rawPrice = marketData ? parseFloat(marketData.price) : null;
 
-        // SANITY CHECK: Validate price is reasonable for active market
-        // If price is 0, NaN, or out of valid range, use entry price as fallback
-        if (!rawPrice || rawPrice <= 0.01 || rawPrice >= 0.99 || isNaN(rawPrice)) {
+        // Validate price using centralized validator (accepts 0 ≤ p ≤ 1)
+        if (!rawPrice || !isValidMarketPrice(rawPrice)) {
             if (marketData) {
                 log.warn("Invalid live price detected, using entry price fallback", {
                     marketId: pos.marketId.slice(0, 12),

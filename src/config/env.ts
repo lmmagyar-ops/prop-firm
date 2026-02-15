@@ -24,8 +24,6 @@ const REQUIRED_VARS = [
 
 // ─── Warned: Feature degradation, not fatal ─────────────────────────
 const WARNED_VARS = [
-    { name: 'NEXTAUTH_URL', impact: 'Auth may use fallback URL' },
-    { name: 'NEXTAUTH_SECRET', impact: 'Auth sessions may not persist' },
     { name: 'RESEND_API_KEY', impact: 'Emails will not send' },
     { name: 'CONFIRMO_API_KEY', impact: 'Payment processing disabled — mock mode active' },
     { name: 'NEXT_PUBLIC_APP_URL', impact: 'URL fallbacks will be used for links' },
