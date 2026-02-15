@@ -76,28 +76,6 @@ export async function POST(req: NextRequest) {
         // For NO positions, use NO price (1 - YES price) for correct market value calculation
         const posDirection = position.direction as "YES" | "NO";
         const noAdjustedPrice = posDirection === "NO" ? (1 - currentPrice) : currentPrice;
-
-        // CIRCUIT BREAKER: Reject sells with suspiciously divergent prices.
-        // Defense-in-depth — catches fabricated/stale prices even if upstream
-        // null checks are bypassed by a future fallback.
-        const entryPrice = parseFloat(position.entryPrice);
-        if (entryPrice > 0) {
-            const priceRatio = Math.abs(noAdjustedPrice - entryPrice) / entryPrice;
-            if (priceRatio > 5.0) { // >500% divergence
-                logger.error("CIRCUIT BREAKER: sell price diverges >500% from entry", {
-                    marketId: position.marketId.slice(0, 12),
-                    entryPrice,
-                    sellPrice: noAdjustedPrice,
-                    ratio: priceRatio.toFixed(2),
-                    source: marketData.source,
-                });
-                return NextResponse.json(
-                    { error: "Price check failed — sell price diverges significantly from entry. Please try again." },
-                    { status: 503 }
-                );
-            }
-        }
-
         // Calculate the current market value of the position
         const marketValue = shares * noAdjustedPrice;
 

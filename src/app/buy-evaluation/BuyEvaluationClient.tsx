@@ -145,7 +145,7 @@ export default function BuyEvaluationClient({ hasActiveChallenge }: BuyEvaluatio
                     {/* Max Drawdown Row */}
                     <MetricRow
                         label="Max Drawdown"
-                        tooltip="Maximum total loss from starting balance."
+                        tooltip="Maximum total loss from high water mark."
                         values={plans.map((p) => `${p.maxDrawdownPercent}%`)}
                         isUniform={false}
                     />

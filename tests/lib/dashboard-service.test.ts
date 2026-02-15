@@ -318,10 +318,10 @@ describe("getEquityStats", () => {
         expect(stats.dailyPnL).toBe(-700);   // 9500 - 10200
     });
 
-    it("calculates drawdown usage percentage (static from startingBalance)", () => {
-        // Static: drawdown = startingBalance - equity = 10000 - 9500 = 500
+    it("calculates drawdown usage percentage", () => {
+        // HWM = 10500, equity = 10000, drawdown = 500
         // maxDrawdown = 1000, so usage = 50%
-        const stats = getEquityStats(mkChallenge(), 9500, 10000);
+        const stats = getEquityStats(mkChallenge(), 10000, 10000);
         expect(stats.drawdownUsage).toBe(50);
     });
 
@@ -333,7 +333,7 @@ describe("getEquityStats", () => {
     });
 
     it("clamps drawdown at zero (no negative drawdown)", () => {
-        // Equity above startingBalance → drawdown amount = max(0, 10000 - 11000) = 0
+        // Equity above HWM → drawdown amount = max(0, 10500 - 11000) = 0
         const stats = getEquityStats(mkChallenge(), 11000, 10000);
         expect(stats.drawdownUsage).toBe(0);
     });

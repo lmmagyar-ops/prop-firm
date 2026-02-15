@@ -419,7 +419,7 @@ function auditMergedOutput(events: EventMetadata[], binaryMarkets: StoredBinaryM
         if (existingSubMarketIds.has(m.id)) return false;
         if (!m.categories || m.categories.length === 0) return false;
 
-        const price = m.basePrice ?? 0;
+        const price = m.basePrice ?? 0.5;
         if (price <= 0.01 || price >= 0.99) return false;
 
         const isFiftyPercent = Math.abs(price - 0.5) < 0.005;

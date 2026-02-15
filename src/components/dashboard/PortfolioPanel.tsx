@@ -22,7 +22,7 @@ interface Position {
 
 interface AccountSummary {
     equity: number;
-    availableBalance: number;
+    cash: number;
     positionValue: number;
 }
 
@@ -34,7 +34,7 @@ export function PortfolioPanel() {
     const [closingId, setClosingId] = useState<string | null>(null);
     const isClosingRef = useRef(false);
     const [positions, setPositions] = useState<Position[]>([]);
-    const [summary, setSummary] = useState<AccountSummary>({ equity: 0, availableBalance: 0, positionValue: 0 });
+    const [summary, setSummary] = useState<AccountSummary>({ equity: 0, cash: 0, positionValue: 0 });
 
     // Navigate to trade page with market ID
     const handleNavigateToMarket = (marketId: string) => {
@@ -103,7 +103,7 @@ export function PortfolioPanel() {
             if (balanceRes.ok) {
                 const balanceData = await balanceRes.json();
                 setSummary({
-                    availableBalance: balanceData.balance ?? 0,
+                    cash: balanceData.balance ?? 0,
                     positionValue: balanceData.positionValue ?? 0,
                     equity: balanceData.equity ?? 0,
                 });
@@ -236,9 +236,9 @@ export function PortfolioPanel() {
                                         </p>
                                     </div>
                                     <div>
-                                        <p className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1">Available Balance</p>
+                                        <p className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1">Cash</p>
                                         <p className="text-sm font-medium text-zinc-300 font-mono">
-                                            ${summary.availableBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                            ${summary.cash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                         </p>
                                     </div>
                                     <div>

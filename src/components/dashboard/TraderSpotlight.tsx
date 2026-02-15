@@ -8,7 +8,7 @@ import ScrollReveal from "@/components/reactbits/ScrollReveal";
 
 interface TraderSpotlightProps {
     totalTrades: number;
-    winRate: number | null;
+    winRate: number;
     currentStreak: number;
     daysActive: number;
     profitProgress: number;
@@ -137,7 +137,7 @@ export function TraderSpotlight({
                             <div className="bg-[#0f1115] rounded-lg p-3">
                                 <p className="text-xs text-zinc-500 mb-1">Win Rate</p>
                                 <p className="text-lg font-bold text-white">
-                                    {winRate === null ? '-' : <CountUp to={winRate} from={0} duration={1.5} suffix="%" />}
+                                    <CountUp to={winRate} from={0} duration={1.5} suffix="%" />
                                 </p>
                             </div>
                             <div className="bg-[#0f1115] rounded-lg p-3">

@@ -354,11 +354,11 @@ describe("ChallengeEvaluator - Phase Transition", () => {
         expect(db.update).toHaveBeenCalled();
     });
 
-    it("should NOT update high water mark (static drawdown model per Mat)", async () => {
+    it("should update high water mark when equity increases", async () => {
         const growingChallenge = {
             id: "challenge-grow",
             status: "active",
-            currentBalance: "10500", // Above starting balance but below profit target
+            currentBalance: "10500", // Above HWM of $10k but below profit target
             startingBalance: "10000",
             highWaterMark: "10000",
             startOfDayBalance: "10000",
@@ -374,8 +374,8 @@ describe("ChallengeEvaluator - Phase Transition", () => {
         const result = await ChallengeEvaluator.evaluate("challenge-grow");
 
         expect(result.status).toBe("active");
-        // HWM update has been REMOVED — drawdown is static from startingBalance
-        expect(db.update).not.toHaveBeenCalled();
+        // Verify HWM update was called
+        expect(db.update).toHaveBeenCalled();
     });
 });
 

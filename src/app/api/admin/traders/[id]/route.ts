@@ -4,7 +4,6 @@ import { eq, desc } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 import { requireAdmin } from "@/lib/admin-auth";
-import { computeWinRate, computeAverage } from "@/lib/position-utils";
 import { createLogger } from "@/lib/logger";
 const logger = createLogger("[id]");
 
@@ -97,13 +96,11 @@ export async function GET(
 
         // 4. Calculate Stats
         const sellTrades = tradeHistory.filter(t => t.type === 'SELL');
-        const winRate = computeWinRate(
-            tradeHistory.map(t => ({ type: t.type, realizedPnL: t.pnl })),
-        );
         const wins = sellTrades.filter(t => Number(t.pnl) > 0);
         const losses = sellTrades.filter(t => Number(t.pnl) < 0);
-        const avgWin = computeAverage(wins.map(t => Number(t.pnl)));
-        const avgLoss = computeAverage(losses.map(t => Number(t.pnl)));
+        const winRate = sellTrades.length > 0 ? (wins.length / sellTrades.length) * 100 : 0;
+        const avgWin = wins.length > 0 ? wins.reduce((sum, t) => sum + Number(t.pnl), 0) / wins.length : 0;
+        const avgLoss = losses.length > 0 ? losses.reduce((sum, t) => sum + Number(t.pnl), 0) / losses.length : 0;
 
         return NextResponse.json({
             challenge,

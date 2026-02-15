@@ -50,7 +50,7 @@ interface ProfileMetricsGridProps {
         fundedTradingVolume: number;
         currentWithdrawableProfit: number;
         highestWinRateAsset: string | null;
-        tradingWinRate: number | null;
+        tradingWinRate: number;
         lifetimeProfitWithdrawn: number;
     };
     isPublic?: boolean;
@@ -60,7 +60,7 @@ export function ProfileMetricsGrid({ metrics, isPublic = false }: ProfileMetrics
     const formatCurrency = (val: number) =>
         new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val);
 
-    const formatPercent = (val: number | null) => val !== null ? `${val.toFixed(1)}%` : '—';
+    const formatPercent = (val: number) => `${val.toFixed(1)}%`;
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

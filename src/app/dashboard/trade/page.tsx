@@ -20,7 +20,7 @@ function mapToMarketShape(liveMarket: MarketMetadata): MockMarket & { categories
         categories: categories, // Full array for multi-category filtering
         icon: '📊',
         imageUrl: liveMarket.image,
-        currentPrice: liveMarket.currentPrice ?? 0, // Use live price from order book
+        currentPrice: liveMarket.currentPrice ?? 0.50, // Use live price from order book
         priceChange24h: 0, // Static - no Math.random() to avoid hydration mismatch
         volume: liveMarket.volume || 0,
         activeTraders: 500, // Static - no Math.random() to avoid hydration mismatch

@@ -67,7 +67,7 @@ const faqCategories = [
             },
             {
                 q: "What is the max drawdown limit?",
-                a: "Scout (5k): 8% max drawdown. Grinder (10k): 10% max drawdown. Executive (25k): 10% max drawdown. The drawdown is measured from your starting balance — if your equity drops below the floor, the challenge ends."
+                a: "Scout (5k): 8% max drawdown. Grinder (10k): 10% max drawdown. Executive (25k): 10% max drawdown. The drawdown is \"trailing\" from your high-water mark."
             },
             {
                 q: "How long do I have to complete the evaluation?",

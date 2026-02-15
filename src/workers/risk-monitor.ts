@@ -306,7 +306,6 @@ export class RiskMonitor {
                     phase: 'funded',
                     currentBalance: startingBalance.toString(),
                     highWaterMark: startingBalance.toString(),
-                    startOfDayBalance: startingBalance.toString(),
                     profitSplit: tierRules.profitSplit.toString(),
                     payoutCap: tierRules.payoutCap.toString(),
                     payoutCycleStart: new Date(),

@@ -94,20 +94,13 @@ describe('Trade Flow Contracts', () => {
             expect(drawdownFloor).toBe(9000);
         });
 
-        it('should calculate static drawdown floor regardless of profits (per Mat)', () => {
-            const startingBalance = 10000;
+        it('should calculate correct trailing drawdown floor (evaluation)', () => {
+            const highWaterMark = 11000; // Grew from 10k
             const maxTotalDrawdownPercent = 0.10; // 10%
 
-            // Even if trader grew to $11K, drawdown floor stays at $9K (from starting balance)
-            // NOT $9,900 (which trailing from HWM would give)
-            const drawdownFloor = startingBalance * (1 - maxTotalDrawdownPercent);
-            expect(drawdownFloor).toBe(9000);
-
-            // Trader is at $10,200 after profiting and drawing down
-            // Drawdown = startingBalance - equity = $10K - $10.2K = negative = NOT breached
-            const equity = 10200;
-            const drawdownAmount = startingBalance - equity;
-            expect(drawdownAmount).toBeLessThan(0); // No drawdown when above starting balance
+            // Evaluation uses TRAILING drawdown from HWM
+            const drawdownFloor = highWaterMark * (1 - maxTotalDrawdownPercent);
+            expect(drawdownFloor).toBe(9900);
         });
     });
 

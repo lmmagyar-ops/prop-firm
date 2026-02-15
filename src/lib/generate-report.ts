@@ -15,7 +15,7 @@ interface TradeRow {
 
 interface ReportData {
     challenge: { userName: string; email: string; status: string; currentBalance: string | number };
-    stats: { totalTrades: number; winRate: number | null };
+    stats: { totalTrades: number; winRate: number };
     timeline: TimelinePoint[];
     trades: TradeRow[];
 }
@@ -44,7 +44,7 @@ export const generateTraderReport = (data: ReportData) => {
 
     const statsData = [
         ["Total Trades", stats.totalTrades.toString()],
-        ["Win Rate", stats.winRate !== null ? `${stats.winRate.toFixed(1)}%` : '—'],
+        ["Win Rate", `${stats.winRate.toFixed(1)}%`],
         ["Equity Peak", `$${Math.max(...data.timeline.map((t: TimelinePoint) => t.balance)).toFixed(2)}`],
     ];
 

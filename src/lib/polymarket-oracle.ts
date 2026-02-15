@@ -165,22 +165,17 @@ export class PolymarketOracle {
                 const outcomes = JSON.parse(market.outcomes) as string[];
 
                 // Resolution = one outcome at ~1, other at ~0
-                // FAIL CLOSED: skip if prices are missing — never fabricate 50¢
-                const yesRaw = prices[0];
-                const noRaw = prices[1];
-                if (yesRaw && noRaw) {
-                    const yesPrice = parseFloat(yesRaw);
-                    const noPrice = parseFloat(noRaw);
+                const yesPrice = parseFloat(prices[0] || "0.5");
+                const noPrice = parseFloat(prices[1] || "0.5");
 
-                    if (!isNaN(yesPrice) && yesPrice >= 0.95) {
-                        priceIndicatesResolution = true;
-                        resolutionPrice = 1;
-                        winningOutcome = outcomes[0] || "Yes";
-                    } else if (!isNaN(noPrice) && noPrice >= 0.95) {
-                        priceIndicatesResolution = true;
-                        resolutionPrice = 0;
-                        winningOutcome = outcomes[1] || "No";
-                    }
+                if (yesPrice >= 0.95) {
+                    priceIndicatesResolution = true;
+                    resolutionPrice = 1;
+                    winningOutcome = outcomes[0] || "Yes";
+                } else if (noPrice >= 0.95) {
+                    priceIndicatesResolution = true;
+                    resolutionPrice = 0;
+                    winningOutcome = outcomes[1] || "No";
                 }
             } catch {
                 // Invalid JSON, ignore

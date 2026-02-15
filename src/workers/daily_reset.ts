@@ -1,16 +1,13 @@
 import { db } from "@/db";
-import { challenges, positions } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { challenges } from "@/db/schema";
+import { eq } from "drizzle-orm";
 import { createLogger } from "../lib/logger";
 const logger = createLogger("DailyReset");
 
 /**
  * DailyResetWorker: The Risk Snapshotter.
- * Runs daily (00:00 UTC) to snapshot the user's EQUITY (balance + position values).
- * This sets the baseline for the daily drawdown rule.
- *
- * Per Mat: SOD should be equity, not just cash balance.
- * Uses stored currentPrice from positions table (updated every 30s by risk monitor).
+ * Runs daily (00:00 UTC) to snapshot the user's balance.
+ * This sets the baseline for the "5% Daily Drawdown" rule.
  */
 async function runDailyReset() {
     // AUDIT FIX: Only run at midnight UTC (0:00-0:59 window)
@@ -41,37 +38,14 @@ async function runDailyReset() {
             continue; // Already reset today
         }
 
-        // Calculate equity = balance + sum(position values)
-        // Uses stored currentPrice (updated every 30s by risk monitor)
-        const openPositions = await db.query.positions.findMany({
-            where: and(
-                eq(positions.challengeId, challenge.id),
-                eq(positions.status, 'OPEN')
-            ),
-        });
-
-        const cashBalance = parseFloat(challenge.currentBalance);
-        let positionValue = 0;
-        for (const pos of openPositions) {
-            const shares = parseFloat(pos.shares);
-            // currentPrice is already direction-adjusted in DB
-            const price = pos.currentPrice
-                ? parseFloat(pos.currentPrice)
-                : parseFloat(pos.entryPrice);
-            positionValue += shares * price;
-        }
-
-        const equity = cashBalance + positionValue;
-
-        // 2. Set StartOfDay = EQUITY (not just cash) + Mark as reset
+        // 2. Set StartOfDay = Current + Mark as reset
         await db.update(challenges)
             .set({
-                startOfDayBalance: equity.toFixed(2),
+                startOfDayBalance: challenge.currentBalance,
                 lastDailyResetAt: new Date()
             })
             .where(eq(challenges.id, challenge.id));
 
-        logger.info(`[DailyReset] ${challenge.id.slice(0, 8)}: cash=$${cashBalance.toFixed(2)}, positions=$${positionValue.toFixed(2)}, equity=$${equity.toFixed(2)}`);
         resetCount++;
     }
 

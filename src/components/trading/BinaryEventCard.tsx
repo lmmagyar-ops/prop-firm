@@ -21,7 +21,7 @@ export const BinaryEventCard = memo(function BinaryEventCard({ event, onTrade }:
 
     // Handle very low prices - display as "?" to indicate uncertainty
     const rawYesPrice = market.price;
-    const yesPrice = rawYesPrice; // Display actual price — never fabricate 50%
+    const yesPrice = rawYesPrice < 0.01 ? 0.5 : rawYesPrice; // Fallback to 50% for display
     const noPrice = 1 - yesPrice;
     const percentage = formatPrice(yesPrice);
     const yesCents = (yesPrice * 100).toFixed(1);

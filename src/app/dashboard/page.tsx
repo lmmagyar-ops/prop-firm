@@ -356,7 +356,7 @@ export default async function DashboardPage() {
             {hasActiveChallenge && activeChallenge && stats && (
                 <TraderSpotlight
                     totalTrades={lifetimeStats.totalTradeCount}
-                    winRate={lifetimeStats.tradeWinRate}
+                    winRate={lifetimeStats.tradeWinRate ?? 0}
                     currentStreak={lifetimeStats.currentWinStreak || 0}
                     daysActive={computedDaysActive}
                     profitProgress={stats.profitProgress}

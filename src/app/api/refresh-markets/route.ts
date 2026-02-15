@@ -43,8 +43,7 @@ export async function GET() {
                 if (clobTokens.length === 0) continue;
 
                 const tokenId = clobTokens[0];
-                if (!prices[0]) continue; // Skip markets with no price data — never fabricate
-                const yesPrice = parseFloat(prices[0]);
+                const yesPrice = parseFloat(prices[0] || "0.5");
 
                 if (yesPrice < 0.001) continue;
 

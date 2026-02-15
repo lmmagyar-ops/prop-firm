@@ -126,16 +126,15 @@ describe('ChallengeEvaluator - Breach Detection', () => {
         vi.clearAllMocks();
     });
 
-    describe('Max Drawdown Breach (Challenge Phase - Static)', () => {
+    describe('Max Drawdown Breach (Challenge Phase - Trailing)', () => {
 
-        it('should FAIL when equity drops past max drawdown from startingBalance', async () => {
-            // Setup: Challenge with $10k starting, dropped to $8,900 balance
-            // Static drawdown = $10,000 - $8,900 = $1,100 >= $1,000 max
-            // (HWM is irrelevant — drawdown is always from startingBalance per Mat)
+        it('should FAIL when equity drops past max drawdown from HWM', async () => {
+            // Setup: Challenge with $10k starting, HWM at $11k (made profit)
+            // Then dropped to $9,900 balance = $1,100 drawdown from HWM
             const challenge = createMockChallenge({
                 startingBalance: '10000.00',
-                currentBalance: '8900.00',
-                highWaterMark: '11000.00', // Ignored — static model
+                currentBalance: '9900.00',
+                highWaterMark: '11000.00', // Made $1k profit before
             });
 
             vi.mocked(db.query.challenges.findFirst).mockResolvedValue(challenge as any);
@@ -143,17 +142,17 @@ describe('ChallengeEvaluator - Breach Detection', () => {
 
             const result = await ChallengeEvaluator.evaluate('test-challenge-1');
 
-            // Drawdown = $10,000 - $8,900 = $1,100 >= $1,000 max
+            // Drawdown = $11,000 - $9,900 = $1,100 >= $1,000 max
             expect(result.status).toBe('failed');
             expect(result.reason).toContain('drawdown');
         });
 
         it('should NOT fail at exactly max drawdown (boundary test)', async () => {
-            // Setup: Exactly at the limit ($1000 drawdown from startingBalance)
+            // Setup: Exactly at the limit ($1000 drawdown from HWM of $11k)
             const challenge = createMockChallenge({
                 startingBalance: '10000.00',
-                currentBalance: '9000.00', // $1,000 down from starting = exactly at limit
-                highWaterMark: '11000.00', // Ignored — static model
+                currentBalance: '10000.00', // $1000 down from HWM
+                highWaterMark: '11000.00',
             });
 
             vi.mocked(db.query.challenges.findFirst).mockResolvedValue(challenge as any);
@@ -161,7 +160,10 @@ describe('ChallengeEvaluator - Breach Detection', () => {
 
             const result = await ChallengeEvaluator.evaluate('test-challenge-1');
 
-            // Drawdown = $10,000 - $9,000 = $1,000 — rule is >= so at-limit = fail
+            // Drawdown = $11,000 - $10,000 = $1,000 - but rule is >= so this SHOULD fail
+            // If we want it to NOT fail at exactly the limit, we'd use >
+            // Current implementation uses >= so this will fail
+            // Document this behavior:
             expect(result.status).toBe('failed');
         });
 

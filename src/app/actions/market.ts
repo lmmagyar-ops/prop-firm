@@ -33,7 +33,7 @@ export async function getActiveMarkets(): Promise<MarketMetadata[]> {
         // Use basePrice as currentPrice if not already set.
         return markets.map(market => ({
             ...market,
-            currentPrice: market.currentPrice ?? market.basePrice ?? 0
+            currentPrice: market.currentPrice ?? market.basePrice ?? 0.5
         }));
     } catch (e) {
         logger.error("Failed to fetch active markets", e);
@@ -64,7 +64,7 @@ export async function getAllMarketsFlat(): Promise<MarketMetadata[]> {
                     seenIds.add(m.id);
                     allMarkets.push({
                         ...m,
-                        currentPrice: m.currentPrice ?? m.basePrice ?? 0
+                        currentPrice: m.currentPrice ?? m.basePrice ?? 0.5
                     });
                 }
             }
@@ -198,7 +198,7 @@ export async function getMarketById(marketId: string): Promise<MarketMetadata | 
             if (found) {
                 return {
                     ...found,
-                    currentPrice: found.currentPrice ?? found.basePrice ?? 0
+                    currentPrice: found.currentPrice ?? found.basePrice ?? 0.5
                 };
             }
         }
@@ -436,7 +436,7 @@ export async function getActiveEvents(platform: Platform = "polymarket"): Promis
 
                             // DEFENSIVE FILTER 1: Skip invalid prices (≤0.01 or ≥0.99)
                             // These indicate resolved, stale, or otherwise untradable markets
-                            const price = m.currentPrice ?? m.basePrice ?? 0;
+                            const price = m.currentPrice ?? m.basePrice ?? 0.5;
                             if (price <= 0.01 || price >= 0.99) return false;
 
                             // DEFENSIVE FILTER 2: Skip 50% price + low volume (placeholder data)
@@ -449,7 +449,7 @@ export async function getActiveEvents(platform: Platform = "polymarket"): Promis
                         })
                         .map(m => {
                             // Use basePrice (what ingestion writes) with proper fallback chain
-                            const price = m.currentPrice ?? m.basePrice ?? 0;
+                            const price = m.currentPrice ?? m.basePrice ?? 0.5;
                             return {
                                 id: m.id,
                                 title: m.question,
