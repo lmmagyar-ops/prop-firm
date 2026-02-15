@@ -121,5 +121,15 @@ describe('extractOutcomeLabel', () => {
             expect(extractOutcomeLabel('No change in Fed interest rates after January 2026 meeting'))
                 .toBe('No change in Fed interest rates after January 2026 meeting');
         });
+
+        it('does NOT extract filler words like "there" from questions (regression)', () => {
+            // "Will there be no change..." was extracting "there" via Pattern 5
+            expect(extractOutcomeLabel('Will there be no change in the federal funds rate?'))
+                .not.toBe('there');
+            expect(extractOutcomeLabel('Will it be approved by Congress?'))
+                .not.toBe('it');
+            expect(extractOutcomeLabel('Will they win the championship?'))
+                .not.toBe('they');
+        });
     });
 });

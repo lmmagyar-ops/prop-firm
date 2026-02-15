@@ -308,10 +308,15 @@ export class MarketService {
                     // Using bestBid here caused a data source mismatch: cash debited at
                     // ask-like execution price, position valued at lower bid → phantom loss.
                     // Mid-price = (bestBid + bestAsk) / 2 aligns valuation with execution.
-                    const bestBid = book.bids?.[0]?.price;
-                    const bestAsk = book.asks?.[0]?.price;
-                    const bidPrice = parseFloat(bestBid || '0');
-                    const askPrice = parseFloat(bestAsk || '0');
+                    //
+                    // SORT ORDER FIX: Polymarket CLOB API returns bids sorted ascending
+                    // (worst → best) and asks sorted descending (worst → best).
+                    // Using [0] gave the WORST prices (e.g. bid=0.001, ask=0.999 → mid=0.50).
+                    // Use Math.max/min to robustly find best bid (highest) and best ask (lowest).
+                    const bidPrices = (book.bids || []).map(b => parseFloat(b.price)).filter(p => p > 0);
+                    const askPrices = (book.asks || []).map(a => parseFloat(a.price)).filter(p => p > 0);
+                    const bidPrice = bidPrices.length > 0 ? Math.max(...bidPrices) : 0;
+                    const askPrice = askPrices.length > 0 ? Math.min(...askPrices) : 0;
 
                     // Compute mid-price when both sides exist; fall back to whichever exists
                     let mtmPrice: number;
@@ -334,10 +339,13 @@ export class MarketService {
                             timestamp: Date.now(),
                             source: 'live'
                         });
+
+                        // DIAG: Root cause confirmed — order book sort order was wrong
+                        logger.info(`[DIAG:price] ${marketId.slice(0, 12)}… src=orderbook bid=${bidPrice.toFixed(4)} ask=${askPrice.toFixed(4)} mid=${mtmPrice.toFixed(4)}`);
                         continue;
-                    } else if (bestBid || bestAsk) {
+                    } else if (bidPrice > 0 || askPrice > 0) {
                         // Log invalid prices for debugging
-                        logger.warn(`[MarketService] Invalid order book mid-price for ${marketId.slice(0, 12)}...: bid=${bestBid} ask=${bestAsk} (rejected, using fallback)`);
+                        logger.warn(`[MarketService] Invalid order book mid-price for ${marketId.slice(0, 12)}...: bid=${bidPrice} ask=${askPrice} (rejected, using fallback)`);
                     }
                 }
 

@@ -10,7 +10,7 @@ interface ProfitProgressProps {
 }
 
 export function ProfitProgress({ totalPnL, profitTarget, profitProgress, startingBalance }: ProfitProgressProps) {
-    const clampedProgress = Math.max(0, profitProgress);
+    const clampedProgress = parseFloat(Math.max(0, profitProgress).toFixed(1));
 
     return (
         <div className="bg-zinc-900/50 border border-white/10 rounded-2xl p-6 h-full flex flex-col justify-center">
