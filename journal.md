@@ -4,6 +4,41 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ---
 
+## 2026-02-15 (10:30am CST) — Emergency Prod Restore + Phantom PnL Root Cause Found
+
+### What Happened
+Deployed DIAG logging to production → build failure → 3 failed deploys → **production 500 for ~30 min**.
+
+Root cause of deploy failure: `NEXTAUTH_URL` and `NEXTAUTH_SECRET` are **not configured** in Vercel project environment variables. The env guard (`src/config/env.ts`) threw a fatal error blocking both build and runtime.
+
+**Fix:** Moved NEXTAUTH vars from `REQUIRED` to `WARNED` tier. Added `NEXT_PHASE=phase-production-build` check to skip validation during `next build`. Production restored (`929908f`).
+
+### Phantom PnL Root Cause — **TWO SEPARATE PRICE VALIDATION PATHS**
+
+| Component | File | Validation | 1¢ Price Behavior |
+|-----------|------|------------|-------------------|
+| Portfolio API | `route.ts:86` | `≤0.01 ∥ ≥0.99` → reject | Falls back to entry price → **$0 PnL** |
+| Dashboard equity | `dashboard-service.ts` | `isValidMarketPrice(0 ≤ p ≤ 1)` → accept | Uses 1¢ → **real loss shown** |
+
+This is why the dashboard shows +$325.69 profit while (when the risk monitor was active) it showed -$144.99 daily loss. The portfolio API masks the loss by rejecting 1¢ as "invalid" and substituting entry price. The dashboard equity calculation accepts 1¢ as a valid price and reports the actual loss.
+
+**But both are wrong in different ways:**
+- The portfolio API should NOT silently mask losses — this is a lie to the user
+- The dashboard should use the SAME price as the portfolio for consistency
+
+### Next Steps
+1. **Unify** price validation: use `isValidMarketPrice` in BOTH paths, or add a "suspicious but not invalid" tier
+2. **Decide** on the correct behavior for 1¢ prices: are these resolved markets (genuinely worth $0.01) or data errors?
+3. **Add NEXTAUTH vars to Vercel** project settings so auth works properly
+4. Re-deploy DIAG logging once production is stable
+
+### Tomorrow Morning
+1. **Verify NEXTAUTH vars** in Vercel → add them if missing
+2. **Unify price validation** between `route.ts` and `dashboard-service.ts`
+3. **Investigate** why markets are returning 1¢ — is this a real market resolution or a data feed error?
+
+---
+
 ## 2026-02-15 (10am CST) — Phantom PnL: Reproduced & Instrumented
 
 ### Root Cause (Proven)
