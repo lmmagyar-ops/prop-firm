@@ -44,6 +44,7 @@
 5. **Run `npm run test:financial`** — Financial consistency verification (share counts, PnL cross-checks, risk limit messages)
 6. **If debugging**, follow the "Number Discrepancy Audit" section — step-by-step protocol with symptom → cause lookup
 6. **If data looks wrong**, run `npx tsx scripts/reconcile-positions.ts` to validate positions against trade history
+7. **If using the browser subagent**, read `.agent/workflows/browser-agent.md` first — mandatory constraints to prevent spiraling
 7. **For manual testing**, see `docs/SMOKE_TEST.md` — 15-minute end-to-end checklist
 8. **For history**, see `journal.md` — daily changelog with root causes, commits, and verification results
 
