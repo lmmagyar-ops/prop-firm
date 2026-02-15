@@ -2,7 +2,7 @@ import { db } from "@/db";
 import { challenges, positions, trades, users } from "@/db/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { FUNDED_RULES, type FundedTier } from "@/lib/funded-rules";
-import { calculatePositionMetrics } from "@/lib/position-utils";
+import { calculatePositionMetrics, computeWinRate } from "@/lib/position-utils";
 import { normalizeRulesConfig } from "@/lib/normalize-rules";
 import { safeParseFloat } from "./safe-parse";
 import { softInvariant } from "./invariant";
@@ -40,6 +40,9 @@ export interface DbPositionRow {
     sizeAmount: string | number;
     openedAt: string | Date | null;
 }
+
+import { createLogger } from "./logger";
+const dashLogger = createLogger("Dashboard");
 
 // ─── Pure functions (extracted for independent testability) ─────────
 
@@ -116,6 +119,9 @@ export function getPositionsWithPnL(
             unrealizedPnL = (effectiveCurrentPrice - entry) * shares;
         }
 
+        // DIAG: Phantom PnL investigation — remove after root cause confirmed
+        dashLogger.info(`[DIAG:pnl] ${pos.marketId.slice(0, 12)}… dir=${pos.direction} entry=${entry} rawLive=${livePrice?.price ?? 'NONE'} liveSrc=${livePrice?.source ?? 'stored'} effective=${effectiveCurrentPrice.toFixed(4)} pnl=${unrealizedPnL.toFixed(2)} val=${positionValue.toFixed(2)}`);
+
         return {
             id: pos.id,
             marketId: pos.marketId,
@@ -138,8 +144,7 @@ export function getPositionsWithPnL(
  * Pure function — no I/O.
  */
 export function getEquityStats(challenge: DbChallengeRow, equity: number, startingBalance: number) {
-    const hwmParsed = safeParseFloat(challenge.highWaterMark);
-    const highWaterMark = hwmParsed > 0 ? hwmParsed : startingBalance;
+    // NOTE: HWM removed from drawdown calc per Mat. Drawdown is always static from startingBalance.
     const sodParsed = safeParseFloat(challenge.startOfDayBalance);
     const startOfDayBalance = sodParsed > 0 ? sodParsed : startingBalance;
 
@@ -155,7 +160,8 @@ export function getEquityStats(challenge: DbChallengeRow, equity: number, starti
     const totalPnL = equity - startingBalance;
     const dailyPnL = equity - startOfDayBalance;
 
-    const drawdownAmount = Math.max(0, highWaterMark - equity);
+    // STATIC DRAWDOWN: Always from startingBalance per Mat
+    const drawdownAmount = Math.max(0, startingBalance - equity);
     const dailyDrawdownAmount = Math.max(0, startOfDayBalance - equity);
 
     const drawdownUsage = (drawdownAmount / maxDrawdownLimit) * 100;
@@ -313,7 +319,7 @@ export async function getDashboardData(userId: string) {
     const challengesFailed = allChallenges.filter(c => c.status === 'failed').length;
     const successRate = totalChallengesStarted > 0
         ? (challengesCompleted / totalChallengesStarted) * 100
-        : 0;
+        : null; // null = no challenges yet (UI shows "—" instead of misleading "0%")
 
     // Calculate total profit from completed challenges
     const totalProfitEarned = allChallenges
@@ -349,10 +355,10 @@ export async function getDashboardData(userId: string) {
 
     const totalTradeCount = allTradesResult.length;
     const sellTrades = allTradesResult.filter((t: TradeRow) => t.type === 'SELL');
-    const winningTrades = sellTrades.filter((t: TradeRow) => safeParseFloat(t.realizedPnL) > 0);
-    const tradeWinRate = sellTrades.length > 0
-        ? (winningTrades.length / sellTrades.length) * 100
-        : null; // null = no closed trades yet (UI shows "—" instead of misleading "0%")
+    const tradeWinRate = computeWinRate(
+        allTradesResult as { type: string; realizedPnL: string | null }[],
+        (pnl) => safeParseFloat(pnl),
+    );
 
     // Calculate current win streak (consecutive profitable SELL trades, most recent first)
     let currentWinStreak = 0;
