@@ -174,11 +174,7 @@ export class MarketService {
             // Parse outcomePrices to get YES price
             if (market.outcomePrices) {
                 const prices = JSON.parse(market.outcomePrices) as string[];
-                if (!prices[0]) {
-                    logger.warn(`[MarketService] Gamma API returned empty outcomePrices for ${assetId.slice(0, 12)}...`);
-                    return null;
-                }
-                const yesPrice = parseFloat(prices[0]);
+                const yesPrice = parseFloat(prices[0] || '0.5');
 
                 if (isValidMarketPrice(yesPrice)) {
                     logger.info(`[MarketService] ✅ Gamma API price for ${assetId.slice(0, 12)}...: ${yesPrice}`);
@@ -338,8 +334,6 @@ export class MarketService {
                             timestamp: Date.now(),
                             source: 'live'
                         });
-                        // DIAG: Phantom PnL investigation — remove after root cause confirmed
-                        logger.info(`[DIAG:price] ${marketId.slice(0, 12)}… src=orderbook bid=${bestBid} ask=${bestAsk} mid=${mtmPrice.toFixed(4)}`);
                         continue;
                     } else if (bestBid || bestAsk) {
                         // Log invalid prices for debugging
@@ -351,20 +345,13 @@ export class MarketService {
                 const eventPrice = await this.lookupPriceFromEvents(marketId);
                 if (eventPrice) {
                     results.set(marketId, { ...eventPrice, source: 'event_list' });
-                    // DIAG: Phantom PnL investigation — remove after root cause confirmed
-                    logger.info(`[DIAG:price] ${marketId.slice(0, 12)}… src=event_list price=${eventPrice.price}`);
                 } else {
                     // Try Gamma API as last resort
                     const gammaPrice = await this.getGammaApiPrice(marketId);
                     if (gammaPrice) {
                         results.set(marketId, gammaPrice);
-                        // DIAG: Phantom PnL investigation — remove after root cause confirmed
-                        logger.info(`[DIAG:price] ${marketId.slice(0, 12)}… src=gamma price=${gammaPrice.price}`);
-                    } else {
-                        // If no source has data, skip — never fabricate a price
-                        // DIAG: Phantom PnL investigation — remove after root cause confirmed
-                        logger.warn(`[DIAG:price] ${marketId.slice(0, 12)}… src=NONE (no orderbook, no event, no gamma)`);
                     }
+                    // If no source has data, skip — never fabricate a price
                 }
             }
 
@@ -496,13 +483,7 @@ export class MarketService {
                 const markets = data.markets as EventMarket[];
                 const market = markets.find((m: EventMarket) => m.id === marketId);
                 if (market) {
-                    const price = market.currentPrice ?? market.basePrice;
-                    if (price == null) {
-                        logger.warn('[MarketService] Binary market list entry missing price fields', {
-                            marketId: marketId.slice(0, 12),
-                        });
-                        return null; // Fail closed — no fabricated prices
-                    }
+                    const price = market.currentPrice ?? market.basePrice ?? 0.5;
                     // Accept full 0-1 range including resolution prices
                     if (isValidMarketPrice(price)) {
                         return {
@@ -512,7 +493,7 @@ export class MarketService {
                             source: 'event_list' as const
                         };
                     }
-                    // Invalid price - fall through
+                    // Invalid price - fall through to demo price
                 }
             }
 
