@@ -99,7 +99,7 @@ export async function GET(request: NextRequest) {
                     ut.user_id,
                     ut.trading_volume,
                     ut.total_profit,
-                    u.display_name,
+                    COALESCE(u.display_name, u.name, 'Trader') as display_name,
                     u.image,
                     u.country,
                     u.leaderboard_privacy,
