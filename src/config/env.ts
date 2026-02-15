@@ -57,11 +57,8 @@ export function validateEnvironment(): { valid: boolean; missing: string[]; warn
     return { valid: missing.length === 0, missing, warnings };
 }
 
-// ─── Auto-validate on import (skip in test mode and build phase) ────
-// During `next build`, server code is imported but runtime env vars
-// (NEXTAUTH_URL, NEXTAUTH_SECRET) may not be available yet.
-const isBuildPhase = process.env.NEXT_PHASE === 'phase-production-build';
-if (process.env.NODE_ENV !== 'test' && !isBuildPhase) {
+// ─── Auto-validate on import (skip in test mode) ────────────────────
+if (process.env.NODE_ENV !== 'test') {
     const result = validateEnvironment();
 
     // Log warnings (non-fatal)
