@@ -277,19 +277,20 @@ async function test3_riskMonitorFundedPhaseRules() {
     const uid = await createTestUser('t3-funded-rules');
     const tier10k = buildRulesConfig('10k');
 
-    // 10k tier challenge rules: maxTotalDrawdownPercent = 0.10 → $1000 trailing from HWM
-    // 10k tier funded rules:    maxTotalDrawdown = $1000 static from INITIAL balance
-    // The KEY difference is: challenge uses trailing HWM, funded uses static from initial.
+    // BUSINESS RULE (Per Mat): Drawdown is STATIC from startingBalance for ALL phases.
+    // "Floor for a 10k account is $9k. Below it = fail. That's it."
+    // No trailing HWM. Both funded and challenge use the same static model.
     //
-    // Scenario: Trader profits to $12,000 (HWM=$12k), then drops to $11,100
-    //   - Challenge trailing: HWM($12k) - $1000 = $11,000 → equity $11,100 > $11k → SAFE
-    //   - Funded static: Initial($10k) - $1000 = $9,000 → equity $11,100 > $9k → SAFE
-    //   But if HWM is $12k and equity drops to $10,900:
-    //   - Challenge trailing: $12k - $1k = $11k → equity $10,900 < $11k → BREACH ❌
-    //   - Funded static: $10k - $1k = $9k → equity $10,900 > $9k → SAFE ✅
+    // BUSINESS TRADEOFF: Static drawdown means a trader on a $10k challenge could
+    // run up to $15k, then bleed down to $9,001 without failing ($5,999 drawdown).
+    // Most prop firms use trailing to prevent this. Static was chosen deliberately
+    // because it's simpler and more lenient for traders.
     //
-    // That's the bug: funded traders were being checked with challenge trailing rules,
-    // causing unfair breaches. Let's verify the math.
+    // Scenario: Trader profits to $12,000 (HWM=$12k), then drops to $10,900
+    //   - Static floor: $10k - $1k = $9k → equity $10,900 > $9k → SAFE ✅ (both phases)
+    //   - Trailing floor (NOT used): $12k - $1k = $11k → $10,900 < $11k → BREACH
+    //
+    // Both funded and challenge should show SAFE because we use static drawdown.
 
     const startingBalance = 10000;
     const challengeRules = tier10k;
@@ -301,37 +302,36 @@ async function test3_riskMonitorFundedPhaseRules() {
     assert(challengeMaxDrawdown === 1000, `Challenge maxDrawdown = $${challengeMaxDrawdown}`);
     assert(fundedMaxDrawdown === 1000, `Funded maxDrawdown = $${fundedMaxDrawdown}`);
 
-    // The absolute values are the same ($1000), but the BASE is different:
-    // Challenge: HWM-based (trailing). If HWM rises to $12k, floor = $12k - $1k = $11k
-    // Funded: Initial-based (static). Floor is always $10k - $1k = $9k
+    // STATIC DRAWDOWN: Both phases use startingBalance as the base, NOT HWM.
+    // Floor is always $10k - $1k = $9k regardless of HWM.
     // Verify by simulating the evaluator with a funded account
 
     const cid = await createTestChallenge(uid, startingBalance, {
         currentBalance: '10900',    // $10,900 equity (no open positions)
-        highWaterMark: '12000',     // HWM reached $12k at peak
+        highWaterMark: '12000',     // HWM reached $12k at peak (irrelevant for drawdown)
         phase: 'funded',
         startOfDayBalance: '11000',
     });
 
-    // Evaluate — should NOT fail because funded uses static drawdown ($10k - $1k = $9k floor)
+    // Evaluate — should NOT fail because static drawdown floor = $10k - $1k = $9k
     const result = await ChallengeEvaluator.evaluate(cid);
-    assert(result.status === 'active', `Funded at $10,900 with HWM=$12k: status='${result.status}' (expected 'active', NOT failed)`);
+    assert(result.status === 'active', `Funded at $10,900 with HWM=$12k: status='${result.status}' (expected 'active' — above $9k static floor)`);
 
-    // Now verify a challenge with the same numbers WOULD fail (trailing drawdown)
+    // Now verify a CHALLENGE with the same numbers is ALSO safe (static drawdown, same as funded)
     const uid2 = await createTestUser('t3-challenge-rules');
     const cid2 = await createTestChallenge(uid2, startingBalance, {
         currentBalance: '10900',    // Same equity
-        highWaterMark: '12000',     // Same HWM
-        phase: 'challenge',        // But challenge phase — uses trailing
+        highWaterMark: '12000',     // Same HWM (irrelevant — static drawdown)
+        phase: 'challenge',         // Challenge phase — ALSO uses static drawdown per Mat
         startOfDayBalance: '11000',
     });
 
     const result2 = await ChallengeEvaluator.evaluate(cid2);
-    assert(result2.status === 'failed', `Challenge at $10,900 with HWM=$12k: status='${result2.status}' (expected 'failed' — trailing breach)`);
+    assert(result2.status === 'active', `Challenge at $10,900 with HWM=$12k: status='${result2.status}' (expected 'active' — static drawdown, HWM irrelevant)`);
 
-    console.log('\n  📊 KEY INSIGHT: Same equity ($10,900), same HWM ($12k), different outcomes:');
-    console.log(`     Funded (static floor $9k): ${result.status.toUpperCase()} ← Correct, trader is safe`);
-    console.log(`     Challenge (trailing floor $11k): ${result2.status.toUpperCase()} ← Correct, trader breached`);
+    console.log('\n  📊 KEY INSIGHT: Same equity ($10,900), same HWM ($12k), SAME outcome (static drawdown):');
+    console.log(`     Funded (static floor $9k): ${result.status.toUpperCase()} ← Correct, above $9k floor`);
+    console.log(`     Challenge (static floor $9k): ${result2.status.toUpperCase()} ← Correct, above $9k floor (HWM ignored)`);
 }
 
 // ============================================================

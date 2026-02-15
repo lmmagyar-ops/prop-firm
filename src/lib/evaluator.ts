@@ -269,18 +269,15 @@ export class ChallengeEvaluator {
                         });
                     }
 
-                    // Credit proceeds before reset so BalanceManager logging shows the full flow
-                    if (totalProceeds > 0) {
-                        await BalanceManager.creditProceeds(
-                            tx, challengeId, totalProceeds, 'funded_transition_liquidation'
-                        );
-                    }
-
                     logger.info('Closed positions for funded transition', {
                         challengeId: challengeId.slice(0, 8),
                         count: openPositions.length,
                         totalProceeds: totalProceeds.toFixed(2),
                     });
+
+                    // NOTE: We do NOT credit proceeds here. Balance is about to be reset
+                    // to startingBalance, so crediting first is a no-op that can cause
+                    // transaction ordering bugs (proceeds persist after reset).
                 }
 
                 // 3. Reset balance to starting balance for funded phase
