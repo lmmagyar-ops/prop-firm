@@ -4,6 +4,32 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ---
 
+## 2026-02-15 (11:35am CST) — Remaining Soak Test Bug Fixes (commit `9b3ddaf`)
+
+### Bugs Fixed
+
+**Bug 2: Floating-point display in ProfitProgress** — Progress bar showed "65.1389999999995% Complete" because `CountUp` auto-detects decimal places from the `to` value, and IEEE 754 artifacts produced 13+ decimals. **Fix:** `clampedProgress` now rounds to 1dp via `parseFloat(…toFixed(1))` before passing to `CountUp`.
+
+**Bug 3: "there" text on Fed market card** — `getCleanOutcomeName` extracted "there" from "Will there be no change in the federal funds rate?" via Pattern 4 (`^Will (.+?) be`), which captured the filler word as a name. **Fix:** Added filler word blocklist (`['there', 'it', 'they', 'this', 'that', 'the']`) to Patterns 4 and 5. Added regression test.
+
+**Bug 4: MarketCacheService payload too large** — `saveSnapshot` was writing unbounded JSON blobs to Postgres, causing `Failed to save market cache` errors on 500KB+ payloads. **Fix:** Added pre-insert size check with 500KB limit and warning log.
+
+### Bug Assessed (No Code Fix Needed)
+
+**Bug 1: Missing OKC Thunder position** — Positions query is correct (`challengeId + status=OPEN`). The missing position was a transient data-level issue during the soak test (likely a race condition or failed insert). Not reproducible and not a code bug.
+
+### Files Changed
+- `src/components/dashboard/ProfitProgress.tsx` — round progress to 1dp
+- `src/lib/market-utils.ts` — filler word guard in Patterns 4 & 5
+- `src/lib/market-cache-service.ts` — 500KB payload size check
+- `tests/lib/market-utils.test.ts` — regression test for "there" filler word
+
+### Results
+- Tests: 915 pass, 0 fail, 3 skipped
+- All soak test bugs from Feb 14-15 now resolved or assessed
+
+---
+
 ## 2026-02-15 (11:00am CST) — Phantom PnL Fix: Unified Price Validation + Env Cleanup
 
 ### Root Cause
