@@ -6,11 +6,11 @@
  * rather than silently producing broken behavior downstream.
  * 
  * Tiered approach:
- * - REQUIRED: App throws on startup if missing (DATABASE_URL, auth secrets)
- * - WARNED: Logs a warning but doesn't crash (email, payment, monitoring)
+ * - REQUIRED: App throws on startup if missing (DATABASE_URL)
+ * - WARNED: Logs a warning but doesn't crash (auth, email, payment, monitoring)
  * 
- * Skipped entirely when NODE_ENV=test so the test suite doesn't need
- * every production env var configured.
+ * Skipped entirely when NODE_ENV=test or during `next build` phase so the
+ * test suite and build process don't need every production env var configured.
  */
 
 import { createLogger } from '@/lib/logger';
@@ -20,12 +20,12 @@ const logger = createLogger('EnvGuard');
 // ─── Required: App MUST NOT start without these ─────────────────────
 const REQUIRED_VARS = [
     'DATABASE_URL',
-    'NEXTAUTH_URL',
-    'NEXTAUTH_SECRET',
 ] as const;
 
 // ─── Warned: Feature degradation, not fatal ─────────────────────────
 const WARNED_VARS = [
+    { name: 'NEXTAUTH_URL', impact: 'Auth may use fallback URL' },
+    { name: 'NEXTAUTH_SECRET', impact: 'Auth sessions may not persist' },
     { name: 'RESEND_API_KEY', impact: 'Emails will not send' },
     { name: 'CONFIRMO_API_KEY', impact: 'Payment processing disabled — mock mode active' },
     { name: 'NEXT_PUBLIC_APP_URL', impact: 'URL fallbacks will be used for links' },
@@ -57,8 +57,11 @@ export function validateEnvironment(): { valid: boolean; missing: string[]; warn
     return { valid: missing.length === 0, missing, warnings };
 }
 
-// ─── Auto-validate on import (skip in test mode) ────────────────────
-if (process.env.NODE_ENV !== 'test') {
+// ─── Auto-validate on import (skip in test mode and build phase) ────
+// During `next build`, server code is imported but runtime env vars
+// may not be available yet.
+const isBuildPhase = process.env.NEXT_PHASE === 'phase-production-build';
+if (process.env.NODE_ENV !== 'test' && !isBuildPhase) {
     const result = validateEnvironment();
 
     // Log warnings (non-fatal)

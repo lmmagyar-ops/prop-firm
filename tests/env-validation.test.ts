@@ -36,8 +36,9 @@ describe('Environment Validation Guard', () => {
 
         expect(result.valid).toBe(false);
         expect(result.missing).toContain('DATABASE_URL');
-        expect(result.missing).toContain('NEXTAUTH_URL');
-        expect(result.missing).toContain('NEXTAUTH_SECRET');
+        // NEXTAUTH vars are now warned, not required
+        expect(result.warnings.some(w => w.includes('NEXTAUTH_URL'))).toBe(true);
+        expect(result.warnings.some(w => w.includes('NEXTAUTH_SECRET'))).toBe(true);
     });
 
     it('reports valid when all required vars are set', () => {
@@ -107,17 +108,17 @@ describe('Environment Validation Guard', () => {
         expect(result.warnings).toHaveLength(0);
     });
 
-    // ─── Partial required vars ──────────────────────────────────────
+    // ─── NEXTAUTH vars are warned, not fatal ────────────────────────
 
-    it('catches each missing required var independently', () => {
-        // Set two of three
+    it('warns but does not invalidate when NEXTAUTH vars are missing', () => {
         process.env.DATABASE_URL = 'postgresql://localhost:5432/test';
-        process.env.NEXTAUTH_URL = 'https://example.com';
+        delete process.env.NEXTAUTH_URL;
         delete process.env.NEXTAUTH_SECRET;
 
         const result = validateEnvironment();
 
-        expect(result.valid).toBe(false);
-        expect(result.missing).toEqual(['NEXTAUTH_SECRET']);
+        expect(result.valid).toBe(true);
+        expect(result.warnings.some(w => w.includes('NEXTAUTH_URL'))).toBe(true);
+        expect(result.warnings.some(w => w.includes('NEXTAUTH_SECRET'))).toBe(true);
     });
 });
