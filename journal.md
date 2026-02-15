@@ -4,6 +4,33 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ---
 
+## 2026-02-15 (3:30pm CST) — Leaderboard: Wired to Real Data (`e4de3d7`)
+
+### What Changed
+1. **New API route** (`/api/leaderboard`) — aggregates trade volume + realized PnL per user from `trades` table. Respects privacy settings, supports sort/pagination, includes authenticated user's own rank.
+2. **Rewrote leaderboard page** — removed 100% mock data. Now shows hero podium layout (≤10 traders) with medal emojis, or table (10+). Simplified to 3 columns: Rank+Name, Profit, Volume.
+3. **Re-enabled sidebar nav** — uncommented leaderboard link in `Sidebar.tsx`.
+
+### Design Decision (Apple/Anthropic UX)
+- Hero cards with medals instead of sparse table → feels intentional with few users
+- Removed win rate/drawdown/consistency columns → expensive to compute, misleading with small sample sizes
+- Semi-private users anonymized as "Trader #X"
+- Graceful "Coming Soon" empty state
+
+### Verified
+- 4 real traders displayed on production
+- Profit in green/red, volume as secondary stat
+- Sort selector (By Profit / By Volume) works
+- Privacy anonymization working
+- No console errors
+
+### Tomorrow Morning
+1. **High leverage**: Monitor leaderboard with real trading — verify volume/profit numbers match individual user dashboards
+2. **Medium**: Add "Your Stats" card testing (verify authenticated user sees their own rank)
+3. **Low**: Consider adding win rate column once enough trades exist (20+ per user)
+
+---
+
 ## 2026-02-15 (2:50pm CST) — Safety Test Fix: 50/51 → 51/51 ✅
 
 ### What Changed
