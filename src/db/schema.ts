@@ -87,7 +87,7 @@ export const users = pgTable("users", {
     twoFactorEnabled: boolean("two_factor_enabled").default(false),
 
     // Privacy Controls
-    leaderboardPrivacy: varchar("leaderboard_privacy", { length: 20 }).default("semi_private"), // 'public', 'semi_private', 'fully_private'
+    leaderboardPrivacy: varchar("leaderboard_privacy", { length: 20 }).default("public"), // 'public', 'semi_private', 'fully_private'
     showCountry: boolean("show_country").default(false),
     showStatsPublicly: boolean("show_stats_publicly").default(true),
 });
