@@ -354,6 +354,59 @@ async function test4_evaluatorPositionLeak() {
         phase: 'challenge',
     });
 
+    // ── Seed realistic trade history ──
+    // The sanity gate cross-references realized PnL from trade records against
+    // equity-derived profit. Without trade history, the gate correctly blocks
+    // promotion as a phantom PnL anomaly. We need trades that explain how the
+    // cash balance went from $10,000 → $11,500 while $150 is locked in open positions.
+    //
+    // Math: prior_realized_pnl = $11,500 - $10,000 + $100 + $50 = $1,650
+    //   (cash increase + cost of current open positions)
+    // Unrealized on open positions: 172.41*(0.56-0.58) + 113.64*(0.44-0.44) = -$3.45
+    // Trade-derived profit: $1,650 + (-$3.45) = $1,646.55
+    // Equity-derived profit: ($11,500 + 172.41*0.56 + 113.64*0.44) - $10,000 = $1,646.55 ✓
+
+    // Prior closed position: BUY 3000 shares @ 0.45, SELL @ 1.00 → $1,650 realized PnL
+    const [closedPos] = await db.insert(positions).values({
+        challengeId: cid,
+        marketId: 'safety-prior-closed-market',
+        direction: 'YES',
+        sizeAmount: '1350.00',
+        shares: '3000.00',
+        entryPrice: '0.4500',
+        currentPrice: '1.0000',
+        closedPrice: '1.0000',
+        closedAt: new Date(Date.now() - 3600_000),
+        pnl: '1650.00',
+        status: 'CLOSED',
+    }).returning();
+
+    await db.insert(trades).values({
+        positionId: closedPos.id,
+        challengeId: cid,
+        marketId: 'safety-prior-closed-market',
+        type: 'BUY',
+        direction: 'YES',
+        price: '0.4500',
+        amount: '1350.00',
+        shares: '3000.00',
+        executedAt: new Date(Date.now() - 7200_000),
+    });
+
+    await db.insert(trades).values({
+        positionId: closedPos.id,
+        challengeId: cid,
+        marketId: 'safety-prior-closed-market',
+        type: 'SELL',
+        direction: 'YES',
+        price: '1.0000',
+        amount: '3000.00',
+        shares: '3000.00',
+        realizedPnL: '1650.00',
+        closureReason: 'user_close',
+        executedAt: new Date(Date.now() - 3600_000),
+    });
+
     // Manually create open positions to simulate challenge-phase trading
     const [pos1] = await db.insert(positions).values({
         challengeId: cid,
@@ -366,6 +419,19 @@ async function test4_evaluatorPositionLeak() {
         status: 'OPEN',
     }).returning();
 
+    // BUY trade for pos1
+    await db.insert(trades).values({
+        positionId: pos1.id,
+        challengeId: cid,
+        marketId: MARKET_A,
+        type: 'BUY',
+        direction: 'YES',
+        price: '0.5800',
+        amount: '100.00',
+        shares: '172.41',
+        executedAt: new Date(Date.now() - 1800_000),
+    });
+
     const [pos2] = await db.insert(positions).values({
         challengeId: cid,
         marketId: MARKET_A,
@@ -376,6 +442,19 @@ async function test4_evaluatorPositionLeak() {
         currentPrice: '0.4400',
         status: 'OPEN',
     }).returning();
+
+    // BUY trade for pos2
+    await db.insert(trades).values({
+        positionId: pos2.id,
+        challengeId: cid,
+        marketId: MARKET_A,
+        type: 'BUY',
+        direction: 'NO',
+        price: '0.4400',
+        amount: '50.00',
+        shares: '113.64',
+        executedAt: new Date(Date.now() - 1200_000),
+    });
 
     // Verify pre-condition: 2 open positions
     const openBefore = await getOpenPositions(cid);
@@ -393,7 +472,7 @@ async function test4_evaluatorPositionLeak() {
     const allPositions = await db.query.positions.findMany({
         where: eq(positions.challengeId, cid)
     });
-    assert(allPositions.length === 2, `Both positions still exist in DB (${allPositions.length})`);
+    assert(allPositions.length === 3, `All 3 positions exist in DB (${allPositions.length})`);
     for (const pos of allPositions) {
         assert(pos.status === 'CLOSED', `Position ${pos.id.slice(0, 8)} status='${pos.status}' (expected 'CLOSED')`);
         assert(pos.pnl !== null && pos.pnl !== '0', `Position ${pos.id.slice(0, 8)} has PnL recorded: $${pos.pnl}`);
@@ -413,10 +492,11 @@ async function test4_evaluatorPositionLeak() {
     const sellTradesForChallenge = await db.query.trades.findMany({
         where: and(eq(trades.challengeId, cid), eq(trades.type, 'SELL'))
     });
-    assert(sellTradesForChallenge.length === 2, `2 SELL trade records created (got ${sellTradesForChallenge.length})`);
-    for (const t of sellTradesForChallenge) {
-        assert(t.closureReason === 'pass_liquidation',
-            `SELL trade ${t.id.slice(0, 8)} closureReason='${t.closureReason}' (expected 'pass_liquidation')`);
+    assert(sellTradesForChallenge.length === 3, `3 SELL trade records exist (got ${sellTradesForChallenge.length})`);
+    // Check only the pass_liquidation trades (2 from funded transition, 1 prior user_close)
+    const liquidationTrades = sellTradesForChallenge.filter(t => t.closureReason === 'pass_liquidation');
+    assert(liquidationTrades.length === 2, `2 pass_liquidation SELL trades (got ${liquidationTrades.length})`);
+    for (const t of liquidationTrades) {
         assert(t.realizedPnL !== null, `SELL trade ${t.id.slice(0, 8)} has realizedPnL`);
         assert(t.positionId !== null, `SELL trade ${t.id.slice(0, 8)} has positionId linked`);
     }

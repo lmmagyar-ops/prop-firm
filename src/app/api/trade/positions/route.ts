@@ -1,14 +1,13 @@
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { challenges, positions, trades } from "@/db/schema";
-import { eq, and, inArray } from "drizzle-orm";
+import { challenges, positions } from "@/db/schema";
+import { eq, and } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { MarketService } from "@/lib/market";
 import { createLogger } from "@/lib/logger";
 import { getDirectionAdjustedPrice } from "@/lib/position-utils";
 import { isValidMarketPrice } from "@/lib/price-validation";
-import { getAllMarketData } from "@/lib/worker-client";
 
 const log = createLogger("PositionsAPI");
 
@@ -69,8 +68,9 @@ export async function GET() {
     const marketIds = openPositions.map(pos => pos.marketId);
     const priceMap = await MarketService.getBatchOrderBookPrices(marketIds);
 
-    // Batch fetch all market titles at once (via worker HTTP)
-    const titleMap = await getBatchMarketTitles(marketIds);
+    // Batch fetch all market titles — uses CANONICAL MarketService.getBatchTitles()
+    // (Redis event lists + DB fallback for resolved markets)
+    const titleMap = await MarketService.getBatchTitles(marketIds);
 
     // Map positions with pre-fetched prices and titles
     const mapped = openPositions.map((pos) => {
@@ -119,82 +119,4 @@ export async function GET() {
     });
 
     return NextResponse.json({ positions: mapped });
-}
-
-// Batch fetch market titles for multiple markets via worker HTTP API
-async function getBatchMarketTitles(marketIds: string[]): Promise<Map<string, string>> {
-    const results = new Map<string, string>();
-
-    if (marketIds.length === 0) return results;
-
-    try {
-        // Load event lists from worker (uses in-memory cache from worker-client)
-        const data = await getAllMarketData();
-        if (!data) return results;
-
-        // Build market lookup maps
-        const kalshiEvents = (data.kalshi || []) as { markets?: { id: string; question?: string }[]; title?: string }[];
-        const polyEvents = (data.events || []) as { markets?: { id: string; question?: string }[]; title?: string }[];
-
-        const kalshiMarkets = new Map<string, { title: string }>();
-        const polyMarkets = new Map<string, { title: string }>();
-
-        for (const event of kalshiEvents) {
-            for (const market of event.markets || []) {
-                kalshiMarkets.set(market.id, {
-                    title: market.question || event.title || market.id.slice(0, 20)
-                });
-            }
-        }
-
-        for (const event of polyEvents) {
-            for (const market of event.markets || []) {
-                polyMarkets.set(market.id, {
-                    title: market.question || event.title || market.id.slice(0, 20)
-                });
-            }
-        }
-
-        // Get titles for each market
-        const missingIds: string[] = [];
-        for (const marketId of marketIds) {
-            const market = kalshiMarkets.get(marketId) || polyMarkets.get(marketId);
-            if (market) {
-                results.set(marketId, market.title);
-            } else if (marketId.includes("-")) {
-                // Fallback: clean ticker suffix for Kalshi tickers
-                const parts = marketId.split("-");
-                results.set(marketId, parts[parts.length - 1]);
-            } else {
-                missingIds.push(marketId);
-            }
-        }
-
-        // DB fallback: look up titles from trades table for resolved markets
-        if (missingIds.length > 0) {
-            const tradeRecords = await db.query.trades.findMany({
-                where: inArray(trades.marketId, missingIds),
-                columns: { marketId: true, marketTitle: true }
-            });
-            const dbTitles = new Map<string, string>();
-            for (const t of tradeRecords) {
-                if (t.marketTitle && !dbTitles.has(t.marketId)) {
-                    dbTitles.set(t.marketId, t.marketTitle);
-                }
-            }
-            for (const marketId of missingIds) {
-                results.set(marketId, dbTitles.get(marketId) || marketId.slice(0, 20) + "...");
-            }
-        }
-
-        log.debug("Batch fetched market titles", { count: results.size });
-    } catch (e) {
-        log.error("Error batch fetching market titles", e);
-        // Fallback to simple truncation
-        for (const marketId of marketIds) {
-            results.set(marketId, marketId.slice(0, 20) + "...");
-        }
-    }
-
-    return results;
 }

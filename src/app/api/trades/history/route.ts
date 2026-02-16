@@ -4,19 +4,26 @@ import { db } from "@/db";
 import { trades, challenges } from "@/db/schema";
 import { eq, desc, and } from "drizzle-orm";
 import { getAllMarketData } from "@/lib/worker-client";
+import { MarketService } from "@/lib/market";
 import { createLogger } from "@/lib/logger";
 const logger = createLogger("History");
 
-// Enrich trade records with market titles from worker HTTP API
+// Enrich trade records with market titles + event metadata
+// Title resolution uses the CANONICAL MarketService.getBatchTitles() (Redis + DB fallback).
+// Event metadata (eventTitle, image) comes from live event lists only (display-only, no fallback needed).
 async function enrichTrades(tradeRecords: (typeof trades.$inferSelect)[]) {
+    // 1. Canonical title resolution (Redis + DB fallback — handles resolved markets)
+    const marketIds = [...new Set(tradeRecords.map(t => t.marketId))];
+    const titleMap = await MarketService.getBatchTitles(marketIds);
+
+    // 2. Event metadata (display-only — eventTitle, image)
     const data = await getAllMarketData();
     const events = data?.events ? (data.events as { markets?: { id: string; question?: string; title?: string }[]; title?: string; image?: string }[]) : [];
 
-    const marketLookup: Record<string, { title: string; eventTitle: string; image?: string }> = {};
+    const eventMetadata: Record<string, { eventTitle: string; image?: string }> = {};
     for (const event of events) {
         for (const market of event.markets || []) {
-            marketLookup[market.id] = {
-                title: market.question || market.title || "",
+            eventMetadata[market.id] = {
                 eventTitle: event.title || "",
                 image: event.image
             };
@@ -26,10 +33,10 @@ async function enrichTrades(tradeRecords: (typeof trades.$inferSelect)[]) {
     return tradeRecords.map(trade => ({
         id: trade.id,
         marketId: trade.marketId,
-        // Prefer DB-stored title (permanent) → Redis lookup (transient) → truncated ID (last resort)
-        marketTitle: trade.marketTitle || marketLookup[trade.marketId]?.title || `Market ${trade.marketId.slice(0, 8)}...`,
-        eventTitle: marketLookup[trade.marketId]?.eventTitle,
-        image: marketLookup[trade.marketId]?.image,
+        // Canonical title: DB-stored (permanent) → Redis (transient) → DB fallback (other trades) → truncated ID
+        marketTitle: titleMap.get(trade.marketId) || trade.marketTitle || `Market ${trade.marketId.slice(0, 8)}...`,
+        eventTitle: eventMetadata[trade.marketId]?.eventTitle,
+        image: eventMetadata[trade.marketId]?.image,
         type: trade.type,
         price: parseFloat(trade.price),
         amount: parseFloat(trade.amount),
@@ -77,37 +84,50 @@ export async function GET(req: Request) {
             return NextResponse.json({ trades: await enrichTrades(tradeRecords) });
         }
 
-        // No specific challenge — fetch trades from ALL user challenges
-        // (The page says "All your trades across active and past challenges")
-        const userChallenges = await db
+        // No specific challenge — default to the ACTIVE challenge, not all challenges.
+        // This prevents trades from old evaluations bleeding into the current view.
+        const activeChallenge = await db
             .select({ id: challenges.id })
             .from(challenges)
-            .where(eq(challenges.userId, session.user.id));
+            .where(and(
+                eq(challenges.userId, session.user.id),
+                eq(challenges.status, 'active')
+            ))
+            .limit(1);
 
-        if (userChallenges.length === 0) {
-            return NextResponse.json({ trades: [] });
-        }
+        // If user has an active challenge, scope to it
+        const scopeId = activeChallenge[0]?.id;
+        if (!scopeId) {
+            // No active challenge — return most recent trades from ANY challenge as fallback
+            const userChallenges = await db
+                .select({ id: challenges.id })
+                .from(challenges)
+                .where(eq(challenges.userId, session.user.id))
+                .limit(1);
 
-        // Fetch trades from all challenges
-        const allTrades = [];
-        for (const c of userChallenges) {
-            const cTrades = await db
+            if (userChallenges.length === 0) {
+                return NextResponse.json({ trades: [] });
+            }
+
+            // Fallback: return trades from the most recent challenge
+            const fallbackTrades = await db
                 .select()
                 .from(trades)
-                .where(eq(trades.challengeId, c.id))
-                .orderBy(desc(trades.executedAt));
-            allTrades.push(...cTrades);
+                .where(eq(trades.challengeId, userChallenges[0].id))
+                .orderBy(desc(trades.executedAt))
+                .limit(limit);
+
+            return NextResponse.json({ trades: await enrichTrades(fallbackTrades) });
         }
 
-        // Sort all trades by date descending and limit
-        allTrades.sort((a, b) => {
-            const ta = a.executedAt ? new Date(a.executedAt).getTime() : 0;
-            const tb = b.executedAt ? new Date(b.executedAt).getTime() : 0;
-            return tb - ta;
-        });
-        const limitedTrades = allTrades.slice(0, limit);
+        const tradeRecords = await db
+            .select()
+            .from(trades)
+            .where(eq(trades.challengeId, scopeId))
+            .orderBy(desc(trades.executedAt))
+            .limit(limit);
 
-        return NextResponse.json({ trades: await enrichTrades(limitedTrades) });
+        return NextResponse.json({ trades: await enrichTrades(tradeRecords) });
     } catch (error) {
         logger.error("[API] Trade history error:", error);
         return NextResponse.json({ error: "Failed to fetch trade history" }, { status: 500 });

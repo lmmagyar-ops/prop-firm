@@ -12,6 +12,9 @@ vi.mock("@/db", () => {
             },
             positions: {
                 findMany: vi.fn()
+            },
+            trades: {
+                findMany: vi.fn().mockResolvedValue([])
             }
         },
         update: vi.fn(() => ({
@@ -52,6 +55,15 @@ vi.mock("@/lib/outage-manager", () => ({
             isOutage: false,
             isGraceWindow: false,
         }),
+    },
+}));
+
+// Mock alerts (used by sanity gate)
+vi.mock("@/lib/alerts", () => ({
+    sendAlert: vi.fn(),
+    alerts: {
+        anomaly: vi.fn().mockResolvedValue(undefined),
+        tradeFailed: vi.fn().mockResolvedValue(undefined),
     },
 }));
 
@@ -162,6 +174,7 @@ describe("ChallengeEvaluator - Daily Loss Pending Failure", () => {
     it("should pass challenge when equity exceeds profit target", async () => {
         const winningChallenge = {
             id: "challenge-1",
+            userId: "user-1",
             status: "active",
             currentBalance: "11100", // Above $10,500 target
             startingBalance: "10000",
@@ -171,10 +184,16 @@ describe("ChallengeEvaluator - Daily Loss Pending Failure", () => {
             pendingFailureAt: null,
             endsAt: null,
             phase: "challenge",
+            startedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
         };
 
         vi.mocked(db.query.challenges.findFirst).mockResolvedValue(winningChallenge as any);
         vi.mocked(db.query.positions.findMany).mockResolvedValue([]);
+        // Sanity gate: trades must match equity profit ($1100)
+        vi.mocked(db.query.trades.findMany).mockResolvedValue([
+            { type: 'SELL', realizedPnL: '600.00' },
+            { type: 'SELL', realizedPnL: '500.00' },
+        ] as any);
 
         const result = await ChallengeEvaluator.evaluate("challenge-1");
 
@@ -332,6 +351,7 @@ describe("ChallengeEvaluator - Phase Transition", () => {
     it("should transition from challenge to funded when profit target hit", async () => {
         const passingChallenge = {
             id: "challenge-pass",
+            userId: "user-1",
             status: "active",
             currentBalance: "11100", // $1100 profit (target = $1000)
             startingBalance: "10000",
@@ -341,10 +361,14 @@ describe("ChallengeEvaluator - Phase Transition", () => {
             pendingFailureAt: null,
             endsAt: null,
             phase: "challenge", // In challenge phase
+            startedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
         };
 
         vi.mocked(db.query.challenges.findFirst).mockResolvedValue(passingChallenge as any);
         vi.mocked(db.query.positions.findMany).mockResolvedValue([]);
+        vi.mocked(db.query.trades.findMany).mockResolvedValue([
+            { type: 'SELL', realizedPnL: '1100.00' },
+        ] as any);
 
         const result = await ChallengeEvaluator.evaluate("challenge-pass");
 
@@ -508,6 +532,7 @@ describe("ChallengeEvaluator - Tier Detection on Phase Transition", () => {
     it("should apply 5k tier rules for $5000 starting balance", async () => {
         const challenge5k = {
             id: "challenge-5k",
+            userId: "user-1",
             status: "active",
             phase: "challenge",
             currentBalance: "5600",       // $600 profit (above $500 target for 5k)
@@ -520,10 +545,14 @@ describe("ChallengeEvaluator - Tier Detection on Phase Transition", () => {
             },
             pendingFailureAt: null,
             endsAt: null,
+            startedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
         };
 
         vi.mocked(db.query.challenges.findFirst).mockResolvedValue(challenge5k as any);
         vi.mocked(db.query.positions.findMany).mockResolvedValue([]);
+        vi.mocked(db.query.trades.findMany).mockResolvedValue([
+            { type: 'SELL', realizedPnL: '600.00' },
+        ] as any);
 
         const result = await ChallengeEvaluator.evaluate("challenge-5k");
 
@@ -534,6 +563,7 @@ describe("ChallengeEvaluator - Tier Detection on Phase Transition", () => {
     it("should apply 10k tier rules for $10000 starting balance", async () => {
         const challenge10k = {
             id: "challenge-10k",
+            userId: "user-1",
             status: "active",
             phase: "challenge",
             currentBalance: "11100",      // $1100 profit (above $1000 target)
@@ -546,10 +576,14 @@ describe("ChallengeEvaluator - Tier Detection on Phase Transition", () => {
             },
             pendingFailureAt: null,
             endsAt: null,
+            startedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
         };
 
         vi.mocked(db.query.challenges.findFirst).mockResolvedValue(challenge10k as any);
         vi.mocked(db.query.positions.findMany).mockResolvedValue([]);
+        vi.mocked(db.query.trades.findMany).mockResolvedValue([
+            { type: 'SELL', realizedPnL: '1100.00' },
+        ] as any);
 
         const result = await ChallengeEvaluator.evaluate("challenge-10k");
 
@@ -559,6 +593,7 @@ describe("ChallengeEvaluator - Tier Detection on Phase Transition", () => {
     it("should apply 25k tier rules for $25000 starting balance", async () => {
         const challenge25k = {
             id: "challenge-25k",
+            userId: "user-1",
             status: "active",
             phase: "challenge",
             currentBalance: "27600",      // $2600 profit (above $2500 target)
@@ -571,10 +606,14 @@ describe("ChallengeEvaluator - Tier Detection on Phase Transition", () => {
             },
             pendingFailureAt: null,
             endsAt: null,
+            startedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
         };
 
         vi.mocked(db.query.challenges.findFirst).mockResolvedValue(challenge25k as any);
         vi.mocked(db.query.positions.findMany).mockResolvedValue([]);
+        vi.mocked(db.query.trades.findMany).mockResolvedValue([
+            { type: 'SELL', realizedPnL: '2600.00' },
+        ] as any);
 
         const result = await ChallengeEvaluator.evaluate("challenge-25k");
 
@@ -763,6 +802,7 @@ describe("ChallengeEvaluator - Position Closure on Phase Transition", () => {
     it("should close all open positions when transitioning to funded", async () => {
         const passingChallenge = {
             id: "transition-test",
+            userId: "user-1",
             status: "active",
             currentBalance: "5600",
             startingBalance: "5000",
@@ -772,6 +812,7 @@ describe("ChallengeEvaluator - Position Closure on Phase Transition", () => {
             pendingFailureAt: null,
             endsAt: new Date(Date.now() + 86400000),
             phase: "challenge",
+            startedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
         };
 
         const openPositions = [
@@ -797,6 +838,12 @@ describe("ChallengeEvaluator - Position Closure on Phase Transition", () => {
 
         vi.mocked(db.query.challenges.findFirst).mockResolvedValue(passingChallenge as any);
         vi.mocked(db.query.positions.findMany).mockResolvedValue(openPositions as any);
+        // Equity = $5600 + (100 * 0.50) + (50 * 0.50) = $5675. Profit = $675.
+        // Live positions: pos-1 = 100*(0.50-0.40)=$10, pos-2 = 50*(0.50-0.60)=-$5
+        // So unrealized = $5, realized must cover ~$670
+        vi.mocked(db.query.trades.findMany).mockResolvedValue([
+            { type: 'SELL', realizedPnL: '670.00' },
+        ] as any);
 
         const result = await ChallengeEvaluator.evaluate("transition-test");
 
@@ -818,6 +865,7 @@ describe("ChallengeEvaluator - Position Closure on Phase Transition", () => {
     it("should skip position closure if no open positions exist", async () => {
         const passingChallenge = {
             id: "clean-pass",
+            userId: "user-1",
             status: "active",
             currentBalance: "5600",
             startingBalance: "5000",
@@ -827,10 +875,14 @@ describe("ChallengeEvaluator - Position Closure on Phase Transition", () => {
             pendingFailureAt: null,
             endsAt: new Date(Date.now() + 86400000),
             phase: "challenge",
+            startedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
         };
 
         vi.mocked(db.query.challenges.findFirst).mockResolvedValue(passingChallenge as any);
         vi.mocked(db.query.positions.findMany).mockResolvedValue([]);
+        vi.mocked(db.query.trades.findMany).mockResolvedValue([
+            { type: 'SELL', realizedPnL: '600.00' },
+        ] as any);
 
         const result = await ChallengeEvaluator.evaluate("clean-pass");
 

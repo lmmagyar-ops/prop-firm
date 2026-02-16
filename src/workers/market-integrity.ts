@@ -10,6 +10,9 @@
 
 import type Redis from 'ioredis';
 import { createLogger } from '../lib/logger';
+import { db } from '@/db';
+import { positions } from '@/db/schema';
+import { eq, and, sql } from 'drizzle-orm';
 const logger = createLogger('MarketIntegrity');
 
 // ============================================================================
@@ -99,13 +102,31 @@ export async function pruneResolvedMarkets(redis: Redis): Promise<{ prunedEvents
 
             for (const event of events) {
                 const beforeCount = event.markets.length;
-                event.markets = event.markets.filter(m => {
+                const keptMarkets: typeof event.markets = [];
+
+                for (const m of event.markets) {
                     const isResolved = m.price >= RESOLVED_THRESHOLD_HIGH || m.price <= RESOLVED_THRESHOLD_LOW;
                     if (isResolved) {
+                        // GUARD: Never prune a market that has open positions
+                        const openCount = await db
+                            .select({ count: sql<number>`count(*)::int` })
+                            .from(positions)
+                            .where(and(
+                                eq(positions.marketId, m.id),
+                                eq(positions.status, 'OPEN')
+                            ));
+                        if (openCount[0].count > 0) {
+                            logger.info(`[Integrity] Skipping prune of "${m.question}" — ${openCount[0].count} open position(s)`);
+                            keptMarkets.push(m);
+                            continue;
+                        }
                         logger.info(`[Integrity] Pruning resolved sub-market: "${m.question}" (price: ${m.price.toFixed(2)}) from event "${event.title}"`);
+                    } else {
+                        keptMarkets.push(m);
                     }
-                    return !isResolved;
-                });
+                }
+
+                event.markets = keptMarkets;
 
                 const pruned = beforeCount - event.markets.length;
                 if (pruned > 0) {
@@ -126,14 +147,30 @@ export async function pruneResolvedMarkets(redis: Redis): Promise<{ prunedEvents
         const marketData = await redis.get('market:active_list');
         if (marketData) {
             const markets: StoredBinaryMarket[] = JSON.parse(marketData);
-            const filtered = markets.filter(m => {
+            const filtered: StoredBinaryMarket[] = [];
+
+            for (const m of markets) {
                 const isResolved = m.basePrice >= RESOLVED_THRESHOLD_HIGH || m.basePrice <= RESOLVED_THRESHOLD_LOW;
                 if (isResolved) {
+                    // GUARD: Never prune a market that has open positions
+                    const openCount = await db
+                        .select({ count: sql<number>`count(*)::int` })
+                        .from(positions)
+                        .where(and(
+                            eq(positions.marketId, m.id),
+                            eq(positions.status, 'OPEN')
+                        ));
+                    if (openCount[0].count > 0) {
+                        logger.info(`[Integrity] Skipping prune of binary "${m.question}" — ${openCount[0].count} open position(s)`);
+                        filtered.push(m);
+                        continue;
+                    }
                     logger.info(`[Integrity] Pruning resolved binary market: "${m.question}" (price: ${m.basePrice.toFixed(2)})`);
                     prunedBinary++;
+                } else {
+                    filtered.push(m);
                 }
-                return !isResolved;
-            });
+            }
 
             if (prunedBinary > 0) {
                 const ttl = await redis.ttl('market:active_list');

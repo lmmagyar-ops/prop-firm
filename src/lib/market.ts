@@ -340,8 +340,6 @@ export class MarketService {
                             source: 'live'
                         });
 
-                        // DIAG: Root cause confirmed — order book sort order was wrong
-                        logger.info(`[DIAG:price] ${marketId.slice(0, 12)}… src=orderbook bid=${bidPrice.toFixed(4)} ask=${askPrice.toFixed(4)} mid=${mtmPrice.toFixed(4)}`);
                         continue;
                     } else if (bidPrice > 0 || askPrice > 0) {
                         // Log invalid prices for debugging
@@ -358,8 +356,10 @@ export class MarketService {
                     const gammaPrice = await this.getGammaApiPrice(marketId);
                     if (gammaPrice) {
                         results.set(marketId, gammaPrice);
+                    } else {
+                        // If no source has data, skip — never fabricate a price
+                        logger.warn(`[MarketService] ${marketId.slice(0, 12)}… no price from orderbook, event list, or gamma`);
                     }
-                    // If no source has data, skip — never fabricate a price
                 }
             }
 

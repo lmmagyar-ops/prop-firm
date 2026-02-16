@@ -187,7 +187,7 @@ export const challenges = pgTable("challenges", {
 
 export const positions = pgTable("positions", {
     id: uuid("id").defaultRandom().primaryKey(),
-    challengeId: uuid("challenge_id").references(() => challenges.id, { onDelete: "cascade" }),
+    challengeId: uuid("challenge_id").references(() => challenges.id, { onDelete: "cascade" }).notNull(),
     marketId: text("market_id").notNull(), // Polymarket/Kalshi Market ID
     direction: varchar("direction", { length: 10 }).notNull(), // 'YES', 'NO'
 
@@ -214,7 +214,7 @@ export const positions = pgTable("positions", {
 export const trades = pgTable("trades", {
     id: uuid("id").defaultRandom().primaryKey(),
     positionId: uuid("position_id").references(() => positions.id),
-    challengeId: uuid("challenge_id").references(() => challenges.id),
+    challengeId: uuid("challenge_id").references(() => challenges.id).notNull(),
     marketId: text("market_id").notNull(),
     marketTitle: text("market_title"), // Stored at trade time — survives market resolution/pruning
 

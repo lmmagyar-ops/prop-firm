@@ -77,6 +77,9 @@ export class RiskMonitor {
      */
     private async checkAllChallenges(): Promise<void> {
         try {
+            // HEARTBEAT: Write timestamp so the app can detect if this worker dies
+            await this.redis.set('worker:risk-monitor:heartbeat', Date.now().toString(), 'EX', 120);
+
             // Get all active challenges with open positions
             const activeChallenges = await db.query.challenges.findMany({
                 where: eq(challenges.status, 'active'),
@@ -135,25 +138,29 @@ export class RiskMonitor {
         // Example: $5k account, buy 200 shares at $0.50 for $100:
         //   cash = $4,900, positionValue = 200 * $0.50 = $100, equity = $5,000 ✓
         //   WRONG: unrealizedPnL = (0.50-0.50)*200 = $0, equity = $4,900 ✗
+        // FAIL CLOSED: If we can't price positions, we can't assess risk.
+        // Unknown equity is NOT safe equity — skip this challenge entirely.
+        if (openPositions.length > 0) {
+            const missingPrices = openPositions.filter(p => !livePrices.has(p.marketId));
+            if (missingPrices.length > 0) {
+                logger.error('HALT: Missing live prices for open positions — cannot compute equity', {
+                    challengeId: challenge.id,
+                    missing: missingPrices.length,
+                    total: openPositions.length,
+                    missingMarkets: missingPrices.map(p => p.marketId.slice(0, 12)),
+                });
+                return; // Do NOT continue with incomplete data
+            }
+        }
+
         let positionValue = 0;
         for (const pos of openPositions) {
-            const livePrice = livePrices.get(pos.marketId);
-
-            const entryPrice = parseFloat(pos.entryPrice);
+            const livePrice = livePrices.get(pos.marketId)!; // Safe: guarded above
             const shares = parseFloat(pos.shares);
             const isNo = pos.direction === 'NO';
 
-            // Get effective price for valuation
-            let effectivePrice: number;
-            if (livePrice !== undefined) {
-                // Live price is raw YES price - apply direction adjustment
-                effectivePrice = isNo ? (1 - livePrice) : livePrice;
-            } else {
-                // Fallback: use stored entry price (already direction-adjusted)
-                effectivePrice = entryPrice;
-                logger.warn('No live price, using entry price', { marketId: pos.marketId.slice(0, 12), entryPrice });
-            }
-
+            // Live price is raw YES price — apply direction adjustment
+            const effectivePrice = isNo ? (1 - livePrice) : livePrice;
             positionValue += shares * effectivePrice;
         }
 

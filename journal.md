@@ -4,6 +4,396 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ---
 
+## Feb 17, 2026 — Anthropic-Grade Test Gap Closure
+
+### Audit Results
+Audited all 102 test files against 5 criteria: mocking mirages, silent catches, `any` types, fail-closed coverage, and contract consistency. Found 5 gaps ranked by financial risk.
+
+### Tests Written (44 new, total: 1024)
+
+| File | Tests | What It Covers |
+|------|-------|----------------|
+| `tests/lib/settlement.test.ts` | 9 | PnL formula, NO direction inversion, double-settlement guard, error isolation |
+| `tests/lib/trading/balance-manager.test.ts` | +6 | `adjustBalance` — credit, debit, overdraft guard, forensic logs |
+| `tests/workers/market-integrity.test.ts` | 7 | Open-position guard: resolved markets with positions stay in Redis |
+| `tests/equity-consistency.test.ts` | 7 | Contract test: all 3 equity formulas (position-utils, evaluator, risk-monitor) agree |
+| `tests/lib/polymarket-oracle.test.ts` | 15 | Resolution parsing: closed, UMA, price-based, malformed data, API errors, caching |
+
+### Key Findings
+- **Equity formulas are consistent** across all 6 scenarios (YES, NO, mixed, boundary prices)
+- **NaN divergence documented**: `getPortfolioValue` falls back to entryPrice (not currentPrice) on invalid live price
+- **Zero mocking mirages, zero silent catches, zero `any` types** in `src/lib/` production code
+
+### Tomorrow Morning
+1. **Deploy** — merge `develop` → `main`, push schema migration first
+2. **Monitor Sentry** for 10 minutes post-deploy
+3. Consider extracting evaluator/risk-monitor inline equity formulas to use `getPortfolioValue()` (consistency debt)
+
+---
+
+## Feb 17, 2026 — Systemic Bug Hardening (Mat's Triage)
+
+### Root Causes Identified
+5 bugs reported by Mat traced to 3 systemic failures:
+1. **Silent fallbacks**: Risk monitor fell back to entry prices when live data missing — masked real drawdowns
+2. **Missing DB constraints**: `challengeId` nullable on positions/trades → orphan records, cross-challenge data leakage
+3. **Cost basis vs notional**: Category exposure used `sizeAmount` (dollars invested) not `shares × price` (current value)
+
+### Changes Made (6 Phases)
+
+| Phase | File | Change |
+|---|---|---|
+| 1 | `risk-monitor.ts` | Fail-closed: halt on missing prices + Redis heartbeat |
+| 1 | `market-integrity.ts` | Open-position guard before pruning resolved markets |
+| 2 | `schema.ts` | `NOT NULL` on `positions.challengeId` + `trades.challengeId` |
+| 3 | `api/trades/history/route.ts` | Default to active challenge (was: all challenges) |
+| 4 | `risk.ts` | `getCategoryExposureFromCache` → `shares × entryPrice` |
+| 5 | `EventCard.tsx` + `MultiRunnerCard.tsx` | `line-clamp-2` replaces `truncate` |
+| 6 | `risk-monitor.test.ts` | Replaced 259-line Mocking Mirage with 21 behavioral tests |
+| 6 | `risk.test.ts` | Updated category exposure mock for new formula |
+
+### Test Results
+- **980/980 passed**, 0 failed, 3 skipped
+
+### Tomorrow Morning
+
+**Priority 1: Deploy schema change** (leverage: highest, risk: medium)
+- Verify no null `challengeId` rows exist in prod before pushing schema
+- Run: `SELECT COUNT(*) FROM positions WHERE challenge_id IS NULL; SELECT COUNT(*) FROM trades WHERE challenge_id IS NULL;`
+- If zeros → safe to `npx drizzle-kit push`
+- If not → backfill first, then push
+
+**Priority 2: Browser smoke test** (leverage: high, risk: low)
+- Verify text truncation fix on market cards
+- Verify trade history only shows active challenge trades
+
+---
+
+## Tomorrow Morning (Feb 17, 2026)
+
+
+**Priority 1: Execute Merge** (leverage: highest, risk: low)
+- Soak test ends ~11:28pm CST tonight
+- Final abbreviated prod smoke test, then: `git checkout main && git merge develop && git push`
+- Resolve 1 conflict in `src/lib/market.ts` (favor develop — removes DIAG log, adds warning)
+- Post-merge: run `npm run test:deploy -- https://prop-firmx.vercel.app` + monitor Sentry 10 min
+- Pre-existing type error in `tests/price-integrity.test.ts` (`computeWinRate` export) — fix after merge
+
+**Priority 2: Respond to Mat's feedback** (leverage: high, risk: varies)
+- Any bugs he reports are top priority
+- Cross-reference with Sentry events (server-side Sentry now WORKING)
+
+---
+
+## Feb 16, 2026 (4:00pm CST) — Sentry Root Cause + Merge Readiness
+
+### Root Cause: Server-Side Sentry Was Dead
+`instrumentation.ts` was never created. Next.js 16 requires this file to load `sentry.server.config.ts` and `sentry.edge.config.ts` at runtime. Without it, server-side `Sentry.captureException()` was a no-op and `flush()` always returned `false`. **Sentry has been dead since the initial setup.**
+
+### Fix
+Created `src/instrumentation.ts` with the standard Next.js instrumentation hook. Verified on staging: `flushed: true`, `clientInitialized: true`, event ID `58c03d43`.
+
+### Merge Readiness Checklist
+| Check | Result |
+|---|---|
+| Sentry working | ✅ Event ID 58c03d43 captured |
+| Staging deploy smoke | ✅ 12/12 |
+| Production deploy smoke | ✅ 12/12 |
+| Engine tests | ✅ 60/60 |
+| Lifecycle tests | ✅ 81/81 |
+| Safety tests | ⚠️ Local worker timeout (CI #571 green) |
+| Playwright E2E | ✅ 4/4 public (13 auth-gated skip — expected) |
+| Dry-run merge | ✅ 1 conflict in `market.ts` (resolved) |
+| Schema drift | No schema changes in develop delta |
+
+---
+
+## Feb 16, 2026 (8:45am CST) — CI Fully Green
+
+### Root Cause
+The evaluator's PnL sanity gate (20% discrepancy threshold) was correctly blocking promotion in 3 test scripts that seeded profitable balances without corresponding trade records. The E2E PWA test used `networkidle` which hung on SSE market streams.
+
+### Fixes Applied
+1. **`e2e/smoke.spec.ts`**: `networkidle` → `domcontentloaded` (SSE streams keep network permanently active)
+2. **`verify-safety.ts`**: Added BUY→SELL trade pair ($1,650 realized PnL) + BUY trades for open positions in `test4_evaluatorPositionLeak`
+3. **`verify-lifecycle.ts`**: Added BUY→SELL trade pairs ($1,100 realized PnL each) in phase 3 and phase 5
+
+### CI Results (Run #571)
+- Code Quality ✅ | Unit Tests ✅ | Integration Tests ✅ | Build ✅ | E2E Smoke ✅
+
+---
+
+## Feb 16, 2026 (8:15am CST) — Morning Priority Sweep + CI Consolidation
+
+### What
+Worked through all 4 handoff priorities from the overnight session.
+
+### Priority 1: Sentry ✅
+- Verified `withSentryConfig` wrapper in `next.config.ts` (line 190) — correctly configured
+- Checked Sentry dashboard — zero events, expected since no errors have been triggered yet
+- SDK config confirmed: session replay + privacy masking enabled
+
+### Priority 2: CI Consolidation ✅
+**Finding:** The old `ci.yml` was the more comprehensive workflow (6 jobs: quality, unit test, integration with Postgres/Redis containers, nightly simulation, `next build`, E2E Playwright). The new `test.yml` was a minimal subset (just type-check + vitest). The old one was failing only because of Node 20 + `npm ci` lockfile incompatibility.
+
+**Fix:** Consolidated into single `ci.yml`:
+- Node 20 → 22 across all jobs
+- `npm ci --legacy-peer-deps` → `npm install --ignore-scripts` (5 install steps)
+- Unit test job now excludes `tests/integration.test.ts` (needs DB)
+- Integration job now includes vitest integration test alongside engine/safety/lifecycle verification
+- Fixed stale `NEXTAUTH_URL` → `NEXT_PUBLIC_APP_URL` in build env
+- Deleted redundant `test.yml`
+
+### Priority 3: Soak Test
+48h clock running — ends ~11:28pm CST Feb 17. No action needed.
+
+### Priority 4: Mat's Feedback
+Mat hasn't tested yet — no action needed.
+
+### Other
+Fixed duplicate numbering in CLAUDE.md "New Agent? Start Here" section (two `6.`s and two `7.`s → sequential 6-10).
+
+### Verification
+- `tsc --noEmit`: clean
+- `vitest run --exclude tests/integration.test.ts`: 966 passed, 3 skipped
+
+---
+
+## Feb 16, 2026 (1:35am CST) — GitHub Actions CI: Every Push Now Tested
+
+### What
+Set up `.github/workflows/test.yml` — type-checking + 973 tests run automatically on every push to `develop`/`main` and every PR.
+
+### Pipeline
+1. `tsc --noEmit` (type safety gate)
+2. Unit tests (always run — ~15s)
+3. Integration tests (push only, not PRs — uses real DB via `DATABASE_URL` secret)
+
+### Config decisions
+- Node 22 in CI (local is v24, lockfile format compat)
+- `npm install --ignore-scripts` instead of `npm ci` (npm version lockfile mismatch)
+- Integration tests skipped on PRs (they hit the real Neon DB — don't want forks running trades)
+
+### Verification
+- Tests #118 ✅ passed in 1m 25s
+- Full suite: type check + 973 tests + 7 integration tests
+
+---
+
+## Feb 16, 2026 (1:24am CST) — Sentry Fix: Was Dead Since Feb 7
+
+### What
+`next.config.ts` was missing `withSentryConfig` wrapper. The three Sentry config files (`sentry.client.config.ts`, `sentry.server.config.ts`, `sentry.edge.config.ts`) were dead files — never loaded by Next.js. DSN was set in Vercel env vars on Feb 7 and all `Sentry.captureException`/`captureMessage` calls existed in the code (`invariant.ts`, `alerts.ts`, `ErrorBoundary.tsx`), but the SDK never initialized.
+
+### Root cause
+The previous agent installed `@sentry/nextjs`, created the config files, and set the env vars — but forgot the `withSentryConfig()` wrapper in `next.config.ts` that actually tells Next.js to load them.
+
+### Fix
+Wrapped the final config export: `export default withSentryConfig(pwaConfig, {...})`. No auto-instrumentation (explicit `captureException` calls only). Source maps uploaded and deleted after upload.
+
+### Verification
+- `tsc --noEmit` passes
+- 973 tests pass
+- Pushed to `develop` → Vercel will deploy with Sentry enabled
+
+---
+
+## Feb 16, 2026 (1:03am CST) — Non-Negotiable Testing Gaps Closed
+
+### What
+Extended `tests/integration.test.ts` from 3 → 7 tests:
+- **Balance reconciliation**: mathematical proof that `startingBalance - buys + sellProceeds = currentBalance`
+- **SELL without position** → throws `PositionNotFoundError`
+- **BUY exceeding balance** → throws `InsufficientFundsError`
+- **BUY on near-resolved market (97¢)** → throws `MARKET_RESOLVED`
+
+All 7 pass. Full suite: 64 files, 973 tests, 0 failures.
+
+### Infrastructure Roadmap
+
+**Near-term (next 2-4 weeks):**
+- Error tracking (Sentry) — aggregate errors instead of grep-ing Vercel logs
+- CI running tests on every push (GitHub Actions) — enforce test discipline
+
+**Medium-term (when team grows):**
+- Double-submit / idempotency test — verify `SELECT FOR UPDATE` prevents race conditions
+- Contract test for Gamma API — snapshot test on response shape to catch breaking changes
+
+**Long-term (at scale):**
+- Session replay (PostHog)
+- Property-based fuzzing for financial math
+- Canary deployments
+
+### Tomorrow Morning
+1. **Monitor soak test** — 48h clock still running (ends Feb 17, 11:28pm CST)
+2. No code changes until soak period ends
+
+---
+
+## Feb 16, 2026 (12:47am CST) — Integration Test: Full Trade Pipeline
+
+### What
+Added `tests/integration.test.ts` — an end-to-end test that simulates a real user's first BUY→SELL round-trip through the full trade pipeline against the real Neon DB. Only 6 external API boundaries are mocked; everything else (BalanceManager, PositionManager, RiskEngine, Drizzle transactions) runs for real.
+
+### What it catches that unit tests don't
+- Drizzle schema mismatches (column renamed but query not updated)
+- Transaction isolation bugs (row lock not working)
+- Balance mutation ordering (deduct before credit)
+- Foreign key violations (positionId reference)
+- Type coercion bugs (string "10000" vs number 10000 in currentBalance)
+
+### Bugs found during build
+1. Vitest doesn't load `.env.local` — DB URL fell back to localhost. Fixed in `vitest.config.ts`.
+2. Risk engine dynamically imports `getEventInfoForMarket` — was missing from mock.
+3. `trades` FK to `challenges` is NOT cascade-delete — cleanup needed FK-safe ordering.
+
+### Root cause
+The test build process itself surfaced that our mock boundary was incomplete. Exactly the kind of discovery this test was designed to force.
+
+### Tomorrow Morning
+1. **Monitor soak test** — 48h clock still running (ends Feb 17, 11:28pm CST)
+2. **Phase 2 negative path tests** — SELL with no position, BUY exceeding balance, near-resolved market
+
+---
+
+## Feb 15, 2026 (11:12pm CST) — Phase 5: Cleanup Complete
+
+### What
+Deleted all 5 `[DIAG:]` temporary debug log lines:
+- `market.ts`: 4 lines (orderbook, event_list, gamma, NONE price sources)
+- `dashboard-service.ts`: 1 line (per-position PnL breakdown)
+
+Kept the "no price found" warning but changed prefix from `[DIAG:price]` to `[MarketService]` for production logging.
+
+### Verification
+- ✅ Zero `[DIAG:]` lines in `src/` (grep confirmed)
+- ✅ `tsc --noEmit` — only pre-existing test-only errors (golden-path.test.ts bestBid/bestAsk)
+- ✅ Full test suite: 63 files, 966 tests, 0 failures
+
+---
+
+## Feb 15, 2026 (11:10pm CST) — Phase 4: Single Source of Truth Audit Complete
+
+### What
+Ran 5 grep scans across `src/` for duplicate financial computations:
+
+| Check | Result |
+|---|---|
+| **Equity** | 8 production sites, all use `balance + positionValue` — same formula, different contexts (evaluator, risk, dashboard, workers). No canonical function needed — formula is too simple to abstract. |
+| **Win rate** | ✅ Clean. All callers use `computeWinRate()` from `position-utils.ts`. |
+| **Price validation** | ⚠️ 1 violation found. `balance/route.ts` line 72 used `> 0.01 && < 0.99` instead of the canonical `isValidMarketPrice` (or better, `getPortfolioValue`). Also reimplemented position valuation inline instead of calling `getPortfolioValue`. |
+| **HWM** | ✅ Clean. All refs are comments, DB initialization, or simulation config. No trailing drawdown calc in production. |
+
+### Fix Applied
+Refactored `src/app/api/user/balance/route.ts` to use `getPortfolioValue()` from `position-utils.ts` — the single source of truth for portfolio valuation. Eliminated 20 lines of inline computation.
+
+**Impact**: resolved positions (price 0 or 1) were previously excluded by the `> 0.01 && < 0.99` range check, silently falling back to stale stored prices. Now correctly valued using the canonical `>= 0 && <= 1` range.
+
+### Test Results
+**Full suite: 63 files, 966 tests, 0 failures**
+
+### Tomorrow Morning
+1. **Phase 5** — Delete DIAG logging, final Mat check, commit stabilization baseline
+
+---
+
+## Feb 16, 2026 (11pm CST) — Phase 3: Sanity Gate Complete
+
+### What
+Implemented two sanity gates in `evaluator.ts` before challenge promotion to funded:
+1. **PnL Cross-Reference** — Compares equity-based profit against sum of trade `realizedPnL` + unrealized position PnL. Blocks promotion if discrepancy exceeds 20% of profit target. Fires `PROMOTION_PNL_MISMATCH` critical alert.
+2. **Suspicious Speed Alert** — Flags challenges passed in <24h or with <5 SELL trades. Fires `SUSPICIOUS_SPEED_PASS` warning (does not block).
+
+### Root Cause
+Feb 14 forensics found $1,111 invisible PnL from positions closed without SELL trade records. The sanity gate prevents promotion when trade records don't corroborate the equity-derived profit.
+
+### Test Results
+- `tests/sanity-gate.test.ts` — 15/15 (pure function tests for the gate logic)
+- `tests/lib/evaluator.test.ts` — 26/26 (added `trades.findMany` + `alerts` mocks)
+- `tests/evaluator-integration.test.ts` — 24/24 (same mock pattern)
+- **Full suite: 63 files, 966 tests, 0 failures**
+
+### Design Decisions
+- Fail-closed: if PnL check fails, promotion is blocked (financial security > user convenience)
+- Extracted pure functions (`calculatePnlDiscrepancy`, `detectSuspiciousSpeed`) for isolated testing
+- 20% threshold chosen to allow for floating-point rounding and small timing differences
+
+### Tomorrow Morning
+1. **Phase 4** — Single Source of Truth audit (grep for duplicate equity/win rate/price computations)
+2. **Phase 5** — Cleanup DIAG logging, final Mat check, commit baseline
+
+---
+
+## Feb 15, 2026 (10pm CST) — 72-Hour Bug Retrospective & Stabilization Plan
+
+### What
+Reviewed the full journal (Feb 13–15) and cataloged every bug and fix. 19 distinct bugs across 5 systemic patterns.
+
+### The 5 Patterns
+1. **Hydra Price Bug (7 fixes)** — Same 50¢ phantom price resurfaced 7 times across different layers. Actual root cause: Polymarket CLOB API returns bids ascending/asks descending, code assumed opposite. `book.bids[0]` was the worst bid, not the best → `mid = (0.001 + 0.999) / 2 = 0.50` for every market.
+2. **Settlement Audit Trail (2 fixes)** — Positions closed without SELL trade records → $1,111 invisible PnL.
+3. **Presentation ≠ Engine (5 fixes)** — UI components ignored or miscalculated engine-computed values (wrong dailyPnL variable, unrounded floats, 0% vs "—" win rate, missing direction badges).
+4. **Config/Infra Drift (3 fixes)** — NEXTAUTH env vars missing → prod crash, Resend API key invalid → silent email failure, volume filter thresholds misaligned between ingestion and risk engine.
+5. **Orphaned Features (2 fixes)** — PrivacyTab built but never wired, country flag pipeline ready but ISO column never populated.
+
+### Diagnosis
+The 915 unit tests verify engine math. But no automated test catches regressions at the boundary between engine and UI. Every bug was found by manual exploration, not by guards.
+
+### Plan (5 phases, implementation_plan.md)
+1. **Golden Path E2E test** — one test that exercises login → buy → verify → sell → verify → history (catches 12 of 19 bugs)
+2. **Price Integrity invariants** — order book sort assertion, no-magic-0.5 grep, equity plausibility check
+3. **Challenge Pass sanity gate** — verify PnL matches trade records before promotion, flag suspicious speed
+4. **Single Source of Truth audit** — grep for duplicate computations of equity, win rate, PnL, price validation
+5. **Cleanup + 48h clock** — delete DIAG logging, final Mat check, commit baseline
+
+### Tomorrow Morning
+1. **Phase 1 first** — Golden Path E2E is highest leverage (2 hours, catches 12 bugs retroactively)
+2. **Start 48-hour regression-free clock** — zero financial bug reports for 48h = stabilization complete
+3. **Then** features (leaderboard polish, user onboarding prompts)
+
+---
+
+## Feb 15, 2026 — Regression Smoke Test (Anthropic-Grade)
+
+### What
+Executed a 5-phase programmatic smoke test against production (prop-firmx.vercel.app). No bugs found.
+
+### Methodology
+Not "does it look right" — **"is the math right to the cent, at every layer."**
+
+1. **Baseline Math**: Hit raw APIs, computed `equity = balance + Σ(shares × currentPrice)`. Both positions matched to diff=0.0000.
+2. **Live Trade Cycle**: BUY 7.35 shares @ 68¢ ($5) → SELL @ 67¢. Expected PnL: -$0.0735. Reported: -$0.07. Diff: $0.0035. Position correctly added/removed, balance correct, trade history updated.
+3. **Volume/Price Validation**: 189 market volumes scanned, all >$100K. Zero float artifacts. Zero filler words.
+4. **Privacy/Leaderboard**: 3 privacy tiers functional. Leaderboard sorted by PnL desc. AU flag on Trader confirmed.
+5. **Navigation**: All 10 dashboard routes return 200 OK.
+
+### Key Numbers
+- Equity: $4,990.55 (pre-trade) → $4,990.47 (post-trade, $0.08 spread cost)
+- PnL round-trip diff: $0.0035 (within tolerance)
+- Max Drawdown: 2.36% | Daily Loss: 0%
+- Routes tested: 10/10 healthy
+
+### Root Cause of $100 Equity Delta (Phase 1)
+Initial test script computed equity as `balance + unrealizedPnL`. Platform correctly uses `balance + Σ(shares × currentPrice)`. Not a bug — script error.
+
+### Net Test Cost
+$0.08 (spread on 1 round-trip trade)
+
+### Tomorrow Morning
+1. **All 6 phases green** — nothing blocking.
+2. **Monitor for regressions** — the 50¢ canary, float artifact, and filler word checks should be run periodically.
+
+### Phase 6: Negative Path Guards (added same session)
+Directly hit `/api/trade/execute` with invalid trades to confirm risk engine rejects:
+- `$10,000` → 402 "Insufficient funds" ✅
+- `$600` (exceeds 10% category) → 403 "Max exposure exceeded" ✅
+- `$0` → 400 "Invalid request" ✅
+- `-$100` → 400 "Invalid request" ✅
+
+Balance unchanged through all rejections. 9-layer risk protocol confirmed.
+
+---
+
 ## 2026-02-15 (Late Evening) — Country Flags & Privacy Verification (`560265c`)
 
 ### What Changed
@@ -20,10 +410,12 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 ### Root Cause (Country Flag Gap)
 The `updateAddress` function only set `addressCountry` (full name for shipping) but never set `country` (ISO code for flags). Users could set their address country but never got a leaderboard flag because `country` stayed `null`.
 
+### Backfill Result
+Ran one-time backfill → **0 users needed backfill**. Real users (L M, mat) have no `addressCountry` set at all — the gap is that they haven't filled out their address in Settings yet. Test accounts already had `country` set manually. Timmy Deen correctly skipped (address=US but country=AU from manual testing). Route deleted after use.
+
 ### Tomorrow Morning
-1. **Set L M's country** — Currently `null`. Re-save address to populate ISO code.
-2. **Consider E2E test** — Address save → leaderboard flag round-trip.
-3. **mat's country** — Also `null`. Consider prompting users who have `addressCountry` but missing `country`.
+1. **Prompt L M & mat to set their address** — They have no `addressCountry`, so the ISO derivation has nothing to work from. Once they save an address, the flag pipeline is automatic.
+2. **Consider E2E test** — Address save → leaderboard flag round-trip, to prevent this gap from regressing.
 
 ---
 
@@ -4307,3 +4699,44 @@ Extracted exact DNS records from Resend via browser automation (including handli
 1. **Monitor** — Watch for any new markets that resolve and verify titles persist correctly
 2. **Clean up** — The `/api/user/positions` route is dead code (nothing calls it) — delete it
 3. **Widen coverage** — Consider caching Gamma API titles at settlement time so the backfill pattern isn't needed again
+
+---
+
+## 2026-02-16 — Process Failure: "Market 10190976..." Survived 3 Fix Attempts
+
+### The Problem
+The market title bug ("Market 10190976..." showing a raw ID instead of a title) was declared "fixed ✅" by 3 different agent sessions over 4 days. Each time, the fix was real code — but fixing the WRONG code path.
+
+### Root Cause Analysis (of the Process Failure)
+
+**The codebase has 4 independent title resolution paths:**
+
+| Code Path | UI Component | Used `getBatchTitles()`? |
+|-----------|-------------|--------------------------|
+| `dashboard-service.ts` | Open Positions | ✅ |
+| `/api/trade/positions/route.ts` | Portfolio panel | ✅ (own copy) |
+| `/api/trades/history/route.ts` | **Recent Trades / Trade History** | ❌ own `enrichTrades()` |
+| `market.ts` (MarketService) | Canonical service | ✅ |
+
+Every agent fixed `getBatchTitles()` (the canonical path). But the Recent Trades widget calls `/api/trades/history` → `enrichTrades()` — a COMPLETELY SEPARATE function that only checks Redis events. When a market resolves and gets pruned from Redis, this path falls through to `Market ${id.slice(0,8)}...`.
+
+**Three procedural failures:**
+1. **Grepped for the function name** (`getBatchTitles`) instead of the **bad output string** (`slice(0, 8)`)
+2. **Verified with a passing case** (checked markets still in Redis) instead of the **failing market ID**
+3. **Never traced from pixel → component → API → service → DB** to find which function the UI actually calls
+
+### Fix Applied (to the PROCESS, not the bug)
+1. Added **Step 4: Trace the Full Data Flow** to Bug Fixing Protocol in `CLAUDE.md` — with 4 mandatory sub-steps (grep for bad output, trace backward from pixel, kill duplication, verify with failing input)
+2. Added anti-pattern: **"Fixed the canonical function"** — if the UI calls a different function, you fixed nothing
+3. Created `/fix-bug` workflow (`.agent/workflows/fix-bug.md`) — concrete step-by-step protocol
+
+### Code Fix Applied
+1. **Consolidated `enrichTrades()`** in `/api/trades/history/route.ts` — now uses `MarketService.getBatchTitles()` (Redis + DB fallback) instead of its own Redis-only `getAllMarketData()` lookup ← **this was the exact code path the UI called that every prior fix missed**
+2. **Deleted 75-line duplicate** `getBatchMarketTitles()` in `/api/trade/positions/route.ts` — replaced with single call to `MarketService.getBatchTitles()`
+3. **Net result:** Title resolution now flows through ONE canonical path everywhere. Before: 4 independent paths. After: 1 canonical path + last-resort fallbacks.
+
+**Verification:** Type check ✅ (0 errors), full test suite ✅ (1024 pass, 0 fail)
+
+### Still Needed
+1. **Deploy to staging** and browser verify the specific "Market 10190976..." trade
+2. **Backfill** NULL `marketTitle` rows for pre-migration trades (Gamma API)

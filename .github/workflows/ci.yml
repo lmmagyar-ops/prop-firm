@@ -22,7 +22,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  NODE_VERSION: '20'
+  NODE_VERSION: '22'
 
 jobs:
   quality:
@@ -41,7 +41,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci --legacy-peer-deps
+        run: npm install --ignore-scripts
 
       - name: Type check
         run: npm run type-check
@@ -65,11 +65,11 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci --legacy-peer-deps
+        run: npm install --ignore-scripts
 
       # CI=true triggers vitest.config.ts to skip simulation/ tests
       - name: Run tests
-        run: npm run test -- --run
+        run: npm run test -- --run --exclude tests/integration.test.ts
         env:
           CI: true
 
@@ -123,12 +123,19 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci --legacy-peer-deps
+        run: npm install --ignore-scripts
 
       - name: Push schema to test database
         run: npm run db:push
         env:
           DATABASE_URL: postgres://test:test@localhost:5432/propfirm_test
+
+      - name: Run vitest integration tests
+        run: npx vitest run tests/integration.test.ts
+        env:
+          DATABASE_URL: postgres://test:test@localhost:5432/propfirm_test
+          REDIS_URL: redis://localhost:6379
+          AUTH_SECRET: ci-test-secret
 
       - name: Run engine verification
         run: npx tsx src/scripts/verify-engine.ts
@@ -169,7 +176,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci --legacy-peer-deps
+        run: npm install --ignore-scripts
 
       # Run ONLY simulation tests (CI=false to include them)
       - name: Run simulation tests
@@ -193,7 +200,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci --legacy-peer-deps
+        run: npm install --ignore-scripts
 
       - name: Build application
         run: npm run build
@@ -201,7 +208,7 @@ jobs:
           # Provide dummy env vars for build (real values in Vercel)
           DATABASE_URL: postgres://dummy:dummy@localhost:5432/dummy
           AUTH_SECRET: dummy-secret-for-ci-build
-          NEXTAUTH_URL: http://localhost:3000
+          NEXT_PUBLIC_APP_URL: http://localhost:3000
 
   # E2E smoke tests — run against the built app
   e2e:
@@ -222,7 +229,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci --legacy-peer-deps
+        run: npm install --ignore-scripts
 
       - name: Install Playwright browsers
         run: npx playwright install chromium --with-deps

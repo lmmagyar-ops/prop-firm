@@ -33,18 +33,137 @@
 
 ---
 
+## 🐛 Bug Fixing Protocol (MANDATORY)
+
+> [!CAUTION]
+> **DO NOT skip this section.** Every bug report is treated as evidence of a missing systemic guardrail, not a one-off mistake. The goal is to make the **class of bug impossible**, not just fix the instance.
+
+### Step 1: Ask "Why Was This Possible?"
+
+Before writing any fix, answer: **"What systemic failure allowed this bug to exist?"**
+
+| ❌ Symptom-Level Fix | ✅ Systemic Fix |
+|---|---|
+| Add a `.where()` filter to scope trades | Make `challengeId` `NOT NULL` at the DB level — orphan records become impossible |
+| Tweak the math when risk calc is wrong | Make the system **halt and alert** when input data is missing — wrong answers become impossible |
+| Change a threshold when limits aren't working | Fix the formula to use the correct input (`shares × price` not `sizeAmount`) — the root cause |
+
+### Step 2: Classify the Root Cause
+
+Every bug falls into one of these categories. Fix at the **deepest level possible:**
+
+| Level | Example | Fix Level |
+|---|---|---|
+| **Schema** | Nullable FK allows orphan records | `NOT NULL` constraint |
+| **Invariant** | Function computes on stale data when live data missing | Fail-closed guard (halt + alert) |
+| **Formula** | Uses cost basis instead of notional value | Fix the computation at the source |
+| **Presentation** | CSS truncates text | Fix styling |
+| **Test Gap** | Tests pass but never call the actual function | Replace with behavioral tests |
+
+### Step 3: Check for Mocking Mirages
+
+Before trusting existing tests, verify they actually test real code:
+
+```
+⚠️ MOCKING MIRAGE: A test that passes because mocks mirror assumptions, not reality.
+
+Signs:
+- Test file has vi.mock() but never imports the function under test
+- Assertions are inline arithmetic (expect(100 - 50).toBe(50))
+- Mock data is calibrated to the CURRENT formula (test encodes the bug)
+- Test passes even if you delete the function being "tested"
+```
+
+**If you find a Mocking Mirage:** Delete it. Replace with a behavioral test that imports and calls the actual function with real inputs.
+
+### Step 4: Trace the Full Data Flow (MANDATORY — DO NOT SKIP)
+
+> [!CAUTION]
+> **This step exists because agents "fixed" the market title bug 3 separate times without actually fixing it.** Each time, they fixed a service function that the UI didn't call. The bug survived because nobody traced the data from screen → component → API → service → DB.
+
+**Before writing ANY code, complete this checklist:**
+
+#### 4a. Grep for the bad output, not the function name
+```bash
+# WRONG: Searching for where titles are resolved
+rg "getBatchTitles" src/
+
+# RIGHT: Searching for every place that PRODUCES the bad output
+rg "slice\(0, 8\)" src/        # Find all truncated-ID fallbacks
+rg "Market \$\{" src/           # Find every "Market XXXX..." producer
+```
+**Every result is a code path you must fix.** If there are 4, you fix 4 — not 1.
+
+#### 4b. Trace backward from the pixel
+Start from the UI component showing the bug and trace the EXACT chain:
+1. **Component** — What prop/state renders the bad text?
+2. **Data fetch** — What `apiFetch()` / `fetch()` call populates it?
+3. **API route** — What endpoint serves that data?
+4. **Service function** — What function in the route enriches/transforms it?
+5. **Data source** — Where does the value ultimately come from (DB? Redis? external API)?
+
+**Write this trace in your plan before touching code.** Example:
+```
+RecentTradesWidget → apiFetch('/api/trades/history') → enrichTrades() → getAllMarketData() → Redis only (NO DB fallback)
+```
+
+#### 4c. Kill the duplication
+If you find multiple independent code paths doing the same thing (e.g., 4 separate title resolution functions), the fix is **consolidation**, not patching each one:
+- Identify the canonical implementation (the one with the most complete fallback chain)
+- Replace all other implementations with calls to the canonical one
+- If the canonical implementation is also broken, fix it ONCE
+
+#### 4d. Verify with the FAILING input, not a passing one
+```bash
+# WRONG: "I checked the trade page and titles look fine" (those markets are still in Redis)
+# RIGHT: "I verified market ID 10190976 specifically — it now shows 'Bitcoin price on Feb 16?'"
+```
+Test with the **exact input that was broken**. If a resolved market was missing its title, verify THAT market specifically — not a different market that happens to still be cached.
+
+### Step 5: Verify the Fix Is Constraint-Level
+
+Ask: **"Can this bug recur without a deliberate schema migration or code revert?"**
+
+| Fix Type | Can Recur? | Confidence |
+|---|---|---|
+| `NOT NULL` constraint | Only via migration | ★★★★★ |
+| Fail-closed guard (halt on missing data) | Only if guard removed | ★★★★ |
+| Formula correction | If formula changed again | ★★★ |
+| New test | Only if test deleted | ★★★ |
+| CSS change | Easily | ★★ |
+
+**Prefer database constraints > runtime guards > code fixes > tests > styling.**
+
+### Step 6: Run Full Suite + Browser Smoke
+
+After every fix:
+1. `npm run test` — full suite, not just the file you edited
+2. Browser smoke test if anything touches UI or API responses
+3. If financial: run `/verify-financial` workflow
+
+### Anti-Patterns (Banned)
+
+- **"Just add a filter"** — If data shouldn't exist, prevent it at the schema level
+- **"Silent fallback"** — If a system can't get correct data, it must HALT, not guess
+- **"Fix the test to match the bug"** — If a test fails after your fix, the test was encoding the bug. Update the test expectations, don't revert the fix
+- **"It works on my machine"** — Cross-reference DB, API, and UI. All three must agree
+- **"Fixed the canonical function"** — If the UI calls a DIFFERENT function, you fixed nothing. Trace from the pixel, not from the function name
+
+---
+
 ## 🧠 New Agent? Start Here
 
 1. **Read this file** — full architecture, risk rules, debugging protocols
-2. **Run `npm run test:engine`** — 53 assertions across 11 phases prove the trading engine works
-3. **Run `npm run test:lifecycle`** — 73 assertions across 7 phases prove the full challenge lifecycle
-4. **Run `npm run test:safety`** — 44 assertions proving each critical exploit path (payout, drawdown, transitions) is blocked
-5. **Run `npm run test:financial`** — Financial consistency verification (share counts, PnL cross-checks, risk limit messages)
+2. **If fixing a bug**, read the Bug Fixing Protocol above — mandatory systemic approach, not symptom patching
+3. **Run `npm run test:engine`** — 53 assertions across 11 phases prove the trading engine works
+4. **Run `npm run test:lifecycle`** — 73 assertions across 7 phases prove the full challenge lifecycle
+5. **Run `npm run test:safety`** — 44 assertions proving each critical exploit path (payout, drawdown, transitions) is blocked
+6. **Run `npm run test:financial`** — Financial consistency verification (share counts, PnL cross-checks, risk limit messages)
 6. **If debugging**, follow the "Number Discrepancy Audit" section — step-by-step protocol with symptom → cause lookup
-6. **If data looks wrong**, run `npx tsx scripts/reconcile-positions.ts` to validate positions against trade history
-7. **If using the browser subagent**, read `.agent/workflows/browser-agent.md` first — mandatory constraints to prevent spiraling
-7. **For manual testing**, see `docs/SMOKE_TEST.md` — 15-minute end-to-end checklist
-8. **For history**, see `journal.md` — daily changelog with root causes, commits, and verification results
+7. **If data looks wrong**, run `npx tsx scripts/reconcile-positions.ts` to validate positions against trade history
+8. **If using the browser subagent**, read `.agent/workflows/browser-agent.md` first — mandatory constraints to prevent spiraling
+9. **For manual testing**, see `docs/SMOKE_TEST.md` — 15-minute end-to-end checklist
+10. **For history**, see `journal.md` — daily changelog with root causes, commits, and verification results
 
 | Symptom | First Action | Key File |
 |---------|-------------|----------|
@@ -559,6 +678,17 @@ See `.agent/workflows/deploy.md` for the full deployment workflow.
 | `VERCEL_AUTOMATION_BYPASS_SECRET` | Bypasses Vercel deployment protection for E2E |
 
 **Branch protection:** `main` requires status checks (quality, test, build, e2e). `develop` requires (quality, test).
+
+### Test Accounts (for browser smoke testing)
+
+| Account | Email | Password | Auth Method | Purpose |
+|---------|-------|----------|-------------|---------|
+| **Mat (trader)** | `forexampletrader@gmail.com` | `123456rR` | Google OAuth | Real trader account with positions and trades |
+| **E2E Bot** | `e2e-test@propshot.io` | (see GitHub secret) | Email/Password | Automated E2E tests |
+
+> **Login flow:** The app uses **Google OAuth only** in the UI. To log in as Mat, click "Continue with Google" on `/login`, enter the email and password on Google's auth page. There is NO email/password form in the app itself.
+
+> **Browser agent note:** Set the browser to **desktop width (1280px+)** before testing. Mobile view hides the login button and causes agent confusion.
 
 ---
 
