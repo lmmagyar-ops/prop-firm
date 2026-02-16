@@ -4,6 +4,27 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ---
 
+## Feb 16, 2026 (1:35am CST) — GitHub Actions CI: Every Push Now Tested
+
+### What
+Set up `.github/workflows/test.yml` — type-checking + 973 tests run automatically on every push to `develop`/`main` and every PR.
+
+### Pipeline
+1. `tsc --noEmit` (type safety gate)
+2. Unit tests (always run — ~15s)
+3. Integration tests (push only, not PRs — uses real DB via `DATABASE_URL` secret)
+
+### Config decisions
+- Node 22 in CI (local is v24, lockfile format compat)
+- `npm install --ignore-scripts` instead of `npm ci` (npm version lockfile mismatch)
+- Integration tests skipped on PRs (they hit the real Neon DB — don't want forks running trades)
+
+### Verification
+- Tests #118 ✅ passed in 1m 25s
+- Full suite: type check + 973 tests + 7 integration tests
+
+---
+
 ## Feb 16, 2026 (1:24am CST) — Sentry Fix: Was Dead Since Feb 7
 
 ### What
