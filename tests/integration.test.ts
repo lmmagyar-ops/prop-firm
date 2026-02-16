@@ -367,4 +367,94 @@ describe('Integration: Full Trade Round-Trip', () => {
         expect(buyTrade!.positionId).toBe(sellTrade!.positionId);
         expect(buyTrade!.positionId).not.toBeNull();
     });
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // TEST 4: Balance reconciliation — the accounting identity
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    it('balance reconciliation: startingBalance - buys + sells = currentBalance', async () => {
+        // This is the #1 financial integrity check.
+        // If this fails, money appeared or disappeared.
+        const allTrades = await db
+            .select()
+            .from(trades)
+            .where(eq(trades.challengeId, testChallengeId));
+
+        const [challenge] = await db
+            .select()
+            .from(challenges)
+            .where(eq(challenges.id, testChallengeId));
+
+        const startingBalance = parseFloat(challenge.startingBalance);
+        const currentBalance = parseFloat(challenge.currentBalance);
+
+        // Sum all BUY amounts (money out)
+        const totalBuys = allTrades
+            .filter(t => t.type === 'BUY')
+            .reduce((sum, t) => sum + parseFloat(t.amount), 0);
+
+        // Sum all SELL proceeds: shares × exit price
+        const totalSellProceeds = allTrades
+            .filter(t => t.type === 'SELL')
+            .reduce((sum, t) => sum + parseFloat(t.shares) * parseFloat(t.price), 0);
+
+        // THE ACCOUNTING IDENTITY:
+        // currentBalance = startingBalance - totalBuys + totalSellProceeds
+        const expectedBalance = startingBalance - totalBuys + totalSellProceeds;
+
+        expect(currentBalance).toBeCloseTo(expectedBalance, 1); // Within $0.1
+    });
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // TEST 5: SELL without position → must throw
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    it('SELL with no position throws PositionNotFoundError', async () => {
+        await expect(
+            TradeExecutor.executeTrade(
+                testUserId,
+                testChallengeId,
+                'nonexistent-market-xyz',
+                'SELL',
+                50,
+                'YES',
+                { shares: 10 }
+            )
+        ).rejects.toThrow('not found');
+    });
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // TEST 6: BUY exceeding balance → must throw
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    it('BUY exceeding balance throws InsufficientFundsError', async () => {
+        await expect(
+            TradeExecutor.executeTrade(
+                testUserId,
+                testChallengeId,
+                TEST_MARKET_ID,
+                'BUY',
+                999_999,  // Way more than $10,000 balance
+                'YES'
+            )
+        ).rejects.toThrow('Insufficient funds');
+    });
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // TEST 7: BUY on near-resolved market → must throw
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    it('BUY on near-resolved market (≥95¢) throws MARKET_RESOLVED', async () => {
+        // Override the canonical price mock for this test only
+        const { MarketService } = await import('@/lib/market');
+        vi.mocked(MarketService.getCanonicalPrice).mockResolvedValueOnce(0.97);
+
+        await expect(
+            TradeExecutor.executeTrade(
+                testUserId,
+                testChallengeId,
+                TEST_MARKET_ID,
+                'BUY',
+                50,
+                'YES'
+            )
+        ).rejects.toThrow('nearly resolved');
+    });
 });
+

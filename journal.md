@@ -4,6 +4,32 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ---
 
+## Feb 16, 2026 (12:47am CST) — Integration Test: Full Trade Pipeline
+
+### What
+Added `tests/integration.test.ts` — an end-to-end test that simulates a real user's first BUY→SELL round-trip through the full trade pipeline against the real Neon DB. Only 6 external API boundaries are mocked; everything else (BalanceManager, PositionManager, RiskEngine, Drizzle transactions) runs for real.
+
+### What it catches that unit tests don't
+- Drizzle schema mismatches (column renamed but query not updated)
+- Transaction isolation bugs (row lock not working)
+- Balance mutation ordering (deduct before credit)
+- Foreign key violations (positionId reference)
+- Type coercion bugs (string "10000" vs number 10000 in currentBalance)
+
+### Bugs found during build
+1. Vitest doesn't load `.env.local` — DB URL fell back to localhost. Fixed in `vitest.config.ts`.
+2. Risk engine dynamically imports `getEventInfoForMarket` — was missing from mock.
+3. `trades` FK to `challenges` is NOT cascade-delete — cleanup needed FK-safe ordering.
+
+### Root cause
+The test build process itself surfaced that our mock boundary was incomplete. Exactly the kind of discovery this test was designed to force.
+
+### Tomorrow Morning
+1. **Monitor soak test** — 48h clock still running (ends Feb 17, 11:28pm CST)
+2. **Phase 2 negative path tests** — SELL with no position, BUY exceeding balance, near-resolved market
+
+---
+
 ## Feb 15, 2026 (11:12pm CST) — Phase 5: Cleanup Complete
 
 ### What
