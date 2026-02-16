@@ -20,10 +20,12 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 ### Root Cause (Country Flag Gap)
 The `updateAddress` function only set `addressCountry` (full name for shipping) but never set `country` (ISO code for flags). Users could set their address country but never got a leaderboard flag because `country` stayed `null`.
 
+### Backfill Result
+Ran one-time backfill → **0 users needed backfill**. Real users (L M, mat) have no `addressCountry` set at all — the gap is that they haven't filled out their address in Settings yet. Test accounts already had `country` set manually. Timmy Deen correctly skipped (address=US but country=AU from manual testing). Route deleted after use.
+
 ### Tomorrow Morning
-1. **Set L M's country** — Currently `null`. Re-save address to populate ISO code.
-2. **Consider E2E test** — Address save → leaderboard flag round-trip.
-3. **mat's country** — Also `null`. Consider prompting users who have `addressCountry` but missing `country`.
+1. **Prompt L M & mat to set their address** — They have no `addressCountry`, so the ISO derivation has nothing to work from. Once they save an address, the flag pipeline is automatic.
+2. **Consider E2E test** — Address save → leaderboard flag round-trip, to prevent this gap from regressing.
 
 ---
 
