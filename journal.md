@@ -4,6 +4,27 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ---
 
+## 2026-02-15 (7:30pm CST) — Hardening & Dead Code Cleanup (`c007299`)
+
+### What Changed
+1. **E2E privacy toggle test** — toggled to semi-private, verified settings saved, confirmed leaderboard behavior, reverted to public ✅
+2. **Deleted 3 dead admin routes** (251 lines):
+   - `audit-db` — superseded by `/admin/investigate`
+   - `cleanup-db` — one-time surgical fix, no longer needed
+   - `reset-daily-floor` — dev-only test helper, never used
+3. **Kept 3 admin escape hatches**: `audit-balance`, `fix-balance`, `resurrect-challenge` (legitimate curl-based incident response tools)
+4. **Production smoke test** — Dashboard, Trade, History all rendering cleanly
+
+### Key Finding
+`/api/user/positions` was already deleted in a previous session. The test user (Timmy Deen) correctly doesn't appear on the leaderboard because they have no trades — the leaderboard query joins on trades, so traderless users are excluded by design.
+
+### Tomorrow Morning
+1. **High leverage**: Have Mat (real user) set country in Settings → verify flag on leaderboard
+2. **Medium**: Test privacy toggle with a user who has actual trades to verify anonymization
+3. **Low**: Add "preview" link from Privacy tab → leaderboard
+
+---
+
 ## 2026-02-15 (6:30pm CST) — Verify → Build → Polish Sweep (`bae94d0`)
 
 ### What Changed
