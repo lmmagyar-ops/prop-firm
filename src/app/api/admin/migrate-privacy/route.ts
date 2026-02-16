@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { sql } from "drizzle-orm";
+import { users } from "@/db/schema";
+import { eq, sql } from "drizzle-orm";
 import { createLogger } from "@/lib/logger";
 
 const logger = createLogger("MigratePrivacy");
@@ -14,8 +15,18 @@ const logger = createLogger("MigratePrivacy");
  */
 export async function POST() {
     const session = await auth();
-    if (session?.user?.email !== "les@predictionsfirm.com") {
+
+    if (!session?.user?.id) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Check admin role (matches pattern from other admin endpoints)
+    const user = await db.query.users.findFirst({
+        where: eq(users.id, session.user.id),
+    });
+
+    if (user?.role !== "admin") {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     try {
