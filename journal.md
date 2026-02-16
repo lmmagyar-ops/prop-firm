@@ -4,6 +4,32 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ---
 
+## 2026-02-15 (6:30pm CST) — Verify → Build → Polish Sweep (`bae94d0`)
+
+### What Changed
+1. **Wired orphaned `PrivacyTab.tsx`** into Settings as 4th tab — component was fully built (radio group, switches, privacy tips) but never connected
+2. **Added 3 privacy fields** to `User` type: `leaderboardPrivacy`, `showCountry`, `showStatsPublicly`
+3. **Fixed browser-agent workflow** — added project URLs table to prevent URL guessing (`predictionsfirm.com` → `prop-firmx.vercel.app`)
+
+### Discovery: Three Features Already Built
+- **Custom displayName**: User Info tab already has "Display Name" field → `updateProfile()` saves to DB → leaderboard `COALESCE(display_name, name, 'Trader')` picks it up
+- **Country flags**: Already in both PodiumView and TableView, gated by `showCountry && country`
+- **Privacy API**: `/api/settings/privacy` endpoint already existed with full validation
+
+Only the UI wiring was missing — the PrivacyTab component was orphaned.
+
+### Verified
+- Production Settings page shows 4 tabs: User Info, KYC, Address, Privacy ✅
+- Privacy tab default: "Public" selected, Show Country OFF, Show Performance Stats ON ✅
+- TypeScript clean (`tsc --noEmit`) ✅
+
+### Tomorrow Morning
+1. **High leverage**: Have a real user (mat) set their country in Settings and verify flag appears on leaderboard
+2. **Medium**: Test the full privacy toggle flow — switch to semi_private, check leaderboard hides name, switch back
+3. **Low**: Consider adding a "preview" link from Privacy tab to leaderboard so users see their changes instantly
+
+---
+
 ## 2026-02-15 (5:55pm CST) — Privacy Defaults Fix (`3ff4c6a`)
 
 ### What Changed
