@@ -211,6 +211,49 @@ async function phase3() {
         currentBalance: '11100', // $1,100 profit — above $1,000 target
     });
 
+    // Seed trade history so the evaluator's PnL sanity gate can cross-reference.
+    // Without trades, the gate correctly blocks promotion: $1,100 balance profit
+    // with $0 trade-derived profit = 110% discrepancy (threshold is 20%).
+    const [closedPos] = await db.insert(positions).values({
+        challengeId: cid,
+        marketId: 'lifecycle-prior-closed-market',
+        direction: 'YES',
+        sizeAmount: '900.00',
+        shares: '2000.00',
+        entryPrice: '0.4500',
+        currentPrice: '1.0000',
+        closedPrice: '1.0000',
+        closedAt: new Date(Date.now() - 3600_000),
+        pnl: '1100.00',
+        status: 'CLOSED',
+    }).returning();
+
+    await db.insert(trades).values({
+        positionId: closedPos.id,
+        challengeId: cid,
+        marketId: 'lifecycle-prior-closed-market',
+        type: 'BUY',
+        direction: 'YES',
+        price: '0.4500',
+        amount: '900.00',
+        shares: '2000.00',
+        executedAt: new Date(Date.now() - 7200_000),
+    });
+
+    await db.insert(trades).values({
+        positionId: closedPos.id,
+        challengeId: cid,
+        marketId: 'lifecycle-prior-closed-market',
+        type: 'SELL',
+        direction: 'YES',
+        price: '1.0000',
+        amount: '2000.00',
+        shares: '2000.00',
+        realizedPnL: '1100.00',
+        closureReason: 'user_close',
+        executedAt: new Date(Date.now() - 3600_000),
+    });
+
     // Evaluator should detect profit target hit
     const result = await ChallengeEvaluator.evaluate(cid);
     assert(result.status === 'passed', `Evaluator returned '${result.status}' (expected 'passed')`);
@@ -315,7 +358,51 @@ async function phase5() {
     // Wait for fire-and-forget post-trade evaluate() to settle before mutating balance
     await new Promise(r => setTimeout(r, 600));
 
-    // Simulate accumulated cash profits from other trades
+    // Simulate accumulated cash profits from other trades.
+    // The sanity gate cross-references realized PnL from trade records against
+    // equity-derived profit. Raw balance manipulation without trade records
+    // triggers the gate (correctly). Add a closed position with trades to explain
+    // the cash increase from ~$9,800 → $10,900 ($1,100 profit).
+    const [closedPos5] = await db.insert(positions).values({
+        challengeId: cid,
+        marketId: 'lifecycle-p5-prior-market',
+        direction: 'YES',
+        sizeAmount: '900.00',
+        shares: '2000.00',
+        entryPrice: '0.4500',
+        currentPrice: '1.0000',
+        closedPrice: '1.0000',
+        closedAt: new Date(Date.now() - 3600_000),
+        pnl: '1100.00',
+        status: 'CLOSED',
+    }).returning();
+
+    await db.insert(trades).values({
+        positionId: closedPos5.id,
+        challengeId: cid,
+        marketId: 'lifecycle-p5-prior-market',
+        type: 'BUY',
+        direction: 'YES',
+        price: '0.4500',
+        amount: '900.00',
+        shares: '2000.00',
+        executedAt: new Date(Date.now() - 7200_000),
+    });
+
+    await db.insert(trades).values({
+        positionId: closedPos5.id,
+        challengeId: cid,
+        marketId: 'lifecycle-p5-prior-market',
+        type: 'SELL',
+        direction: 'YES',
+        price: '1.0000',
+        amount: '2000.00',
+        shares: '2000.00',
+        realizedPnL: '1100.00',
+        closureReason: 'user_close',
+        executedAt: new Date(Date.now() - 3600_000),
+    });
+
     // Cash $10,800 + position ~$200 ≈ $11,000 → target hit ($1,000 profit)
     await db.update(challenges)
         .set({ currentBalance: '10900' })
