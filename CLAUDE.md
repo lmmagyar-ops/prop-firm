@@ -78,7 +78,51 @@ Signs:
 
 **If you find a Mocking Mirage:** Delete it. Replace with a behavioral test that imports and calls the actual function with real inputs.
 
-### Step 4: Verify the Fix Is Constraint-Level
+### Step 4: Trace the Full Data Flow (MANDATORY — DO NOT SKIP)
+
+> [!CAUTION]
+> **This step exists because agents "fixed" the market title bug 3 separate times without actually fixing it.** Each time, they fixed a service function that the UI didn't call. The bug survived because nobody traced the data from screen → component → API → service → DB.
+
+**Before writing ANY code, complete this checklist:**
+
+#### 4a. Grep for the bad output, not the function name
+```bash
+# WRONG: Searching for where titles are resolved
+rg "getBatchTitles" src/
+
+# RIGHT: Searching for every place that PRODUCES the bad output
+rg "slice\(0, 8\)" src/        # Find all truncated-ID fallbacks
+rg "Market \$\{" src/           # Find every "Market XXXX..." producer
+```
+**Every result is a code path you must fix.** If there are 4, you fix 4 — not 1.
+
+#### 4b. Trace backward from the pixel
+Start from the UI component showing the bug and trace the EXACT chain:
+1. **Component** — What prop/state renders the bad text?
+2. **Data fetch** — What `apiFetch()` / `fetch()` call populates it?
+3. **API route** — What endpoint serves that data?
+4. **Service function** — What function in the route enriches/transforms it?
+5. **Data source** — Where does the value ultimately come from (DB? Redis? external API)?
+
+**Write this trace in your plan before touching code.** Example:
+```
+RecentTradesWidget → apiFetch('/api/trades/history') → enrichTrades() → getAllMarketData() → Redis only (NO DB fallback)
+```
+
+#### 4c. Kill the duplication
+If you find multiple independent code paths doing the same thing (e.g., 4 separate title resolution functions), the fix is **consolidation**, not patching each one:
+- Identify the canonical implementation (the one with the most complete fallback chain)
+- Replace all other implementations with calls to the canonical one
+- If the canonical implementation is also broken, fix it ONCE
+
+#### 4d. Verify with the FAILING input, not a passing one
+```bash
+# WRONG: "I checked the trade page and titles look fine" (those markets are still in Redis)
+# RIGHT: "I verified market ID 10190976 specifically — it now shows 'Bitcoin price on Feb 16?'"
+```
+Test with the **exact input that was broken**. If a resolved market was missing its title, verify THAT market specifically — not a different market that happens to still be cached.
+
+### Step 5: Verify the Fix Is Constraint-Level
 
 Ask: **"Can this bug recur without a deliberate schema migration or code revert?"**
 
@@ -92,7 +136,7 @@ Ask: **"Can this bug recur without a deliberate schema migration or code revert?
 
 **Prefer database constraints > runtime guards > code fixes > tests > styling.**
 
-### Step 5: Run Full Suite + Browser Smoke
+### Step 6: Run Full Suite + Browser Smoke
 
 After every fix:
 1. `npm run test` — full suite, not just the file you edited
@@ -105,6 +149,7 @@ After every fix:
 - **"Silent fallback"** — If a system can't get correct data, it must HALT, not guess
 - **"Fix the test to match the bug"** — If a test fails after your fix, the test was encoding the bug. Update the test expectations, don't revert the fix
 - **"It works on my machine"** — Cross-reference DB, API, and UI. All three must agree
+- **"Fixed the canonical function"** — If the UI calls a DIFFERENT function, you fixed nothing. Trace from the pixel, not from the function name
 
 ---
 
@@ -636,6 +681,17 @@ See `.agent/workflows/deploy.md` for the full deployment workflow.
 | `VERCEL_AUTOMATION_BYPASS_SECRET` | Bypasses Vercel deployment protection for E2E |
 
 **Branch protection:** `main` requires status checks (quality, test, build, e2e). `develop` requires (quality, test).
+
+### Test Accounts (for browser smoke testing)
+
+| Account | Email | Password | Auth Method | Purpose |
+|---------|-------|----------|-------------|---------|
+| **Mat (trader)** | `forexampletrader@gmail.com` | `123456rR` | Google OAuth | Real trader account with positions and trades |
+| **E2E Bot** | `e2e-test@propshot.io` | (see GitHub secret) | Email/Password | Automated E2E tests |
+
+> **Login flow:** The app uses **Google OAuth only** in the UI. To log in as Mat, click "Continue with Google" on `/login`, enter the email and password on Google's auth page. There is NO email/password form in the app itself.
+
+> **Browser agent note:** Set the browser to **desktop width (1280px+)** before testing. Mobile view hides the login button and causes agent confusion.
 
 ---
 

@@ -16,7 +16,7 @@ export default async function TradeHistoryPage() {
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-bold text-white">Trade History</h1>
-                    <p className="text-zinc-500 text-sm mt-1">All your trades across active and past challenges</p>
+                    <p className="text-zinc-500 text-sm mt-1">Your trades for the current evaluation</p>
                 </div>
             </div>
 

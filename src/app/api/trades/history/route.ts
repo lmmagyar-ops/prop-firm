@@ -4,19 +4,26 @@ import { db } from "@/db";
 import { trades, challenges } from "@/db/schema";
 import { eq, desc, and } from "drizzle-orm";
 import { getAllMarketData } from "@/lib/worker-client";
+import { MarketService } from "@/lib/market";
 import { createLogger } from "@/lib/logger";
 const logger = createLogger("History");
 
-// Enrich trade records with market titles from worker HTTP API
+// Enrich trade records with market titles + event metadata
+// Title resolution uses the CANONICAL MarketService.getBatchTitles() (Redis + DB fallback).
+// Event metadata (eventTitle, image) comes from live event lists only (display-only, no fallback needed).
 async function enrichTrades(tradeRecords: (typeof trades.$inferSelect)[]) {
+    // 1. Canonical title resolution (Redis + DB fallback — handles resolved markets)
+    const marketIds = [...new Set(tradeRecords.map(t => t.marketId))];
+    const titleMap = await MarketService.getBatchTitles(marketIds);
+
+    // 2. Event metadata (display-only — eventTitle, image)
     const data = await getAllMarketData();
     const events = data?.events ? (data.events as { markets?: { id: string; question?: string; title?: string }[]; title?: string; image?: string }[]) : [];
 
-    const marketLookup: Record<string, { title: string; eventTitle: string; image?: string }> = {};
+    const eventMetadata: Record<string, { eventTitle: string; image?: string }> = {};
     for (const event of events) {
         for (const market of event.markets || []) {
-            marketLookup[market.id] = {
-                title: market.question || market.title || "",
+            eventMetadata[market.id] = {
                 eventTitle: event.title || "",
                 image: event.image
             };
@@ -26,10 +33,10 @@ async function enrichTrades(tradeRecords: (typeof trades.$inferSelect)[]) {
     return tradeRecords.map(trade => ({
         id: trade.id,
         marketId: trade.marketId,
-        // Prefer DB-stored title (permanent) → Redis lookup (transient) → truncated ID (last resort)
-        marketTitle: trade.marketTitle || marketLookup[trade.marketId]?.title || `Market ${trade.marketId.slice(0, 8)}...`,
-        eventTitle: marketLookup[trade.marketId]?.eventTitle,
-        image: marketLookup[trade.marketId]?.image,
+        // Canonical title: DB-stored (permanent) → Redis (transient) → DB fallback (other trades) → truncated ID
+        marketTitle: titleMap.get(trade.marketId) || trade.marketTitle || `Market ${trade.marketId.slice(0, 8)}...`,
+        eventTitle: eventMetadata[trade.marketId]?.eventTitle,
+        image: eventMetadata[trade.marketId]?.image,
         type: trade.type,
         price: parseFloat(trade.price),
         amount: parseFloat(trade.amount),

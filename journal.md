@@ -4699,3 +4699,44 @@ Extracted exact DNS records from Resend via browser automation (including handli
 1. **Monitor** — Watch for any new markets that resolve and verify titles persist correctly
 2. **Clean up** — The `/api/user/positions` route is dead code (nothing calls it) — delete it
 3. **Widen coverage** — Consider caching Gamma API titles at settlement time so the backfill pattern isn't needed again
+
+---
+
+## 2026-02-16 — Process Failure: "Market 10190976..." Survived 3 Fix Attempts
+
+### The Problem
+The market title bug ("Market 10190976..." showing a raw ID instead of a title) was declared "fixed ✅" by 3 different agent sessions over 4 days. Each time, the fix was real code — but fixing the WRONG code path.
+
+### Root Cause Analysis (of the Process Failure)
+
+**The codebase has 4 independent title resolution paths:**
+
+| Code Path | UI Component | Used `getBatchTitles()`? |
+|-----------|-------------|--------------------------|
+| `dashboard-service.ts` | Open Positions | ✅ |
+| `/api/trade/positions/route.ts` | Portfolio panel | ✅ (own copy) |
+| `/api/trades/history/route.ts` | **Recent Trades / Trade History** | ❌ own `enrichTrades()` |
+| `market.ts` (MarketService) | Canonical service | ✅ |
+
+Every agent fixed `getBatchTitles()` (the canonical path). But the Recent Trades widget calls `/api/trades/history` → `enrichTrades()` — a COMPLETELY SEPARATE function that only checks Redis events. When a market resolves and gets pruned from Redis, this path falls through to `Market ${id.slice(0,8)}...`.
+
+**Three procedural failures:**
+1. **Grepped for the function name** (`getBatchTitles`) instead of the **bad output string** (`slice(0, 8)`)
+2. **Verified with a passing case** (checked markets still in Redis) instead of the **failing market ID**
+3. **Never traced from pixel → component → API → service → DB** to find which function the UI actually calls
+
+### Fix Applied (to the PROCESS, not the bug)
+1. Added **Step 4: Trace the Full Data Flow** to Bug Fixing Protocol in `CLAUDE.md` — with 4 mandatory sub-steps (grep for bad output, trace backward from pixel, kill duplication, verify with failing input)
+2. Added anti-pattern: **"Fixed the canonical function"** — if the UI calls a different function, you fixed nothing
+3. Created `/fix-bug` workflow (`.agent/workflows/fix-bug.md`) — concrete step-by-step protocol
+
+### Code Fix Applied
+1. **Consolidated `enrichTrades()`** in `/api/trades/history/route.ts` — now uses `MarketService.getBatchTitles()` (Redis + DB fallback) instead of its own Redis-only `getAllMarketData()` lookup ← **this was the exact code path the UI called that every prior fix missed**
+2. **Deleted 75-line duplicate** `getBatchMarketTitles()` in `/api/trade/positions/route.ts` — replaced with single call to `MarketService.getBatchTitles()`
+3. **Net result:** Title resolution now flows through ONE canonical path everywhere. Before: 4 independent paths. After: 1 canonical path + last-resort fallbacks.
+
+**Verification:** Type check ✅ (0 errors), full test suite ✅ (1024 pass, 0 fail)
+
+### Still Needed
+1. **Deploy to staging** and browser verify the specific "Market 10190976..." trade
+2. **Backfill** NULL `marketTitle` rows for pre-migration trades (Gamma API)
