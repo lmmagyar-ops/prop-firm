@@ -6,6 +6,16 @@ description: Rules for using the browser subagent effectively without it going o
 
 The browser subagent is powerful but prone to spiraling if not given tight constraints. Follow these rules EVERY TIME you invoke it.
 
+## Project URLs (ALWAYS use these — NEVER guess)
+
+| Environment | Base URL |
+|---|---|
+| **Production** | `https://prop-firmx.vercel.app` |
+| **Staging (develop)** | `https://prop-firmx-git-develop-oversightresearch-4292s-projects.vercel.app` |
+| **Gamma API** | `https://gamma-api.polymarket.com` |
+
+When constructing browser tasks, always use the exact URLs above. Never invent domain names like `predictionsfirm.com` or `app.predictionsfirm.com`.
+
 ## Task Description Template
 
 Always structure your browser subagent task description like this:
