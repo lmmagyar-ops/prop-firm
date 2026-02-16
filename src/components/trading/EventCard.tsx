@@ -127,7 +127,7 @@ function OutcomeRow({ market, label, onSelect }: OutcomeRowProps) {
             onClick={onSelect}
             className="w-full px-4 py-3 flex items-center justify-between hover:bg-white/5 transition-colors group"
         >
-            <span className="text-sm text-zinc-300 group-hover:text-white truncate flex-1 text-left">
+            <span className="text-sm text-zinc-300 group-hover:text-white line-clamp-2 flex-1 text-left">
                 {label}
             </span>
             <div className="flex items-center gap-3">

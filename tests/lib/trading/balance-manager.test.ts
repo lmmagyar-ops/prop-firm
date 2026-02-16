@@ -217,3 +217,86 @@ describe("BalanceManager round-trip", () => {
         expect(afterCredit).toBe(10000);
     });
 });
+
+// =====================================================================
+// adjustBalance (used by settlement service)
+// =====================================================================
+describe("BalanceManager.adjustBalance", () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it("positive delta credits correctly", async () => {
+        const tx = createMockTx("10000");
+
+        const newBalance = await BalanceManager.adjustBalance(tx, "ch-1", 500, "settlement");
+
+        expect(newBalance).toBe(10500);
+
+        const setCall = (tx.update as unknown as Mock).mock.results[0].value.set.mock.calls[0][0];
+        expect(setCall.currentBalance).toBe("10500");
+    });
+
+    it("negative delta debits correctly", async () => {
+        const tx = createMockTx("10000");
+
+        const newBalance = await BalanceManager.adjustBalance(tx, "ch-1", -200, "fee");
+
+        expect(newBalance).toBe(9800);
+    });
+
+    it("rejects overdraft — negative balance guard", async () => {
+        const tx = createMockTx("100");
+
+        await expect(
+            BalanceManager.adjustBalance(tx, "ch-1", -15000, "fee")
+        ).rejects.toThrow("Balance would go negative");
+
+        expect(mockLogger.error).toHaveBeenCalledWith(
+            "BLOCKED negative balance", null,
+            expect.objectContaining({ challengeId: "ch-1" })
+        );
+    });
+
+    it("produces forensic log with correct operation type", async () => {
+        const tx = createMockTx("5000");
+
+        await BalanceManager.adjustBalance(tx, "ch-1", 300, "market_settlement");
+
+        expect(mockLogger.info).toHaveBeenCalledWith(
+            "Balance update",
+            expect.objectContaining({
+                operation: "CREDIT",
+                source: "market_settlement",
+            })
+        );
+    });
+
+    it("logs DEDUCT for negative delta", async () => {
+        const tx = createMockTx("5000");
+
+        await BalanceManager.adjustBalance(tx, "ch-1", -100, "fee");
+
+        expect(mockLogger.info).toHaveBeenCalledWith(
+            "Balance update",
+            expect.objectContaining({
+                operation: "DEDUCT",
+            })
+        );
+    });
+
+    it("throws when challenge not found", async () => {
+        const tx = {
+            query: {
+                challenges: {
+                    findFirst: vi.fn().mockResolvedValue(null),
+                },
+            },
+            update: vi.fn(),
+        };
+
+        await expect(
+            BalanceManager.adjustBalance(tx as unknown as Transaction, "nonexistent", 100, "test")
+        ).rejects.toThrow("Challenge not found");
+    });
+});

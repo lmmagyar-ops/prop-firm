@@ -285,7 +285,7 @@ describe("RiskEngine.validateTrade", () => {
 
         // Existing positions in Politics category (in different market)
         const existingPositions = [
-            { marketId: "politics-1", sizeAmount: "800", status: "OPEN" }
+            { marketId: "politics-1", sizeAmount: "800", shares: "1000", entryPrice: "0.8000", status: "OPEN" }
         ];
 
         const markets = [

@@ -35,13 +35,87 @@
 
 ---
 
+## 🐛 Bug Fixing Protocol (MANDATORY)
+
+> [!CAUTION]
+> **DO NOT skip this section.** Every bug report is treated as evidence of a missing systemic guardrail, not a one-off mistake. The goal is to make the **class of bug impossible**, not just fix the instance.
+
+### Step 1: Ask "Why Was This Possible?"
+
+Before writing any fix, answer: **"What systemic failure allowed this bug to exist?"**
+
+| ❌ Symptom-Level Fix | ✅ Systemic Fix |
+|---|---|
+| Add a `.where()` filter to scope trades | Make `challengeId` `NOT NULL` at the DB level — orphan records become impossible |
+| Tweak the math when risk calc is wrong | Make the system **halt and alert** when input data is missing — wrong answers become impossible |
+| Change a threshold when limits aren't working | Fix the formula to use the correct input (`shares × price` not `sizeAmount`) — the root cause |
+
+### Step 2: Classify the Root Cause
+
+Every bug falls into one of these categories. Fix at the **deepest level possible:**
+
+| Level | Example | Fix Level |
+|---|---|---|
+| **Schema** | Nullable FK allows orphan records | `NOT NULL` constraint |
+| **Invariant** | Function computes on stale data when live data missing | Fail-closed guard (halt + alert) |
+| **Formula** | Uses cost basis instead of notional value | Fix the computation at the source |
+| **Presentation** | CSS truncates text | Fix styling |
+| **Test Gap** | Tests pass but never call the actual function | Replace with behavioral tests |
+
+### Step 3: Check for Mocking Mirages
+
+Before trusting existing tests, verify they actually test real code:
+
+```
+⚠️ MOCKING MIRAGE: A test that passes because mocks mirror assumptions, not reality.
+
+Signs:
+- Test file has vi.mock() but never imports the function under test
+- Assertions are inline arithmetic (expect(100 - 50).toBe(50))
+- Mock data is calibrated to the CURRENT formula (test encodes the bug)
+- Test passes even if you delete the function being "tested"
+```
+
+**If you find a Mocking Mirage:** Delete it. Replace with a behavioral test that imports and calls the actual function with real inputs.
+
+### Step 4: Verify the Fix Is Constraint-Level
+
+Ask: **"Can this bug recur without a deliberate schema migration or code revert?"**
+
+| Fix Type | Can Recur? | Confidence |
+|---|---|---|
+| `NOT NULL` constraint | Only via migration | ★★★★★ |
+| Fail-closed guard (halt on missing data) | Only if guard removed | ★★★★ |
+| Formula correction | If formula changed again | ★★★ |
+| New test | Only if test deleted | ★★★ |
+| CSS change | Easily | ★★ |
+
+**Prefer database constraints > runtime guards > code fixes > tests > styling.**
+
+### Step 5: Run Full Suite + Browser Smoke
+
+After every fix:
+1. `npm run test` — full suite, not just the file you edited
+2. Browser smoke test if anything touches UI or API responses
+3. If financial: run `/verify-financial` workflow
+
+### Anti-Patterns (Banned)
+
+- **"Just add a filter"** — If data shouldn't exist, prevent it at the schema level
+- **"Silent fallback"** — If a system can't get correct data, it must HALT, not guess
+- **"Fix the test to match the bug"** — If a test fails after your fix, the test was encoding the bug. Update the test expectations, don't revert the fix
+- **"It works on my machine"** — Cross-reference DB, API, and UI. All three must agree
+
+---
+
 ## 🧠 New Agent? Start Here
 
 1. **Read this file** — full architecture, risk rules, debugging protocols
-2. **Run `npm run test:engine`** — 53 assertions across 11 phases prove the trading engine works
-3. **Run `npm run test:lifecycle`** — 73 assertions across 7 phases prove the full challenge lifecycle
-4. **Run `npm run test:safety`** — 44 assertions proving each critical exploit path (payout, drawdown, transitions) is blocked
-5. **Run `npm run test:financial`** — Financial consistency verification (share counts, PnL cross-checks, risk limit messages)
+2. **If fixing a bug**, read the Bug Fixing Protocol above — mandatory systemic approach, not symptom patching
+3. **Run `npm run test:engine`** — 53 assertions across 11 phases prove the trading engine works
+4. **Run `npm run test:lifecycle`** — 73 assertions across 7 phases prove the full challenge lifecycle
+5. **Run `npm run test:safety`** — 44 assertions proving each critical exploit path (payout, drawdown, transitions) is blocked
+6. **Run `npm run test:financial`** — Financial consistency verification (share counts, PnL cross-checks, risk limit messages)
 6. **If debugging**, follow the "Number Discrepancy Audit" section — step-by-step protocol with symptom → cause lookup
 7. **If data looks wrong**, run `npx tsx scripts/reconcile-positions.ts` to validate positions against trade history
 8. **If using the browser subagent**, read `.agent/workflows/browser-agent.md` first — mandatory constraints to prevent spiraling

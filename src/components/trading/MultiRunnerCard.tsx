@@ -152,7 +152,7 @@ const OutcomeRow = memo(function OutcomeRow({ market, label, onTrade }: OutcomeR
         <div className="px-4 py-2.5 flex items-center gap-2 hover:bg-white/5 transition-colors group border-b border-white/5 last:border-0">
             {/* Outcome Label + Probability */}
             <div className="flex items-center gap-2 flex-1 min-w-0 overflow-hidden">
-                <span className="text-[13px] font-medium text-zinc-300 group-hover:text-primary truncate transition-colors">
+                <span className="text-[13px] font-medium text-zinc-300 group-hover:text-primary line-clamp-2 transition-colors">
                     {label}
                 </span>
                 <span className={cn("text-[13px] font-bold tabular-nums shrink-0 opacity-80", getColor(market.price))}>

@@ -458,7 +458,7 @@ export class RiskEngine {
     // ─── Category exposure (in-memory, using pre-fetched positions) ──
 
     private static getCategoryExposureFromCache(
-        openPositions: { marketId: string; sizeAmount: string }[],
+        openPositions: { marketId: string; sizeAmount: string; shares: string; entryPrice: string }[],
         category: string,
         markets: MarketMetadata[]
     ): number {
@@ -469,7 +469,11 @@ export class RiskEngine {
                 ? market.categories
                 : this.inferCategoriesFromTitle(market?.question || "");
             if (marketCategories.includes(category)) {
-                totalExposure += parseFloat(pos.sizeAmount);
+                // Use notional value (shares × entry price) not cost basis (sizeAmount).
+                // sizeAmount understates exposure when prices move.
+                const shares = parseFloat(pos.shares);
+                const price = parseFloat(pos.entryPrice);
+                totalExposure += shares * price;
             }
         }
         return totalExposure;

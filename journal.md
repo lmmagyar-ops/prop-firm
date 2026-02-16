@@ -4,7 +4,73 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ---
 
+## Feb 17, 2026 — Anthropic-Grade Test Gap Closure
+
+### Audit Results
+Audited all 102 test files against 5 criteria: mocking mirages, silent catches, `any` types, fail-closed coverage, and contract consistency. Found 5 gaps ranked by financial risk.
+
+### Tests Written (44 new, total: 1024)
+
+| File | Tests | What It Covers |
+|------|-------|----------------|
+| `tests/lib/settlement.test.ts` | 9 | PnL formula, NO direction inversion, double-settlement guard, error isolation |
+| `tests/lib/trading/balance-manager.test.ts` | +6 | `adjustBalance` — credit, debit, overdraft guard, forensic logs |
+| `tests/workers/market-integrity.test.ts` | 7 | Open-position guard: resolved markets with positions stay in Redis |
+| `tests/equity-consistency.test.ts` | 7 | Contract test: all 3 equity formulas (position-utils, evaluator, risk-monitor) agree |
+| `tests/lib/polymarket-oracle.test.ts` | 15 | Resolution parsing: closed, UMA, price-based, malformed data, API errors, caching |
+
+### Key Findings
+- **Equity formulas are consistent** across all 6 scenarios (YES, NO, mixed, boundary prices)
+- **NaN divergence documented**: `getPortfolioValue` falls back to entryPrice (not currentPrice) on invalid live price
+- **Zero mocking mirages, zero silent catches, zero `any` types** in `src/lib/` production code
+
+### Tomorrow Morning
+1. **Deploy** — merge `develop` → `main`, push schema migration first
+2. **Monitor Sentry** for 10 minutes post-deploy
+3. Consider extracting evaluator/risk-monitor inline equity formulas to use `getPortfolioValue()` (consistency debt)
+
+---
+
+## Feb 17, 2026 — Systemic Bug Hardening (Mat's Triage)
+
+### Root Causes Identified
+5 bugs reported by Mat traced to 3 systemic failures:
+1. **Silent fallbacks**: Risk monitor fell back to entry prices when live data missing — masked real drawdowns
+2. **Missing DB constraints**: `challengeId` nullable on positions/trades → orphan records, cross-challenge data leakage
+3. **Cost basis vs notional**: Category exposure used `sizeAmount` (dollars invested) not `shares × price` (current value)
+
+### Changes Made (6 Phases)
+
+| Phase | File | Change |
+|---|---|---|
+| 1 | `risk-monitor.ts` | Fail-closed: halt on missing prices + Redis heartbeat |
+| 1 | `market-integrity.ts` | Open-position guard before pruning resolved markets |
+| 2 | `schema.ts` | `NOT NULL` on `positions.challengeId` + `trades.challengeId` |
+| 3 | `api/trades/history/route.ts` | Default to active challenge (was: all challenges) |
+| 4 | `risk.ts` | `getCategoryExposureFromCache` → `shares × entryPrice` |
+| 5 | `EventCard.tsx` + `MultiRunnerCard.tsx` | `line-clamp-2` replaces `truncate` |
+| 6 | `risk-monitor.test.ts` | Replaced 259-line Mocking Mirage with 21 behavioral tests |
+| 6 | `risk.test.ts` | Updated category exposure mock for new formula |
+
+### Test Results
+- **980/980 passed**, 0 failed, 3 skipped
+
+### Tomorrow Morning
+
+**Priority 1: Deploy schema change** (leverage: highest, risk: medium)
+- Verify no null `challengeId` rows exist in prod before pushing schema
+- Run: `SELECT COUNT(*) FROM positions WHERE challenge_id IS NULL; SELECT COUNT(*) FROM trades WHERE challenge_id IS NULL;`
+- If zeros → safe to `npx drizzle-kit push`
+- If not → backfill first, then push
+
+**Priority 2: Browser smoke test** (leverage: high, risk: low)
+- Verify text truncation fix on market cards
+- Verify trade history only shows active challenge trades
+
+---
+
 ## Tomorrow Morning (Feb 17, 2026)
+
 
 **Priority 1: Execute Merge** (leverage: highest, risk: low)
 - Soak test ends ~11:28pm CST tonight

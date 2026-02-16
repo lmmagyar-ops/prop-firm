@@ -77,37 +77,50 @@ export async function GET(req: Request) {
             return NextResponse.json({ trades: await enrichTrades(tradeRecords) });
         }
 
-        // No specific challenge — fetch trades from ALL user challenges
-        // (The page says "All your trades across active and past challenges")
-        const userChallenges = await db
+        // No specific challenge — default to the ACTIVE challenge, not all challenges.
+        // This prevents trades from old evaluations bleeding into the current view.
+        const activeChallenge = await db
             .select({ id: challenges.id })
             .from(challenges)
-            .where(eq(challenges.userId, session.user.id));
+            .where(and(
+                eq(challenges.userId, session.user.id),
+                eq(challenges.status, 'active')
+            ))
+            .limit(1);
 
-        if (userChallenges.length === 0) {
-            return NextResponse.json({ trades: [] });
-        }
+        // If user has an active challenge, scope to it
+        const scopeId = activeChallenge[0]?.id;
+        if (!scopeId) {
+            // No active challenge — return most recent trades from ANY challenge as fallback
+            const userChallenges = await db
+                .select({ id: challenges.id })
+                .from(challenges)
+                .where(eq(challenges.userId, session.user.id))
+                .limit(1);
 
-        // Fetch trades from all challenges
-        const allTrades = [];
-        for (const c of userChallenges) {
-            const cTrades = await db
+            if (userChallenges.length === 0) {
+                return NextResponse.json({ trades: [] });
+            }
+
+            // Fallback: return trades from the most recent challenge
+            const fallbackTrades = await db
                 .select()
                 .from(trades)
-                .where(eq(trades.challengeId, c.id))
-                .orderBy(desc(trades.executedAt));
-            allTrades.push(...cTrades);
+                .where(eq(trades.challengeId, userChallenges[0].id))
+                .orderBy(desc(trades.executedAt))
+                .limit(limit);
+
+            return NextResponse.json({ trades: await enrichTrades(fallbackTrades) });
         }
 
-        // Sort all trades by date descending and limit
-        allTrades.sort((a, b) => {
-            const ta = a.executedAt ? new Date(a.executedAt).getTime() : 0;
-            const tb = b.executedAt ? new Date(b.executedAt).getTime() : 0;
-            return tb - ta;
-        });
-        const limitedTrades = allTrades.slice(0, limit);
+        const tradeRecords = await db
+            .select()
+            .from(trades)
+            .where(eq(trades.challengeId, scopeId))
+            .orderBy(desc(trades.executedAt))
+            .limit(limit);
 
-        return NextResponse.json({ trades: await enrichTrades(limitedTrades) });
+        return NextResponse.json({ trades: await enrichTrades(tradeRecords) });
     } catch (error) {
         logger.error("[API] Trade history error:", error);
         return NextResponse.json({ error: "Failed to fetch trade history" }, { status: 500 });
