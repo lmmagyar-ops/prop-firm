@@ -10,13 +10,24 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 - Full browser smoke test of prod when clock clears
 - Check Mat's account if he's been testing
 
-**Priority 2: Verify CI pipeline is green** (leverage: medium, risk: low)
-- After pushing the consolidated `ci.yml`, check GitHub Actions for all-green
-- If integration job fails, the issue is likely the vitest integration test against the local Postgres container (different schema push than Neon)
-
-**Priority 3: Respond to Mat's feedback** (leverage: high, risk: varies)
+**Priority 2: Respond to Mat's feedback** (leverage: high, risk: varies)
 - Any bugs he reports are top priority
 - Cross-reference with Sentry events
+
+---
+
+## Feb 16, 2026 (8:45am CST) — CI Fully Green
+
+### Root Cause
+The evaluator's PnL sanity gate (20% discrepancy threshold) was correctly blocking promotion in 3 test scripts that seeded profitable balances without corresponding trade records. The E2E PWA test used `networkidle` which hung on SSE market streams.
+
+### Fixes Applied
+1. **`e2e/smoke.spec.ts`**: `networkidle` → `domcontentloaded` (SSE streams keep network permanently active)
+2. **`verify-safety.ts`**: Added BUY→SELL trade pair ($1,650 realized PnL) + BUY trades for open positions in `test4_evaluatorPositionLeak`
+3. **`verify-lifecycle.ts`**: Added BUY→SELL trade pairs ($1,100 realized PnL each) in phase 3 and phase 5
+
+### CI Results (Run #571)
+- Code Quality ✅ | Unit Tests ✅ | Integration Tests ✅ | Build ✅ | E2E Smoke ✅
 
 ---
 
