@@ -1,3 +1,7 @@
+// Load env files in Next.js priority order: .env first, .env.local overrides
+import dotenv from 'dotenv';
+dotenv.config(); // .env (base)
+dotenv.config({ path: '.env.local', override: true }); // .env.local overrides
 import { defineConfig } from 'vitest/config';
 import path from 'path';
 
