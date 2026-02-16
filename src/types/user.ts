@@ -23,6 +23,10 @@ export interface User {
     addressZip: string | null;
     addressCountry: string | null;
     showOnLeaderboard: boolean | null;
+    // Privacy
+    leaderboardPrivacy: string | null;
+    showCountry: boolean | null;
+    showStatsPublicly: boolean | null;
 }
 
 export interface UpdateProfileData {
