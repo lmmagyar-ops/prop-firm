@@ -4,6 +4,24 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ---
 
+## Feb 16, 2026 (1:24am CST) — Sentry Fix: Was Dead Since Feb 7
+
+### What
+`next.config.ts` was missing `withSentryConfig` wrapper. The three Sentry config files (`sentry.client.config.ts`, `sentry.server.config.ts`, `sentry.edge.config.ts`) were dead files — never loaded by Next.js. DSN was set in Vercel env vars on Feb 7 and all `Sentry.captureException`/`captureMessage` calls existed in the code (`invariant.ts`, `alerts.ts`, `ErrorBoundary.tsx`), but the SDK never initialized.
+
+### Root cause
+The previous agent installed `@sentry/nextjs`, created the config files, and set the env vars — but forgot the `withSentryConfig()` wrapper in `next.config.ts` that actually tells Next.js to load them.
+
+### Fix
+Wrapped the final config export: `export default withSentryConfig(pwaConfig, {...})`. No auto-instrumentation (explicit `captureException` calls only). Source maps uploaded and deleted after upload.
+
+### Verification
+- `tsc --noEmit` passes
+- 973 tests pass
+- Pushed to `develop` → Vercel will deploy with Sentry enabled
+
+---
+
 ## Feb 16, 2026 (1:03am CST) — Non-Negotiable Testing Gaps Closed
 
 ### What
