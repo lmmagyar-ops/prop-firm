@@ -6,13 +6,39 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ## Tomorrow Morning (Feb 17, 2026)
 
-**Priority 1: Soak test ends ~11:28pm CST tonight** (leverage: high, risk: none)
-- Full browser smoke test of prod when clock clears
-- Check Mat's account if he's been testing
+**Priority 1: Execute Merge** (leverage: highest, risk: low)
+- Soak test ends ~11:28pm CST tonight
+- Final abbreviated prod smoke test, then: `git checkout main && git merge develop && git push`
+- Resolve 1 conflict in `src/lib/market.ts` (favor develop — removes DIAG log, adds warning)
+- Post-merge: run `npm run test:deploy -- https://prop-firmx.vercel.app` + monitor Sentry 10 min
+- Pre-existing type error in `tests/price-integrity.test.ts` (`computeWinRate` export) — fix after merge
 
 **Priority 2: Respond to Mat's feedback** (leverage: high, risk: varies)
 - Any bugs he reports are top priority
-- Cross-reference with Sentry events
+- Cross-reference with Sentry events (server-side Sentry now WORKING)
+
+---
+
+## Feb 16, 2026 (4:00pm CST) — Sentry Root Cause + Merge Readiness
+
+### Root Cause: Server-Side Sentry Was Dead
+`instrumentation.ts` was never created. Next.js 16 requires this file to load `sentry.server.config.ts` and `sentry.edge.config.ts` at runtime. Without it, server-side `Sentry.captureException()` was a no-op and `flush()` always returned `false`. **Sentry has been dead since the initial setup.**
+
+### Fix
+Created `src/instrumentation.ts` with the standard Next.js instrumentation hook. Verified on staging: `flushed: true`, `clientInitialized: true`, event ID `58c03d43`.
+
+### Merge Readiness Checklist
+| Check | Result |
+|---|---|
+| Sentry working | ✅ Event ID 58c03d43 captured |
+| Staging deploy smoke | ✅ 12/12 |
+| Production deploy smoke | ✅ 12/12 |
+| Engine tests | ✅ 60/60 |
+| Lifecycle tests | ✅ 81/81 |
+| Safety tests | ⚠️ Local worker timeout (CI #571 green) |
+| Playwright E2E | ✅ 4/4 public (13 auth-gated skip — expected) |
+| Dry-run merge | ✅ 1 conflict in `market.ts` (resolved) |
+| Schema drift | No schema changes in develop delta |
 
 ---
 
