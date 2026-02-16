@@ -4,24 +4,55 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ---
 
-## Tomorrow Morning (Feb 16, 2026)
+## Tomorrow Morning (Feb 17, 2026)
 
-**Priority 1: Verify Sentry is receiving events** (leverage: ∞, risk: low)
-- Open https://prop-firm-org.sentry.io — should now show events after the Vercel deploy
-- If still empty: check Vercel deployment logs for the `cf7adf5` commit (the Sentry fix), ensure it deployed successfully
-- If events are flowing: ✅ move on
+**Priority 1: Soak test ends ~11:28pm CST tonight** (leverage: high, risk: none)
+- Full browser smoke test of prod when clock clears
+- Check Mat's account if he's been testing
 
-**Priority 2: Check if the existing `CI` workflow should be removed** (leverage: medium, risk: low)
-- There's a pre-existing `CI` workflow (separate from our new `Tests` workflow) that's been failing for weeks (red ❌ in Actions tab)
-- Investigate what it does — if it's redundant with the new `Tests` workflow, delete it to reduce noise
+**Priority 2: Verify CI pipeline is green** (leverage: medium, risk: low)
+- After pushing the consolidated `ci.yml`, check GitHub Actions for all-green
+- If integration job fails, the issue is likely the vitest integration test against the local Postgres container (different schema push than Neon)
 
-**Priority 3: Soak test ends ~11:28pm CST Feb 17** (leverage: high, risk: none)
-- When soak test clears, do a full browser smoke test of prod
-- Check Mat's account if he's been testing — look for any bugs he encountered
+**Priority 3: Respond to Mat's feedback** (leverage: high, risk: varies)
+- Any bugs he reports are top priority
+- Cross-reference with Sentry events
 
-**Priority 4: Respond to Mat's feedback** (leverage: high, risk: varies)
-- Mat will be testing over the weekend — any bugs he reports are top priority
-- Cross-reference with Sentry to see if errors were captured
+---
+
+## Feb 16, 2026 (8:15am CST) — Morning Priority Sweep + CI Consolidation
+
+### What
+Worked through all 4 handoff priorities from the overnight session.
+
+### Priority 1: Sentry ✅
+- Verified `withSentryConfig` wrapper in `next.config.ts` (line 190) — correctly configured
+- Checked Sentry dashboard — zero events, expected since no errors have been triggered yet
+- SDK config confirmed: session replay + privacy masking enabled
+
+### Priority 2: CI Consolidation ✅
+**Finding:** The old `ci.yml` was the more comprehensive workflow (6 jobs: quality, unit test, integration with Postgres/Redis containers, nightly simulation, `next build`, E2E Playwright). The new `test.yml` was a minimal subset (just type-check + vitest). The old one was failing only because of Node 20 + `npm ci` lockfile incompatibility.
+
+**Fix:** Consolidated into single `ci.yml`:
+- Node 20 → 22 across all jobs
+- `npm ci --legacy-peer-deps` → `npm install --ignore-scripts` (5 install steps)
+- Unit test job now excludes `tests/integration.test.ts` (needs DB)
+- Integration job now includes vitest integration test alongside engine/safety/lifecycle verification
+- Fixed stale `NEXTAUTH_URL` → `NEXT_PUBLIC_APP_URL` in build env
+- Deleted redundant `test.yml`
+
+### Priority 3: Soak Test
+48h clock running — ends ~11:28pm CST Feb 17. No action needed.
+
+### Priority 4: Mat's Feedback
+Mat hasn't tested yet — no action needed.
+
+### Other
+Fixed duplicate numbering in CLAUDE.md "New Agent? Start Here" section (two `6.`s and two `7.`s → sequential 6-10).
+
+### Verification
+- `tsc --noEmit`: clean
+- `vitest run --exclude tests/integration.test.ts`: 966 passed, 3 skipped
 
 ---
 
