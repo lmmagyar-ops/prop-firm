@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 // @ts-expect-error - next-pwa doesn't have TypeScript definitions
 import withPWA from "next-pwa";
 
@@ -24,7 +25,7 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withPWA({
+const pwaConfig = withPWA({
   dest: "public",
   register: true,
   skipWaiting: true,
@@ -185,3 +186,22 @@ export default withPWA({
   ],
 })(nextConfig);
 
+// Sentry wraps the final config to instrument server/client/edge
+export default withSentryConfig(pwaConfig, {
+  // Upload source maps for readable stack traces
+  silent: true, // Suppress noisy build logs
+  widenClientFileUpload: true, // Upload more client files for better coverage
+
+  // Performance: don't wrap every API route automatically
+  // We call Sentry.captureException/captureMessage explicitly where needed
+  autoInstrumentServerFunctions: false,
+  autoInstrumentMiddleware: false,
+
+  // Hide source maps from users but still upload to Sentry
+  sourcemaps: {
+    deleteSourcemapsAfterUpload: true,
+  },
+
+  // Disable Sentry telemetry
+  disableLogger: true,
+});

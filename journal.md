@@ -4,6 +4,38 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ---
 
+## Feb 16, 2026 (1:03am CST) — Non-Negotiable Testing Gaps Closed
+
+### What
+Extended `tests/integration.test.ts` from 3 → 7 tests:
+- **Balance reconciliation**: mathematical proof that `startingBalance - buys + sellProceeds = currentBalance`
+- **SELL without position** → throws `PositionNotFoundError`
+- **BUY exceeding balance** → throws `InsufficientFundsError`
+- **BUY on near-resolved market (97¢)** → throws `MARKET_RESOLVED`
+
+All 7 pass. Full suite: 64 files, 973 tests, 0 failures.
+
+### Infrastructure Roadmap
+
+**Near-term (next 2-4 weeks):**
+- Error tracking (Sentry) — aggregate errors instead of grep-ing Vercel logs
+- CI running tests on every push (GitHub Actions) — enforce test discipline
+
+**Medium-term (when team grows):**
+- Double-submit / idempotency test — verify `SELECT FOR UPDATE` prevents race conditions
+- Contract test for Gamma API — snapshot test on response shape to catch breaking changes
+
+**Long-term (at scale):**
+- Session replay (PostHog)
+- Property-based fuzzing for financial math
+- Canary deployments
+
+### Tomorrow Morning
+1. **Monitor soak test** — 48h clock still running (ends Feb 17, 11:28pm CST)
+2. No code changes until soak period ends
+
+---
+
 ## Feb 16, 2026 (12:47am CST) — Integration Test: Full Trade Pipeline
 
 ### What
