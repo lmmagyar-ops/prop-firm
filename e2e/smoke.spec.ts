@@ -51,7 +51,7 @@ test.describe('PWA Behavior', () => {
         await navigateAndWait(page, '/dashboard');
         await page.evaluate(() => localStorage.removeItem('pwaPromptDismissed'));
         await page.reload();
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
 
         // Wait longer than the 30s trigger delay
         await page.waitForTimeout(5000);
