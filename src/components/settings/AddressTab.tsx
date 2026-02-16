@@ -12,14 +12,25 @@ import { Loader2, Save, MapPin } from "lucide-react";
 import type { User } from "@/types/user";
 
 const COUNTRIES = [
-    "United States",
-    "Canada",
-    "United Kingdom",
-    "Germany",
-    "France",
+    "Argentina",
     "Australia",
+    "Brazil",
+    "Canada",
+    "Finland",
+    "France",
+    "Germany",
+    "India",
+    "Italy",
     "Japan",
-    // Add more as needed
+    "Mexico",
+    "Netherlands",
+    "Norway",
+    "Poland",
+    "South Korea",
+    "Spain",
+    "Sweden",
+    "United Kingdom",
+    "United States",
 ];
 
 export function AddressTab({ user }: { user: User }) {

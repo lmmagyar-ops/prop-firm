@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
-import { Shield, Eye, EyeOff, Globe, User, AlertCircle } from "lucide-react";
+import { Shield, Eye, EyeOff, Globe, User, AlertCircle, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
+import Link from "next/link";
 
 interface PrivacyTabProps {
     initialLeaderboardPrivacy: "public" | "semi_private" | "fully_private";
@@ -215,8 +216,16 @@ export default function PrivacyTab({
                 </ul>
             </div>
 
-            {/* Save Button */}
-            <div className="flex justify-end">
+            {/* Preview Link */}
+            <div className="flex items-center justify-between">
+                <Link
+                    href="/dashboard/leaderboard"
+                    target="_blank"
+                    className="text-sm text-zinc-400 hover:text-primary transition-colors flex items-center gap-1.5"
+                >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    Preview on Leaderboard
+                </Link>
                 <Button
                     onClick={handleSave}
                     disabled={isSaving}

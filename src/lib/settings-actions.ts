@@ -31,9 +31,35 @@ export async function updateProfile(data: UpdateProfileData): Promise<void> {
     revalidatePath("/dashboard/public-profile");
 }
 
+/** Map full country names (from AddressTab dropdown) → 2-letter ISO codes (used by leaderboard FLAGS) */
+const COUNTRY_ISO: Record<string, string> = {
+    "United States": "US",
+    "Canada": "CA",
+    "United Kingdom": "GB",
+    "Germany": "DE",
+    "France": "FR",
+    "Australia": "AU",
+    "Japan": "JP",
+    "Brazil": "BR",
+    "Italy": "IT",
+    "Spain": "ES",
+    "Netherlands": "NL",
+    "Sweden": "SE",
+    "Norway": "NO",
+    "Finland": "FI",
+    "South Korea": "KR",
+    "Mexico": "MX",
+    "India": "IN",
+    "Poland": "PL",
+    "Argentina": "AR",
+};
+
 export async function updateAddress(data: UpdateAddressData): Promise<void> {
     const session = await auth();
     if (!session?.user?.id) throw new Error("Unauthorized");
+
+    // Derive ISO code for leaderboard flag display
+    const countryIso = COUNTRY_ISO[data.addressCountry] || null;
 
     await db.update(users)
         .set({
@@ -43,6 +69,7 @@ export async function updateAddress(data: UpdateAddressData): Promise<void> {
             addressState: data.addressState,
             addressZip: data.addressZip,
             addressCountry: data.addressCountry,
+            country: countryIso,
         })
         .where(eq(users.id, session.user.id));
 

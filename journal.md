@@ -4,6 +4,53 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ---
 
+## 2026-02-15 (7:30pm CST) — Hardening & Dead Code Cleanup (`c007299`)
+
+### What Changed
+1. **E2E privacy toggle test** — toggled to semi-private, verified settings saved, confirmed leaderboard behavior, reverted to public ✅
+2. **Deleted 3 dead admin routes** (251 lines):
+   - `audit-db` — superseded by `/admin/investigate`
+   - `cleanup-db` — one-time surgical fix, no longer needed
+   - `reset-daily-floor` — dev-only test helper, never used
+3. **Kept 3 admin escape hatches**: `audit-balance`, `fix-balance`, `resurrect-challenge` (legitimate curl-based incident response tools)
+4. **Production smoke test** — Dashboard, Trade, History all rendering cleanly
+
+### Key Finding
+`/api/user/positions` was already deleted in a previous session. The test user (Timmy Deen) correctly doesn't appear on the leaderboard because they have no trades — the leaderboard query joins on trades, so traderless users are excluded by design.
+
+### Tomorrow Morning
+1. **High leverage**: Have Mat (real user) set country in Settings → verify flag on leaderboard
+2. **Medium**: Test privacy toggle with a user who has actual trades to verify anonymization
+3. **Low**: Add "preview" link from Privacy tab → leaderboard
+
+---
+
+## 2026-02-15 (6:30pm CST) — Verify → Build → Polish Sweep (`bae94d0`)
+
+### What Changed
+1. **Wired orphaned `PrivacyTab.tsx`** into Settings as 4th tab — component was fully built (radio group, switches, privacy tips) but never connected
+2. **Added 3 privacy fields** to `User` type: `leaderboardPrivacy`, `showCountry`, `showStatsPublicly`
+3. **Fixed browser-agent workflow** — added project URLs table to prevent URL guessing (`predictionsfirm.com` → `prop-firmx.vercel.app`)
+
+### Discovery: Three Features Already Built
+- **Custom displayName**: User Info tab already has "Display Name" field → `updateProfile()` saves to DB → leaderboard `COALESCE(display_name, name, 'Trader')` picks it up
+- **Country flags**: Already in both PodiumView and TableView, gated by `showCountry && country`
+- **Privacy API**: `/api/settings/privacy` endpoint already existed with full validation
+
+Only the UI wiring was missing — the PrivacyTab component was orphaned.
+
+### Verified
+- Production Settings page shows 4 tabs: User Info, KYC, Address, Privacy ✅
+- Privacy tab default: "Public" selected, Show Country OFF, Show Performance Stats ON ✅
+- TypeScript clean (`tsc --noEmit`) ✅
+
+### Tomorrow Morning
+1. **High leverage**: Have a real user (mat) set their country in Settings and verify flag appears on leaderboard
+2. **Medium**: Test the full privacy toggle flow — switch to semi_private, check leaderboard hides name, switch back
+3. **Low**: Consider adding a "preview" link from Privacy tab to leaderboard so users see their changes instantly
+
+---
+
 ## 2026-02-15 (5:55pm CST) — Privacy Defaults Fix (`3ff4c6a`)
 
 ### What Changed
