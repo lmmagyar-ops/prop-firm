@@ -4,6 +4,27 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ---
 
+## Tomorrow Morning (Feb 16, 2026)
+
+**Priority 1: Verify Sentry is receiving events** (leverage: ∞, risk: low)
+- Open https://prop-firm-org.sentry.io — should now show events after the Vercel deploy
+- If still empty: check Vercel deployment logs for the `cf7adf5` commit (the Sentry fix), ensure it deployed successfully
+- If events are flowing: ✅ move on
+
+**Priority 2: Check if the existing `CI` workflow should be removed** (leverage: medium, risk: low)
+- There's a pre-existing `CI` workflow (separate from our new `Tests` workflow) that's been failing for weeks (red ❌ in Actions tab)
+- Investigate what it does — if it's redundant with the new `Tests` workflow, delete it to reduce noise
+
+**Priority 3: Soak test ends ~11:28pm CST Feb 17** (leverage: high, risk: none)
+- When soak test clears, do a full browser smoke test of prod
+- Check Mat's account if he's been testing — look for any bugs he encountered
+
+**Priority 4: Respond to Mat's feedback** (leverage: high, risk: varies)
+- Mat will be testing over the weekend — any bugs he reports are top priority
+- Cross-reference with Sentry to see if errors were captured
+
+---
+
 ## Feb 16, 2026 (1:35am CST) — GitHub Actions CI: Every Push Now Tested
 
 ### What
