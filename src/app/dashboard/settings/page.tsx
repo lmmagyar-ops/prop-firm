@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UserInformationTab } from "@/components/settings/UserInformationTab";
 import { KYCTab } from "@/components/settings/KYCTab";
 import { AddressTab } from "@/components/settings/AddressTab";
+import PrivacyTab from "@/components/settings/PrivacyTab";
 import { getSettingsData } from "@/lib/settings-actions";
 
 export default async function SettingsPage() {
@@ -31,7 +32,7 @@ export default async function SettingsPage() {
             </div>
 
             <Tabs defaultValue="user-info" className="w-full">
-                <TabsList className="grid w-full max-w-lg grid-cols-3 mb-8 bg-[#1A232E] border border-[#2E3A52] p-1 rounded-xl">
+                <TabsList className="grid w-full max-w-2xl grid-cols-4 mb-8 bg-[#1A232E] border border-[#2E3A52] p-1 rounded-xl">
                     <TabsTrigger
                         value="user-info"
                         className="data-[state=active]:bg-[#29af73] data-[state=active]:text-white text-zinc-400 rounded-lg transition-all"
@@ -50,6 +51,12 @@ export default async function SettingsPage() {
                     >
                         Address
                     </TabsTrigger>
+                    <TabsTrigger
+                        value="privacy"
+                        className="data-[state=active]:bg-[#29af73] data-[state=active]:text-white text-zinc-400 rounded-lg transition-all"
+                    >
+                        Privacy
+                    </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="user-info" className="mt-0">
@@ -62,6 +69,14 @@ export default async function SettingsPage() {
 
                 <TabsContent value="address" className="mt-0">
                     <AddressTab user={user} />
+                </TabsContent>
+
+                <TabsContent value="privacy" className="mt-0">
+                    <PrivacyTab
+                        initialLeaderboardPrivacy={(user.leaderboardPrivacy as "public" | "semi_private" | "fully_private") || "public"}
+                        initialShowCountry={user.showCountry ?? false}
+                        initialShowStatsPublicly={user.showStatsPublicly ?? true}
+                    />
                 </TabsContent>
             </Tabs>
         </div>

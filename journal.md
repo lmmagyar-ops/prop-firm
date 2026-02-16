@@ -4,6 +4,31 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ---
 
+## 2026-02-15 (5:55pm CST) — Privacy Defaults Fix (`3ff4c6a`)
+
+### What Changed
+1. **Schema default**: `leaderboardPrivacy` changed from `"semi_private"` → `"public"` — new users show on leaderboard by default (like other prop firms), with opt-out in Settings
+2. **Name fallback**: Leaderboard API now uses `COALESCE(display_name, name, 'Trader')` — Google OAuth names (e.g. "mat", "L M") display instead of generic "Trader"
+3. **Existing user migration**: Updated 10 users from `semi_private` → `public` via temporary admin endpoint (now deleted)
+
+### Root Cause
+Three compounding issues made all 4 traders appear as "Trader #X":
+- Schema defaulted to `semi_private` → UI required `public` to show names
+- `displayName` was null for all users → API fell back to generic "Trader"
+- The `name` field (populated by Google OAuth) was never used as fallback
+
+### Verified
+- Production leaderboard shows real names: mat ($564.49), L M (-$0.34), E2E Bot (-$10.76), mat2 mat2 (-$311.59)
+- Profile photos display for users with Google avatars
+- Temporary migration endpoint and script deleted — no dead code
+
+### Tomorrow Morning
+1. **High leverage**: Verify the Settings page privacy controls still work (user can switch to semi_private/fully_private)
+2. **Medium**: Consider letting users set a custom `displayName` in Settings
+3. **Low**: Add country flags for traders who opt in (`showCountry`)
+
+---
+
 ## 2026-02-15 (3:30pm CST) — Leaderboard: Wired to Real Data (`e4de3d7`)
 
 ### What Changed
