@@ -4,6 +4,29 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ---
 
+## 2026-02-15 (Late Evening) — Country Flags & Privacy Verification (`560265c`)
+
+### What Changed
+1. **Country ISO code mapping** — `updateAddress` in `settings-actions.ts` now derives 2-letter ISO codes from the `addressCountry` field and stores them in the `country` column. This was a critical gap: the leaderboard's flag rendering depended on `country` but nothing was populating it.
+2. **Expanded country dropdown** — `AddressTab.tsx` COUNTRIES array expanded from 7 to 19 entries to match the ISO mapping.
+3. **Preview on Leaderboard link** — Added subtle `ExternalLink` + Next.js `Link` to `/dashboard/leaderboard` (opens in new tab) on the Privacy tab, positioned opposite the Save button.
+
+### What Was Verified
+- **🇦🇺 flag rendering** — Trader (rank 3) with `country: "AU"` and `showCountry: true` displays the Australian flag on the leaderboard podium.
+- **Semi-private anonymization** — Same user switched to semi-private: name becomes "Trader #3", avatar becomes "?", flag disappears, name is no longer clickable. Stats remain visible.
+- **All 5 leaderboard entries** have correct flag/no-flag behavior based on `country` and `showCountry` values.
+- **Preview link** confirmed live on production via JS text search.
+
+### Root Cause (Country Flag Gap)
+The `updateAddress` function only set `addressCountry` (full name for shipping) but never set `country` (ISO code for flags). Users could set their address country but never got a leaderboard flag because `country` stayed `null`.
+
+### Tomorrow Morning
+1. **Set L M's country** — Currently `null`. Re-save address to populate ISO code.
+2. **Consider E2E test** — Address save → leaderboard flag round-trip.
+3. **mat's country** — Also `null`. Consider prompting users who have `addressCountry` but missing `country`.
+
+---
+
 ## 2026-02-15 (7:30pm CST) — Hardening & Dead Code Cleanup (`c007299`)
 
 ### What Changed
