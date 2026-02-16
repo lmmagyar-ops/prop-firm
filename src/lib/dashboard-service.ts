@@ -119,9 +119,6 @@ export function getPositionsWithPnL(
             unrealizedPnL = (effectiveCurrentPrice - entry) * shares;
         }
 
-        // DIAG: Phantom PnL investigation — remove after root cause confirmed
-        dashLogger.info(`[DIAG:pnl] ${pos.marketId.slice(0, 12)}… dir=${pos.direction} entry=${entry} rawLive=${livePrice?.price ?? 'NONE'} liveSrc=${livePrice?.source ?? 'stored'} effective=${effectiveCurrentPrice.toFixed(4)} pnl=${unrealizedPnL.toFixed(2)} val=${positionValue.toFixed(2)}`);
-
         return {
             id: pos.id,
             marketId: pos.marketId,

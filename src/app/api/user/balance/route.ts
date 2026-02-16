@@ -5,7 +5,7 @@ import { challenges, positions } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { MarketService } from "@/lib/market";
-import { calculatePositionMetrics } from "@/lib/position-utils";
+import { getPortfolioValue } from "@/lib/position-utils";
 import { createLogger } from "@/lib/logger";
 const logger = createLogger("Balance");
 
@@ -62,33 +62,16 @@ export async function GET(req: NextRequest) {
             ? await MarketService.getBatchOrderBookPrices(marketIds)
             : new Map();
 
-        const positionValue = openPositions.reduce((sum, pos) => {
-            const shares = parseFloat(pos.shares);
-            const entry = parseFloat(pos.entryPrice);
-            const livePrice = livePrices.get(pos.marketId);
+        // Use single source of truth for portfolio valuation (position-utils.ts)
+        // Previously had inline > 0.01 && < 0.99 range that excluded resolved prices
+        const portfolio = getPortfolioValue(openPositions, livePrices);
 
-            if (livePrice) {
-                const rawPrice = parseFloat(livePrice.price);
-                if (rawPrice > 0.01 && rawPrice < 0.99 && !isNaN(rawPrice)) {
-                    // Use live price with direction adjustment
-                    const metrics = calculatePositionMetrics(
-                        shares, entry, rawPrice, pos.direction as 'YES' | 'NO'
-                    );
-                    return sum + metrics.positionValue;
-                }
-            }
-
-            // Fallback to DB currentPrice
-            const fallbackPrice = parseFloat(pos.currentPrice || pos.entryPrice);
-            return sum + (fallbackPrice * shares);
-        }, 0);
-
-        const equity = cash + positionValue;
+        const equity = cash + portfolio.totalValue;
 
         return NextResponse.json({
             balance: cash,
             equity,
-            positionValue,
+            positionValue: portfolio.totalValue,
             positionCount: openPositions.length,
         });
 

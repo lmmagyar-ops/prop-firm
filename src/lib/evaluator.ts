@@ -9,6 +9,7 @@ import { normalizeRulesConfig } from "./normalize-rules";
 import { createLogger } from "./logger";
 import { BalanceManager } from "./trading/BalanceManager";
 import { OutageManager } from "./outage-manager";
+import { alerts } from "./alerts";
 
 const logger = createLogger('Evaluator');
 
@@ -182,6 +183,94 @@ export class ChallengeEvaluator {
                     entryPrice: p.entryPrice,
                 })),
             });
+
+            // ═══════════════════════════════════════════════════════════════
+            // SANITY GATE: PnL Cross-Reference
+            // Before promoting, verify that realized PnL from actual trade
+            // records roughly matches the equity-based profit. A large gap
+            // indicates phantom PnL, calculation bugs, or data corruption.
+            // ═══════════════════════════════════════════════════════════════
+            const challengeTrades = await db.query.trades.findMany({
+                where: eq(trades.challengeId, challengeId),
+            });
+
+            const realizedPnLSum = challengeTrades
+                .filter(t => t.type === 'SELL' && t.realizedPnL)
+                .reduce((sum, t) => sum + parseFloat(t.realizedPnL!), 0);
+
+            // Unrealized PnL from open positions
+            const unrealizedPnL = openPositions.reduce((sum, pos) => {
+                const shares = parseFloat(pos.shares);
+                const entry = parseFloat(pos.entryPrice);
+                const liveData = livePrices.get(pos.marketId);
+                if (!liveData) return sum;
+                const yesPrice = parseFloat(liveData.price);
+                const current = pos.direction === 'NO' ? (1 - yesPrice) : yesPrice;
+                return sum + shares * (current - entry);
+            }, 0);
+
+            const tradeDerivedProfit = realizedPnLSum + unrealizedPnL;
+            const discrepancy = Math.abs(profit - tradeDerivedProfit);
+            const discrepancyPct = profitTarget > 0 ? (discrepancy / profitTarget) * 100 : 0;
+
+            logger.info('Sanity gate: PnL cross-reference', {
+                challengeId: challengeId.slice(0, 8),
+                equityProfit: profit.toFixed(2),
+                realizedPnL: realizedPnLSum.toFixed(2),
+                unrealizedPnL: unrealizedPnL.toFixed(2),
+                tradeDerivedProfit: tradeDerivedProfit.toFixed(2),
+                discrepancy: discrepancy.toFixed(2),
+                discrepancyPct: discrepancyPct.toFixed(1),
+                tradeCount: challengeTrades.length,
+            });
+
+            // FAIL CLOSED: Block promotion if PnL gap > 20% of target
+            if (discrepancyPct > 20) {
+                await alerts.anomaly('PROMOTION_PNL_MISMATCH', {
+                    challengeId,
+                    userId: challenge.userId,
+                    equityProfit: profit.toFixed(2),
+                    tradeDerivedProfit: tradeDerivedProfit.toFixed(2),
+                    discrepancy: discrepancy.toFixed(2),
+                    discrepancyPct: discrepancyPct.toFixed(1),
+                    action: 'BLOCKED',
+                });
+                logger.error('SANITY GATE BLOCKED PROMOTION: PnL mismatch', {
+                    challengeId: challengeId.slice(0, 8),
+                    discrepancyPct: discrepancyPct.toFixed(1),
+                });
+                return {
+                    status: 'active',
+                    reason: 'Promotion blocked: PnL cross-reference failed. Admin review required.',
+                    equity,
+                };
+            }
+
+            // ═══════════════════════════════════════════════════════════════
+            // SANITY GATE: Suspicious Speed Alert
+            // Fire a warning (but don't block) if profit target was hit
+            // unusually fast. This catches exploitation or system bugs.
+            // ═══════════════════════════════════════════════════════════════
+            const startedAt = challenge.startedAt ? new Date(challenge.startedAt) : new Date();
+            const hoursActive = (Date.now() - startedAt.getTime()) / (1000 * 60 * 60);
+            const sellCount = challengeTrades.filter(t => t.type === 'SELL').length;
+
+            if (hoursActive < 24 || sellCount < 5) {
+                await alerts.anomaly('SUSPICIOUS_SPEED_PASS', {
+                    challengeId,
+                    userId: challenge.userId,
+                    hoursActive: hoursActive.toFixed(1),
+                    sellCount,
+                    profit: profit.toFixed(2),
+                    profitTarget,
+                    action: 'ALERTED_NOT_BLOCKED',
+                });
+                logger.warn('Suspicious speed: challenge passed quickly', {
+                    challengeId: challengeId.slice(0, 8),
+                    hoursActive: hoursActive.toFixed(1),
+                    sellCount,
+                });
+            }
 
             const now = new Date();
             const tier = this.getFundedTier(startingBalance);

@@ -18,6 +18,9 @@ vi.mock('@/db', () => {
             positions: {
                 findMany: vi.fn(),
             },
+            trades: {
+                findMany: vi.fn().mockResolvedValue([]),
+            },
         },
         update: vi.fn(() => ({
             set: vi.fn(() => ({
@@ -56,6 +59,14 @@ vi.mock('@/lib/outage-manager', () => ({
             isOutage: false,
             isGraceWindow: false,
         }),
+    },
+}));
+
+// Mock alerts (used by sanity gate)
+vi.mock('@/lib/alerts', () => ({
+    sendAlert: vi.fn(),
+    alerts: {
+        anomaly: vi.fn().mockResolvedValue(undefined),
     },
 }));
 
@@ -100,6 +111,7 @@ function createMockChallenge(overrides: Partial<any> = {}) {
             maxDrawdown: 1000,      // $1000 max drawdown (10%)
             maxDailyDrawdownPercent: 0.05, // 5%
         },
+        startedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 7 days ago
         ...overrides,
     };
 }
@@ -292,6 +304,9 @@ describe('ChallengeEvaluator - Profit Target & Pass', () => {
 
         vi.mocked(db.query.challenges.findFirst).mockResolvedValue(challenge as any);
         vi.mocked(db.query.positions.findMany).mockResolvedValue([]);
+        vi.mocked(db.query.trades.findMany).mockResolvedValue([
+            { type: 'SELL', realizedPnL: '1100.00' },
+        ] as any);
 
         const result = await ChallengeEvaluator.evaluate('test-challenge-1');
 
@@ -325,6 +340,12 @@ describe('ChallengeEvaluator - Profit Target & Pass', () => {
 
         vi.mocked(db.query.challenges.findFirst).mockResolvedValue(challenge as any);
         vi.mocked(db.query.positions.findMany).mockResolvedValue([position as any]);
+        // Sanity gate: realized + unrealized must match equity profit.
+        // Unrealized = 1000 * (0.56 - 0.50) = $60. Equity profit = $1060.
+        // So realized trade PnL must be ~$1000.
+        vi.mocked(db.query.trades.findMany).mockResolvedValue([
+            { type: 'SELL', realizedPnL: '1000.00' },
+        ] as any);
         // Mock batch price fetch - returns Map of marketId -> price data
         vi.mocked(MarketService.getBatchOrderBookPrices).mockResolvedValue(
             new Map([['market-abc', { price: '0.56', source: 'mock', asset_id: 'market-abc' }]]) as any

@@ -343,8 +343,6 @@ export class MarketService {
                             timestamp: Date.now(),
                             source: 'live'
                         });
-                        // DIAG: Root cause confirmed — order book sort order was wrong
-                        logger.info(`[DIAG:price] ${marketId.slice(0, 12)}… src=orderbook bid=${bidPrice.toFixed(4)} ask=${askPrice.toFixed(4)} mid=${mtmPrice.toFixed(4)}`);
                         continue;
                     } else if (bidPrice > 0 || askPrice > 0) {
                         // Log invalid prices for debugging
@@ -356,19 +354,14 @@ export class MarketService {
                 const eventPrice = await this.lookupPriceFromEvents(marketId);
                 if (eventPrice) {
                     results.set(marketId, { ...eventPrice, source: 'event_list' });
-                    // DIAG: Phantom PnL investigation — remove after root cause confirmed
-                    logger.info(`[DIAG:price] ${marketId.slice(0, 12)}… src=event_list price=${eventPrice.price}`);
                 } else {
                     // Try Gamma API as last resort
                     const gammaPrice = await this.getGammaApiPrice(marketId);
                     if (gammaPrice) {
                         results.set(marketId, gammaPrice);
-                        // DIAG: Phantom PnL investigation — remove after root cause confirmed
-                        logger.info(`[DIAG:price] ${marketId.slice(0, 12)}… src=gamma price=${gammaPrice.price}`);
                     } else {
                         // If no source has data, skip — never fabricate a price
-                        // DIAG: Phantom PnL investigation — remove after root cause confirmed
-                        logger.warn(`[DIAG:price] ${marketId.slice(0, 12)}… src=NONE (no orderbook, no event, no gamma)`);
+                        logger.warn(`[MarketService] ${marketId.slice(0, 12)}… no price from orderbook, event list, or gamma`);
                     }
                 }
             }
