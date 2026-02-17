@@ -37,6 +37,12 @@ Three fixes deployed to production (`cd377ad`):
 - **E2E trade**: Placed $1 → portfolio 3→4 → closed → portfolio back to 3 ✅
 - **Sentry**: Clean — no new functional errors, prior query failures stopped 44min before check
 
+### Regression Tests Added
+- **B4**: Position-safe market filtering — 7 tests guard all 3 filter locations in `market.ts`
+- **B5**: Equity = cash + positions — 6 tests including Mat's exact production numbers
+- **B6**: Trade close P&L accuracy — 6 tests verifying (exitPrice - entryPrice) × shares
+- All 19 new tests pass. Full related suite: 44/44 pass.
+
 ---
 
 ## Feb 16, 2026 — Market Title Fix Merged to Production
