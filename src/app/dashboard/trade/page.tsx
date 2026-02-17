@@ -62,7 +62,7 @@ export default async function TradePage() {
     // POSITION-SAFE: Collect market IDs where user has open positions
     // These must NEVER be filtered out, even if price hits 99¢
     const activeChallengeId = data?.activeChallenge?.id;
-    let keepMarketIds: Set<string> | undefined;
+    let keepMarketIds: string[] | undefined;
     if (activeChallengeId) {
         const openPositions = await db.query.positions.findMany({
             where: and(
@@ -72,7 +72,7 @@ export default async function TradePage() {
             columns: { marketId: true },
         });
         if (openPositions.length > 0) {
-            keepMarketIds = new Set(openPositions.map(p => p.marketId));
+            keepMarketIds = openPositions.map(p => p.marketId);
         }
     }
 

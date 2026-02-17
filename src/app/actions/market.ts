@@ -294,8 +294,10 @@ export interface EventMetadata {
 
 export type Platform = "polymarket" | "kalshi";
 
-export async function getActiveEvents(platform: Platform = "polymarket", keepMarketIds?: Set<string>): Promise<EventMetadata[]> {
+export async function getActiveEvents(platform: Platform = "polymarket", keepMarketIdList?: string[]): Promise<EventMetadata[]> {
     noStore();
+    // Construct Set internally — callers pass plain array to avoid serialization issues
+    const keepMarketIds = keepMarketIdList?.length ? new Set(keepMarketIdList) : undefined;
     try {
         const data = await getAllMarketData();
         if (!data) return [];
