@@ -25,9 +25,17 @@ Three fixes deployed to production (`cd377ad`):
 - Staging smoke test: dashboard + trade page confirmed via browser
 
 ### Tomorrow Morning
-1. **Run production smoke test** — verify no regressions
-2. **Test BREACH badge visually** — trigger a breach in dev to see the red badge render
-3. **Monitor Sentry** — watch for errors from position-safe filtering
+1. ~~**Run production smoke test** — verify no regressions~~ ✅ Done
+2. ~~**Test BREACH badge visually** — trigger a breach in dev to see the red badge render~~ ✅ Done
+3. ~~**Monitor Sentry** — watch for errors from position-safe filtering~~ ✅ Done
+
+### Production Verification (same day)
+- **Smoke test**: 10/10 surfaces passed, zero console errors
+- **BREACH badge**: Visually confirmed on Mat's production account (cleared immediately)
+- **API cross-reference**: `/api/challenges`, `/api/trade/positions`, `/api/user/balance` all match UI
+- **Position math**: $9,051.16 cash + $604.08 positions = $9,655.24 equity ✅
+- **E2E trade**: Placed $1 → portfolio 3→4 → closed → portfolio back to 3 ✅
+- **Sentry**: Clean — no new functional errors, prior query failures stopped 44min before check
 
 ---
 
