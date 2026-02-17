@@ -491,7 +491,11 @@ export class MarketService {
                 const markets = data.markets as EventMarket[];
                 const market = markets.find((m: EventMarket) => m.id === marketId);
                 if (market) {
-                    const price = market.currentPrice ?? market.basePrice ?? 0.5;
+                    const price = market.currentPrice ?? market.basePrice;
+                    if (price === undefined || price === null) {
+                        // No price data at all — skip, don't fabricate
+                        return null;
+                    }
                     // Accept full 0-1 range including resolution prices
                     if (isValidMarketPrice(price)) {
                         return {
