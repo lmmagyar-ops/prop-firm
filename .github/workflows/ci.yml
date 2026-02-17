@@ -49,6 +49,35 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      # Financial Display Rule: Client components must never compute PnL.
+      # See CLAUDE.md "Financial Display Rule" for rationale.
+      # This grep guard catches any future developer adding inline PnL math in components.
+      - name: Financial Display Guard
+        run: |
+          echo "🔒 Checking Financial Display Rule..."
+          VIOLATIONS=""
+
+          # Check for unrealizedPnL assignments in components (display only, never compute)
+          if grep -rn 'unrealizedPnL\s*=' src/components/ --include='*.tsx' --include='*.ts' | grep -v '\.unrealizedPnL' | grep -v 'interface\|type ' | grep -v '//.*unrealizedPnL'; then
+            VIOLATIONS="${VIOLATIONS}\n❌ Found unrealizedPnL computation in src/components/"
+          fi
+
+          # Check for useMarketStream in dashboard components (SSE prices must not drive PnL)
+          if grep -rn 'useMarketStream' src/components/dashboard/ --include='*.tsx' --include='*.ts'; then
+            VIOLATIONS="${VIOLATIONS}\n❌ Found useMarketStream import in dashboard components"
+          fi
+
+          if [ -n "$VIOLATIONS" ]; then
+            echo -e "\n🚨 FINANCIAL DISPLAY RULE VIOLATIONS:${VIOLATIONS}"
+            echo ""
+            echo "Client components must DISPLAY financial values, never COMPUTE them."
+            echo "PnL must be computed server-side via /api/trade/positions."
+            echo "See CLAUDE.md 'Financial Display Rule' for details."
+            exit 1
+          fi
+
+          echo "✅ Financial Display Rule: No violations found"
+
   test:
     name: Unit & Integration Tests
     runs-on: ubuntu-latest

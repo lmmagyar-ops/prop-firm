@@ -43,6 +43,18 @@ Three fixes deployed to production (`cd377ad`):
 - **B6**: Trade close P&L accuracy — 6 tests verifying (exitPrice - entryPrice) × shares
 - All 19 new tests pass. Full related suite: 44/44 pass.
 
+### Challenge Difficulty Strategy (Mat's Insight)
+Mat noted prediction market prop firms are likely easier to pass than forex/futures prop firms — less HFT competition, more retail inefficiency, no overnight gaps, binary outcomes. This is a selling point ("higher pass rates") but also a margin risk if funded traders consistently extract capital.
+
+**5 Levers to Increase Difficulty Without Ruining UX:**
+1. **Minimum trading days** (e.g., 10/30) — filters lucky one-shot bets
+2. **Tighter daily loss limit** (2-3%) — rewards discipline over yolo
+3. **Two-phase evaluation** — prove it twice to eliminate variance
+4. **No single-trade dominance** — no trade >X% of total profit
+5. **Category exposure limits** — cap concentration in Politics/Sports/etc.
+
+**Launch recommendation: Do #1, #2, #5 (scaling plan).** These are highest leverage, easiest to explain, and lowest friction. Save #4 and category limits for v2 once you have data on real trader behavior. Philosophy: launch tight on time-based rules, loose on style-based rules.
+
 ---
 
 ## Feb 16, 2026 — Market Title Fix Merged to Production
@@ -4831,3 +4843,49 @@ Every agent fixed `getBatchTitles()` (the canonical path). But the Recent Trades
 ### Still Needed
 1. **Deploy to staging** and browser verify the specific "Market 10190976..." trade
 2. **Backfill** NULL `marketTitle` rows for pre-migration trades (Gamma API)
+
+---
+
+## Feb 17, 2026 — Systemic PnL Display Unification
+
+### Bug
+Dashboard "Open Positions" table showed wildly different PnL values than the Portfolio dropdown (e.g., -$373 vs -$399 on "Bitcoin Up or Down" YES position). This discrepancy had survived 3+ previous fix attempts.
+
+### Root Cause: Rogue PnL Computation Pipeline
+`LivePositions.tsx` maintained its **own independent PnL computation** — inline math (`(effectiveCurrentValue - effectiveEntryValue) * pos.shares`) fed by a completely different price source than every other component. This bypassed all canonical functions (`calculatePositionMetrics`, `getDirectionAdjustedPrice`, `isValidMarketPrice`).
+
+**The price source chain:**
+- **Portfolio dropdown** (correct): `/api/trade/positions` → `getBatchOrderBookPrices()` → `market:orderbooks` → **CLOB order book mid-price**
+- **Dashboard table** (broken): `useMarketStream()` SSE → `/api/markets/stream` → `health-server.ts /prices` → `event:active_list` → **Gamma API snapshot price**
+
+The `/prices` endpoint in `health-server.ts` (lines 125-163) reads from `event:active_list` (Gamma API response), NOT `market:prices:all` (WebSocket ticks) or `market:orderbooks` (CLOB order books). These Gamma snapshots are stale by design (refreshed every 5 min), and for certain markets diverge dramatically from order book prices.
+
+**Why prior fixes failed:** Every prior fix targeted backend computation or shared utilities. None of them reached `LivePositions.tsx` because it had its own inline PnL formula that didn't call any shared function.
+
+### Fix Applied (CLAUDE.md Bug Protocol § 4c — Kill the Duplication)
+**Rewrote `LivePositions.tsx`** — eliminated the SSE-based independent PnL recalculation entirely. Replaced with polling `/api/trade/positions` on a 5s interval — the exact same canonical endpoint used by `PortfolioDropdown.tsx`, `PortfolioPanel.tsx`, and `PositionsTable.tsx`.
+
+**Before:** 4 independent PnL computation sites, 2 different price sources  
+**After:** 1 canonical endpoint (`/api/trade/positions`) serving all position display components, 1 price source (order book mid-price)
+
+No client-side PnL math remains. All PnL is computed server-side through `getDirectionAdjustedPrice()` in `position-utils.ts`, using `getBatchOrderBookPrices()` for live prices.
+
+### What Changed
+- `src/components/dashboard/LivePositions.tsx` — full rewrite, removed `useMarketStream` import, removed all PnL math, added polling pattern matching `PortfolioDropdown`
+
+### Verification
+- **Build:** ✅ (exit code 0)
+- **Tests:** 66/67 files pass, 1018/1022 tests pass (1 pre-existing failure in `price-integrity.test.ts` — unrelated `0.5` fallback flag)
+- **Browser:** Needs staging deploy for live verification
+
+### Constraint Level: ★★★★
+After this fix, a developer would have to **add** a new client-side PnL computation to re-introduce this bug. There is no code path left that independently calculates unrealizedPnL from a non-canonical price source.
+
+### Guardrails Added (Prevent 5th Recurrence)
+1. **Financial Display Rule** added to `CLAUDE.md` — "Client components DISPLAY financial values — they never COMPUTE them."
+2. **CI grep guard** added to `.github/workflows/ci.yml` (`Financial Display Guard` step) — fails the build if `unrealizedPnL =` appears in `src/components/` or `useMarketStream` is imported in dashboard components. Verified passing locally.
+
+### Tomorrow Morning
+1. **Restart dev server** (`npm run dev`) and browser-verify Dashboard table PnL matches Portfolio dropdown PnL
+2. **Deploy to staging** after browser verification
+3. The pre-existing `price-integrity.test.ts` failure (line 494 of `market.ts` has a `0.5` fallback) should be addressed separately

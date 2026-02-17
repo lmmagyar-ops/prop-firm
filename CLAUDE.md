@@ -21,6 +21,15 @@
 - No hardcoded values in business logic. Constants belong in config.
 - Mark incomplete work with a consistent tag (e.g., `FUTURE(v2):`) — never bare `TODO` without context.
 
+### Financial Display Rule
+> This rule exists because the PnL mismatch bug survived 3+ fix attempts. Each fix corrected a shared utility, but a client component had its own inline PnL formula fed by a different price source. The fix never reached it.
+
+- **Client components DISPLAY financial values — they never COMPUTE them.**
+- PnL, equity, position value, and drawdown are always computed server-side via canonical functions in `position-utils.ts`.
+- If a component needs real-time values, it polls the canonical API endpoint (`/api/trade/positions`). It never imports a price stream and does its own math.
+- **Grep guard:** `unrealizedPnL =` must never appear in `src/components/`. CI will enforce this.
+- **One endpoint, one source of truth:** Every component that displays position PnL must consume `/api/trade/positions`. No component may compute PnL from an alternative price source (SSE, WebSocket, or local state).
+
 ### Verification Discipline
 - Run the full test suite after every change, not just the file you edited.
 - Browser smoke test any UI change — screenshots prove more than type-checks.

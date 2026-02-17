@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { OpenPositions } from './OpenPositions';
-import { useMarketStream } from '@/hooks/useMarketStream';
 
 interface Position {
     id: string;
@@ -20,54 +19,92 @@ interface LivePositionsProps {
 }
 
 /**
- * LivePositions - Wraps OpenPositions with SSE live price updates
+ * LivePositions - Wraps OpenPositions with live polling from /api/trade/positions
  * 
- * Initial data comes from server, then SSE updates prices in real-time.
- * Recalculates unrealized P&L on each price update.
+ * ARCHITECTURE NOTE (Feb 2026):
+ * Previously used SSE to independently recalculate PnL from a different price
+ * source (Gamma API snapshots via /prices endpoint). This caused PnL to diverge
+ * from the Portfolio dropdown, which uses /api/trade/positions with order book
+ * mid-prices. Survived 3+ fix attempts because the rogue computation bypassed
+ * all canonical functions.
  * 
- * Note: onClosePosition removed to fix Next.js 15 RSC serialization.
- * Close functionality is handled inside OpenPositions via API call.
+ * Now uses the SAME canonical data path as PortfolioDropdown/PortfolioPanel:
+ * polling /api/trade/positions, which computes PnL server-side using
+ * position-utils.ts and order book mid-prices. No client-side PnL computation.
+ * 
+ * See CLAUDE.md "Financial Display Rule" for the guardrail preventing regression.
  */
+
+const POLL_INTERVAL_MS = 5_000;
+
 export function LivePositions({ initialPositions }: LivePositionsProps) {
-    const { prices, connected } = useMarketStream();
     const [positions, setPositions] = useState<Position[]>(initialPositions);
+    const [isLive, setIsLive] = useState(false);
+    const pollCount = useRef(0);
 
-    // Update positions when SSE prices change
+    const fetchPositions = useCallback(async () => {
+        try {
+            const res = await fetch('/api/trade/positions');
+            if (!res.ok) {
+                // Don't overwrite good data on transient errors (rate limit, etc.)
+                if (res.status !== 429) {
+                    console.error(`[LivePositions] API error: ${res.status}`);
+                }
+                return;
+            }
+
+            const data = await res.json();
+            const mapped: Position[] = (data.positions || []).map((p: {
+                id: string;
+                marketId: string;
+                marketTitle: string;
+                direction: 'YES' | 'NO';
+                avgPrice: number;
+                currentPrice: number;
+                shares: number;
+                unrealizedPnL: number;
+            }) => ({
+                id: p.id,
+                marketId: p.marketId,
+                marketTitle: p.marketTitle,
+                direction: p.direction,
+                entryPrice: p.avgPrice, // API field name differs from component interface
+                currentPrice: p.currentPrice,
+                shares: p.shares,
+                unrealizedPnL: p.unrealizedPnL,
+            }));
+
+            setPositions(mapped);
+            pollCount.current++;
+            setIsLive(true);
+        } catch (err) {
+            console.error('[LivePositions] Poll failed:', err);
+        }
+    }, []);
+
     useEffect(() => {
-        if (Object.keys(prices).length === 0) return;
+        // First poll after a short delay to avoid racing with SSR hydration
+        const initialDelay = setTimeout(() => {
+            fetchPositions();
+        }, 2_000);
 
-        setPositions(prev => prev.map(pos => {
-            const liveData = prices[pos.marketId];
-            if (!liveData) return pos;
+        const interval = setInterval(fetchPositions, POLL_INTERVAL_MS);
 
-            const livePrice = parseFloat(liveData.price);
+        return () => {
+            clearTimeout(initialDelay);
+            clearInterval(interval);
+        };
+    }, [fetchPositions]);
 
-            // Calculate P&L with correct direction handling
-            // NOTE: Live price from SSE is raw YES price - needs direction adjustment
-            // Entry price from server is ALREADY direction-adjusted - do NOT adjust again!
-            const isNo = pos.direction === 'NO';
-            const effectiveCurrentValue = isNo ? (1 - livePrice) : livePrice;
-            const effectiveEntryValue = pos.entryPrice; // Already direction-adjusted from server!
-            const unrealizedPnL = (effectiveCurrentValue - effectiveEntryValue) * pos.shares;
-
-            return {
-                ...pos,
-                currentPrice: isNo ? (1 - livePrice) : livePrice,  // Store adjusted price for position's side
-                unrealizedPnL,
-                marketTitle: liveData.title || pos.marketTitle,
-            };
-        }));
-    }, [prices]);
-
-    // Reset when initial positions change (e.g., new trade)
+    // Reset to SSR data when initial positions change (e.g., page navigation)
     useEffect(() => {
         setPositions(initialPositions);
     }, [initialPositions]);
 
     return (
         <div className="relative">
-            {/* SSE Connection Indicator */}
-            {connected && (
+            {/* Live Indicator — shows after first successful poll */}
+            {isLive && (
                 <div className="absolute top-4 right-4 z-10 flex items-center gap-1.5 text-xs text-green-500">
                     <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
                     LIVE
