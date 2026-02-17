@@ -1,4 +1,4 @@
-import { XCircle, Trophy, Lock } from "lucide-react";
+import { XCircle, Trophy, Lock, AlertTriangle } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 import { auth } from "@/auth";
@@ -98,6 +98,17 @@ export default async function DashboardPage() {
             {hasActiveChallenge && activeChallenge && stats && (
                 <>
                     <ActiveChallengeHeading isFunded={isFunded} />
+
+                    {/* DANGER BANNER: Daily loss limit breach pending */}
+                    {activeChallenge.pendingFailureAt && (
+                        <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-red-950/60 border border-red-800/50 animate-pulse">
+                            <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0" />
+                            <div className="flex-1">
+                                <p className="text-sm font-semibold text-red-400">Daily Loss Limit Breached</p>
+                                <p className="text-xs text-red-500/80">Trading is disabled. You can recover if you profit back before end of day.</p>
+                            </div>
+                        </div>
+                    )}
 
                     {/* FUNDED PHASE UI */}
                     {isFunded && fundedStats ? (

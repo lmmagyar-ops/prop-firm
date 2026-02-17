@@ -101,7 +101,8 @@ export async function GET(req: NextRequest) {
                     positionValue: positionValue.toFixed(2),
                     status: c.status,
                     startedAt: c.startedAt,
-                    platform: c.platform || "polymarket"
+                    platform: c.platform || "polymarket",
+                    pendingFailureAt: c.pendingFailureAt?.toISOString() ?? null,
                 };
             })
         );

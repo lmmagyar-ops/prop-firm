@@ -401,7 +401,7 @@ Pre-trade validation in `RiskEngine.validateTrade()`:
 
 ### 3. Risk Monitor (Real-time)
 
-Runs every 5 seconds in the ingestion worker:
+Runs every 30 seconds in the ingestion worker (`CHECK_INTERVAL_MS = 30000`):
 1. Fetches all active challenges
 2. Gets live prices from Redis
 3. Calculates equity (cash + unrealized P&L)

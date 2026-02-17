@@ -4,6 +4,27 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ---
 
+## Feb 16, 2026 — Market Title Fix Merged to Production
+
+### What
+Merged market title consolidation (`develop` → `main`, `9528a95`). Fix eliminates all duplicate title resolution paths — now everything goes through `MarketService.getBatchTitles()`.
+
+### Merge Resolution
+- **Conflict in `market.ts`**: Removed stale `DIAG:price` diagnostic logging from main, kept develop's exhaustion warning log
+- **Pre-existing type error**: `computeWinRate` was deleted from `position-utils.ts` but still imported in `price-integrity.test.ts` — inlined the function in the test file
+
+### Verification
+- Staging smoke test: ✅ (both E2E Bot and Mat's accounts)
+- TypeScript: ✅ 0 errors
+- Tests: ✅ 1024 pass
+- Production: deploying via Vercel (auto-deploy on main push)
+
+### Tomorrow Morning
+1. **Verify production** — check Mat's Trade History on production URL, confirm zero raw IDs
+2. **Backfill** NULL `marketTitle` rows for pre-migration trades (nice-to-have, canonical path handles it)
+
+---
+
 ## Feb 17, 2026 — Anthropic-Grade Test Gap Closure
 
 ### Audit Results
@@ -4701,6 +4722,35 @@ Extracted exact DNS records from Resend via browser automation (including handli
 3. **Widen coverage** — Consider caching Gamma API titles at settlement time so the backfill pattern isn't needed again
 
 ---
+
+## 2026-02-16 — Anthropic-Grade Fixes: Fail-Closed Drawdown & Position-Safe Market Filtering
+
+### Root Causes Found
+
+**Issue 1: Drawdown breach shows ACTIVE.** `evaluator.ts` sets `pendingFailureAt` on daily loss breach but the dashboard never reads this column. UI shows green ACTIVE while trading is disabled.
+
+**Issue 3: Markets disappear with open positions.** `market.ts` removes markets at ≥99¢ (resolving) without checking if user has money in them. User's position becomes invisible.
+
+**Issue 5: $1,250 category limit.** Code correctly calculates `startBalance * 0.10`. For $10K eval = $1,000. The $1,250 was from a different eval.
+
+### Fixes Applied
+
+**Fix 1 (5 files):** Piped `pendingFailureAt` through `/api/challenges` → `dashboard-service` → `ChallengeSelector` (red BREACH badge + pulsing icon, desktop & mobile) + danger banner on dashboard page.
+
+**Fix 2 (2 files):** Added `keepMarketIds?: Set<string>` to `getActiveEvents()`. Trade page queries open positions and passes their market IDs. Markets with positions are never filtered out, even at extreme prices.
+
+**Doc fix:** CLAUDE.md incorrectly said risk monitor runs every 5s — code has `CHECK_INTERVAL_MS = 30000` (30s).
+
+### Test Results
+- TypeScript: clean
+- Engine: 60/60
+- Lifecycle: 81/81
+- Safety: 53/54 (1 pre-existing: trailing drawdown HWM semantics)
+
+### Tomorrow Morning
+1. **Deploy & browser smoke** — verify BREACH badge doesn't appear on active accounts (since no current breaches)
+2. **Trailing drawdown safety test failure** — the test expects static drawdown but evaluator uses trailing. Reconcile the model.
+3. **Optional UX polish** — add "Resolving" badge on market cards when kept via position-safe catch (currently they just stay visible)
 
 ## 2026-02-16 — Process Failure: "Market 10190976..." Survived 3 Fix Attempts
 

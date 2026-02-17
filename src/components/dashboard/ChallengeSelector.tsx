@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, ChevronDown, Briefcase } from "lucide-react";
+import { Check, ChevronDown, Briefcase, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Challenge {
@@ -15,6 +15,7 @@ interface Challenge {
     positionValue?: string; // Value of open positions
     status: string;
     platform?: "polymarket" | "kalshi";
+    pendingFailureAt?: string | null;
 }
 
 // Platform icon helper
@@ -125,14 +126,26 @@ export function ChallengeSelector({ challenges, selectedChallengeId, onSelect }:
                 <div className="relative">
                     <button
                         onClick={() => setIsOpen(!isOpen)}
-                        className="flex items-center gap-2 px-4 py-2 bg-zinc-900/50 border border-zinc-800 rounded-lg hover:bg-zinc-900 hover:border-zinc-700 transition-all text-sm"
+                        className={cn(
+                            "flex items-center gap-2 px-4 py-2 rounded-lg transition-all text-sm",
+                            selectedChallenge.pendingFailureAt
+                                ? "bg-red-950/50 border border-red-800/60 hover:bg-red-950 hover:border-red-700"
+                                : "bg-zinc-900/50 border border-zinc-800 hover:bg-zinc-900 hover:border-zinc-700"
+                        )}
                     >
                         <span className="text-sm">{getPlatformIcon(selectedChallenge.platform)}</span>
-                        <Briefcase className="w-4 h-4 text-primary" />
+                        {selectedChallenge.pendingFailureAt ? (
+                            <AlertTriangle className="w-4 h-4 text-red-500 animate-pulse" />
+                        ) : (
+                            <Briefcase className="w-4 h-4 text-primary" />
+                        )}
                         <span className="text-[10px] text-zinc-500 uppercase tracking-wider mr-1">Balance</span>
                         <span className="font-medium text-white" data-testid="account-balance">
                             ${parseFloat(selectedChallenge.equity || selectedChallenge.currentBalance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
+                        {selectedChallenge.pendingFailureAt && (
+                            <span className="text-[10px] font-bold text-red-500 uppercase tracking-wider animate-pulse">BREACH</span>
+                        )}
                         <span className="text-zinc-600 font-mono text-xs">
                             #{selectedChallenge.accountNumber || selectedChallenge.id.slice(0, 8).toUpperCase()}
                         </span>
@@ -248,12 +261,24 @@ export function ChallengeSelector({ challenges, selectedChallengeId, onSelect }:
                 <>
                     <button
                         onClick={() => setIsOpen(true)}
-                        className="flex items-center gap-2 px-3 py-2 bg-zinc-900/50 border border-zinc-800 rounded-lg text-sm"
+                        className={cn(
+                            "flex items-center gap-2 px-3 py-2 rounded-lg text-sm",
+                            selectedChallenge.pendingFailureAt
+                                ? "bg-red-950/50 border border-red-800/60"
+                                : "bg-zinc-900/50 border border-zinc-800"
+                        )}
                     >
-                        <Briefcase className="w-4 h-4 text-primary" />
+                        {selectedChallenge.pendingFailureAt ? (
+                            <AlertTriangle className="w-4 h-4 text-red-500 animate-pulse" />
+                        ) : (
+                            <Briefcase className="w-4 h-4 text-primary" />
+                        )}
                         <span className="font-medium text-white text-xs" data-testid="account-balance-mobile">
                             ${parseFloat(selectedChallenge.equity || selectedChallenge.currentBalance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
+                        {selectedChallenge.pendingFailureAt && (
+                            <span className="text-[10px] font-bold text-red-500 uppercase animate-pulse">⚠</span>
+                        )}
                     </button>
 
                     <AnimatePresence>

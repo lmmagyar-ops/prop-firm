@@ -19,6 +19,7 @@ interface Challenge {
     status: string;
     startedAt: Date | string;
     platform?: "polymarket" | "kalshi";
+    pendingFailureAt?: string | null;
 }
 
 interface TopNavActionsProps {

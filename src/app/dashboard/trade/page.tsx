@@ -6,7 +6,7 @@ import { ThemedTradeLayout } from "@/components/trading/ThemedTradeLayout";
 import type { MockMarket } from "@/lib/mock-markets";
 import { cookies } from "next/headers";
 import { db } from "@/db";
-import { challenges } from "@/db/schema";
+import { challenges, positions } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import type { Platform } from "@/lib/platform-theme";
 
@@ -59,10 +59,27 @@ export default async function TradePage() {
         platform = (String((data.activeChallenge as Record<string, unknown>)?.platform || "polymarket")) as "polymarket" | "kalshi";
     }
 
+    // POSITION-SAFE: Collect market IDs where user has open positions
+    // These must NEVER be filtered out, even if price hits 99¢
+    const activeChallengeId = data?.activeChallenge?.id;
+    let keepMarketIds: Set<string> | undefined;
+    if (activeChallengeId) {
+        const openPositions = await db.query.positions.findMany({
+            where: and(
+                eq(positions.challengeId, activeChallengeId),
+                eq(positions.status, 'OPEN')
+            ),
+            columns: { marketId: true },
+        });
+        if (openPositions.length > 0) {
+            keepMarketIds = new Set(openPositions.map(p => p.marketId));
+        }
+    }
+
     // Parallelize remaining data fetches
     const [liveMarkets, events] = await Promise.all([
         getActiveMarkets(),
-        getActiveEvents(platform),
+        getActiveEvents(platform, keepMarketIds),
     ]);
 
     const balance = data?.activeChallenge

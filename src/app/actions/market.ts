@@ -294,7 +294,7 @@ export interface EventMetadata {
 
 export type Platform = "polymarket" | "kalshi";
 
-export async function getActiveEvents(platform: Platform = "polymarket"): Promise<EventMetadata[]> {
+export async function getActiveEvents(platform: Platform = "polymarket", keepMarketIds?: Set<string>): Promise<EventMetadata[]> {
     noStore();
     try {
         const data = await getAllMarketData();
@@ -373,7 +373,10 @@ export async function getActiveEvents(platform: Platform = "polymarket"): Promis
                 // These indicate resolved, stale, or otherwise untradable markets
                 const price = market.price ?? 0;
                 if (price <= 0.01 || price >= 0.99) {
-                    return false;
+                    // POSITION-SAFE: Never hide a market the user has money in
+                    if (!keepMarketIds?.has(market.id)) {
+                        return false;
+                    }
                 }
 
                 // DEFENSIVE FILTER 2: Skip markets with exactly 50% price (±0.5%) AND low volume
@@ -437,7 +440,10 @@ export async function getActiveEvents(platform: Platform = "polymarket"): Promis
                             // DEFENSIVE FILTER 1: Skip invalid prices (≤0.01 or ≥0.99)
                             // These indicate resolved, stale, or otherwise untradable markets
                             const price = m.currentPrice ?? m.basePrice ?? 0.5;
-                            if (price <= 0.01 || price >= 0.99) return false;
+                            if (price <= 0.01 || price >= 0.99) {
+                                // POSITION-SAFE: Never hide a market the user has money in
+                                if (!keepMarketIds?.has(m.id)) return false;
+                            }
 
                             // DEFENSIVE FILTER 2: Skip 50% price + low volume (placeholder data)
                             // High-volume 50% markets are legitimate and get through
@@ -503,10 +509,14 @@ export async function getActiveEvents(platform: Platform = "polymarket"): Promis
                                 updatedCount++;
                             } else {
                                 // LAYER 1: Market has reached resolution territory.
-                                // Mark for removal instead of silently keeping stale price.
-                                // This prevents the confusing state where the card shows 68¢
-                                // but the orderbook is actually at 99¢.
-                                removedMarketIds.push(market.id);
+                                // Mark for removal UNLESS user has an open position.
+                                if (!keepMarketIds?.has(market.id)) {
+                                    removedMarketIds.push(market.id);
+                                } else {
+                                    // User has position — keep the market, update the price
+                                    market.price = livePrice;
+                                    updatedCount++;
+                                }
                             }
                         }
                     }

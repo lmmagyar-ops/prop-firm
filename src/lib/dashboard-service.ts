@@ -528,6 +528,7 @@ export async function getDashboardData(userId: string) {
             startedAt: activeChallenge.startedAt,
             endsAt: activeChallenge.endsAt,
             platform: activeChallenge.platform || "polymarket",
+            pendingFailureAt: activeChallenge.pendingFailureAt?.toISOString() ?? null,
         },
         positions: positionsWithPnL,
         stats,
