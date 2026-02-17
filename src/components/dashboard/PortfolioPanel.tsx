@@ -354,7 +354,7 @@ export function PortfolioPanel() {
                                                             "mt-3 w-full py-1.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5",
                                                             isUp
                                                                 ? "bg-green-500/10 text-green-400 hover:bg-green-500/20 border border-green-500/20"
-                                                                : "bg-zinc-700/30 text-zinc-400 hover:bg-zinc-700/50 border border-zinc-700/40",
+                                                                : "bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20",
                                                             closingId === pos.id && "opacity-50 cursor-not-allowed"
                                                         )}
                                                     >
