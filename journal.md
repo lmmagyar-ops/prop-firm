@@ -4,6 +4,33 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ---
 
+## Feb 16, 2026 — Anthropic-Grade Fixes: BREACH Badge + Position-Safe Filtering
+
+### What
+Three fixes deployed to production (`cd377ad`):
+
+1. **Fail-Closed Drawdown BREACH Badge** — `pendingFailureAt` now piped from DB → API → dashboard. Red ⚠ BREACH badge and danger banner show when daily drawdown is breached.
+
+2. **Position-Safe Market Filtering** — `getActiveEvents()` now accepts `keepMarketIds`. Markets with open user positions are never hidden, even when price hits resolution territory.
+
+3. **Safety Test Alignment** — Test 3 was asserting static drawdown for challenges, but evaluator uses trailing (HWM-based). Updated test: `54/54 passed`.
+
+### Root Cause
+- Fix 1: `pendingFailureAt` in DB but never exposed to frontend.
+- Fix 2: Three filter locations in `market.ts` removed markets at extreme prices regardless of positions.
+- Fix 3: Stale test comments — evaluator was changed to trailing for challenges after test was written.
+
+### Verification
+- Engine: 60/60, Lifecycle: 81/81, Safety: 54/54, TSC: clean
+- Staging smoke test: dashboard + trade page confirmed via browser
+
+### Tomorrow Morning
+1. **Run production smoke test** — verify no regressions
+2. **Test BREACH badge visually** — trigger a breach in dev to see the red badge render
+3. **Monitor Sentry** — watch for errors from position-safe filtering
+
+---
+
 ## Feb 16, 2026 — Market Title Fix Merged to Production
 
 ### What
