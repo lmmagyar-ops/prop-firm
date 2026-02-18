@@ -161,6 +161,8 @@ class IngestionWorker {
     private ws: WebSocket | null = null;
     private redis: Redis;
     private reconnectInterval = 5000;
+    private readonly RECONNECT_BASE = 5000;
+    private readonly RECONNECT_MAX = 60000;
     private activeTokenIds: string[] = [];
     private leaderElection: LeaderElection;
     private riskMonitor: RiskMonitor;
@@ -839,6 +841,8 @@ class IngestionWorker {
 
         this.ws.on("open", () => {
             logger.info("[Ingestion] WS Connected.");
+            // Reset backoff on successful connection
+            this.reconnectInterval = this.RECONNECT_BASE;
             this.subscribeWS();
 
             // Start ping/pong keep-alive - prevents server from closing idle connections
@@ -874,10 +878,13 @@ class IngestionWorker {
                 this.wsPingInterval = null;
             }
 
-            logger.info("[Ingestion] WS Closed. Reconnecting...");
+            // Exponential backoff: 5s → 10s → 20s → 40s → 60s max
+            const delay = this.reconnectInterval;
+            this.reconnectInterval = Math.min(this.reconnectInterval * 2, this.RECONNECT_MAX);
+            logger.info(`[Ingestion] WS Closed. Reconnecting in ${delay / 1000}s...`);
             // Only reconnect if not shutting down
             if (!this.isShuttingDown) {
-                setTimeout(() => this.connectWS(), this.reconnectInterval);
+                setTimeout(() => this.connectWS(), delay);
             }
         });
 

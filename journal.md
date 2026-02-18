@@ -4,6 +4,25 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ---
 
+## Feb 18, 2026 — Sentry Critical: Ingestion Worker Rate Limit Death Spiral
+
+### What
+Sentry fired `[CRITICAL] Ingestion Stale: Market data ingestion has not updated since 1970-01-01`. Root cause: Polymarket returning HTTP 429 (rate limit) on WebSocket connections. Worker reconnected every 5s with no backoff, creating a death spiral → no prices → RiskMonitor halts trading.
+
+### Root Cause
+`ingestion.ts` line 882: `reconnectInterval` was hardcoded to 5000ms and never increased. Each failed reconnection triggered another attempt 5s later, which triggered more 429s.
+
+### Fix
+Added exponential backoff to `connectWS()`: 5s → 10s → 20s → 40s → 60s max. Reset to 5s on successful connection. This breaks the death spiral.
+
+### Also Found (Engineering Root Cause Analysis)
+PnL is calculated in 7 separate places across the codebase. All 1024 tests mock the DB and market service, never testing real data flow. See `engineering_root_cause.md` for full analysis. 3 structural changes needed:
+1. One PnL function called everywhere (delete 6 inline copies)
+2. One integration test with real data
+3. One price validator called everywhere
+
+---
+
 ## Feb 16, 2026 — Anthropic-Grade Fixes: BREACH Badge + Position-Safe Filtering
 
 ### What
@@ -4982,3 +5001,166 @@ Zero errors, zero NaN, zero broken elements. **Platform is production-ready.**
 1. **Monitor Sentry** — the N+1 fix should eliminate the "failed query" errors (58+50+52 events). Check after 24h soak.
 2. **Mat testing** — trade pipeline is verified. The platform should handle normal user flows without issues.
 3. **Remaining Sentry items** — 5 lower-priority issues remain (404s, minor errors). None are user-facing blockers.
+2026-02-17 — Financial Logic Audit (Opus 4.6)
+Scope: Read all 14 critical financial files end-to-end. Traced every dollar from BUY → position → SELL → balance → payout.
+
+Files audited: 
+trade.ts
+, 
+risk.ts
+, 
+evaluator.ts
+, 
+settlement.ts
+, 
+position-utils.ts
+, 
+payout-service.ts
+, 
+normalize-rules.ts
+, 
+BalanceManager.ts
+, 
+PositionManager.ts
+, 
+funded-rules.ts
+, 
+price-validation.ts
+, 
+daily_reset.ts
+, 
+risk-monitor.ts
+, 
+dashboard-service.ts
+
+FINDING 1 — BUG: Risk-Monitor Bypass of PnL Sanity Gate
+Severity: HIGH Files: 
+risk-monitor.ts
+ L286-358 vs 
+evaluator.ts
+ L192-246
+
+The evaluator has a critical sanity gate that blocks promotion to funded if the PnL discrepancy exceeds 20% between equity-derived profit and trade-derived profit (L227). However, 
+risk-monitor.ts
+ 
+triggerPass()
+ (L286) transitions challenges to funded without this check. There are two independent paths to funded status — only one has the fraud gate.
+
+Attack scenario: If phantom PnL or a calculation bug inflates equity, the risk-monitor's 30s check could promote before the evaluator runs its sanity check.
+
+Fix: Add the same PnL cross-reference check to risk-monitor.ts triggerPass(), or refactor to delegate promotion to ChallengeEvaluator.evaluate() instead of duplicating the logic.
+
+FINDING 2 — EDGE CASE: Settlement Credits Proceeds Even on Losing Positions
+Severity: MEDIUM File: 
+settlement.ts
+ L126
+
+typescript
+if (challengeId && proceeds > 0) {
+    await BalanceManager.adjustBalance(tx, challengeId, proceeds, 'market_settlement');
+}
+When a market resolves, the settlement service credits proceeds = shares × settlementPrice. For a winning YES position (settlementPrice = 1.0), this is correct. But for a losing YES position (settlementPrice = 0.0), proceeds = 0 so no credit happens — which means the cost basis is never returned. This is actually correct behavior (you lose your bet), BUT the proceeds > 0 guard means that even partial losses (e.g., settlementPrice = 0.3 on a 0.6 entry) still credit back the partial value correctly.
+
+Verdict: CORRECT — the math works. The cost was already deducted at BUY time, so crediting back shares × settlementPrice is the right settlement.
+
+FINDING 3 — EDGE CASE: Daily Reset Race Condition
+Severity: LOW File: 
+daily_reset.ts
+ L42-47
+
+The daily reset sets startOfDayBalance = currentBalance at midnight UTC. If a trade executes between reading currentBalance and writing startOfDayBalance, the SOD snapshot could be stale by one trade. This is mitigated by:
+
+The reset only runs in the 0:00 UTC hour (L16)
+No row lock is taken, but trades don't modify SOD
+Practical risk is minimal (requires exact millisecond collision)
+Verdict: ACCEPTABLE — not worth fixing given the operational context.
+
+FINDING 4 — LOGIC: Drawdown Inconsistency Between Evaluator and Risk Engine
+Severity: MEDIUM Files: 
+evaluator.ts
+ L124-125 vs 
+risk.ts
+ L134-135
+
+The evaluator computes drawdown from different bases depending on phase:
+
+Challenge phase: drawdownBase = highWaterMark (trailing drawdown)
+Funded phase: drawdownBase = startingBalance (static drawdown)
+But 
+risk.ts
+ (the pre-trade gate) always uses:
+
+typescript
+const totalEquityFloor = startBalance * (1 - MAX_TOTAL_DD_PERCENT);
+This is a static floor from starting balance — it doesn't use HWM at all. So during challenge phase, the risk engine is MORE lenient than the evaluator. A trade could pass the risk check but then immediately trigger a drawdown failure in the evaluator.
+
+Impact: Low in practice because the evaluator runs after every trade (L340-342 in trade.ts). But conceptually the risk engine should match the evaluator's drawdown model.
+
+Fix: In 
+risk.ts
+, use HWM-based floor for challenge phase to match the evaluator.
+
+FINDING 5 — CORRECT: PnL Pipeline Round-Trip
+Severity: INFO
+
+Traced a full round-trip. Buy 100 shares at $0.60:
+
+trade.ts
+: amount = 100 * 0.60 = $60, BalanceManager.deductCost($60)
+Position created: shares=100, entryPrice=0.60, sizeAmount=60
+Sell 100 shares at $0.75: realizedPnL = 100 * (0.75 - 0.60) = $15
+PositionManager.reducePosition: proceeds = 100 * 0.75 = $75
+BalanceManager.creditProceeds($75)
+Net: deducted $60, credited $75 = +$15 ✓
+Verdict: CORRECT
+
+FINDING 6 — CORRECT: Payout Deduction Math
+Severity: INFO
+
+Payout deducts grossDeduction = netPayout / profitSplit. So if trader earned $800 net at 80% split:
+
+grossDeduction = $800 / 0.80 = $1000 (the full profit)
+This prevents the infinite payout exploit (same profit paid repeatedly)
+Cycle resets (trading days, cycle start) happen atomically in same transaction
+Verdict: CORRECT
+
+FINDING 7 — CORRECT: NO Direction Math Symmetry
+Severity: INFO
+
+NO positions correctly use 1 - yesPrice everywhere:
+
+trade.ts
+ L156: executionPrice = 1 - simulation.executedPrice
+position-utils.ts
+ L89: 
+getDirectionAdjustedPrice(rawPrice, direction)
+settlement.ts
+ L79: settlementPrice = isNo ? 1 - resolution.resolutionPrice : resolution.resolutionPrice
+risk-monitor.ts
+ L163: effectivePrice = isNo ? (1 - livePrice) : livePrice
+Verdict: CORRECT — consistent across all consumers.
+
+FINDING 8 — CORRECT: Normalize Rules Config
+Severity: INFO
+
+Values < 1 correctly treated as percentages. E.g., maxDrawdown = 0.08 → 0.08 * 10000 = $800. Default fallbacks: maxDrawdown = startingBalance * 0.08, profitTarget = startingBalance * 0.10.
+
+Verdict: CORRECT
+
+Summary
+#	Finding	Severity	Category	Status
+1	Risk-monitor bypasses PnL sanity gate	HIGH	BUG	NEEDS FIX
+2	Settlement proceeds math	MEDIUM	EDGE_CASE	Correct
+3	Daily reset race condition	LOW	EDGE_CASE	Acceptable
+4	Drawdown model mismatch (risk vs evaluator)	MEDIUM	LOGIC_ERROR	NEEDS FIX
+5	PnL round-trip	INFO	CORRECT	Verified
+6	Payout deduction	INFO	CORRECT	Verified
+7	NO direction symmetry	INFO	CORRECT	Verified
+8	Normalize rules	INFO	CORRECT	Verified
+Tomorrow Morning
+FIX Finding #1 — Add PnL sanity gate to risk-monitor.ts triggerPass(). This is the highest-priority item. Without it, there's a path to funded that skips fraud detection.
+FIX Finding #4 — Align risk.ts drawdown model with evaluator (use HWM-based trailing floor during challenge phase).
+Run security audit — The financial logic is sound. Next pass should be the o1-pro security audit from 
+audit_prompts.md
+.
+Previous fix deployed — The drawdown label fix (commit 89ff39f) is live. Monitor for any UI regressions.
