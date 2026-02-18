@@ -22,15 +22,16 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 - Ingestion worker exponential backoff (rate limit death spiral fix) — deployed via Railway
 - **trade/execute PnL direction bug fix** + 6 execute route tests — `985bb66`
 - **Settlement cron + Confirmo webhook tests** (10 tests) — `51841c0`
+- **Payout routes + operational cron tests** (19 tests) — `2a8de10`
 
 ### Test Suite Baseline
-- **1065 tests pass** across 73 files, 0 failures (as of Feb 18 `51841c0`)
+- **1084 tests pass** across 75 files, 0 failures (as of Feb 18 `2a8de10`)
 - tsc --noEmit: clean
 
 ### Tomorrow Morning (Priority × Risk)
-1. **Write payout + cron tests** — daily reset, daily fees, balance audit (Phase 3)
-2. Full plan: see `implementation_plan.md` in the brain artifacts — Phases 3-4 remain
-3. Test coverage audit: see `test_coverage_audit.md` — 7/82 API routes tested (up from 3)
+1. **Phase 4 — Unhollowing mocking mirages** in existing settlement/dashboard tests
+2. Full plan: see `implementation_plan.md` in the brain artifacts — Phase 4 remains
+3. Test coverage audit: see `test_coverage_audit.md` — 11/82 API routes tested (up from 3)
 
 > **How to update this section:**
 > - When the user confirms a fix works → move it from "Unverified" to "Last Confirmed"
