@@ -141,7 +141,7 @@ export function LandingHero() {
                     </div>
 
                     <Link
-                        href="/rules"
+                        href="/how-it-works"
                         className="mono-label text-[var(--vapi-gray-text)] hover:text-[var(--vapi-mint)] transition-colors flex items-center gap-1"
                     >
                         View Rules <ChevronRight className="w-3 h-3" />
