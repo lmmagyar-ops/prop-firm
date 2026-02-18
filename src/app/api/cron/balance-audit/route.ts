@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { challenges, trades, positions } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { createLogger } from "@/lib/logger";
+import * as Sentry from "@sentry/nextjs";
 const logger = createLogger("BalanceAudit");
 
 /**
@@ -149,6 +150,46 @@ export async function GET(req: Request) {
         logger.info(`[BALANCE_AUDIT] Complete. ${alerts.length} alerts found.`);
         logger.info(`[BALANCE_AUDIT] ${JSON.stringify(summary)}`);
 
+        // ── REAL ALERTS ─────────────────────────────────────────
+        if (alerts.length > 0) {
+            // Sentry: report every suspicious discrepancy
+            for (const alert of alerts) {
+                Sentry.captureException(
+                    new Error(`Balance corruption: ${alert.suspiciousReason}`),
+                    {
+                        level: Math.abs(alert.discrepancy) > 5000 ? "fatal" : "error",
+                        tags: {
+                            audit: "balance_integrity",
+                            challengeId: alert.challengeId,
+                        },
+                        extra: {
+                            storedBalance: alert.storedBalance,
+                            calculatedBalance: alert.calculatedBalance,
+                            discrepancy: alert.discrepancy,
+                            userId: alert.userId,
+                        },
+                        fingerprint: ["balance-audit", alert.challengeId],
+                    },
+                );
+            }
+
+            // Slack: fire critical alert for large discrepancies 
+            const criticalAlerts = alerts.filter(a => Math.abs(a.discrepancy) > 100);
+            if (criticalAlerts.length > 0) {
+                const alertLines = criticalAlerts.map(a =>
+                    `• Challenge \`${a.challengeId.slice(0, 8)}…\`: stored $${a.storedBalance.toFixed(2)} vs calculated $${a.calculatedBalance.toFixed(2)} (*Δ $${a.discrepancy.toFixed(2)}*) — ${a.suspiciousReason || "unknown"}`
+                ).join("\n");
+
+                await fireSlackAlert({
+                    type: "CRITICAL_ALERT",
+                    data: {
+                        title: `Balance Audit: ${criticalAlerts.length} corruption${criticalAlerts.length > 1 ? "s" : ""} detected`,
+                        message: `${alertLines}\n\nTotal audited: ${activeChallenges.length}`,
+                        timestamp: new Date().toISOString(),
+                    },
+                });
+            }
+        }
         return NextResponse.json({
             summary,
             alerts,
@@ -158,5 +199,23 @@ export async function GET(req: Request) {
     } catch (error) {
         logger.error("[BALANCE_AUDIT] Error:", error);
         return NextResponse.json({ error: "Audit failed" }, { status: 500 });
+    }
+}
+
+// ── Slack Alert Helper ──────────────────────────────────────
+async function fireSlackAlert(payload: { type: string; data: Record<string, unknown> }): Promise<void> {
+    try {
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+        const response = await fetch(`${appUrl}/api/webhooks/slack-alerts`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+        });
+        if (!response.ok) {
+            logger.error(`[BALANCE_AUDIT] Slack alert failed: ${response.status}`);
+        }
+    } catch (err) {
+        // Never let alert delivery failure crash the audit
+        logger.error("[BALANCE_AUDIT] Failed to send Slack alert:", err);
     }
 }
