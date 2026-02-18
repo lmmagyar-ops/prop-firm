@@ -4,6 +4,32 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ---
 
+## Feb 18, 2026 — PnL Consolidation & Behavioral Tests
+
+### What
+Consolidated all inline PnL calculations (7 locations across 5 files) to use canonical `calculatePositionMetrics()` and `getDirectionAdjustedPrice()` from `position-utils.ts`. Added 7 behavioral tests verifying all calculation paths agree for both YES and NO positions.
+
+### Files Changed
+- `positions/route.ts` → `calculatePositionMetrics()`
+- `evaluator.ts` (3 locations) → `calculatePositionMetrics()` + `getDirectionAdjustedPrice()`
+- `risk-monitor.ts` (2 locations) → `getDirectionAdjustedPrice()`
+- `close/route.ts` → `getDirectionAdjustedPrice()`
+- `dashboard-service.ts` → clarified stored-price fallback comment
+
+### Tests Added
+`tests/pnl-consistency.test.ts` — 7 tests in 2 suites:
+- YES direction: metrics ↔ portfolio ↔ evaluator agreement
+- NO direction: same + verifies entry price stored as `1 - yesPrice`
+
+### Result
+1045/1045 tests pass across 69 files. Commits: `2b74dda` (refactor), `29c6173` (tests).
+
+### Tomorrow Morning
+1. **Price validator consolidation** — one `isValidMarketPrice()` called everywhere (remaining structural recommendation)
+2. **Monitor Sentry** — verify the ingestion backoff fix holds overnight
+
+---
+
 ## Feb 18, 2026 — Sentry Critical: Ingestion Worker Rate Limit Death Spiral
 
 ### What
