@@ -24,15 +24,16 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 - **Settlement cron + Confirmo webhook tests** (10 tests) — `51841c0`
 - **Payout routes + operational cron tests** (19 tests) — `2a8de10`
 - **Unhollowed settlement.test.ts mock mirage** (real DB) — `dc1d596`
+- **Balance audit → Sentry + Slack alerts** (observability) — `c87eb07`
 
 ### Test Suite Baseline
 - **1083 tests pass** across 75 files, 0 failures (as of Feb 18 `dc1d596`)
 - tsc --noEmit: clean
 
 ### Tomorrow Morning (Priority × Risk)
-1. **All 5 phases of test hardening plan complete** — 11/82 API routes now tested
-2. Consider expanding route coverage beyond the critical financial paths
-3. Monitor for cross-test interference patterns in CI
+1. **Set `SLACK_WEBHOOK_URL`** env var in Railway/Vercel if not already done
+2. Engineering hardening phase complete — shift to product work
+3. Monitor Sentry for balance audit alerts after next cron run
 
 > **How to update this section:**
 > - When the user confirms a fix works → move it from "Unverified" to "Last Confirmed"

@@ -173,21 +173,10 @@ export async function GET(req: Request) {
                 );
             }
 
-            // Slack: fire critical alert for large discrepancies 
+            // Discord: fire alert for large discrepancies
             const criticalAlerts = alerts.filter(a => Math.abs(a.discrepancy) > 100);
             if (criticalAlerts.length > 0) {
-                const alertLines = criticalAlerts.map(a =>
-                    `• Challenge \`${a.challengeId.slice(0, 8)}…\`: stored $${a.storedBalance.toFixed(2)} vs calculated $${a.calculatedBalance.toFixed(2)} (*Δ $${a.discrepancy.toFixed(2)}*) — ${a.suspiciousReason || "unknown"}`
-                ).join("\n");
-
-                await fireSlackAlert({
-                    type: "CRITICAL_ALERT",
-                    data: {
-                        title: `Balance Audit: ${criticalAlerts.length} corruption${criticalAlerts.length > 1 ? "s" : ""} detected`,
-                        message: `${alertLines}\n\nTotal audited: ${activeChallenges.length}`,
-                        timestamp: new Date().toISOString(),
-                    },
-                });
+                await fireDiscordAlert(criticalAlerts, activeChallenges.length);
             }
         }
         return NextResponse.json({
@@ -202,20 +191,48 @@ export async function GET(req: Request) {
     }
 }
 
-// ── Slack Alert Helper ──────────────────────────────────────
-async function fireSlackAlert(payload: { type: string; data: Record<string, unknown> }): Promise<void> {
+// ── Discord Alert Helper ────────────────────────────────────
+async function fireDiscordAlert(criticalAlerts: BalanceAuditResult[], totalAudited: number): Promise<void> {
+    const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
+    if (!webhookUrl) {
+        logger.info("[BALANCE_AUDIT] Discord webhook not configured, skipping alert");
+        return;
+    }
+
     try {
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-        const response = await fetch(`${appUrl}/api/webhooks/slack-alerts`, {
+        const fields = criticalAlerts.map(a => ({
+            name: `Challenge ${a.challengeId.slice(0, 8)}…`,
+            value: [
+                `**Stored:** $${a.storedBalance.toFixed(2)}`,
+                `**Calculated:** $${a.calculatedBalance.toFixed(2)}`,
+                `**Δ:** $${a.discrepancy.toFixed(2)}`,
+                a.suspiciousReason || "",
+            ].filter(Boolean).join("\n"),
+            inline: true,
+        }));
+
+        const hasFatal = criticalAlerts.some(a => Math.abs(a.discrepancy) > 5000);
+
+        const response = await fetch(webhookUrl, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
+            body: JSON.stringify({
+                username: "Balance Audit",
+                embeds: [{
+                    title: `🚨 ${criticalAlerts.length} Balance Corruption${criticalAlerts.length > 1 ? "s" : ""} Detected`,
+                    color: hasFatal ? 0xFF0000 : 0xFF8C00, // red for fatal, orange for moderate
+                    fields,
+                    footer: { text: `Total audited: ${totalAudited} challenges` },
+                    timestamp: new Date().toISOString(),
+                }],
+            }),
         });
+
         if (!response.ok) {
-            logger.error(`[BALANCE_AUDIT] Slack alert failed: ${response.status}`);
+            logger.error(`[BALANCE_AUDIT] Discord alert failed: ${response.status}`);
         }
     } catch (err) {
         // Never let alert delivery failure crash the audit
-        logger.error("[BALANCE_AUDIT] Failed to send Slack alert:", err);
+        logger.error("[BALANCE_AUDIT] Failed to send Discord alert:", err);
     }
 }
