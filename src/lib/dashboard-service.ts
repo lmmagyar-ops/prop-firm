@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { challenges, positions, trades, users } from "@/db/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, inArray } from "drizzle-orm";
 import { FUNDED_RULES, type FundedTier } from "@/lib/funded-rules";
 import { calculatePositionMetrics } from "@/lib/position-utils";
 import { normalizeRulesConfig } from "@/lib/normalize-rules";
@@ -330,21 +330,13 @@ export async function getDashboardData(userId: string) {
     const allTradesResult: TradeRow[] = [];
 
     if (challengeIds.length > 0) {
-        // Query trades for all user challenges, ordered by most recent first
-        for (const cId of challengeIds) {
-            const chTrades = await db.query.trades.findMany({
-                where: eq(trades.challengeId, cId),
-                columns: { id: true, type: true, marketId: true, realizedPnL: true, executedAt: true },
-                orderBy: [desc(trades.executedAt)],
-            });
-            allTradesResult.push(...(chTrades as TradeRow[]));
-        }
-        // Sort all trades by executedAt descending
-        allTradesResult.sort((a, b) => {
-            const ta = a.executedAt ? new Date(a.executedAt).getTime() : 0;
-            const tb = b.executedAt ? new Date(b.executedAt).getTime() : 0;
-            return tb - ta;
+        // PERF: Single query for ALL trades across all challenges (fixes N+1)
+        const chTrades = await db.query.trades.findMany({
+            where: inArray(trades.challengeId, challengeIds),
+            columns: { id: true, type: true, marketId: true, realizedPnL: true, executedAt: true },
+            orderBy: [desc(trades.executedAt)],
         });
+        allTradesResult.push(...(chTrades as TradeRow[]));
     }
 
     const totalTradeCount = allTradesResult.length;
@@ -393,52 +385,24 @@ export async function getDashboardData(userId: string) {
     // mapChallengeHistory is now a top-level exported function
 
     // 3. Find active challenge (prefer the selected one from cookie)
-    // Import cookies for server-side reading
+    // PERF: Derive from allChallenges instead of re-querying the DB (fixes N+1)
     const { cookies } = await import("next/headers");
     const cookieStore = await cookies();
     const selectedChallengeId = cookieStore.get("selectedChallengeId")?.value;
 
-    // If user has selected a specific challenge, try to find that one
-    let activeChallenge: Awaited<ReturnType<typeof db.query.challenges.findFirst>> = undefined;
-    let pendingChallenge: Awaited<ReturnType<typeof db.query.challenges.findFirst>> = undefined;
+    type ChallengeType = typeof allChallenges[number];
+    let activeChallenge: ChallengeType | undefined = undefined;
+    let pendingChallenge: ChallengeType | undefined = undefined;
+
+    // Derive active + pending from the allChallenges we already fetched (zero extra queries)
+    const activeChallenges = allChallenges.filter(c => c.status === "active");
+    pendingChallenge = allChallenges.find(c => c.status === "pending");
 
     if (selectedChallengeId) {
-        activeChallenge = await db.query.challenges.findFirst({
-            where: and(
-                eq(challenges.id, selectedChallengeId),
-                eq(challenges.userId, userId),
-                eq(challenges.status, "active")
-            ),
-        });
+        activeChallenge = activeChallenges.find(c => c.id === selectedChallengeId);
     }
-
-    // Fallback to any active challenge if selected one not found
     if (!activeChallenge) {
-        // PERF: Parallelize fallback active + pending queries (independent)
-        const [fallbackActive, pendingResult] = await Promise.all([
-            db.query.challenges.findFirst({
-                where: and(
-                    eq(challenges.userId, userId),
-                    eq(challenges.status, "active")
-                ),
-            }),
-            db.query.challenges.findFirst({
-                where: and(
-                    eq(challenges.userId, userId),
-                    eq(challenges.status, "pending")
-                ),
-            }),
-        ]);
-        activeChallenge = fallbackActive;
-        pendingChallenge = pendingResult;
-    } else {
-        // Still need to fetch pending challenge
-        pendingChallenge = await db.query.challenges.findFirst({
-            where: and(
-                eq(challenges.userId, userId),
-                eq(challenges.status, "pending")
-            ),
-        });
+        activeChallenge = activeChallenges[0];
     }
 
     // Common history data
