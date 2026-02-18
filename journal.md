@@ -12,17 +12,25 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 - **Feb 16**: Dashboard loads, trades execute, positions display correctly. E2E trade ($1 buy → sell) works. Equity math verified: $9,051.16 + $604.08 = $9,655.24.
 
 ### Known Open Issues
-- None currently reported by user
+- **Feb 18 — LIVE BUG**: `src/app/api/trade/execute/route.ts` line 129 — inline PnL `(current - entry) * shares` has **no direction adjustment**. For NO positions, the PnL returned in the BUY response is wrong. Fix: replace with `calculatePositionMetrics()`. Does NOT affect balance or DB — only the JSON response the UI receives after a BUY.
 
 ### Shipped But UNVERIFIED by User
 - PnL consolidation refactor (7 inline calcs → canonical functions) — `2b74dda`
 - PnL behavioral tests (7 tests, YES + NO direction) — `29c6173`
 - Price validator consolidation — `0063b26`
+- API route integration tests (4 tests, endpoint PnL consistency) — `925381b`
 - Ingestion worker exponential backoff (rate limit death spiral fix) — deployed via Railway
 
 ### Test Suite Baseline
-- **1045 tests pass** across 69 files, 0 failures (as of Feb 18 `29c6173`)
+- **1049 tests pass** across 70 files, 0 failures (as of Feb 18 `925381b`)
 - tsc --noEmit: clean
+
+### Tomorrow Morning (Priority × Risk)
+1. **Fix the live bug** — `trade/execute/route.ts` L125-130: replace inline PnL with `calculatePositionMetrics()` (Phase 0 in implementation_plan.md)
+2. **Write trade/execute route tests** — the BUY endpoint has zero route-level tests (Phase 1)
+3. **Write settlement + webhook tests** — money-out paths completely untested (Phase 2)
+4. Full plan: see `implementation_plan.md` in the brain artifacts — 4 phases, ~40 tests to add
+5. Test coverage audit: see `test_coverage_audit.md` — only 3/82 API routes tested
 
 > **How to update this section:**
 > - When the user confirms a fix works → move it from "Unverified" to "Last Confirmed"

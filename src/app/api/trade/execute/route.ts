@@ -8,6 +8,7 @@ import { createLogger } from "@/lib/logger";
 import { checkIdempotency, cacheIdempotencyResult } from "@/lib/trade-idempotency";
 import { getErrorMessage } from "@/lib/errors";
 import { alerts } from "@/lib/alerts";
+import { calculatePositionMetrics } from "@/lib/position-utils";
 
 const log = createLogger("TradeAPI");
 
@@ -121,12 +122,14 @@ export async function POST(req: NextRequest) {
 
         // Direction is now set correctly by TradeExecutor, no need to update post-hoc
 
-        // Calculate position metrics with the correct direction
+        // Calculate position metrics with canonical direction-aware function
+        const shares = parseFloat(position.shares);
         const entry = parseFloat(position.entryPrice);
         const current = parseFloat(position.currentPrice || position.entryPrice);
-        const shares = parseFloat(position.shares);
         const invested = parseFloat(position.sizeAmount);
-        const currentPnl = (current - entry) * shares;
+        const direction = (outcome as "YES" | "NO");
+        const metrics = calculatePositionMetrics(shares, entry, current, direction);
+        const currentPnl = metrics.unrealizedPnL;
         const roi = invested > 0 ? (currentPnl / invested) * 100 : 0;
 
         const positionData = {
