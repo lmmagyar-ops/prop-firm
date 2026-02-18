@@ -4961,3 +4961,24 @@ Zero errors, zero NaN, zero broken elements. **Platform is production-ready.**
 
 **Commits:** `05d6dba` (legacy route delete) + `88c8ad6` (console error fix)
 
+### Sentry Fixes + Production Smoke Test (Feb 17, 7:15 PM CT)
+
+**Sentry fixes:**
+9. ✅ Fixed SSE race condition in `/api/markets/stream/route.ts` — added `closed` flag to guard `controller.enqueue()` after client disconnect. The async `getPrices()` call created a window where the controller closes mid-tick. (`24e6e40`)
+10. ✅ Fixed N+1 query in `getDashboardData()` — replaced per-challenge for-loop with single `inArray()` query, eliminated 2-3 redundant `findFirst` re-queries by deriving active/pending from already-fetched `allChallenges`. Reduced ~N+5 → 3 queries per dashboard load. -36 lines. (`70c35ee`)
+
+**Production smoke test — full round-trip (MA account):**
+- BUY $10 YES on "Who will Trump nominate as Fed Chair?" → 10.53 shares @ 95.0¢ ✅
+- Position appeared in portfolio, cash correctly deducted ($9,084.75 → $9,074.75) ✅
+- CLOSE position → toast "Position closed: -$0.11 loss" ✅
+- Cash returned ($9,074.75 → $9,084.65), position removed from portfolio ✅
+- Dashboard equity consistent: $9,331.12, +$246.37 today ✅
+- **No phantom positions, no stale prices, no ghost trades.**
+
+**Session totals:** 10 fixes, 6 commits, 1038 tests pass, full round-trip verified on production.
+
+### Tomorrow Morning
+
+1. **Monitor Sentry** — the N+1 fix should eliminate the "failed query" errors (58+50+52 events). Check after 24h soak.
+2. **Mat testing** — trade pipeline is verified. The platform should handle normal user flows without issues.
+3. **Remaining Sentry items** — 5 lower-priority issues remain (404s, minor errors). None are user-facing blockers.
