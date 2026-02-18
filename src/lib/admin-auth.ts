@@ -70,10 +70,8 @@ export async function requireAdmin() {
 
     } catch (error) {
         logger.error("[Admin Auth] Database error:", error);
-        // In case of DB error, fall back to bootstrap list
-        if (BOOTSTRAP_ADMIN_EMAILS.includes(email)) {
-            return { isAuthorized: true, user: session.user };
-        }
+        // FAIL CLOSED: If the DB is down, deny admin access.
+        // No bootstrap fallback — there's nothing useful to do in the admin panel without a DB.
         return {
             isAuthorized: false,
             response: NextResponse.json({ error: "Authorization check failed" }, { status: 500 })

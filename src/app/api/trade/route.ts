@@ -31,9 +31,19 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Missing required fields (challengeId, marketId, side, amount)" }, { status: 400 });
         }
 
+        // SECURITY: Runtime validation — TypeScript types don't exist at runtime
+        if (side !== "BUY" && side !== "SELL") {
+            return NextResponse.json({ error: "Invalid side: must be BUY or SELL" }, { status: 400 });
+        }
+
+        const parsedAmount = parseFloat(amount);
+        if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+            return NextResponse.json({ error: "Invalid amount: must be a positive number" }, { status: 400 });
+        }
+
         let trade;
         try {
-            trade = await TradeExecutor.executeTrade(userId, challengeId, marketId, side, parseFloat(amount));
+            trade = await TradeExecutor.executeTrade(userId, challengeId, marketId, side, parsedAmount);
         } catch (error: unknown) {
 
             // 1. AUTO-PROVISION CHALLENGE & USER (Fallback for demo mode)
@@ -41,7 +51,7 @@ export async function POST(req: Request) {
                 logger.info("[Auto-Provision] Creating new challenge for demo user...");
                 const { autoProvisionDemoChallenge } = await import("@/lib/dev-helpers");
                 const newChallengeId = await autoProvisionDemoChallenge(userId);
-                trade = await TradeExecutor.executeTrade(userId, newChallengeId, marketId, side, parseFloat(amount));
+                trade = await TradeExecutor.executeTrade(userId, newChallengeId, marketId, side, parsedAmount);
             }
 
             // 2. AUTO-PROVISION MARKET DATA (Redis)
@@ -49,14 +59,14 @@ export async function POST(req: Request) {
                 const { autoProvisionMarketData } = await import("@/lib/dev-helpers");
                 await autoProvisionMarketData(marketId);
                 logger.info("[Auto-Provision] Retrying execution...");
-                trade = await TradeExecutor.executeTrade(userId, challengeId, marketId, side, parseFloat(amount));
+                trade = await TradeExecutor.executeTrade(userId, challengeId, marketId, side, parsedAmount);
             } else {
                 // Log failed trade
                 await logTrade(userId, {
                     challengeId,
                     marketId,
                     side,
-                    amount: parseFloat(amount),
+                    amount: parsedAmount,
                     success: false,
                     error: getErrorMessage(error)
                 });
@@ -69,7 +79,7 @@ export async function POST(req: Request) {
             challengeId,
             marketId,
             side,
-            amount: parseFloat(amount),
+            amount: parsedAmount,
             success: true
         });
 

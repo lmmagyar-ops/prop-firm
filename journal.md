@@ -4895,6 +4895,41 @@ After this fix, a developer would have to **add** a new client-side PnL computat
 
 Zero errors, zero NaN, zero broken elements. **Platform is production-ready.**
 
+### Post-Verification Hardening (Feb 17, 1:08 PM CT)
+1. ✅ Committed `journal.md` → `34504c4`
+2. ✅ Fixed `price-integrity.test.ts` failure — removed `?? 0.5` fallback in `market.ts:494`, now returns null (fail-closed)
+3. ✅ Added `pnl-pipeline-consistency.test.ts` (19 tests) — verifies API route inline PnL, `getPortfolioValue()`, and `calculatePositionMetrics()` all produce identical results for identical inputs
+4. Full suite: **68/68 files, 1038 pass, 0 failures** → committed as `b923562`
+
 ### Tomorrow Morning
-1. The pre-existing `price-integrity.test.ts` failure (line 494 of `market.ts` has a `0.5` fallback) should be addressed separately
-2. Monitor daily loss limit — currently at 133.46% ($667.32 / $500.00 DANGER). The positions are deep underwater; evaluate whether to close or hold to expiry.
+1. ~~Monitor daily loss limit~~ → Audited (see below)
+2. ✅ Pushed to remote — CI #596 all green, Financial Display Guard passed its first real run
+3. Waiting on Mat's test feedback (sent QA checklist, no response yet)
+
+### Daily Loss Meter Audit (Feb 17, 5:30 PM CT)
+**Finding: Display inconsistency (not a bug in enforcement)**
+- Dashboard (`FundedRiskMeters.tsx:28`) computes daily loss as `startOfDayBalance - currentBalance` (cash only)
+- Risk engine (`risk.ts:138-152`) uses `startOfDayBalance - currentEquity` (cash + position value)
+- The 133% DANGER is because buying positions "spent" cash, which the dashboard counts as loss even though it became shares
+- **Trade blocking works correctly** — Rule 2 hard-blocks when equity drops below daily floor
+- **Decision needed**: Make the dashboard use equity-based math (matches enforcement) or keep it conservative (cash-based)?
+- ⏳ Waiting on Mat's opinion before implementing either option
+
+### Tomorrow Morning
+1. Get Mat's QA feedback + daily loss meter preference
+2. Implement whichever daily loss display option is chosen
+3. Evaluate underwater BTC positions (hold vs close)
+
+### Adversarial Security Audit (Feb 17, 6:15 PM CT)
+
+**Scope:** Audited all financial-critical code paths — both trade routes, all 32 admin routes, `TradeExecutor`, `RiskEngine`, `admin-auth.ts`, close route, `BalanceManager`.
+
+**No critical exploits found.** Financial core is solid: row locks, invariant assertions, ownership validation, price validation, and risk checks all happen inside a single transaction.
+
+**Fixes applied:**
+1. ✅ Added runtime `side` validation (`"BUY"` | `"SELL"`) and `amount` validation (`Number.isFinite`, `> 0`) to legacy `/api/trade/route.ts` — TypeScript types don't exist at runtime
+2. ✅ Removed bootstrap email fallback on DB error in `admin-auth.ts` — fail closed, not open
+3. ✅ Replaced 5 redundant `parseFloat(amount)` calls with pre-validated `parsedAmount`
+
+**Verification:** TypeScript clean, 68/68 test files, 1038 pass, 0 failures.
+
