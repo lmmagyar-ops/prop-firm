@@ -170,7 +170,7 @@ export function getEquityStats(challenge: DbChallengeRow, equity: number, starti
     const floor = startingBalance - maxDrawdownLimit;
     const maxDrawdownAllowance = Math.max(0, startOfDayBalance - floor);
 
-    return { totalPnL, dailyPnL, drawdownUsage, dailyDrawdownUsage, profitProgress, drawdownAmount, dailyDrawdownAmount, maxDrawdownAllowance };
+    return { totalPnL, dailyPnL, drawdownUsage, dailyDrawdownUsage, profitProgress, drawdownAmount, dailyDrawdownAmount, maxDrawdownAllowance, maxDrawdownLimit };
 }
 
 // ─── Trade-level category stats (pure function) ───────────────────

@@ -220,7 +220,7 @@ export default async function DashboardPage() {
                                     const raw = rc?.dailyLossPercent ?? rc?.maxDailyDrawdownPercent ?? 0.04;
                                     return raw < 1 ? raw * 100 : raw; // 0.05 → 5, already 5 → 5
                                 })()}
-                                maxDrawdownDollars={stats.maxDrawdownAllowance}
+                                maxDrawdownDollars={stats.maxDrawdownLimit}
                                 dailyDrawdownDollars={((activeChallenge.rulesConfig as Record<string, number>)?.maxDailyDrawdownPercent ?? 0.04) * activeChallenge.startingBalance}
                                 drawdownUsedDollars={stats.drawdownAmount}
                                 dailyDrawdownUsedDollars={stats.dailyDrawdownAmount}
