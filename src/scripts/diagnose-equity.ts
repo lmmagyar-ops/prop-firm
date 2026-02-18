@@ -14,7 +14,8 @@ import { db } from '@/db';
 import { challenges, positions, trades, users } from '@/db/schema';
 import { eq, and, desc } from 'drizzle-orm';
 import { MarketService } from '@/lib/market';
-import { calculatePositionMetrics, isValidMarketPrice } from '@/lib/position-utils';
+import { calculatePositionMetrics } from '@/lib/position-utils';
+import { isValidMarketPrice } from '@/lib/price-validation';
 import { normalizeRulesConfig } from '@/lib/normalize-rules';
 
 function safeParseFloat(val: unknown): number {

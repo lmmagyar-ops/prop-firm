@@ -7,6 +7,7 @@
  */
 
 import { safeParseFloat } from "./safe-parse";
+import { isValidMarketPrice } from "./price-validation";
 
 /**
  * Default drawdown limits used when rulesConfig values are missing.
@@ -52,7 +53,6 @@ export interface PortfolioValuation {
  * - Direction adjustment (YES uses raw price, NO uses 1 - rawPrice)
  * - NaN guards on shares/prices  
  * - Fallback to stored entry price when live price is unavailable or invalid
- * - Sanity bounds (rejects prices ≤0.01 or ≥0.99 from live feed)
  *
  * @param openPositions - Array of positions from the DB
  * @param livePrices - Map of marketId → { price: string, source: string } from MarketService.getBatchOrderBookPrices()
@@ -82,9 +82,8 @@ export function getPortfolioValue(
         if (priceData) {
             const rawPrice = parseFloat(priceData.price);
 
-            // Sanity check: valid range including resolution prices (0 and 1)
-            // Trade executor blocks new entries at ≥95¢/≤5¢, so 0/1 only appear on resolved positions
-            if (rawPrice >= 0 && rawPrice <= 1 && !isNaN(rawPrice)) {
+            // SINGLE SOURCE OF TRUTH: Use canonical price validator from price-validation.ts
+            if (isValidMarketPrice(rawPrice)) {
                 // Live price is raw YES price — apply direction adjustment
                 effectivePrice = getDirectionAdjustedPrice(rawPrice, direction);
                 priceSource = "live";
