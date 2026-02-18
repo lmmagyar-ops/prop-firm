@@ -16,6 +16,15 @@ const logger = createLogger("Stream");
 export async function GET(request: NextRequest) {
     const encoder = new TextEncoder();
     let interval: NodeJS.Timeout | null = null;
+    let closed = false;
+
+    const cleanup = () => {
+        closed = true;
+        if (interval) {
+            clearInterval(interval);
+            interval = null;
+        }
+    };
 
     const stream = new ReadableStream({
         async start(controller) {
@@ -25,8 +34,13 @@ export async function GET(request: NextRequest) {
 
                 // Poll every 1 second
                 interval = setInterval(async () => {
+                    // SECURITY: Guard against enqueue after client disconnect
+                    if (closed) return;
+
                     try {
                         const data = await getPrices();
+
+                        if (closed) return; // Re-check after async call
 
                         if (data) {
                             controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
@@ -34,6 +48,7 @@ export async function GET(request: NextRequest) {
                             controller.enqueue(encoder.encode(`data: {"error":"worker_unavailable"}\n\n`));
                         }
                     } catch (err) {
+                        if (closed) return;
                         logger.error('[MarketStream] Poll error:', err);
                         controller.enqueue(encoder.encode(`data: {"error":"poll_error"}\n\n`));
                     }
@@ -47,15 +62,13 @@ export async function GET(request: NextRequest) {
         },
 
         cancel() {
-            if (interval) clearInterval(interval);
+            cleanup();
             logger.info('[MarketStream] Client disconnected, cleaned up');
         }
     });
 
     // Handle client disconnect via abort signal
-    request.signal.addEventListener('abort', () => {
-        if (interval) clearInterval(interval);
-    });
+    request.signal.addEventListener('abort', cleanup);
 
     return new Response(stream, {
         headers: {

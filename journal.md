@@ -4947,3 +4947,17 @@ Zero errors, zero NaN, zero broken elements. **Platform is production-ready.**
 
 **Verification:** 68/68 test files, 1038 pass, 0 failures.
 
+### Legacy Route Deletion + Console Fix + Sentry Check (Feb 17, 7:00 PM CT)
+
+**Additional cleanup:**
+6. ✅ Deleted legacy `/api/trade/route.ts` — confirmed zero frontend callers via grep, superseded by `/api/trade/execute` (-108 lines)
+7. ✅ Fixed 404 console error: `LandingHero.tsx` had `href="/rules"` but no `/rules` page exists → changed to `/how-it-works`
+8. ✅ API docs page has zero references to any deleted routes — no changes needed
+
+**Sentry observability check:**
+- 7 unresolved issues in production, **zero related to our changes**
+- Top 3: N+1 query on `/dashboard` (126 events), `Controller already closed` on `/api/markets/stream` (12 events), failed query on `/api/trade/positions` (58 events)
+- All pre-existing issues, none caused by security hardening or dead code removal
+
+**Commits:** `05d6dba` (legacy route delete) + `88c8ad6` (console error fix)
+
