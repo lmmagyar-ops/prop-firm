@@ -2,6 +2,34 @@
 
 This journal tracks daily progress, issues encountered, and resolutions for the Prop-Firm project.
 
+## ⚠️ CURRENT STATUS — Read This First
+
+> [!CAUTION]
+> **New agent? Read this section before doing anything else.**
+> This is the single source of truth for what actually works. Do NOT trust individual journal entries — they reflect what the agent *believed*, not what the user confirmed.
+
+### Last Confirmed by User
+- **Feb 16**: Dashboard loads, trades execute, positions display correctly. E2E trade ($1 buy → sell) works. Equity math verified: $9,051.16 + $604.08 = $9,655.24.
+
+### Known Open Issues
+- None currently reported by user
+
+### Shipped But UNVERIFIED by User
+- PnL consolidation refactor (7 inline calcs → canonical functions) — `2b74dda`
+- PnL behavioral tests (7 tests, YES + NO direction) — `29c6173`
+- Price validator consolidation — `0063b26`
+- Ingestion worker exponential backoff (rate limit death spiral fix) — deployed via Railway
+
+### Test Suite Baseline
+- **1045 tests pass** across 69 files, 0 failures (as of Feb 18 `29c6173`)
+- tsc --noEmit: clean
+
+> **How to update this section:**
+> - When the user confirms a fix works → move it from "Unverified" to "Last Confirmed"
+> - When the user reports a bug → add it to "Known Open Issues" with date and description
+> - When you ship a fix → add it to "Unverified" with commit hash
+> - **NEVER remove a "Known Open Issues" item unless the user explicitly confirms it's fixed**
+
 ---
 
 ## Feb 18, 2026 — PnL Consolidation & Behavioral Tests

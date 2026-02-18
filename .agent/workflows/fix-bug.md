@@ -62,3 +62,21 @@ npm run test
 - [ ] You verified with a different input than the one that was broken
 - [ ] You fixed a service function but didn't check if the UI calls it
 - [ ] The bad output string still appears in `rg` results after your fix
+
+### 8. Complete the Pre-Close Checklist (MANDATORY)
+Paste this in your journal entry and fill it out honestly:
+```
+## Pre-Close Checklist
+- [ ] Bug/task was reproduced or understood BEFORE writing code
+- [ ] Root cause was traced from UI → API → DB (not just the service layer)
+- [ ] Fix was verified with the EXACT failing input (not a synthetic test trade)
+- [ ] `grep` confirms zero remaining instances of the old pattern
+- [ ] Full test suite passes (number: ____)
+- [ ] tsc --noEmit passes
+- [ ] CONFIRMED BY USER: _____ (or: "User has not tested — this is UNVERIFIED")
+```
+
+### 9. Update journal.md's `⚠️ CURRENT STATUS` section
+- Add your fix to "Shipped But UNVERIFIED by User" with commit hash
+- Do NOT mark it as confirmed unless the user explicitly says it works
+- If you found new issues during the fix, add them to "Known Open Issues"

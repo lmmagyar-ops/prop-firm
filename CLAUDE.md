@@ -34,11 +34,37 @@
 - Run the full test suite after every change, not just the file you edited.
 - Browser smoke test any UI change — screenshots prove more than type-checks.
 - Cross-reference numbers: if a value appears in the API response AND the DB AND the UI, verify all three match.
+- **"Tests pass" is NOT a success signal.** Tests verify implementation, not product behavior. Mat seeing correct numbers on his screen is the only success signal.
 
 ### Communication
 - Always leave a journal.md entry when completing work.
 - When handing off, leave a "Tomorrow Morning" section with prioritized next steps ranked by leverage × risk.
 - Document root causes, not just fixes. Future agents need the "why."
+- **Update the `## ⚠️ CURRENT STATUS` section at the top of journal.md.** This is the single source of truth for what actually works, what's broken, and what's unverified. Do NOT just append a new entry and declare done.
+
+> [!CAUTION]
+> **If a user reports a bug, you MUST follow the `/fix-bug` workflow.**
+> Do not start writing code until steps 1-4 of that workflow are complete. This is not optional.
+> The workflow exists because bugs were "fixed" 3+ times by agents who skipped the trace-from-pixel step.
+
+### Pre-Close Checklist (MANDATORY)
+
+> [!WARNING]
+> **Before writing "done" in the journal, you MUST complete this checklist.**
+> Copy this into your journal entry and fill it out honestly. If any item is "no", you are not done.
+
+```
+## Pre-Close Checklist
+- [ ] Bug/task was reproduced or understood BEFORE writing code
+- [ ] Root cause was traced from UI → API → DB (not just the service layer)
+- [ ] Fix was verified with the EXACT failing input (not a synthetic test trade)
+- [ ] `grep` confirms zero remaining instances of the old pattern
+- [ ] Full test suite passes (number: ____)
+- [ ] tsc --noEmit passes
+- [ ] CONFIRMED BY USER: _____ (or: "User has not tested — this is UNVERIFIED")
+```
+
+The last line is the most important. A fix is **unverified** until the user confirms it. Writing "✅ Done" when you mean "I think it works" is the lie that perpetuates the bug cycle.
 
 ---
 
@@ -162,17 +188,23 @@ After every fix:
 
 ## 🧠 New Agent? Start Here
 
-1. **Read this file** — full architecture, risk rules, debugging protocols
-2. **If fixing a bug**, read the Bug Fixing Protocol above — mandatory systemic approach, not symptom patching
-3. **Run `npm run test:engine`** — 53 assertions across 11 phases prove the trading engine works
-4. **Run `npm run test:lifecycle`** — 73 assertions across 7 phases prove the full challenge lifecycle
-5. **Run `npm run test:safety`** — 44 assertions proving each critical exploit path (payout, drawdown, transitions) is blocked
-6. **Run `npm run test:financial`** — Financial consistency verification (share counts, PnL cross-checks, risk limit messages)
-6. **If debugging**, follow the "Number Discrepancy Audit" section — step-by-step protocol with symptom → cause lookup
-7. **If data looks wrong**, run `npx tsx scripts/reconcile-positions.ts` to validate positions against trade history
-8. **If using the browser subagent**, read `.agent/workflows/browser-agent.md` first — mandatory constraints to prevent spiraling
-9. **For manual testing**, see `docs/SMOKE_TEST.md` — 15-minute end-to-end checklist
-10. **For history**, see `journal.md` — daily changelog with root causes, commits, and verification results
+> [!CAUTION]
+> **Read the `⚠️ CURRENT STATUS` section at the top of `journal.md` FIRST.**
+> This tells you what actually works, what's broken, and what's unverified.
+> Do NOT trust the latest journal entry's optimism — it may say "✅ Done" for things the user hasn't confirmed.
+
+1. **Read journal.md's `⚠️ CURRENT STATUS`** — the actual state of the product, not the latest agent's opinion
+2. **Read this file** — full architecture, risk rules, debugging protocols
+3. **If fixing a bug**, you MUST follow the `/fix-bug` workflow (`.agent/workflows/fix-bug.md`) — this is mandatory, not optional
+4. **Run `npm run test:engine`** — 53 assertions across 11 phases prove the trading engine works
+5. **Run `npm run test:lifecycle`** — 73 assertions across 7 phases prove the full challenge lifecycle
+6. **Run `npm run test:safety`** — 44 assertions proving each critical exploit path (payout, drawdown, transitions) is blocked
+7. **Run `npm run test:financial`** — Financial consistency verification (share counts, PnL cross-checks, risk limit messages)
+8. **If debugging**, follow the "Number Discrepancy Audit" section — step-by-step protocol with symptom → cause lookup
+9. **If data looks wrong**, run `npx tsx scripts/reconcile-positions.ts` to validate positions against trade history
+10. **If using the browser subagent**, read `.agent/workflows/browser-agent.md` first — mandatory constraints to prevent spiraling
+11. **For manual testing**, see `docs/SMOKE_TEST.md` — 15-minute end-to-end checklist
+12. **When done**, complete the Pre-Close Checklist (above) — you MUST paste it into your journal entry
 
 | Symptom | First Action | Key File |
 |---------|-------------|----------|
