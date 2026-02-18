@@ -21,12 +21,17 @@ Consolidated all inline PnL calculations (7 locations across 5 files) to use can
 - YES direction: metrics ↔ portfolio ↔ evaluator agreement
 - NO direction: same + verifies entry price stored as `1 - yesPrice`
 
+### Phase 4: Price Validator Consolidation  
+- `position-utils.ts` → replaced inline `>= 0 && <= 1 && !isNaN` with `isValidMarketPrice()` (uses `Number.isFinite` — correctly rejects `Infinity`)
+- `diagnose-equity.ts` → fixed stale import (was importing `isValidMarketPrice` from `position-utils` where it didn't exist)
+
 ### Result
-1045/1045 tests pass across 69 files. Commits: `2b74dda` (refactor), `29c6173` (tests).
+1045/1045 tests pass across 69 files. All 4 phases complete.  
+Commits: `2b74dda` (PnL refactor), `29c6173` (behavioral tests), `0063b26` (price validation).
 
 ### Tomorrow Morning
-1. **Price validator consolidation** — one `isValidMarketPrice()` called everywhere (remaining structural recommendation)
-2. **Monitor Sentry** — verify the ingestion backoff fix holds overnight
+1. **Monitor Sentry** — verify the ingestion backoff fix holds overnight
+2. **Consider endpoint-level behavioral tests** — the current tests verify function-level consistency; hitting HTTP endpoints would catch routing/middleware bugs
 
 ---
 
