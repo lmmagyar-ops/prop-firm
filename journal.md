@@ -20,17 +20,16 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 - Price validator consolidation — `0063b26`
 - API route integration tests (4 tests, endpoint PnL consistency) — `925381b`
 - Ingestion worker exponential backoff (rate limit death spiral fix) — deployed via Railway
+- **trade/execute PnL direction bug fix** + 6 execute route tests — `985bb66`
 
 ### Test Suite Baseline
-- **1049 tests pass** across 70 files, 0 failures (as of Feb 18 `925381b`)
+- **1055 tests pass** across 71 files, 0 failures (as of Feb 18 `985bb66`)
 - tsc --noEmit: clean
 
 ### Tomorrow Morning (Priority × Risk)
-1. **Fix the live bug** — `trade/execute/route.ts` L125-130: replace inline PnL with `calculatePositionMetrics()` (Phase 0 in implementation_plan.md)
-2. **Write trade/execute route tests** — the BUY endpoint has zero route-level tests (Phase 1)
-3. **Write settlement + webhook tests** — money-out paths completely untested (Phase 2)
-4. Full plan: see `implementation_plan.md` in the brain artifacts — 4 phases, ~40 tests to add
-5. Test coverage audit: see `test_coverage_audit.md` — only 3/82 API routes tested
+1. **Write settlement + webhook tests** — money-out paths completely untested (Phase 2)
+2. Full plan: see `implementation_plan.md` in the brain artifacts — 4 phases, ~40 tests to add
+3. Test coverage audit: see `test_coverage_audit.md` — only 5/82 API routes tested (up from 3)
 
 > **How to update this section:**
 > - When the user confirms a fix works → move it from "Unverified" to "Last Confirmed"
