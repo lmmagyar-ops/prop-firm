@@ -5,6 +5,9 @@ import { auth } from "@/auth";
 import { logTrade } from "@/lib/event-logger";
 import { getErrorMessage } from "@/lib/errors";
 import { createLogger } from "@/lib/logger";
+import { db } from "@/db";
+import { users } from "@/db/schema";
+import { eq } from "drizzle-orm";
 const logger = createLogger("Trade");
 
 export async function POST(req: Request) {
@@ -24,6 +27,12 @@ export async function POST(req: Request) {
 
         if (!userId) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        // SECURITY: Check if user account is suspended before allowing trades
+        const [user] = await db.select({ isActive: users.isActive }).from(users).where(eq(users.id, userId));
+        if (user && user.isActive === false) {
+            return NextResponse.json({ error: "Account suspended" }, { status: 403 });
         }
 
         // Validation
@@ -98,7 +107,12 @@ export async function POST(req: Request) {
 
     } catch (error: unknown) {
         logger.error("Trade Execution Error:", error);
-        return NextResponse.json({ error: getErrorMessage(error) || "Failed to execute trade" }, { status: 500 });
+        // SECURITY: Only expose structured domain error messages, never internal details
+        const code = (error instanceof Error && "code" in error ? (error as Record<string, unknown>).code : undefined) || 'UNKNOWN';
+        const isSafeError = code !== 'UNKNOWN';
+        const safeMessage = isSafeError ? (getErrorMessage(error) || "Trade failed") : "Trade failed";
+        const status = (error instanceof Error && "status" in error ? (error as Record<string, unknown>).status : undefined) || 500;
+        return NextResponse.json({ error: safeMessage, code }, { status: typeof status === 'number' ? status : 500 });
     }
 }
 

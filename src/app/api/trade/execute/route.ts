@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { TradeExecutor } from "@/lib/trade";
 import { db } from "@/db";
-import { challenges, positions } from "@/db/schema";
+import { challenges, positions, users } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { createLogger } from "@/lib/logger";
 import { checkIdempotency, cacheIdempotencyResult } from "@/lib/trade-idempotency";
@@ -20,6 +20,12 @@ export async function POST(req: NextRequest) {
     if (!userId) {
         log.warn("Unauthorized trade attempt - no session");
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // SECURITY: Check if user account is suspended before allowing trades
+    const [user] = await db.select({ isActive: users.isActive }).from(users).where(eq(users.id, userId));
+    if (user && user.isActive === false) {
+        return NextResponse.json({ error: "Account suspended" }, { status: 403 });
     }
 
     const body = await req.json();
