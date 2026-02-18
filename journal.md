@@ -4933,3 +4933,17 @@ Zero errors, zero NaN, zero broken elements. **Platform is production-ready.**
 
 **Verification:** TypeScript clean, 68/68 test files, 1038 pass, 0 failures.
 
+### Dead Code Cleanup + Security Hardening (Feb 17, 6:35 PM CT)
+
+**Dead code deleted:**
+- `/api/checkout/mock/route.ts` — 0 frontend references, dev artifact with `demo-user-1` fallback
+- `/api/user/challenge/route.ts` — 0 frontend references, debug harness
+
+**Security hardening applied:**
+4. ✅ Account suspension check (`isActive === false` → 403) added to all 3 trade routes: `/trade`, `/trade/execute`, `/trade/close`
+5. ✅ Error response sanitized on legacy `/api/trade/route.ts` — only domain error codes exposed, internal details suppressed
+
+**Commits:** `a9f2620` (security input validation) + `e53f4da` (dead code + suspension + error sanitization)
+
+**Verification:** 68/68 test files, 1038 pass, 0 failures.
+
