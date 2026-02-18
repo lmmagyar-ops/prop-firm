@@ -16,10 +16,18 @@ Sentry fired `[CRITICAL] Ingestion Stale: Market data ingestion has not updated 
 Added exponential backoff to `connectWS()`: 5s → 10s → 20s → 40s → 60s max. Reset to 5s on successful connection. This breaks the death spiral.
 
 ### Also Found (Engineering Root Cause Analysis)
-PnL is calculated in 7 separate places across the codebase. All 1024 tests mock the DB and market service, never testing real data flow. See `engineering_root_cause.md` for full analysis. 3 structural changes needed:
-1. One PnL function called everywhere (delete 6 inline copies)
-2. One integration test with real data
-3. One price validator called everywhere
+PnL is calculated in 7 separate places across the codebase. All 1024 tests mock the DB and market service, never testing real data flow. See `engineering_root_cause.md` for full analysis.
+
+### 3 Structural Recommendations (Anthropic-Grade)
+
+**1. One PnL function, called everywhere (HIGHEST PRIORITY)**
+`calculatePositionMetrics()` in `position-utils.ts` is the declared single source of truth — but 6 other files reimplement the formula inline. Every API route, the evaluator, and the risk monitor each have their own `(price - entry) * shares` with different direction adjustment and fallback logic. Consolidate: delete the 6 inline copies, import the shared function.
+
+**2. Behavioral tests that hit real endpoints**
+All 1000+ tests mock the DB and market service. None call `GET /api/trade/positions` or `POST /api/trade/close` and verify the response. Add 3 tests: (a) positions API returns correct PnL for real DB data, (b) close trade response matches pre-close PnL, (c) PnL agrees across dashboard vs portfolio vs trade history. These 3 tests would have caught every bug Mat reported this week.
+
+**3. One price validator, called everywhere**
+`isValidMarketPrice()` exists in `price-validation.ts` but `getPortfolioValue()` does its own inline range check, and the positions API route has a third implementation. Consolidate to the single validator.
 
 ---
 

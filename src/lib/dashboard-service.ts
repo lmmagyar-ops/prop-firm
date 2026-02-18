@@ -111,6 +111,8 @@ export function getPositionsWithPnL(
             unrealizedPnL = metrics.unrealizedPnL;
             positionValue = metrics.positionValue;
         } else {
+            // Stored prices (currentPrice, entryPrice) are ALREADY direction-adjusted in DB.
+            // DO NOT use calculatePositionMetrics here — it would double-adjust the price.
             effectiveCurrentPrice = rawPrice;
             positionValue = shares * effectiveCurrentPrice;
             unrealizedPnL = (effectiveCurrentPrice - entry) * shares;

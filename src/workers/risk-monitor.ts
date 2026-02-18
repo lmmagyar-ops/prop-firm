@@ -16,6 +16,7 @@ import { FUNDED_RULES } from "../lib/funded-rules";
 import { normalizeRulesConfig } from "../lib/normalize-rules";
 import { createLogger } from "../lib/logger";
 import { BalanceManager } from "../lib/trading/BalanceManager";
+import { getDirectionAdjustedPrice } from "../lib/position-utils";
 import { type Transaction } from "../db/types";
 
 const logger = createLogger('RiskMonitor');
@@ -157,10 +158,10 @@ export class RiskMonitor {
         for (const pos of openPositions) {
             const livePrice = livePrices.get(pos.marketId)!; // Safe: guarded above
             const shares = parseFloat(pos.shares);
-            const isNo = pos.direction === 'NO';
+            const direction = (pos.direction as 'YES' | 'NO') || 'YES';
 
-            // Live price is raw YES price — apply direction adjustment
-            const effectivePrice = isNo ? (1 - livePrice) : livePrice;
+            // SINGLE SOURCE OF TRUTH: Use canonical direction adjustment
+            const effectivePrice = getDirectionAdjustedPrice(livePrice, direction);
             positionValue += shares * effectivePrice;
         }
 
@@ -383,11 +384,11 @@ export class RiskMonitor {
             const livePrice = livePrices.get(pos.marketId);
             const entryPrice = parseFloat(pos.entryPrice);
             const shares = parseFloat(pos.shares);
-            const isNo = pos.direction === 'NO';
+            const direction = (pos.direction as 'YES' | 'NO') || 'YES';
 
-            // Live price is raw YES — adjust for NO direction
+            // SINGLE SOURCE OF TRUTH: Use canonical direction adjustment
             const closePrice = livePrice !== undefined
-                ? (isNo ? 1 - livePrice : livePrice)
+                ? getDirectionAdjustedPrice(livePrice, direction)
                 : parseFloat(pos.currentPrice || pos.entryPrice);
 
             const pnl = shares * (closePrice - entryPrice);

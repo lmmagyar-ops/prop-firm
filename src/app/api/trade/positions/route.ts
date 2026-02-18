@@ -6,7 +6,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { MarketService } from "@/lib/market";
 import { createLogger } from "@/lib/logger";
-import { getDirectionAdjustedPrice } from "@/lib/position-utils";
+import { calculatePositionMetrics } from "@/lib/position-utils";
 import { isValidMarketPrice } from "@/lib/price-validation";
 
 const log = createLogger("PositionsAPI");
@@ -95,12 +95,10 @@ export async function GET() {
             rawPrice = entry; // Fall back to entry price (safe, shows 0 P&L)
         }
 
-        // Use shared utility for direction-adjusted calculations
-        // NOTE: Entry price from DB is ALREADY direction-adjusted (see trade.ts line 175-177)
-        // Only the current/raw price from order book needs direction adjustment
-        const effectiveCurrentPrice = getDirectionAdjustedPrice(rawPrice, direction);
-        const effectiveEntryPrice = entry; // DO NOT adjust - already stored direction-adjusted!
-        const unrealizedPnL = (effectiveCurrentPrice - effectiveEntryPrice) * shares;
+        // SINGLE SOURCE OF TRUTH: Use canonical function from position-utils.ts
+        // Handles direction adjustment (NO = 1 - price) and PnL calculation.
+        // entryPrice from DB is already direction-adjusted; only rawPrice needs adjustment.
+        const { effectiveCurrentPrice, unrealizedPnL } = calculatePositionMetrics(shares, entry, rawPrice, direction);
 
         // Get title from batch-fetched map
         const marketTitle = titleMap.get(pos.marketId) || pos.marketId.slice(0, 20) + "...";

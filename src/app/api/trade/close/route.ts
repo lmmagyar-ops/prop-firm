@@ -6,6 +6,7 @@ import { challenges, positions, users } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { checkIdempotency, cacheIdempotencyResult } from "@/lib/trade-idempotency";
 import { createLogger } from "@/lib/logger";
+import { getDirectionAdjustedPrice } from "@/lib/position-utils";
 const logger = createLogger("Close");
 
 export async function POST(req: NextRequest) {
@@ -79,9 +80,9 @@ export async function POST(req: NextRequest) {
         }
 
         const currentPrice = parseFloat(marketData.price);
-        // For NO positions, use NO price (1 - YES price) for correct market value calculation
+        // SINGLE SOURCE OF TRUTH: Use canonical direction adjustment from position-utils.ts
         const posDirection = position.direction as "YES" | "NO";
-        const noAdjustedPrice = posDirection === "NO" ? (1 - currentPrice) : currentPrice;
+        const noAdjustedPrice = getDirectionAdjustedPrice(currentPrice, posDirection);
         // Calculate the current market value of the position
         const marketValue = shares * noAdjustedPrice;
 

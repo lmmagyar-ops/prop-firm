@@ -6,6 +6,7 @@ import { ChallengeRules } from "@/types/trading";
 import { MarketService } from "./market";
 import { FUNDED_RULES, FundedTier, getFundedTier as getFundedTierShared } from "./funded-rules";
 import { normalizeRulesConfig } from "./normalize-rules";
+import { calculatePositionMetrics, getDirectionAdjustedPrice } from "./position-utils";
 import { createLogger } from "./logger";
 import { BalanceManager } from "./trading/BalanceManager";
 import { OutageManager } from "./outage-manager";
@@ -81,29 +82,26 @@ export class ChallengeEvaluator {
             ? await MarketService.getBatchOrderBookPrices(marketIds)
             : new Map();
 
+        // SINGLE SOURCE OF TRUTH: Use canonical function from position-utils.ts
         let positionValue = 0;
         for (const pos of openPositions) {
             const livePrice = livePrices.get(pos.marketId);
             const shares = parseFloat(pos.shares);
-
-            // CRITICAL FIX: Handle price sources differently
-            // - Live prices from order book are RAW YES prices → need direction adjustment
-            // - Stored prices (currentPrice, entryPrice) are ALREADY direction-adjusted → use directly
-            let effectivePrice: number;
+            const entryPrice = parseFloat(pos.entryPrice);
+            const direction = (pos.direction as 'YES' | 'NO') || 'YES';
 
             if (livePrice) {
-                // Live price is raw YES price - apply direction adjustment
                 const yesPrice = parseFloat(livePrice.price);
-                effectivePrice = pos.direction === 'NO' ? (1 - yesPrice) : yesPrice;
+                const { positionValue: pv } = calculatePositionMetrics(shares, entryPrice, yesPrice, direction);
+                positionValue += pv;
             } else {
-                // Fallback: Use stored price (ALREADY direction-adjusted in DB)
-                // DO NOT apply direction adjustment again - that causes double-adjustment bug!
-                effectivePrice = pos.currentPrice
+                // Fallback: Stored prices are ALREADY direction-adjusted in DB.
+                // Use directly — no adjustment needed.
+                const storedPrice = pos.currentPrice
                     ? parseFloat(pos.currentPrice)
-                    : parseFloat(pos.entryPrice);
+                    : entryPrice;
+                positionValue += shares * storedPrice;
             }
-
-            positionValue += shares * effectivePrice;
         }
 
         const equity = currentBalance + positionValue;
@@ -204,8 +202,8 @@ export class ChallengeEvaluator {
                 const liveData = livePrices.get(pos.marketId);
                 if (!liveData) return sum;
                 const yesPrice = parseFloat(liveData.price);
-                const current = pos.direction === 'NO' ? (1 - yesPrice) : yesPrice;
-                return sum + shares * (current - entry);
+                const { unrealizedPnL: uPnL } = calculatePositionMetrics(shares, entry, yesPrice, (pos.direction as 'YES' | 'NO') || 'YES');
+                return sum + uPnL;
             }, 0);
 
             const tradeDerivedProfit = realizedPnLSum + unrealizedPnL;
@@ -319,8 +317,9 @@ export class ChallengeEvaluator {
                         let closePrice: number;
                         if (liveData) {
                             const yesPrice = parseFloat(liveData.price);
-                            closePrice = pos.direction === 'NO' ? (1 - yesPrice) : yesPrice;
+                            closePrice = getDirectionAdjustedPrice(yesPrice, (pos.direction as 'YES' | 'NO') || 'YES');
                         } else {
+                            // Stored prices are already direction-adjusted in DB
                             closePrice = pos.currentPrice
                                 ? parseFloat(pos.currentPrice)
                                 : entryPrice;
