@@ -63,3 +63,30 @@ export const CHALLENGE_RULES = {
 } as const;
 
 export type PlanId = keyof typeof PLANS;
+
+/**
+ * Derived lookup maps — SINGLE SOURCE OF TRUTH for tier pricing.
+ * All other files MUST import from here instead of hardcoding prices.
+ */
+const planValues = Object.values(PLANS);
+
+/** Map starting balance (number) → purchase price. E.g. 5000 → 79 */
+export const TIER_PRICE_BY_SIZE: Record<number, number> = Object.fromEntries(
+    planValues.map(p => [p.size, p.price])
+);
+
+/** Map tier ID string → purchase price. E.g. "5k" → 79 */
+export const TIER_PRICE_BY_ID: Record<string, number> = Object.fromEntries(
+    planValues.map(p => [p.id, p.price])
+);
+
+/** Map tier ID string → starting balance string. E.g. "5k" → "5000" */
+export const TIER_SIZE_BY_ID: Record<string, string> = Object.fromEntries(
+    planValues.map(p => [p.id, String(p.size)])
+);
+
+/** Get purchase price for a starting balance string (handles "5000" and "5000.00") */
+export function getPriceForBalance(startingBalance: string): number {
+    const normalized = parseFloat(startingBalance);
+    return TIER_PRICE_BY_SIZE[normalized] || 0;
+}

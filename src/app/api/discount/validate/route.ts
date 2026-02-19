@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { discountCodes, discountRedemptions, challenges } from "@/db/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { createLogger } from "@/lib/logger";
+import { TIER_PRICE_BY_SIZE } from "@/config/plans";
 const logger = createLogger("Validate");
 
 /**
@@ -154,14 +155,8 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        // Get price for challenge tier
-        const TIER_PRICES: Record<number, number> = {
-            5000: 99,
-            10000: 299,
-            25000: 599
-        };
-
-        const originalPrice = TIER_PRICES[challengeSize];
+        // Get price for challenge tier — derived from config/plans.ts (single source of truth)
+        const originalPrice = TIER_PRICE_BY_SIZE[challengeSize];
 
         if (!originalPrice) {
             return NextResponse.json(

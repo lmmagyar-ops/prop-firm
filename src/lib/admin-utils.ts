@@ -1,26 +1,19 @@
 /**
  * Shared admin utilities for consistent logic across endpoints
  */
+import { TIER_PRICE_BY_SIZE, getPriceForBalance } from "@/config/plans";
 
 /**
- * Maps tier starting balance to actual purchase price
- * Starting balance represents the virtual trading balance
- * Purchase price is what the customer actually paid
+ * Maps tier starting balance to actual purchase price.
+ * Re-exported from config/plans.ts — SINGLE SOURCE OF TRUTH.
  */
-export const TIER_PRICES: Record<string, number> = {
-    "5000": 79,
-    "5000.00": 79,
-    "10000": 149,
-    "10000.00": 149,
-    "25000": 299,
-    "25000.00": 299,
-};
+export const TIER_PRICES = TIER_PRICE_BY_SIZE;
 
 /**
  * Get the purchase price for a given starting balance
  */
 export function getTierPrice(startingBalance: string): number {
-    return TIER_PRICES[startingBalance] || 0;
+    return getPriceForBalance(startingBalance);
 }
 
 /**

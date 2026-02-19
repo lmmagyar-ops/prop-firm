@@ -11,6 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, Check, ShieldCheck, Lock, CreditCard, Bitcoin, ArrowRight, Tag } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useSession } from "next-auth/react";
+import { TIER_PRICE_BY_ID, TIER_SIZE_BY_ID } from "@/config/plans";
 
 // Type for applied discount state
 interface AppliedDiscount {
@@ -25,15 +26,19 @@ function CheckoutContent() {
     const searchParams = useSearchParams();
 
     // params — prefer explicit `tier` param; fall back to deriving from `size`
-    const size = searchParams.get("size") || "10000";
+    const sizeParam = searchParams.get("size");
     const tierParam = searchParams.get("tier"); // e.g. "5k", "10k", "25k"
-    const derivedTier = size === "5000" ? "5k" : size === "25000" ? "25k" : "10k";
+
+    // Derive tier from size, or use tier param directly
+    const derivedTier = sizeParam === "5000" ? "5k" : sizeParam === "25000" ? "25k" : "10k";
     const tierId = tierParam || derivedTier;
+
+    // Derive size from tier — imports from config/plans.ts (single source of truth)
+    const size = sizeParam || TIER_SIZE_BY_ID[tierId] || "10000";
 
     // SERVER-AUTHORITATIVE PRICING: Derive price from tier, never from URL params.
     // This prevents price manipulation via ?price=0.01
-    const TIER_PRICES: Record<string, number> = { "5k": 79, "10k": 149, "25k": 299 };
-    const basePrice = TIER_PRICES[tierId] || 149;
+    const basePrice = TIER_PRICE_BY_ID[tierId] || 149;
 
     const [loading, setLoading] = useState(false);
     const [profitSplit, setProfitSplit] = useState(false);
