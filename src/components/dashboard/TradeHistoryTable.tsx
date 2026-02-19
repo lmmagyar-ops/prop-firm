@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Clock, TrendingUp, TrendingDown, ChevronLeft, ChevronRight, Search, AlertTriangle, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useSelectedChallengeContext } from "@/contexts/SelectedChallengeContext";
+
 import { apiFetch } from "@/lib/api-fetch";
 
 interface Trade {
@@ -26,7 +26,7 @@ export function TradeHistoryTable() {
     const [error, setError] = useState<string | null>(null);
     const [page, setPage] = useState(1);
     const [searchQuery, setSearchQuery] = useState("");
-    const { selectedChallengeId } = useSelectedChallengeContext();
+
 
     const pageSize = 20;
 
@@ -36,9 +36,6 @@ export function TradeHistoryTable() {
             setError(null);
             try {
                 const params = new URLSearchParams({ limit: "100" }); // Fetch more for client-side pagination
-                if (selectedChallengeId) {
-                    params.set("challengeId", selectedChallengeId);
-                }
                 const res = await apiFetch(`/api/trades/history?${params}`);
                 if (res.ok) {
                     const data = await res.json();
@@ -56,7 +53,7 @@ export function TradeHistoryTable() {
         };
 
         fetchTrades();
-    }, [selectedChallengeId]);
+    }, []);
 
     const filteredTrades = trades.filter(trade =>
         trade.marketTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -147,7 +144,7 @@ export function TradeHistoryTable() {
                                     <AlertTriangle className="w-8 h-8 mx-auto mb-2 text-amber-400 opacity-70" />
                                     <p className="text-amber-400 text-sm mb-2">{error}</p>
                                     <button
-                                        onClick={() => { setLoading(true); setError(null); const params = new URLSearchParams({ limit: "100" }); if (selectedChallengeId) params.set("challengeId", selectedChallengeId); apiFetch(`/api/trades/history?${params}`).then(r => r.ok ? r.json() : Promise.reject(r.status)).then(d => { setTrades(d.trades || []); setError(null); }).catch(() => setError("Still failing — try again later")).finally(() => setLoading(false)); }}
+                                        onClick={() => { setLoading(true); setError(null); const params = new URLSearchParams({ limit: "100" }); apiFetch(`/api/trades/history?${params}`).then(r => r.ok ? r.json() : Promise.reject(r.status)).then(d => { setTrades(d.trades || []); setError(null); }).catch(() => setError("Still failing — try again later")).finally(() => setLoading(false)); }}
                                         className="text-xs text-primary hover:text-primary/80 flex items-center gap-1 mx-auto"
                                     >
                                         <RefreshCw className="w-3 h-3" /> Retry

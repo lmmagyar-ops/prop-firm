@@ -3,7 +3,7 @@ import { auth } from "@/auth";
 import { db } from "@/db";
 import { challenges, users, payouts, positions } from "@/db/schema";
 import { eq, and, gte, sql, count, inArray } from "drizzle-orm";
-import { cookies } from "next/headers";
+
 import { requireAdmin } from "@/lib/admin-auth";
 import { createLogger } from "@/lib/logger";
 const logger = createLogger("QuickStats");
@@ -31,9 +31,7 @@ export async function GET() {
             userId = user?.id || null;
         }
 
-        // Read selectedChallengeId from cookie (set by client-side ChallengeSelector)
-        const cookieStore = await cookies();
-        const selectedChallengeId = cookieStore.get("selectedChallengeId")?.value;
+
 
         // Run all queries concurrently for speed
         const [
@@ -84,47 +82,24 @@ export async function GET() {
             // For now, return 0 - live risk alerts would require Redis price lookups
             Promise.resolve([{ count: 0 }]),
 
-            // My active challenge - prefer selectedChallengeId from cookie if valid
+            // My active challenge — single challenge per user, no cookie selection needed
             userId
-                ? (async () => {
-                    // First, try to use the selected challenge from cookie
-                    if (selectedChallengeId) {
-                        const [selected] = await db
-                            .select({
-                                id: challenges.id,
-                                balance: challenges.currentBalance,
-                                status: challenges.status,
-                            })
-                            .from(challenges)
-                            .where(
-                                and(
-                                    eq(challenges.id, selectedChallengeId),
-                                    eq(challenges.userId, userId),
-                                    // Include all resettable statuses (not just active)
-                                    inArray(challenges.status, ["active", "funded", "passed", "verification"])
-                                )
-                            )
-                            .limit(1);
-                        if (selected) return [selected];
-                    }
-                    // Fallback: get most recent active challenge
-                    return db
-                        .select({
-                            id: challenges.id,
-                            balance: challenges.currentBalance,
-                            status: challenges.status,
-                        })
-                        .from(challenges)
-                        .where(
-                            and(
-                                eq(challenges.userId, userId),
-                                // Include all resettable statuses (not just active)
-                                inArray(challenges.status, ["active", "funded", "passed", "verification"])
-                            )
+                ? db
+                    .select({
+                        id: challenges.id,
+                        balance: challenges.currentBalance,
+                        status: challenges.status,
+                    })
+                    .from(challenges)
+                    .where(
+                        and(
+                            eq(challenges.userId, userId),
+                            inArray(challenges.status, ["active", "funded", "passed", "verification"])
                         )
-                        .orderBy(sql`${challenges.startedAt} DESC`)
-                        .limit(1);
-                })().catch(() => [])
+                    )
+                    .orderBy(sql`${challenges.startedAt} DESC`)
+                    .limit(1)
+                    .catch(() => [])
                 : Promise.resolve([])
         ]);
 

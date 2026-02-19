@@ -103,9 +103,7 @@ export function AdminQuickActions() {
             const data = await res.json();
             if (res.ok) {
                 toast.success(`Cleared ${data.deleted.challenges} evaluations, ${data.deleted.trades} trades`);
-                // Clear localStorage selection
-                localStorage.removeItem("selectedChallengeId");
-                document.cookie = "selectedChallengeId=; path=/; max-age=0";
+
                 fetchStats();
                 window.location.reload();
             } else {
@@ -247,8 +245,8 @@ export function AdminQuickActions() {
                         <span>Dev Tools</span>
                         {stats?.myActiveChallenge && (
                             <span className={`text-xs px-2 py-0.5 rounded-full ${stats.myActiveChallenge.status === 'funded'
-                                    ? 'bg-purple-500/20 text-purple-400'
-                                    : 'bg-green-500/20 text-green-400'
+                                ? 'bg-purple-500/20 text-purple-400'
+                                : 'bg-green-500/20 text-green-400'
                                 }`}>
                                 {stats.myActiveChallenge.status.charAt(0).toUpperCase() + stats.myActiveChallenge.status.slice(1)}: ${parseFloat(stats.myActiveChallenge.balance).toLocaleString()}
                             </span>

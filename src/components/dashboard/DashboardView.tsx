@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { TrendingUp } from "lucide-react";
 import { MobileNav } from "@/components/MobileNav";
 import { MissionTracker } from "@/components/dashboard/MissionTracker";
-import { useSelectedChallengeContext } from "@/contexts/SelectedChallengeContext";
+
 import { MarketTicker } from "@/components/MarketTicker";
 import { OpenPositions } from "./OpenPositions";
 import { ProbabilityChart } from "@/components/trading/ProbabilityChart";
@@ -27,8 +27,7 @@ export function DashboardView({ initialBalance = null, demoMode = false, userId 
     const [balance, setBalance] = useState<number | null>(initialBalance);
     const router = useRouter();
 
-    // Get selected challenge from context
-    const { selectedChallengeId } = useSelectedChallengeContext();
+
 
     // Outcome Modals Logic
     const latestChallenge = challengeHistory && challengeHistory.length > 0 ? challengeHistory[0] : null;

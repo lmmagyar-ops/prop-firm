@@ -3,7 +3,6 @@ import { auth } from "@/auth";
 import { db } from "@/db";
 import { challenges, positions } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
-import { cookies } from "next/headers";
 import { MarketService } from "@/lib/market";
 import { getPortfolioValue } from "@/lib/position-utils";
 import { createLogger } from "@/lib/logger";
@@ -16,31 +15,13 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        // Get selected challenge from cookie
-        const cookieStore = await cookies();
-        const selectedChallengeId = cookieStore.get("selectedChallengeId")?.value;
-
-        let activeChallenge;
-
-        if (selectedChallengeId) {
-            activeChallenge = await db.query.challenges.findFirst({
-                where: and(
-                    eq(challenges.id, selectedChallengeId),
-                    eq(challenges.userId, session.user.id),
-                    eq(challenges.status, "active")
-                ),
-            });
-        }
-
-        // Fallback to first active challenge
-        if (!activeChallenge) {
-            activeChallenge = await db.query.challenges.findFirst({
-                where: and(
-                    eq(challenges.userId, session.user.id),
-                    eq(challenges.status, "active")
-                ),
-            });
-        }
+        // Single active challenge per user — no cookie-based selection needed
+        const activeChallenge = await db.query.challenges.findFirst({
+            where: and(
+                eq(challenges.userId, session.user.id),
+                eq(challenges.status, "active")
+            ),
+        });
 
         if (!activeChallenge) {
             return NextResponse.json({ balance: 0, equity: 0 });

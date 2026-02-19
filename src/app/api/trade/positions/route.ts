@@ -3,7 +3,6 @@ import { db } from "@/db";
 import { challenges, positions } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { MarketService } from "@/lib/market";
 import { createLogger } from "@/lib/logger";
 import { calculatePositionMetrics } from "@/lib/position-utils";
@@ -18,35 +17,15 @@ export async function GET() {
 
     if (!session?.user?.id) return NextResponse.json({ positions: [] });
 
-    // Get the selected challenge from cookie (matches what header shows)
-    const cookieStore = await cookies();
-    const selectedChallengeId = cookieStore.get("selectedChallengeId")?.value;
-
-    let activeChallenge;
-
-    if (selectedChallengeId) {
-        // Use the selected challenge
-        activeChallenge = await db.query.challenges.findFirst({
-            where: and(
-                eq(challenges.id, selectedChallengeId),
-                eq(challenges.userId, session.user.id),
-                eq(challenges.status, "active")
-            )
-        });
-    }
-
-    // Fallback to first active challenge if selected not found
-    if (!activeChallenge) {
-        activeChallenge = await db.query.challenges.findFirst({
-            where: and(
-                eq(challenges.userId, session.user.id),
-                eq(challenges.status, "active")
-            )
-        });
-    }
+    // Single active challenge per user — no cookie-based selection needed
+    const activeChallenge = await db.query.challenges.findFirst({
+        where: and(
+            eq(challenges.userId, session.user.id),
+            eq(challenges.status, "active")
+        )
+    });
 
     log.debug("Using challenge", {
-        selectedFromCookie: selectedChallengeId?.slice(0, 8) || "NONE",
         found: !!activeChallenge,
         id: activeChallenge?.id?.slice(0, 8) || "NONE",
     });

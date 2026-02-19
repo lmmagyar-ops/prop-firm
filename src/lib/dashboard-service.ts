@@ -386,12 +386,7 @@ export async function getDashboardData(userId: string) {
 
     // mapChallengeHistory is now a top-level exported function
 
-    // 3. Find active challenge (prefer the selected one from cookie)
-    // PERF: Derive from allChallenges instead of re-querying the DB (fixes N+1)
-    const { cookies } = await import("next/headers");
-    const cookieStore = await cookies();
-    const selectedChallengeId = cookieStore.get("selectedChallengeId")?.value;
-
+    // 3. Find active challenge (single active challenge per user — no cookie selection)
     type ChallengeType = typeof allChallenges[number];
     let activeChallenge: ChallengeType | undefined = undefined;
     let pendingChallenge: ChallengeType | undefined = undefined;
@@ -399,13 +394,7 @@ export async function getDashboardData(userId: string) {
     // Derive active + pending from the allChallenges we already fetched (zero extra queries)
     const activeChallenges = allChallenges.filter(c => c.status === "active");
     pendingChallenge = allChallenges.find(c => c.status === "pending");
-
-    if (selectedChallengeId) {
-        activeChallenge = activeChallenges.find(c => c.id === selectedChallengeId);
-    }
-    if (!activeChallenge) {
-        activeChallenge = activeChallenges[0];
-    }
+    activeChallenge = activeChallenges[0];
 
     // Common history data
     const challengeHistory = mapChallengeHistory(allChallenges);

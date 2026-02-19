@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Clock, TrendingUp, TrendingDown, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { useSelectedChallengeContext } from "@/contexts/SelectedChallengeContext";
+
 import { apiFetch } from "@/lib/api-fetch";
 import ScrollReveal from "@/components/reactbits/ScrollReveal";
 import SpotlightCard from "@/components/reactbits/SpotlightCard";
@@ -28,16 +28,13 @@ export function RecentTradesWidget() {
     const [trades, setTrades] = useState<Trade[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const { selectedChallengeId } = useSelectedChallengeContext();
+
 
     useEffect(() => {
         const fetchTrades = async () => {
             setError(null);
             try {
                 const params = new URLSearchParams({ limit: "5" });
-                if (selectedChallengeId) {
-                    params.set("challengeId", selectedChallengeId);
-                }
                 const res = await apiFetch(`/api/trades/history?${params}`);
                 if (res.ok) {
                     const data = await res.json();
@@ -61,7 +58,7 @@ export function RecentTradesWidget() {
         };
         window.addEventListener('balance-updated', handleBalanceUpdate);
         return () => window.removeEventListener('balance-updated', handleBalanceUpdate);
-    }, [selectedChallengeId]);
+    }, []);
 
     const formatTime = (dateStr: string) => {
         const date = new Date(dateStr);

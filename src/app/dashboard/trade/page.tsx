@@ -4,9 +4,9 @@ import { getActiveMarkets, getActiveEvents, type MarketMetadata } from "@/app/ac
 import { MarketGridWithPolling } from "@/components/trading/MarketGridWithPolling";
 import { ThemedTradeLayout } from "@/components/trading/ThemedTradeLayout";
 import type { MockMarket } from "@/lib/mock-markets";
-import { cookies } from "next/headers";
+
 import { db } from "@/db";
-import { challenges, positions } from "@/db/schema";
+import { positions } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import type { Platform } from "@/lib/platform-theme";
 
@@ -36,26 +36,9 @@ export default async function TradePage() {
     // First get dashboard data
     const data = await getDashboardData(userId);
 
-    // Try to get selectedChallengeId from cookies (set by client-side localStorage sync)
-    const cookieStore = await cookies();
-    const selectedChallengeId = cookieStore.get("selectedChallengeId")?.value;
-
-    // Determine platform based on selected challenge or fallback to first active
+    // Single active challenge — no cookie-based selection needed
     let platform: "polymarket" | "kalshi" = "polymarket";
-
-    if (selectedChallengeId) {
-        // Look up the specific challenge to get its platform
-        const selectedChallenge = await db.query.challenges.findFirst({
-            where: and(
-                eq(challenges.id, selectedChallengeId),
-                eq(challenges.userId, userId)
-            ),
-        });
-        if (selectedChallenge?.platform) {
-            platform = selectedChallenge.platform as "polymarket" | "kalshi";
-        }
-    } else if (data?.activeChallenge) {
-        // Fallback: use the first active challenge
+    if (data?.activeChallenge) {
         platform = (String((data.activeChallenge as Record<string, unknown>)?.platform || "polymarket")) as "polymarket" | "kalshi";
     }
 
