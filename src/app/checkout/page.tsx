@@ -145,7 +145,10 @@ function CheckoutContent() {
                 headers: { "Content-Type": "application/json" }
             });
 
-            if (!res.ok) throw new Error("Failed to create invoice");
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => null);
+                throw new Error(errorData?.error || "Failed to create invoice");
+            }
 
             const data = await res.json();
 
@@ -159,7 +162,8 @@ function CheckoutContent() {
         } catch (error) {
             console.error(error);
             setLoading(false);
-            alert("Error creating payment. Please try again.");
+            const message = error instanceof Error ? error.message : "Error creating payment. Please try again.";
+            alert(message);
         }
     };
 
