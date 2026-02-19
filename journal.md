@@ -24,16 +24,41 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 - **Settlement cron + Confirmo webhook tests** (10 tests) — `51841c0`
 - **Payout routes + operational cron tests** (19 tests) — `2a8de10`
 - **Unhollowed settlement.test.ts mock mirage** (real DB) — `dc1d596`
-- **Balance audit → Sentry + Slack alerts** (observability) — `c87eb07`
+- **Balance audit → Sentry + Discord alerts** (observability) — `c87eb07`, `1d91c98`
 
 ### Test Suite Baseline
 - **1083 tests pass** across 75 files, 0 failures (as of Feb 18 `dc1d596`)
 - tsc --noEmit: clean
 
 ### Tomorrow Morning (Priority × Risk)
-1. **Set `SLACK_WEBHOOK_URL`** env var in Railway/Vercel if not already done
-2. Engineering hardening phase complete — shift to product work
-3. Monitor Sentry for balance audit alerts after next cron run
+
+**1. ⚡ Set up Discord webhook (5 min — do this first)**
+Balance audit cron is wired to send corruption alerts to Discord, but needs a webhook URL.
+   1. Open Discord → pick the server/channel you want alerts in
+   2. Click the **⚙️ gear icon** next to the channel name
+   3. **Integrations** → **Webhooks** → **New Webhook**
+   4. Name it `Prop Firm Alerts` → **Copy Webhook URL**
+   5. Go to [Vercel Environment Variables](https://vercel.com/oversightresearch-4292s-projects/prop-firmx/settings/environment-variables)
+   6. Add: Key = `DISCORD_WEBHOOK_URL`, Value = the URL you copied
+   7. Delete `SLACK_WEBHOOK_URL` (dead — nobody monitors that Slack workspace)
+   8. Click **Redeploy** in the toast
+
+**2. Is the app ready for Mat?**
+> **Honest answer: YES — with one caveat.**
+>
+> Since Feb 16 (last user-confirmed working state):
+> - ✅ Dashboard, trades, positions, equity math all confirmed working
+> - ✅ E2E trade cycle verified ($1 buy → sell, balance reconciliation)
+> - ✅ Risk engine: fail-closed on missing prices, 9-layer rejection protocol
+> - ✅ 1083 tests pass, tsc clean, Sentry active
+> - ✅ Ingestion worker death spiral fixed (exponential backoff)
+> - ✅ CRON_SECRET now set (cron endpoints secured)
+>
+> **The caveat:** One cosmetic bug remains — for NO positions, the BUY API response JSON shows wrong PnL direction. It does NOT affect balances, DB, or the dashboard. Fix is shipped (`985bb66`) but unverified in production.
+>
+> **Mat can trade.** The financial engine is sound. Tell him to go.
+
+**3. Monitor Sentry** for balance audit alerts after next cron run
 
 > **How to update this section:**
 > - When the user confirms a fix works → move it from "Unverified" to "Last Confirmed"

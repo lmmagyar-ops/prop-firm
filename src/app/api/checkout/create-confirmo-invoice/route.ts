@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
                     }).onConflictDoNothing();
                 }
 
-                // 1. Check active challenge count (max 5)
+                // 1. Block if user already has an active challenge (single-challenge enforcement)
                 const activeCount = await db.select({ id: challenges.id })
                     .from(challenges)
                     .where(and(
@@ -58,23 +58,12 @@ export async function POST(req: NextRequest) {
                         eq(challenges.status, "active")
                     ));
 
-                if (activeCount.length >= 5) {
+                if (activeCount.length >= 1) {
+                    logger.info(`[Confirmo Mock] Blocked: user ${userId.slice(0, 8)} already has active challenge ${activeCount[0].id.slice(0, 8)}`);
                     return NextResponse.json(
-                        { error: "Maximum 5 active evaluations allowed. Complete or fail an existing one first." },
+                        { error: "You already have an active evaluation. Complete or fail it before starting a new one." },
                         { status: 400 }
                     );
-                }
-
-                // 1b. Deactivate any existing active challenge to satisfy the unique constraint
-                // (User explicitly chose a new tier, so the old one is superseded)
-                if (activeCount.length > 0) {
-                    logger.info(`[Confirmo Mock] Deactivating ${activeCount.length} existing active challenge(s) for user ${userId}`);
-                    await db.update(challenges)
-                        .set({ status: "cancelled" })
-                        .where(and(
-                            eq(challenges.userId, userId),
-                            eq(challenges.status, "active")
-                        ));
                 }
 
                 // 2. Validate tier and get starting balance from canonical config
@@ -126,6 +115,22 @@ export async function POST(req: NextRequest) {
                     invoiceId: "inv-mock-error"
                 });
             }
+        }
+
+        // SINGLE-CHALLENGE GATE (production path): Block invoice creation if active challenge exists
+        const existingActive = await db.select({ id: challenges.id })
+            .from(challenges)
+            .where(and(
+                eq(challenges.userId, userId),
+                eq(challenges.status, "active")
+            ));
+
+        if (existingActive.length >= 1) {
+            logger.info(`[Confirmo] Blocked invoice creation: user ${userId.slice(0, 8)} already has active challenge`);
+            return NextResponse.json(
+                { error: "You already have an active evaluation. Complete or fail it before starting a new one." },
+                { status: 400 }
+            );
         }
 
         const response = await fetch("https://confirmo.net/api/v3/invoices", {

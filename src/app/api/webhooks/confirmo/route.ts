@@ -90,6 +90,20 @@ export async function POST(req: NextRequest) {
                 );
             }
 
+            // SINGLE-CHALLENGE GUARD: Skip creation if user already has an active challenge
+            // (Fail-safe — checkout should gate this, but webhooks can arrive late)
+            const activeChallenge = await db.query.challenges.findFirst({
+                where: and(
+                    eq(challenges.userId, userId),
+                    eq(challenges.status, "active")
+                )
+            });
+
+            if (activeChallenge) {
+                logger.warn(`[Confirmo] ⚠️ User ${userId.slice(0, 8)} already has active challenge ${activeChallenge.id.slice(0, 8)}. Skipping creation. Payment was accepted but challenge creation blocked (single-challenge rule).`);
+                return NextResponse.json({ received: true, skipped: true, reason: "active_challenge_exists" });
+            }
+
             // IDEMPOTENCY GUARD: Prevent duplicate challenge creation from webhook retries
             // Check if a challenge already exists for this user that was recently created
             const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
