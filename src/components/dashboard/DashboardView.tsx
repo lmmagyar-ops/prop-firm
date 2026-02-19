@@ -61,7 +61,7 @@ export function DashboardView({ initialBalance = null, demoMode = false, userId 
 
         async function fetchFeaturedMarket() {
             try {
-                const events = await getActiveEvents("polymarket");
+                const events = await getActiveEvents();
                 if (events.length === 0) return;
 
                 // Pick the highest-volume event as the featured market

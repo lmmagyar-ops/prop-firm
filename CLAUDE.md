@@ -1,6 +1,6 @@
 # CLAUDE.md — Funded Prediction
 
-> **Funded Prediction** — A simulated trading platform where users trade on Polymarket/Kalshi data with firm capital.
+> **Funded Prediction** — A simulated trading platform where users trade on Polymarket data with firm capital.
 
 ## ⚙️ Engineering Standards (Anthropic-Grade)
 
@@ -289,7 +289,7 @@ DATABASE_URL="..." npx tsx scripts/grant-admin.ts email@example.com
 | **Auth** | NextAuth v5 (email/password + Google OAuth) |
 | **UI** | Tailwind v4, Shadcn/ui, Framer Motion |
 | **Real-time** | Redis pub/sub, WebSocket streams |
-| **Markets** | Polymarket CLOB, Kalshi API |
+| **Markets** | Polymarket CLOB |
 | **Monitoring** | Sentry (all runtimes), console structured logging |
 
 ### Project Structure
@@ -359,6 +359,22 @@ Payment → Challenge Phase → Funded Phase
 
 > [!IMPORTANT]
 > **No verification phase.** Pass the challenge once → instant funding. All open positions are auto-closed on transition. See `docs/STATE_MACHINES.md` for details.
+
+### Single Active Evaluation Rule
+
+> [!CAUTION]
+> **Users can only have ONE active evaluation at a time.** This was changed from a limit of 5 on Feb 18, 2026. This is a critical business rule — do NOT revert without explicit user approval.
+
+**Why:** Prevents users from hedging across multiple accounts, simplifies risk monitoring, and aligns with the 1-step model where focus on a single challenge is the product intent.
+
+**Enforced at 3 code paths (all fail-closed):**
+| Path | File | Behavior |
+|------|------|----------|
+| Checkout (mock + prod) | `src/app/api/checkout/create-confirmo-invoice/route.ts` | Returns 400 if active challenge exists |
+| Confirmo webhook | `src/app/api/webhooks/confirmo/route.ts` | Skips challenge creation, logs warning |
+| Server action | `src/app/actions/challenges.ts` | Returns existing challenge idempotently |
+
+**Tests:** 5 behavioral tests in `tests/single-challenge-gate.test.ts`
 
 ### Discount Codes
 

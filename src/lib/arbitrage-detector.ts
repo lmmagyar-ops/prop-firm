@@ -1,7 +1,7 @@
 import { db } from "@/db";
 import { positions } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
-import { getActiveEvents, Platform } from "@/app/actions/market";
+import { getActiveEvents } from "@/app/actions/market";
 import { createLogger } from "@/lib/logger";
 const logger = createLogger("ArbitrageDetector");
 
@@ -25,14 +25,12 @@ export class ArbitrageDetector {
      * @param challengeId - The challenge ID
      * @param marketId - The market being traded
      * @param direction - The direction of the new trade (YES or NO)
-     * @param platform - The platform (polymarket or kalshi)
      * @returns { isArb: true, reason: string } if trade would create arb
      */
     static async wouldCreateArbitrage(
         challengeId: string,
         marketId: string,
         direction: "YES" | "NO",
-        platform: Platform = "kalshi"
     ): Promise<ArbCheckResult> {
 
         // --- Check 1: Binary YES/NO Arbitrage ---
@@ -59,7 +57,7 @@ export class ArbitrageDetector {
 
         // --- Check 2: Multi-Runner Arbitrage ---
         // For multi-outcome events (e.g., "Who will win?"), block if buying would complete all outcomes
-        const siblingMarketIds = await this.getSiblingMarketIds(marketId, platform);
+        const siblingMarketIds = await this.getSiblingMarketIds(marketId);
 
         if (siblingMarketIds.length > 1) {
             // This is a multi-runner market
@@ -80,9 +78,9 @@ export class ArbitrageDetector {
      * Get all sibling market IDs for a given market (all outcomes in the same event).
      * Returns empty array if market is standalone (binary).
      */
-    private static async getSiblingMarketIds(marketId: string, platform: Platform): Promise<string[]> {
+    private static async getSiblingMarketIds(marketId: string): Promise<string[]> {
         try {
-            const events = await getActiveEvents(platform);
+            const events = await getActiveEvents();
 
             for (const event of events) {
                 // Check if this market is in this event

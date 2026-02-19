@@ -93,28 +93,7 @@ export async function getAllMarketsFlat(): Promise<MarketMetadata[]> {
             }
         }
 
-        // 3. Kalshi event sub-markets
-        if (data.kalshi) {
-            const events = data.kalshi as EventMetadata[];
-            for (const event of events) {
-                for (const sub of event.markets) {
-                    if (!seenIds.has(sub.id)) {
-                        seenIds.add(sub.id);
-                        allMarkets.push({
-                            id: sub.id,
-                            question: sub.question,
-                            description: event.description || "",
-                            image: event.image || "",
-                            volume: Math.max(sub.volume || 0, event.volume || 0),
-                            outcomes: sub.outcomes || ["Yes", "No"],
-                            end_date: event.endDate || "",
-                            categories: event.categories,
-                            currentPrice: sub.price,
-                        });
-                    }
-                }
-            }
-        }
+
 
         return allMarkets;
     } catch (e) {
@@ -168,28 +147,7 @@ export async function getMarketById(marketId: string): Promise<MarketMetadata | 
             }
         }
 
-        // 2. Search kalshi:active_list (Kalshi events)
-        if (data.kalshi) {
-            const events = data.kalshi as EventMetadata[];
-            for (const event of events) {
-                const subMarket = event.markets.find(m => m.id === marketId);
-                if (subMarket) {
-                    // Use max of sub-market and event volume for liquidity assessment
-                    const effectiveVolume = Math.max(subMarket.volume || 0, event.volume || 0);
-                    return {
-                        id: subMarket.id,
-                        question: subMarket.question,
-                        description: event.description || "",
-                        image: event.image || "",
-                        volume: effectiveVolume,
-                        outcomes: subMarket.outcomes || ["Yes", "No"],
-                        end_date: event.endDate || "",
-                        categories: event.categories,
-                        currentPrice: subMarket.price
-                    };
-                }
-            }
-        }
+
 
         // 3. Fallback: market:active_list (standalone binary markets not in any event)
         if (data.markets) {
@@ -239,20 +197,7 @@ export async function getEventInfoForMarket(marketId: string): Promise<{
             }
         }
 
-        // Try Kalshi events too
-        if (data.kalshi) {
-            const events = data.kalshi as EventMetadata[];
-            for (const event of events) {
-                const found = event.markets.find(m => m.id === marketId);
-                if (found) {
-                    return {
-                        eventId: event.id,
-                        eventTitle: event.title,
-                        siblingMarketIds: event.markets.map(m => m.id)
-                    };
-                }
-            }
-        }
+
 
         // Not found in any event - market is standalone (its own "event")
         return null;
@@ -292,9 +237,7 @@ export interface EventMetadata {
     isMultiOutcome: boolean;
 }
 
-export type Platform = "polymarket" | "kalshi";
-
-export async function getActiveEvents(platform: Platform = "polymarket", keepMarketIdList?: string[]): Promise<EventMetadata[]> {
+export async function getActiveEvents(keepMarketIdList?: string[]): Promise<EventMetadata[]> {
     noStore();
     // Construct Set internally — callers pass plain array to avoid serialization issues
     const keepMarketIds = keepMarketIdList?.length ? new Set(keepMarketIdList) : undefined;
@@ -302,13 +245,7 @@ export async function getActiveEvents(platform: Platform = "polymarket", keepMar
         const data = await getAllMarketData();
         if (!data) return [];
 
-        // Fetch from platform-specific data
-        let events: EventMetadata[] = [];
-        if (platform === "kalshi") {
-            events = (data.kalshi || []) as EventMetadata[];
-        } else {
-            events = (data.events || []) as EventMetadata[];
-        }
+        const events = (data.events || []) as EventMetadata[];
 
         const now = new Date();
 
@@ -402,7 +339,7 @@ export async function getActiveEvents(platform: Platform = "polymarket", keepMar
 
         // --- ENHANCEMENT: Merge high-volume binary markets (especially Sports) ---
         // This ensures individual game markets appear in the Sports tab
-        if (platform === "polymarket") {
+        {
             try {
                 const binaryMarkets = (data.markets || []) as MarketMetadata[];
 
@@ -546,7 +483,7 @@ export async function getActiveEvents(platform: Platform = "polymarket", keepMar
 
         return filteredEvents;
     } catch (e) {
-        logger.error(`Failed to fetch active events for ${platform}`, e);
+        logger.error("Failed to fetch active events", e);
         return [];
     }
 }

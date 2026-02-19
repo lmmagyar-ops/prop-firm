@@ -42,7 +42,6 @@ export function MarketCardClient({ market, balance, userId }: { market: MockMark
                 open={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
                 onTrade={() => { }}
-                platform="polymarket"
             />
         </>
     );

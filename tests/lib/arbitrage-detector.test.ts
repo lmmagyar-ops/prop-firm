@@ -119,8 +119,7 @@ describe("ArbitrageDetector.wouldCreateArbitrage", () => {
         const result = await ArbitrageDetector.wouldCreateArbitrage(
             "challenge-1",
             "candidate-desantis",
-            "YES",
-            "kalshi"
+            "YES"
         );
 
         expect(result.isArb).toBe(true);
@@ -155,8 +154,7 @@ describe("ArbitrageDetector.wouldCreateArbitrage", () => {
         const result = await ArbitrageDetector.wouldCreateArbitrage(
             "challenge-1",
             "candidate-biden",
-            "YES",
-            "kalshi"
+            "YES"
         );
 
         expect(result.isArb).toBe(false);

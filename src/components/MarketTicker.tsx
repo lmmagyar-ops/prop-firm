@@ -21,7 +21,7 @@ export function MarketTicker() {
     useEffect(() => {
         async function fetchMarkets() {
             try {
-                const events = await getActiveEvents("polymarket");
+                const events = await getActiveEvents();
 
                 const tickerData = events
                     .sort((a, b) => b.volume - a.volume)

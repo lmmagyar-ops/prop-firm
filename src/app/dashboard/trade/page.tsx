@@ -2,13 +2,11 @@ import { auth } from "@/auth";
 import { getDashboardData } from "@/lib/dashboard-service";
 import { getActiveMarkets, getActiveEvents, type MarketMetadata } from "@/app/actions/market";
 import { MarketGridWithPolling } from "@/components/trading/MarketGridWithPolling";
-import { ThemedTradeLayout } from "@/components/trading/ThemedTradeLayout";
 import type { MockMarket } from "@/lib/mock-markets";
 
 import { db } from "@/db";
 import { positions } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
-import type { Platform } from "@/lib/platform-theme";
 
 // Map live market data to the shape expected by MarketCardClient
 function mapToMarketShape(liveMarket: MarketMetadata): MockMarket & { categories?: string[] } {
@@ -36,12 +34,6 @@ export default async function TradePage() {
     // First get dashboard data
     const data = await getDashboardData(userId);
 
-    // Single active challenge — no cookie-based selection needed
-    let platform: "polymarket" | "kalshi" = "polymarket";
-    if (data?.activeChallenge) {
-        platform = (String((data.activeChallenge as Record<string, unknown>)?.platform || "polymarket")) as "polymarket" | "kalshi";
-    }
-
     // POSITION-SAFE: Collect market IDs where user has open positions
     // These must NEVER be filtered out, even if price hits 99¢
     const activeChallengeId = data?.activeChallenge?.id;
@@ -62,7 +54,7 @@ export default async function TradePage() {
     // Parallelize remaining data fetches
     const [liveMarkets, events] = await Promise.all([
         getActiveMarkets(),
-        getActiveEvents(platform, keepMarketIds),
+        getActiveEvents(keepMarketIds),
     ]);
 
     const balance = data?.activeChallenge
@@ -76,7 +68,7 @@ export default async function TradePage() {
     const markets = liveMarkets.map(mapToMarketShape);
 
     return (
-        <ThemedTradeLayout platform={platform}>
+        <div>
             <div className="space-y-6">
                 {!hasActiveChallenge ? (
                     // Empty State: No Active Evaluation
@@ -151,11 +143,10 @@ export default async function TradePage() {
                         initialEvents={events}
                         balance={balance}
                         userId={userId}
-                        platform={platform}
                         challengeId={data?.activeChallenge?.id}
                     />
                 )}
             </div>
-        </ThemedTradeLayout>
+        </div>
     );
 }

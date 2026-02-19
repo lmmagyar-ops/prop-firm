@@ -19,12 +19,10 @@ interface UseMarketPollingReturn {
 /**
  * Hook for polling market events at regular intervals.
  * 
- * @param platform - "polymarket" or "kalshi"
  * @param options - Polling configuration
  * @returns Events data, loading state, and refetch function
  */
 export function useMarketPolling(
-    platform: "polymarket" | "kalshi",
     options: UseMarketPollingOptions = {}
 ): UseMarketPollingReturn {
     const { intervalMs = 10000, enabled = true } = options;
@@ -36,7 +34,7 @@ export function useMarketPolling(
 
     const fetchEvents = useCallback(async () => {
         try {
-            const response = await fetch(`/api/markets/events?platform=${platform}`);
+            const response = await fetch("/api/markets/events");
 
             if (!response.ok) {
                 throw new Error(`Failed to fetch events: ${response.status}`);
@@ -52,7 +50,7 @@ export function useMarketPolling(
         } finally {
             setIsLoading(false);
         }
-    }, [platform]);
+    }, []);
 
     // Initial fetch and polling setup
     useEffect(() => {
@@ -69,14 +67,6 @@ export function useMarketPolling(
             clearInterval(interval);
         };
     }, [fetchEvents, intervalMs, enabled]);
-
-    // Refetch when platform changes
-    useEffect(() => {
-        if (enabled) {
-            setIsLoading(true);
-            fetchEvents();
-        }
-    }, [platform, enabled, fetchEvents]);
 
     return {
         events,

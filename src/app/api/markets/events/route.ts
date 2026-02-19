@@ -10,21 +10,15 @@ export const revalidate = 10; // Cache for 10 seconds
  * GET /api/markets/events
  * 
  * Fetches active market events for client-side polling.
- * Query params:
- *   - platform: "polymarket" | "kalshi" (default: "polymarket")
  */
-export async function GET(request: Request) {
+export async function GET() {
     try {
-        const { searchParams } = new URL(request.url);
-        const platform = (searchParams.get("platform") || "polymarket") as "polymarket" | "kalshi";
-
-        const events = await getActiveEvents(platform);
+        const events = await getActiveEvents();
 
         return NextResponse.json(
             {
                 events,
                 timestamp: Date.now(),
-                platform
             },
             {
                 headers: {

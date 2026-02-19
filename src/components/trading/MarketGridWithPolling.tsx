@@ -10,7 +10,6 @@ interface MarketGridWithPollingProps {
     markets: MockMarket[];
     balance: number;
     userId: string;
-    platform: "polymarket" | "kalshi";
     challengeId?: string;
 }
 
@@ -24,11 +23,10 @@ export function MarketGridWithPolling({
     markets,
     balance,
     userId,
-    platform,
     challengeId,
 }: MarketGridWithPollingProps) {
     // Use polling hook with server-rendered initial data
-    const { events, lastUpdated } = useMarketPolling(platform, {
+    const { events, lastUpdated } = useMarketPolling({
         intervalMs: 10000,
         enabled: true,
     });
@@ -41,7 +39,6 @@ export function MarketGridWithPolling({
             events={displayEvents}
             balance={balance}
             userId={userId}
-            platform={platform}
             challengeId={challengeId}
         />
     );

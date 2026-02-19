@@ -25,25 +25,31 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 - **Payout routes + operational cron tests** (19 tests) — `2a8de10`
 - **Unhollowed settlement.test.ts mock mirage** (real DB) — `dc1d596`
 - **Balance audit → Sentry + Discord alerts** (observability) — `c87eb07`, `1d91c98`
+- **Kalshi dual-platform removal** — 8 files deleted, 12+ files simplified, checkout platform selector removed, tests updated
+- **isKalshi final cleanup** — 27 refs removed from `EventDetailModal.tsx` (25) and `RulesSummary.tsx` (2+platform prop). Zero `isKalshi` refs remain in `src/`. 1087 tests pass.
+- **Single-challenge gate audit** — Verified enforcement across all 3 creation paths (checkout mock/prod, webhook, server action). Multi-challenge scaffolding fully deleted. 5 behavioral tests confirmed.
+- **BEHAVIORAL CHANGE: 1 active evaluation limit** (was 5) — Enforced at checkout, webhook, and server action. `ChallengeSelector` UI and `SelectedChallengeContext` deleted. See `CLAUDE.md > Business Logic > Single Active Evaluation Rule`.
 
 ### Test Suite Baseline
-- **1083 tests pass** across 75 files, 0 failures (as of Feb 18 `dc1d596`)
-- tsc --noEmit: clean
+- **1087 tests pass** across 76 files, 0 failures (as of Feb 19 Kalshi removal)
+- tsc --noEmit: 2 pre-existing errors (DashboardView.tsx, MarketTicker.tsx) — unrelated to Kalshi work
 
 ### Tomorrow Morning (Priority × Risk)
 
-**1. ⚡ Set up Discord webhook (5 min — do this first)**
-Balance audit cron is wired to send corruption alerts to Discord, but needs a webhook URL.
-   1. Open Discord → pick the server/channel you want alerts in
-   2. Click the **⚙️ gear icon** next to the channel name
-   3. **Integrations** → **Webhooks** → **New Webhook**
-   4. Name it `Prop Firm Alerts` → **Copy Webhook URL**
-   5. Go to [Vercel Environment Variables](https://vercel.com/oversightresearch-4292s-projects/prop-firmx/settings/environment-variables)
-   6. Add: Key = `DISCORD_WEBHOOK_URL`, Value = the URL you copied
-   7. Delete `SLACK_WEBHOOK_URL` (dead — nobody monitors that Slack workspace)
-   8. Click **Redeploy** in the toast
+**1. 🔧 Finish isKalshi dead-code cleanup in EventDetailModal.tsx (10 min)**
+The main component and `OutcomeRow` are already cleaned. `TradingSidebar` BUY MODE section (lines ~678-835) still has ~25 `isKalshi` references. These are all mechanical — `isKalshi` was removed from the function signature but the Buy mode JSX still references it. The fix pattern is:
+   - `isKalshi ? "kalshi-style" : "poly-style"` → replace with just `"poly-style"`
+   - `isKalshi && (...)` → delete the entire block
+   - `cn(isKalshi ? X : Y)` → replace with just `Y`
+   Run `grep -n isKalshi src/components/trading/EventDetailModal.tsx` to find all remaining spots.
+   After cleanup: `npx tsc --noEmit` and `npx vitest run` to verify.
 
-**2. Is the app ready for Mat?**
+**2. 📦 Commit the Kalshi removal work**
+All the substantial work is done — 8 Kalshi files deleted, 12+ consumer files simplified, platform selector removed from checkout, tests updated, CLAUDE.md updated. 1087 tests pass. Just needs the EventDetailModal isKalshi cleanup finished, then commit.
+
+**3. ⚡ Discord webhook is already set up** ✅ (completed this session)
+
+**4. Is the app ready for Mat?**
 > **Honest answer: YES — with one caveat.**
 >
 > Since Feb 16 (last user-confirmed working state):
@@ -65,6 +71,28 @@ Balance audit cron is wired to send corruption alerts to Discord, but needs a we
 > - When the user reports a bug → add it to "Known Open Issues" with date and description
 > - When you ship a fix → add it to "Unverified" with commit hash
 > - **NEVER remove a "Known Open Issues" item unless the user explicitly confirms it's fixed**
+
+---
+
+## Feb 19, 2026 — Single-Challenge Enforcement & Dead Code Cleanup
+
+### What
+Two-commit fix for Mat's "disappearing eval" bug + dead code removal.
+
+### Commit 1: Bugfix — Single Challenge Gate
+- Root cause: mock checkout path was cancelling active challenges instead of blocking new purchases
+- All 3 creation paths (checkout mock, Confirmo production, webhook) now gate on existing active challenge
+- 5 behavioral tests in `tests/single-challenge-gate.test.ts`
+
+### Commit 2: Cleanup — Remove Multi-Challenge Scaffolding (-710 lines)
+- Deleted: `ChallengeSelector.tsx`, `SelectedChallengeContext.tsx`, `useSelectedChallenge.ts`
+- Simplified 10 consumer files: removed all `selectedChallengeId` cookie/context logic
+- API routes now query the user's single active challenge directly (no cookie)
+
+### Verification
+- tsc: 0 errors
+- Tests: 76 files, 1088 pass, 0 failures
+- Grep: zero remaining references to deleted code
 
 ---
 

@@ -59,8 +59,7 @@ function CheckoutContent() {
     // Payment Method State
     const [paymentMethod, setPaymentMethod] = useState<"card" | "crypto">("card");
 
-    // Platform Selection State - default to Polymarket (only available platform)
-    const [platform, setPlatform] = useState<"polymarket" | "kalshi">("polymarket");
+
 
     // Discount Code State
     const [discountCode, setDiscountCode] = useState("");
@@ -129,7 +128,7 @@ function CheckoutContent() {
     };
 
     const handlePurchase = async () => {
-        if (!agreedRules || !agreedRefund || !platform) return;
+        if (!agreedRules || !agreedRefund) return;
         setLoading(true);
 
         try {
@@ -139,7 +138,7 @@ function CheckoutContent() {
                 body: JSON.stringify({
                     tier: tierId,
                     // NOTE: price is no longer sent — server derives it from tier config
-                    platform: platform,
+                    platform: "polymarket",
                     discountCode: appliedDiscount?.code || null,
                     discountAmount: appliedDiscount?.discountAmount || 0,
                 }),
@@ -212,62 +211,7 @@ function CheckoutContent() {
                             </div>
                         </div>
 
-                        {/* 2. Trading Platform Selector */}
-                        <div className="bg-[#0f1926] border border-primary/20 rounded-xl p-6">
-                            <div className="flex items-center gap-2 mb-4 border-l-4 border-purple-500 pl-3">
-                                <h2 className="text-lg font-bold">Trading Platform</h2>
-                            </div>
-                            <p className="text-sm text-zinc-400 mb-4">
-                                Choose which prediction market you want to trade on. You&apos;ll stay on this platform if funded.
-                            </p>
 
-                            <div className="grid grid-cols-2 gap-3">
-                                <button
-                                    onClick={() => setPlatform("polymarket")}
-                                    className={`p-4 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${platform === "polymarket"
-                                        ? "bg-purple-600/10 border-purple-500 text-purple-400 shadow-[0_0_20px_-5px_rgba(147,51,234,0.3)]"
-                                        : "bg-[#162231] border-white/5 text-zinc-500 hover:bg-[#1e2d40] hover:text-white"
-                                        }`}
-                                >
-                                    <div className="text-2xl">🌐</div>
-                                    <span className="text-sm font-bold">Polymarket</span>
-                                    <span className="text-xs text-zinc-500">Global • Crypto</span>
-                                </button>
-
-                                <button
-                                    onClick={() => setPlatform("kalshi")}
-                                    disabled={true}
-                                    className="p-4 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all bg-[#162231] border-white/5 text-zinc-600 cursor-not-allowed opacity-60 relative"
-                                >
-                                    <div className="absolute -top-2 -right-2 bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-                                        COMING SOON
-                                    </div>
-                                    <div className="text-2xl">🇺🇸</div>
-                                    <span className="text-sm font-bold">Kalshi</span>
-                                    <span className="text-xs text-zinc-500">US Regulated • USD</span>
-                                </button>
-                            </div>
-
-                            {platform && (
-                                <motion.div
-                                    initial={{ opacity: 0, height: 0 }}
-                                    animate={{ opacity: 1, height: "auto" }}
-                                    className="mt-4 bg-purple-500/5 border border-purple-500/20 rounded-lg p-4"
-                                >
-                                    <div className="flex items-center gap-2 text-sm">
-                                        <Check className="w-4 h-4 text-purple-400" />
-                                        <span className="text-purple-400 font-medium">
-                                            {platform === "polymarket" ? "Polymarket" : "Kalshi"} selected
-                                        </span>
-                                    </div>
-                                    <p className="text-xs text-zinc-500 mt-1">
-                                        {platform === "polymarket"
-                                            ? "Access global prediction markets using USDC on Polygon."
-                                            : "Trade on CFTC-regulated markets using USD."}
-                                    </p>
-                                </motion.div>
-                            )}
-                        </div>
 
                         {/* 3. Payment Selector */}
                         <div className="bg-[#0f1926] border border-primary/20 rounded-xl p-6">
@@ -490,7 +434,7 @@ function CheckoutContent() {
 
                             <Button
                                 onClick={handlePurchase}
-                                disabled={loading || !agreedRules || !agreedRefund || !platform}
+                                disabled={loading || !agreedRules || !agreedRefund}
                                 className="w-full h-14 text-lg font-bold bg-primary hover:bg-primary/90 text-white rounded-xl shadow-[0_0_30px_rgba(41,175,115,0.4)] disabled:opacity-50 disabled:shadow-none transition-all hover:scale-[1.02] active:scale-95"
                             >
                                 {loading ? (

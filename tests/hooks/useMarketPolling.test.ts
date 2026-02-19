@@ -29,13 +29,13 @@ describe("useMarketPolling", () => {
             }),
         });
 
-        const { result } = renderHook(() => useMarketPolling("polymarket"));
+        const { result } = renderHook(() => useMarketPolling());
 
         await waitFor(() => {
             expect(result.current.isLoading).toBe(false);
         });
 
-        expect(mockFetch).toHaveBeenCalledWith("/api/markets/events?platform=polymarket");
+        expect(mockFetch).toHaveBeenCalledWith("/api/markets/events");
         expect(result.current.events).toHaveLength(1);
         expect(result.current.events[0].id).toBe("1");
     });
@@ -47,7 +47,7 @@ describe("useMarketPolling", () => {
             json: async () => ({ events: [] }),
         });
 
-        renderHook(() => useMarketPolling("polymarket", { intervalMs: 5000 }));
+        renderHook(() => useMarketPolling({ intervalMs: 5000 }));
 
         // Initial fetch
         await waitFor(() => {
@@ -73,7 +73,7 @@ describe("useMarketPolling", () => {
     it.skip("handles fetch errors gracefully", async () => {
         mockFetch.mockRejectedValueOnce(new Error("Network error"));
 
-        const { result } = renderHook(() => useMarketPolling("polymarket"));
+        const { result } = renderHook(() => useMarketPolling());
 
         await waitFor(() => {
             expect(result.current.isLoading).toBe(false);
@@ -91,7 +91,7 @@ describe("useMarketPolling", () => {
             json: async () => ({ events: [] }),
         });
 
-        const { unmount } = renderHook(() => useMarketPolling("polymarket"));
+        const { unmount } = renderHook(() => useMarketPolling());
 
         await waitFor(() => {
             expect(mockFetch).toHaveBeenCalledTimes(1);
@@ -109,36 +109,13 @@ describe("useMarketPolling", () => {
         expect(mockFetch).toHaveBeenCalledTimes(1);
     });
 
-    it("refetches when platform changes", async () => {
-        mockFetch.mockResolvedValue({
-            ok: true,
-            json: async () => ({ events: [] }),
-        });
-
-        const { rerender } = renderHook(
-            ({ platform }: { platform: "polymarket" | "kalshi" }) => useMarketPolling(platform),
-            { initialProps: { platform: "polymarket" as "polymarket" | "kalshi" } }
-        );
-
-        await waitFor(() => {
-            expect(mockFetch).toHaveBeenCalledWith("/api/markets/events?platform=polymarket");
-        });
-
-        // Change platform
-        rerender({ platform: "kalshi" });
-
-        await waitFor(() => {
-            expect(mockFetch).toHaveBeenCalledWith("/api/markets/events?platform=kalshi");
-        });
-    });
-
     it("does not poll when disabled", async () => {
         mockFetch.mockResolvedValue({
             ok: true,
             json: async () => ({ events: [] }),
         });
 
-        renderHook(() => useMarketPolling("polymarket", { enabled: false }));
+        renderHook(() => useMarketPolling({ enabled: false }));
 
         // Advance time
         await act(async () => {

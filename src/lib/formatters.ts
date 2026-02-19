@@ -5,27 +5,16 @@
  * Consolidates formatPrice, formatVolume, formatCurrency, etc.
  */
 
-import type { Platform } from "./platform-theme";
-
 // ─────────────────────────────────────────────────────────────────
 // PRICE FORMATTING
 // ─────────────────────────────────────────────────────────────────
 
 /**
- * Format a probability (0-1) as a display price
+ * Format a probability (0-1) as a display price (percent)
  * @param price - Probability between 0 and 1
- * @param platform - "polymarket" (56%) or "kalshi" (56¢)
  */
-export function formatPrice(price: number, platform: Platform = "polymarket"): string {
+export function formatPrice(price: number): string {
     const cents = price * 100;
-
-    if (platform === "kalshi") {
-        if (cents < 1) return "<1¢";
-        if (cents > 99) return "99¢";
-        return `${cents.toFixed(1)}¢`;
-    }
-
-    // Polymarket format (percent)
     if (cents < 1) return "<1%";
     if (cents > 99) return ">99%";
     return `${cents.toFixed(1)}%`;

@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { ChevronDown, ChevronUp, Info } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { SubMarket } from "@/app/actions/market";
 import { getCleanOutcomeName } from "@/lib/market-utils";
 
@@ -10,13 +9,11 @@ interface RulesSummaryProps {
     rules?: string;
     outcomes: SubMarket[];
     eventTitle: string;
-    platform?: "polymarket" | "kalshi";
 }
 
-export function RulesSummary({ rules, outcomes, eventTitle, platform = "polymarket" }: RulesSummaryProps) {
+export function RulesSummary({ rules, outcomes, eventTitle }: RulesSummaryProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [selectedOutcomeId, setSelectedOutcomeId] = useState(outcomes[0]?.id);
-    const isKalshi = platform === "kalshi";
 
     const selectedOutcome = outcomes.find(o => o.id === selectedOutcomeId) || outcomes[0];
 
@@ -48,7 +45,7 @@ export function RulesSummary({ rules, outcomes, eventTitle, platform = "polymark
                         >
                             {outcomes.map(outcome => (
                                 <option key={outcome.id} value={outcome.id}>
-                                    {isKalshi ? outcome.question : getCleanOutcomeName(outcome.question, eventTitle)}
+                                    {getCleanOutcomeName(outcome.question, eventTitle)}
                                 </option>
                             ))}
                         </select>

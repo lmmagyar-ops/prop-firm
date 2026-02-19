@@ -246,7 +246,7 @@ export class RiskEngine {
 
         // ── RULE 9: ARBITRAGE BLOCK ───────────────────────────────
         const arbCheck = await ArbitrageDetector.wouldCreateArbitrage(
-            challengeId, marketId, direction, challenge.platform as "polymarket" | "kalshi"
+            challengeId, marketId, direction
         );
         if (arbCheck.isArb) {
             return this.deny(arbCheck.reason || "Arbitrage detected", audit);

@@ -7,8 +7,6 @@ import type { EventMetadata } from "@/app/actions/market";
 import { SmartEventCard } from "./SmartEventCard";
 import { EventDetailModal } from "./EventDetailModal";
 import { SearchModal } from "./SearchModal";
-import { KalshiMatchupCard } from "./KalshiMatchupCard";
-import { KalshiMultiOutcomeCard } from "./KalshiMultiOutcomeCard";
 import { MobileTradeSheet } from "./MobileTradeSheet";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useTradeExecution } from "@/hooks/useTradeExecution";
@@ -17,7 +15,6 @@ interface CategoryTabsProps {
     events?: EventMetadata[];
     balance: number;
     userId: string;
-    platform?: "polymarket" | "kalshi";
     challengeId?: string;
 }
 
@@ -38,7 +35,7 @@ const CATEGORIES = [
     { id: 'Other', label: 'World' },
 ];
 
-export function MarketGridWithTabs({ events = [], balance, platform = "polymarket", challengeId }: CategoryTabsProps) {
+export function MarketGridWithTabs({ events = [], balance, challengeId }: CategoryTabsProps) {
     const [activeTab, setActiveTab] = useState('trending');
     const [selectedEvent, setSelectedEvent] = useState<EventMetadata | null>(null);
     const [detailModalOpen, setDetailModalOpen] = useState(false);
@@ -63,15 +60,6 @@ export function MarketGridWithTabs({ events = [], balance, platform = "polymarke
             setQuickTradeOpen(false);
         }
     });
-
-    // Platform display config
-    const platformConfig = {
-        polymarket: { label: "Polymarket", icon: "🌐", color: "text-purple-400 bg-purple-500/10 border-purple-500/30" },
-        kalshi: { label: "Kalshi", icon: "🇺🇸", color: "text-green-600 bg-green-500/10 border-green-500/30" }
-    };
-
-    // Platform-aware text colors
-    const isLightTheme = platform === "kalshi";
 
     // Compute per-category event counts for tab badges
     const categoryCounts = useMemo(() => {
@@ -171,7 +159,7 @@ export function MarketGridWithTabs({ events = [], balance, platform = "polymarke
             <div className="relative">
                 <div className={cn(
                     "flex items-center gap-1 overflow-x-auto scrollbar-hide pb-3 border-b pr-44",
-                    isLightTheme ? "border-slate-200" : "border-white/5"
+                    "border-white/5"
                 )}>
                     {CATEGORIES.map((cat) => {
                         const count = categoryCounts[cat.id] || 0;
@@ -182,16 +170,16 @@ export function MarketGridWithTabs({ events = [], balance, platform = "polymarke
                                 className={cn(
                                     "relative flex items-center gap-2 px-4 py-2 text-sm font-semibold transition-colors whitespace-nowrap",
                                     activeTab === cat.id
-                                        ? isLightTheme ? "text-slate-900" : "text-white"
-                                        : isLightTheme ? "text-slate-500 hover:text-slate-700" : "text-zinc-500 hover:text-zinc-300"
+                                        ? "text-white"
+                                        : "text-zinc-500 hover:text-zinc-300"
                                 )}
                             >
                                 {cat.icon && (
                                     <cat.icon className={cn(
                                         "w-4 h-4",
                                         activeTab === cat.id
-                                            ? isLightTheme ? "text-green-600" : "text-emerald-400"
-                                            : isLightTheme ? "text-slate-500" : "text-zinc-500"
+                                            ? "text-emerald-400"
+                                            : "text-zinc-500"
                                     )} />
                                 )}
                                 {cat.label}
@@ -200,18 +188,15 @@ export function MarketGridWithTabs({ events = [], balance, platform = "polymarke
                                     <span className={cn(
                                         "text-[11px] font-medium tabular-nums ml-0.5",
                                         activeTab === cat.id
-                                            ? isLightTheme ? "text-green-600/70" : "text-zinc-400"
-                                            : isLightTheme ? "text-slate-400" : "text-zinc-600"
+                                            ? "text-zinc-400"
+                                            : "text-zinc-600"
                                     )}>
                                         {count}
                                     </span>
                                 )}
                                 {/* Active underline indicator with smooth transition */}
                                 {activeTab === cat.id && (
-                                    <span className={cn(
-                                        "absolute bottom-0 left-0 right-0 h-0.5 rounded-full animate-in fade-in slide-in-from-bottom-1 duration-200",
-                                        isLightTheme ? "bg-green-500" : "bg-white"
-                                    )} />
+                                    <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full animate-in fade-in slide-in-from-bottom-1 duration-200 bg-white" />
                                 )}
                             </button>
                         );
@@ -250,26 +235,10 @@ export function MarketGridWithTabs({ events = [], balance, platform = "polymarke
                             className="cursor-pointer h-full animate-in fade-in slide-in-from-bottom-2 duration-300 fill-mode-both"
                             style={{ animationDelay: `${Math.min(index * 30, 300)}ms` }}
                         >
-                            {platform === "kalshi" ? (
-                                // Kalshi uses matchup style for binary, multi-outcome for complex
-                                event.isMultiOutcome ? (
-                                    <KalshiMultiOutcomeCard
-                                        event={event}
-                                        onTrade={(marketId, side) => handleQuickTrade(marketId, side)}
-                                    />
-                                ) : (
-                                    <KalshiMatchupCard
-                                        event={event}
-                                        onTrade={(marketId, side) => handleQuickTrade(marketId, side)}
-                                    />
-                                )
-                            ) : (
-                                // Polymarket uses SmartEventCard for all
-                                <SmartEventCard
-                                    event={event}
-                                    onTrade={(marketId, side) => handleQuickTrade(marketId, side)}
-                                />
-                            )}
+                            <SmartEventCard
+                                event={event}
+                                onTrade={(marketId, side) => handleQuickTrade(marketId, side)}
+                            />
                         </div>
                     ))}
                 </div>
@@ -281,7 +250,6 @@ export function MarketGridWithTabs({ events = [], balance, platform = "polymarke
                 open={detailModalOpen}
                 onClose={() => setDetailModalOpen(false)}
                 onTrade={handleTrade}
-                platform={platform}
                 challengeId={challengeId}
             />
 
