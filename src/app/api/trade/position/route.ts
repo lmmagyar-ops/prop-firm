@@ -4,6 +4,7 @@ import { challenges, positions } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { auth } from "@/auth";
 import { createLogger } from "@/lib/logger";
+import { calculatePositionMetrics } from "@/lib/position-utils";
 const logger = createLogger("Position");
 
 export async function GET(req: NextRequest) {
@@ -67,12 +68,11 @@ export async function GET(req: NextRequest) {
         const invested = parseFloat(position.sizeAmount);
         const posDirection = position.direction as "YES" | "NO";
 
-        // P&L Formula: direction-aware calculation
-        // YES: profit when price goes UP (current - entry)
-        // NO: profit when price goes DOWN (entry - current)
-        const currentPnl = posDirection === "YES"
-            ? (current - entry) * shares
-            : (entry - current) * shares;
+        // Calculate metrics using canonical direction-aware function
+        // CRITICAL: entryPrice in DB is already direction-adjusted (NO = 1 - yesPrice).
+        // currentPrice is raw YES price. calculatePositionMetrics handles this correctly.
+        const metrics = calculatePositionMetrics(shares, entry, current, posDirection);
+        const currentPnl = metrics.unrealizedPnL;
 
         // ROI metric
         const roi = invested > 0 ? (currentPnl / invested) * 100 : 0;
