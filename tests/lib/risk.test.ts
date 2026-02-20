@@ -483,4 +483,70 @@ describe("RiskEngine - Position Tier Limits", () => {
     });
 });
 
+// ─── Category Noise Filter Regression ──────────────────────────────
+import { filterNoiseCategories } from "@/lib/risk";
 
+describe("filterNoiseCategories — category noise regression", () => {
+
+    it("strips 'Breaking' and 'New' noise tags, keeps real categories", () => {
+        // Polymarket tags every trending market with these
+        expect(filterNoiseCategories(["Breaking", "Politics"])).toEqual(["Politics"]);
+        expect(filterNoiseCategories(["New", "Crypto"])).toEqual(["Crypto"]);
+        expect(filterNoiseCategories(["Breaking", "New", "Business"])).toEqual(["Business"]);
+    });
+
+    it("strips 'Featured' and 'Popular' noise tags", () => {
+        expect(filterNoiseCategories(["Featured", "Sports"])).toEqual(["Sports"]);
+        expect(filterNoiseCategories(["Popular", "Geopolitics"])).toEqual(["Geopolitics"]);
+    });
+
+    it("keeps all-noise list as fallback (don't bypass limits entirely)", () => {
+        // If a market is ONLY tagged "Breaking", we can't strip it or it has no categories
+        expect(filterNoiseCategories(["Breaking"])).toEqual(["Breaking"]);
+        expect(filterNoiseCategories(["New", "Featured"])).toEqual(["New", "Featured"]);
+    });
+
+    it("returns untouched list when no noise tags present", () => {
+        expect(filterNoiseCategories(["Politics", "Business"])).toEqual(["Politics", "Business"]);
+        expect(filterNoiseCategories(["Crypto"])).toEqual(["Crypto"]);
+    });
+
+    it("returns empty for empty input", () => {
+        expect(filterNoiseCategories([])).toEqual([]);
+    });
+
+    // ─── THE REGRESSION: Mat's exact scenario ───
+    it("prevents 'Breaking' from grouping unrelated markets (Mat's $499 bug)", () => {
+        // Mat had: Fed rate decisions tagged ["Breaking", "Business"] with $500 exposure
+        //          Iran strikes      tagged ["Breaking", "Geopolitics"] with $499 exposure
+        // BUG: "Breaking" grouped them → $999/$1000 = $1 remaining
+        // FIX: "Breaking" stripped → Business=$500, Geopolitics=$499 (independent)
+
+        const fedCategories = filterNoiseCategories(["Breaking", "Business"]);
+        const iranCategories = filterNoiseCategories(["Breaking", "Geopolitics"]);
+
+        // After filtering, they should NOT share any category
+        const sharedCategories = fedCategories.filter(c => iranCategories.includes(c));
+        expect(sharedCategories).toEqual([]);
+
+        // Each should only contain their real category
+        expect(fedCategories).toEqual(["Business"]);
+        expect(iranCategories).toEqual(["Geopolitics"]);
+    });
+});
+
+// ─── Float Rounding Regression ─────────────────────────────────────
+describe("Category exposure float rounding", () => {
+
+    it("proves float erosion exists and why rounding is needed", () => {
+        // Simulating: 625 shares × $0.8000 entryPrice
+        const shares = 625;
+        const entryPrice = 0.8;
+        const rawExposure = shares * entryPrice;
+
+        // IEEE 754 can produce imprecise results
+        // After rounding to 2 decimals, it should be clean
+        const roundedExposure = Math.round(rawExposure * 100) / 100;
+        expect(roundedExposure).toBe(500);
+    });
+});

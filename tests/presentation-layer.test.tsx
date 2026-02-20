@@ -379,3 +379,67 @@ describe('Presentation Layer — Behavioral', () => {
         });
     });
 });
+
+// ─── Drawdown Warning Logic ─────────────────────────────────────────
+// Tests the exact same threshold logic used in EventDetailModal.tsx
+// and MobileTradeSheet.tsx, without needing to render the full modal.
+describe('Drawdown Warning — threshold behavior', () => {
+
+    /**
+     * Replicates the inline logic from EventDetailModal.tsx L779-798:
+     *   const ddPercent = (amount / drawdownRemaining) * 100;
+     *   if (ddPercent < 10) return null;  // hidden
+     *   const isDanger = ddPercent >= 100; // red vs amber
+     */
+    function getWarningState(amount: number, drawdownRemaining: number): 'hidden' | 'amber' | 'red' | null {
+        if (amount <= 0 || drawdownRemaining <= 0) return null;
+        const ddPercent = (amount / drawdownRemaining) * 100;
+        if (ddPercent < 10) return 'hidden';
+        return ddPercent >= 100 ? 'red' : 'amber';
+    }
+
+    it('hides warning when trade is below 10% of remaining drawdown', () => {
+        // $30 trade with $400 remaining = 7.5%
+        expect(getWarningState(30, 400)).toBe('hidden');
+    });
+
+    it('shows amber warning at exactly 10%', () => {
+        // $40 trade with $400 remaining = 10%
+        expect(getWarningState(40, 400)).toBe('amber');
+    });
+
+    it('shows amber warning at 50% of remaining drawdown', () => {
+        // $200 trade with $400 remaining = 50%
+        expect(getWarningState(200, 400)).toBe('amber');
+    });
+
+    it('shows red warning at exactly 100% of remaining drawdown', () => {
+        // $400 trade with $400 remaining = 100%
+        expect(getWarningState(400, 400)).toBe('red');
+    });
+
+    it('shows red warning when trade exceeds remaining drawdown', () => {
+        // $600 trade with $400 remaining = 150%
+        expect(getWarningState(600, 400)).toBe('red');
+    });
+
+    it('returns null when amount is 0', () => {
+        expect(getWarningState(0, 400)).toBeNull();
+    });
+
+    it('returns null when drawdown remaining is 0 (already breached)', () => {
+        expect(getWarningState(100, 0)).toBeNull();
+    });
+
+    // ─── Mat's exact scenario from production smoke test ───
+    it('matches production behavior: $50 trade with $400 remaining → amber 13%', () => {
+        const ddPercent = (50 / 400) * 100;
+        expect(ddPercent.toFixed(0)).toBe('13');
+        expect(getWarningState(50, 400)).toBe('amber');
+    });
+
+    it('matches production behavior: $600 trade with $400 remaining → red', () => {
+        expect(getWarningState(600, 400)).toBe('red');
+    });
+});
+

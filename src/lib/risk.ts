@@ -68,7 +68,7 @@ interface ChallengeContext {
 // groups unrelated markets like Fed rate decisions and Iran strikes.
 const NOISE_CATEGORIES = new Set(['Breaking', 'New', 'Featured', 'Popular']);
 
-function filterNoiseCategories(categories: string[]): string[] {
+export function filterNoiseCategories(categories: string[]): string[] {
     const meaningful = categories.filter(c => !NOISE_CATEGORIES.has(c));
     // If ALL categories are noise, keep original list (don't bypass limits entirely)
     return meaningful.length > 0 ? meaningful : categories;
