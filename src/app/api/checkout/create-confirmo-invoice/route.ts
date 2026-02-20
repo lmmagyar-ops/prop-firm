@@ -11,8 +11,19 @@ const logger = createLogger("CreateConfirmoInvoice");
 
 export async function POST(req: NextRequest) {
     const session = await auth();
-    // Allow demo users for now (or strictly require auth)
+
+    // Bug 6 fix: Fail-closed on auth in production.
+    // The mock path (no CONFIRMO_API_KEY) allows demo-user flow for local dev.
+    // The production path MUST have a real user session — no fallbacks.
+    const isProductionPayment = !!process.env.CONFIRMO_API_KEY;
+    if (isProductionPayment && !session?.user?.id) {
+        return NextResponse.json(
+            { error: "Authentication required" },
+            { status: 401 }
+        );
+    }
     const userId = session?.user?.id || "demo-user-1";
+
 
     try {
         const body = await req.json();
@@ -102,18 +113,14 @@ export async function POST(req: NextRequest) {
                     invoiceId: "inv-mock-123-456"
                 });
             } catch (dbError: unknown) {
-                logger.error("[Confirmo Mock] Database error:", dbError);
-                // If DB fails, still return success but without creating challenge
-                // This allows UI testing even if DB is down
-                const protocol = req.headers.get('x-forwarded-proto') || 'http';
-                const host = req.headers.get('host') || 'localhost:3000';
-                const baseUrl = `${protocol}://${host}`;
+                // Bug 4 fix: Fail closed — do NOT return a fake success URL when DB fails.
+                // Returning success here would let users believe they purchased without a challenge.
+                logger.error("[Confirmo Mock] Database error during mock challenge provisioning:", dbError);
                 const dbErrorMessage = dbError instanceof Error ? dbError.message : JSON.stringify(dbError);
-
-                return NextResponse.json({
-                    invoiceUrl: `${baseUrl}/onboarding/setup?status=success&demomode=true&db_error=true&error_details=${encodeURIComponent(dbErrorMessage)}`,
-                    invoiceId: "inv-mock-error"
-                });
+                return NextResponse.json(
+                    { error: `Mock checkout failed: ${dbErrorMessage}` },
+                    { status: 500 }
+                );
             }
         }
 

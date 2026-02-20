@@ -523,3 +523,43 @@ export const marketCache = pgTable("market_cache", {
     workerHealthy: boolean("worker_healthy").default(true),
 });
 
+// ============================================================================
+// PAYMENT AUDIT TRAIL
+// ============================================================================
+
+/**
+ * Immutable log of every Confirmo webhook event.
+ *
+ * Serves two purposes:
+ * 1. Audit trail — disputes, chargebacks, customer support.
+ * 2. Idempotency key — confirmoInvoiceId (unique) prevents duplicate challenge
+ *    creation from webhook retries regardless of status or timing window.
+ *
+ * One row per unique (confirmoInvoiceId, status) transition. The first 'paid'
+ * event inserts with ON CONFLICT DO NOTHING; subsequent retries are silently
+ * ignored at the DB level.
+ */
+export const paymentLogs = pgTable("payment_logs", {
+    id: uuid("id").defaultRandom().primaryKey(),
+    // Confirmo invoice ID — the canonical idempotency key
+    confirmoInvoiceId: text("confirmo_invoice_id").notNull(),
+    userId: text("user_id").notNull().references(() => users.id),
+    challengeId: uuid("challenge_id").references(() => challenges.id), // Backfilled after challenge creation
+    tier: varchar("tier", { length: 10 }).notNull(),
+    platform: varchar("platform", { length: 20 }).notNull(),
+    status: varchar("status", { length: 20 }).notNull(), // 'paid' | 'confirmed' | 'complete' | 'rejected'
+    amountPaid: decimal("amount_paid", { precision: 10, scale: 2 }).notNull(),
+    expectedAmount: decimal("expected_amount", { precision: 10, scale: 2 }).notNull(),
+    discountCode: text("discount_code"),
+    discountAmount: decimal("discount_amount", { precision: 10, scale: 2 }),
+    // Full Confirmo webhook body for forensic replay
+    rawPayload: jsonb("raw_payload").notNull(),
+    receivedAt: timestamp("received_at").defaultNow().notNull(),
+}, (t) => ({
+    // Unique per (invoiceId, status) so we store each status transition once
+    // but never double-process the same event.
+    invoiceStatusIdx: uniqueIndex("payment_logs_invoice_status_idx").on(t.confirmoInvoiceId, t.status),
+    // Fast lookup by user for support/admin
+    userIdx: index("payment_logs_user_idx").on(t.userId),
+}));
+
