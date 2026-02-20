@@ -98,16 +98,23 @@ async function seedRedis() {
     }
     await redis.set('market:orderbooks', JSON.stringify(ob));
 
-    // Event list (for risk engine category lookup)
-    const events = JSON.parse(await redis.get('kalshi:active_list') || '[]');
+    // Event list — must go into event:active_list (NOT kalshi:active_list)
+    // because getMarketById() only searches data.events and data.markets.
+    // kalshi:active_list maps to data.kalshi which getMarketById never reads.
+    const events = JSON.parse(await redis.get('event:active_list') || '[]');
     events.push({
-        title: 'Lifecycle Test Event', volume: 50_000_000, categories: ['Crypto'],
+        id: 'lifecycle-test-event',
+        title: 'Lifecycle Test Event',
+        slug: 'lifecycle-test-event',
+        volume: 50_000_000,
+        categories: ['Crypto'],
+        isMultiOutcome: true,
         markets: [
             { id: MARKET_A, price: parseFloat(MID), question: 'Lifecycle Alpha?', volume: 50_000_000, outcomes: ['Yes', 'No'] },
             { id: MARKET_B, price: parseFloat(MID), question: 'Lifecycle Beta?', volume: 50_000_000, outcomes: ['Yes', 'No'] },
         ],
     });
-    await redis.set('kalshi:active_list', JSON.stringify(events));
+    await redis.set('event:active_list', JSON.stringify(events));
 }
 
 async function refreshPrices() {
@@ -584,9 +591,9 @@ async function cleanup() {
     delete ob[MARKET_B];
     await redis.set('market:orderbooks', JSON.stringify(ob));
 
-    const events = JSON.parse(await redis.get('kalshi:active_list') || '[]');
+    const events = JSON.parse(await redis.get('event:active_list') || '[]');
     const filtered = events.filter((e: Record<string, unknown>) => e.title !== 'Lifecycle Test Event');
-    await redis.set('kalshi:active_list', JSON.stringify(filtered));
+    await redis.set('event:active_list', JSON.stringify(filtered));
 
     console.log(`  ✅ Removed ${testUsers.length} test users and all related data`);
 }

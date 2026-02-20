@@ -22,8 +22,8 @@ interface AlertOptions {
 }
 
 // Base URL for internal webhook calls
-// Fail-closed in production: no silent localhost fallback
-const getBaseUrl = () => {
+// Returns null if no URL is configured — callers must handle gracefully
+const getBaseUrl = (): string | null => {
     if (process.env.VERCEL_URL) {
         return `https://${process.env.VERCEL_URL}`;
     }
@@ -33,7 +33,10 @@ const getBaseUrl = () => {
     if (process.env.NODE_ENV === 'development') {
         return 'http://localhost:3000';
     }
-    throw new Error('ALERT_BASE_URL: Neither VERCEL_URL nor NEXT_PUBLIC_BASE_URL is set in production');
+    // Don't throw — this runs inside try/catch where the error gets swallowed.
+    // Log visibly so the operator knows Slack alerts are silently disabled.
+    logger.warn('Slack alerts disabled: neither VERCEL_URL nor NEXT_PUBLIC_BASE_URL is set');
+    return null;
 };
 
 /**
@@ -88,6 +91,7 @@ async function sendSlackAlert(
     metadata: Record<string, unknown>
 ): Promise<void> {
     const baseUrl = getBaseUrl();
+    if (!baseUrl) return; // No URL configured — warning already logged by getBaseUrl
 
     // Map severity to alert type
     const typeMap: Record<AlertSeverity, string> = {

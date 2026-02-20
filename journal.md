@@ -18,9 +18,7 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 - 1114/1114 tests pass (vitest), `tsc` clean
 
 ### Known Open Issues (Updated Feb 19)
-- ~~**Feb 19 — BUG (P2)**: `src/app/checkout/page.tsx` — 5K checkout label showed "$10,000" → **FIXED**: derived `size` from `tierId` via `TIER_SIZES` map~~
-- ~~**Feb 19 — BUG (P2)**: `src/app/api/discount/validate/route.ts` — TIER_PRICES were stale → **FIXED**: corrected to {$79, $149, $299}~~
-- ~~**Feb 18 — LIVE BUG**: `src/app/api/trade/execute/route.ts` line 129 — inline PnL direction → **ALREADY FIXED** in prior session (uses `calculatePositionMetrics` with direction, test exists)~~
+- None — all prior issues resolved and deployed to production.
 
 ### Previous Confirmed (Browser-Verified Feb 18, 10:45 PM CT)
 - **8-scenario browser smoke test PASSED** on localhost:3001 with live Polymarket data
