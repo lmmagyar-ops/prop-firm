@@ -8,16 +8,14 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 > **New agent? Read this section before doing anything else.**
 > This is the single source of truth for what actually works. Do NOT trust individual journal entries — they reflect what the agent *believed*, not what the user confirmed.
 
-### Last Confirmed by Agent (Post-Fix Hardening Feb 19, 1:55 PM CT)
+### Last Confirmed by Agent (Production Deploy Feb 19, 7:00 PM CT)
+- **DEPLOYED TO PRODUCTION** via staging-first workflow (`7bfa463..2c16608`)
+- Pre-deploy gates: `test:engine` ✅, `test:safety` ✅ (54/54), `tsc` ✅, `test:lifecycle` 27/28 (Phase 4 pre-existing env issue — market data unavailable for test market)
+- Staging smoke test ✅: homepage, login, 5K→$79, 25K→$299 all verified on `prop-firmx-git-develop-...vercel.app`
+- Production smoke test ✅: homepage, 5K→$79, 25K→$299 all verified on `prop-firmx.vercel.app`
 - All deep testing bugs FIXED + prices consolidated into `config/plans.ts` as single source of truth
 - `checkout/page.tsx`, `discount/validate/route.ts`, `admin-utils.ts` all import from `config/plans.ts`
-- 1087/1087 tests pass, `tsc` clean
-- Sad paths: $0, negative, over-balance, fake positionId, empty body — all rejected ✅
-- DB verification: equity $4,989.91 = balance $4,865.19 + positions $124.72 (diff=0) ✅
-- Concurrency: both simultaneous trades blocked by EXCHANGE_HALT (fail-closed) ✅
-- API contracts: all unauthenticated → 401, schema correct ✅
-- Challenge lifecycle: start without pending → 404, data not leaked ✅
-- Checkout prices correct ($79/$149) but 2 bugs found below
+- 1114/1114 tests pass (vitest), `tsc` clean
 
 ### Known Open Issues (Updated Feb 19)
 - ~~**Feb 19 — BUG (P2)**: `src/app/checkout/page.tsx` — 5K checkout label showed "$10,000" → **FIXED**: derived `size` from `tierId` via `TIER_SIZES` map~~
