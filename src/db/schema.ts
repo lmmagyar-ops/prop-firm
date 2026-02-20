@@ -543,8 +543,8 @@ export const paymentLogs = pgTable("payment_logs", {
     id: uuid("id").defaultRandom().primaryKey(),
     // Confirmo invoice ID — the canonical idempotency key
     confirmoInvoiceId: text("confirmo_invoice_id").notNull(),
-    userId: text("user_id").notNull().references(() => users.id),
-    challengeId: uuid("challenge_id").references(() => challenges.id), // Backfilled after challenge creation
+    userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    challengeId: uuid("challenge_id").references(() => challenges.id, { onDelete: "set null" }), // Backfilled after challenge creation
     tier: varchar("tier", { length: 10 }).notNull(),
     platform: varchar("platform", { length: 20 }).notNull(),
     status: varchar("status", { length: 20 }).notNull(), // 'paid' | 'confirmed' | 'complete' | 'rejected'

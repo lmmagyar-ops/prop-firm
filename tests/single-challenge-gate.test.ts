@@ -23,6 +23,8 @@ import { eq, and } from 'drizzle-orm';
 
 // ─── MOCKS ─────────────────────────────────────────────────
 let mockUserId = '';
+let invoiceCounter = 0;
+const makeInvoiceId = () => `inv-gate-${Date.now()}-${++invoiceCounter}`;
 
 vi.mock('@/auth', () => ({
     auth: vi.fn(() => Promise.resolve({
@@ -65,6 +67,7 @@ function makeConfirmoWebhook(userId: string, tier = '10k'): Request {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+            id: makeInvoiceId(), // Required for idempotency key
             status: 'paid',
             reference: `${userId}:${tier}:polymarket`,
             amount: '149',
