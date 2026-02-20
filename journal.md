@@ -8,13 +8,12 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 > **New agent? Read this section before doing anything else.**
 > This is the single source of truth for what actually works. Do NOT trust individual journal entries — they reflect what the agent *believed*, not what the user confirmed.
 
-### Last Confirmed by Agent (Feb 20, 12:30 PM CT)
-- **Mat's feedback fixes** — 3 commits: `6143de8`, `d8dc7a8`, `6380619`
-- **Category noise filter** (`risk.ts`): Polymarket's "Breaking"/"New" tags grouped unrelated markets (Fed rates + Iran strikes = $999 "Breaking" exposure, blocking trades). Added `filterNoiseCategories()` to strip noise tags. Cross-referenced: "Breaking" $999→removed, real categories correct.
-- **Float erosion fix** (`getCategoryExposureFromCache`): `shares × entryPrice` = $500.0002 → rounds to $500.00
-- **Drawdown risk warning** (`EventDetailModal.tsx`, `MobileTradeSheet.tsx`): Reactive amber at 10%+ of remaining drawdown, red at 100%+. Per Mat's request.
-- **Financial verification:** ✅ 24/24 assertions passed, engine 60/60, browser checks clean
-- Test suite: **1115/1115** pass (77 files), `tsc` 0 errors
+### Last Confirmed by Agent (Feb 20, 2:30 PM CT)
+- **Post-ship hardening** — commit `4b50ef3`
+- **16 regression tests added:** 7 for `filterNoiseCategories` (including Mat's exact $499 bug), 1 float rounding, 9 drawdown warning thresholds
+- Full suite: **1131/1131** pass (77 files), `tsc` 0 errors
+- Smoke test position closed: $50 YES round-trip, $1.79 spread cost, balance $4,998.21
+- Production verified: constraint shows "Event limit" not "Category limit" ✅
 
 ### Previous Confirmed (Payment Security Audit Feb 20, 1:30 AM CT)
 - **6 payment flow security bugs fixed** across 2 commits (`a77d25b`, `3a15a34`)
