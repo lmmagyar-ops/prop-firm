@@ -63,6 +63,17 @@ interface ChallengeContext {
     portfolioValue: number;
 }
 
+// ─── Noise categories that Polymarket applies to every trending market ──
+// These are too broad to be meaningful for exposure limits — "Breaking"
+// groups unrelated markets like Fed rate decisions and Iran strikes.
+const NOISE_CATEGORIES = new Set(['Breaking', 'New', 'Featured', 'Popular']);
+
+function filterNoiseCategories(categories: string[]): string[] {
+    const meaningful = categories.filter(c => !NOISE_CATEGORIES.has(c));
+    // If ALL categories are noise, keep original list (don't bypass limits entirely)
+    return meaningful.length > 0 ? meaningful : categories;
+}
+
 // ─── Risk Engine ────────────────────────────────────────────────────
 
 export class RiskEngine {
@@ -178,9 +189,12 @@ export class RiskEngine {
         // ── RULE 4: PER-CATEGORY EXPOSURE (10%) ───────────────────
         const market = await getMarketById(marketId);
 
-        const marketCategories = market?.categories?.length
+        const rawCategories = market?.categories?.length
             ? market.categories
             : this.inferCategoriesFromTitle(market?.question || "");
+
+        // Filter Polymarket noise categories ("Breaking", "New") that group unrelated markets
+        const marketCategories = filterNoiseCategories(rawCategories);
 
         // Fallback: uncategorized markets count against an "other" catch-all
         // This prevents uncategorized markets from bypassing category exposure limits
@@ -284,9 +298,10 @@ export class RiskEngine {
 
         // ── Per-category limit ─────────────────────────────────────
         const market = await getMarketById(marketId);
-        const marketCategories = market?.categories?.length
+        const rawCats = market?.categories?.length
             ? market.categories
             : this.inferCategoriesFromTitle(market?.question || "");
+        const marketCategories = filterNoiseCategories(rawCats);
 
         const perCategory = startBalance * (rules.maxCategoryExposurePercent || 0.10);
         let perCategoryRemaining = perCategory;
@@ -465,15 +480,17 @@ export class RiskEngine {
         let totalExposure = 0;
         for (const pos of openPositions) {
             const market = markets.find(m => m.id === pos.marketId);
-            const marketCategories = market?.categories?.length
+            const rawCats = market?.categories?.length
                 ? market.categories
                 : this.inferCategoriesFromTitle(market?.question || "");
+            const marketCategories = filterNoiseCategories(rawCats);
             if (marketCategories.includes(category)) {
                 // Use notional value (shares × entry price) not cost basis (sizeAmount).
                 // sizeAmount understates exposure when prices move.
                 const shares = parseFloat(pos.shares);
                 const price = parseFloat(pos.entryPrice);
-                totalExposure += shares * price;
+                // Round to 2dp to prevent float erosion ($500.0002 → $500.00)
+                totalExposure += Math.round(shares * price * 100) / 100;
             }
         }
         return totalExposure;
