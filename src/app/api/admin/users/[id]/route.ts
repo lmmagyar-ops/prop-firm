@@ -1,20 +1,25 @@
 import { db } from "@/db";
-import { users, challenges, trades, positions, accounts, sessions } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import {
+    users, challenges, trades, positions, accounts, sessions,
+    payouts, certificates, userBadges, affiliates, discountRedemptions, paymentLogs,
+    payoutMethods, user2FA, activityLogs, leaderboardEntries, auditLogs
+} from "@/db/schema";
+import { eq, inArray } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-auth";
 import { createLogger } from "@/lib/logger";
-const logger = createLogger("[id]");
+const logger = createLogger("AdminUser");
 
 /**
  * DELETE /api/admin/users/[id]
- * Delete a user and all their associated data
+ * Delete a user and ALL associated data.
+ * All operations run inside a single DB transaction.
  */
 export async function DELETE(
     request: Request,
     { params }: { params: Promise<{ id: string }> }
 ) {
-    const { isAuthorized, response } = await requireAdmin();
+    const { isAuthorized, response, user: admin } = await requireAdmin();
     if (!isAuthorized) return response;
 
     const { id: userId } = await params;
@@ -25,8 +30,8 @@ export async function DELETE(
 
     try {
         // Verify user exists
-        const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
-        if (user.length === 0) {
+        const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+        if (!user) {
             return NextResponse.json({ error: "User not found" }, { status: 404 });
         }
 
@@ -38,33 +43,72 @@ export async function DELETE(
 
         const challengeIds = userChallenges.map(c => c.id);
 
-        // Delete in order to respect foreign key constraints:
-        // 1. Delete trades (references positions and challenges)
-        for (const challengeId of challengeIds) {
-            await db.delete(trades).where(eq(trades.challengeId, challengeId));
-        }
+        const result = await db.transaction(async (tx) => {
+            // ── Challenge-scoped deletes ──
+            if (challengeIds.length > 0) {
+                // 1. Delete trades (FK → challenges)
+                for (const cId of challengeIds) {
+                    await tx.delete(trades).where(eq(trades.challengeId, cId));
+                }
 
-        // 2. Delete positions (references challenges)
-        for (const challengeId of challengeIds) {
-            await db.delete(positions).where(eq(positions.challengeId, challengeId));
-        }
+                // 2. Delete positions (FK → challenges)
+                for (const cId of challengeIds) {
+                    await tx.delete(positions).where(eq(positions.challengeId, cId));
+                }
+            }
 
-        // 3. Delete challenges (references users)
-        await db.delete(challenges).where(eq(challenges.userId, userId));
+            // 3. Delete challenges (FK → users)
+            await tx.delete(challenges).where(eq(challenges.userId, userId));
 
-        // 4. Delete sessions (references users)
-        await db.delete(sessions).where(eq(sessions.userId, userId));
+            // ── User-scoped deletes (tables with userId FK, no cascade) ──
+            // Auth tables
+            await tx.delete(sessions).where(eq(sessions.userId, userId));
+            await tx.delete(accounts).where(eq(accounts.userId, userId));
 
-        // 5. Delete accounts (OAuth accounts, references users)
-        await db.delete(accounts).where(eq(accounts.userId, userId));
+            // Financial tables
+            await tx.delete(payouts).where(eq(payouts.userId, userId));
+            await tx.delete(certificates).where(eq(certificates.userId, userId));
+            await tx.delete(payoutMethods).where(eq(payoutMethods.userId, userId));
+            await tx.delete(discountRedemptions).where(eq(discountRedemptions.userId, userId));
 
-        // 6. Finally, delete the user
-        await db.delete(users).where(eq(users.id, userId));
+            // Profile/gamification tables
+            await tx.delete(userBadges).where(eq(userBadges.userId, userId));
+            await tx.delete(leaderboardEntries).where(eq(leaderboardEntries.userId, userId));
+            await tx.delete(activityLogs).where(eq(activityLogs.userId, userId));
+
+            // Security tables
+            await tx.delete(user2FA).where(eq(user2FA.userId, userId));
+
+            // Affiliates (has userId FK without cascade)
+            await tx.delete(affiliates).where(eq(affiliates.userId, userId));
+
+            // paymentLogs has ON DELETE CASCADE for userId — DB handles it
+
+            // Audit log (before we delete the user)
+            await tx.insert(auditLogs).values({
+                action: "DELETE_USER",
+                adminId: admin!.id,
+                targetId: userId,
+                details: {
+                    userId,
+                    email: user.email,
+                    name: user.name,
+                    challengesDeleted: challengeIds.length,
+                },
+            });
+
+            // Finally, delete the user
+            await tx.delete(users).where(eq(users.id, userId));
+
+            return { challengesDeleted: challengeIds.length };
+        });
+
+        logger.info(`[Admin] Deleted user ${user.email}: ${result.challengesDeleted} challenges removed`);
 
         return NextResponse.json({
             success: true,
-            message: `User ${user[0].email} and all associated data deleted`,
-            deletedChallenges: challengeIds.length
+            message: `User ${user.email} and all associated data deleted`,
+            deletedChallenges: result.challengesDeleted,
         });
 
     } catch (error) {

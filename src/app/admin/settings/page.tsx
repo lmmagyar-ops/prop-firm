@@ -1,97 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Settings, Shield, Database, Bell, Power, AlertTriangle, CheckCircle2, RefreshCw, Loader2, Code2, Trash2 } from "lucide-react";
+import { Settings, Shield, Database, Bell, Power, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
-import { Badge } from "@/components/ui/badge";
-
-interface Challenge {
-    id: string;
-    status: string;
-    currentBalance: string;
-    userId: string;
-    platform: string;
-    phase: number;
-}
 
 export default function SettingsPage() {
     const [maintenanceMode, setMaintenanceMode] = useState(false);
     const [tradingEnabled, setTradingEnabled] = useState(true);
     const [newSignupsEnabled, setNewSignupsEnabled] = useState(true);
     const [emailNotifications, setEmailNotifications] = useState(true);
-
-    // Developer Tools state
-    const [challenges, setChallenges] = useState<Challenge[]>([]);
-    const [selectedChallenge, setSelectedChallenge] = useState<string>("");
-    const [resetting, setResetting] = useState(false);
-    const [loadingChallenges, setLoadingChallenges] = useState(true);
-
-    // Fetch challenges on mount
-    useEffect(() => {
-        const fetchChallenges = async () => {
-            try {
-                const res = await fetch("/api/admin/reset-challenge");
-                if (res.ok) {
-                    const data = await res.json();
-                    setChallenges(data.challenges || []);
-                    if (data.challenges?.length > 0) {
-                        setSelectedChallenge(data.challenges[0].id);
-                    }
-                }
-            } catch (error) {
-                console.error("Failed to fetch challenges", error);
-            } finally {
-                setLoadingChallenges(false);
-            }
-        };
-        fetchChallenges();
-    }, []);
-
-    const handleResetChallenge = async () => {
-        if (!selectedChallenge) {
-            toast.error("Please select a challenge to reset");
-            return;
-        }
-
-        if (!confirm("Are you sure you want to reset this challenge? This will delete all trades and positions.")) {
-            return;
-        }
-
-        setResetting(true);
-        try {
-            const res = await fetch("/api/admin/reset-challenge", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ challengeId: selectedChallenge })
-            });
-
-            if (!res.ok) {
-                throw new Error("Reset failed");
-            }
-
-            const data = await res.json();
-            toast.success("Challenge Reset Successfully", {
-                description: `Balance restored to $${data.data.newBalance.toLocaleString()}`
-            });
-
-            // Refresh challenges list
-            const refreshRes = await fetch("/api/admin/reset-challenge");
-            if (refreshRes.ok) {
-                const refreshData = await refreshRes.json();
-                setChallenges(refreshData.challenges || []);
-            }
-
-        } catch (error) {
-            console.error(error);
-            toast.error("Failed to reset challenge");
-        } finally {
-            setResetting(false);
-        }
-    };
 
     const handleMaintenanceToggle = () => {
         setMaintenanceMode(!maintenanceMode);
@@ -126,8 +46,6 @@ export default function SettingsPage() {
         );
     };
 
-    const selectedChallengeData = challenges.find(c => c.id === selectedChallenge);
-
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
             <div>
@@ -158,109 +76,6 @@ export default function SettingsPage() {
                     </div>
                 </div>
             </div>
-
-            {/* Developer Tools - Account Reset */}
-            <Card className="bg-gradient-to-br from-purple-500/5 to-transparent border-purple-500/20 backdrop-blur-md shadow-2xl">
-                <CardHeader>
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-purple-500/10 border border-purple-500/20">
-                            <Code2 className="h-5 w-5 text-purple-400" />
-                        </div>
-                        <div>
-                            <CardTitle className="text-lg font-medium text-zinc-200 flex items-center gap-2">
-                                Developer Tools
-                                <Badge variant="outline" className="text-[10px] bg-purple-500/10 text-purple-400 border-purple-500/20">DEV</Badge>
-                            </CardTitle>
-                            <CardDescription className="text-zinc-500">Testing utilities and debug features</CardDescription>
-                        </div>
-                    </div>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                    {/* Account Reset Section */}
-                    <div className="p-4 bg-zinc-800/30 border border-white/5 rounded-lg space-y-4">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 rounded-lg bg-red-500/10">
-                                    <RefreshCw className="h-5 w-5 text-red-400" />
-                                </div>
-                                <div>
-                                    <h3 className="text-sm font-medium text-white">Reset Trading Account</h3>
-                                    <p className="text-xs text-zinc-500">Wipe all trades/positions and restore starting balance</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            {/* Challenge Selector */}
-                            <div className="md:col-span-2">
-                                <label className="text-xs text-zinc-500 mb-1.5 block">Select Challenge</label>
-                                {loadingChallenges ? (
-                                    <div className="flex items-center gap-2 text-zinc-500 text-sm py-2">
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                        Loading challenges...
-                                    </div>
-                                ) : (
-                                    <Select value={selectedChallenge} onValueChange={setSelectedChallenge}>
-                                        <SelectTrigger className="bg-zinc-900 border-zinc-700">
-                                            <SelectValue placeholder="Select a challenge" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {challenges.map((c) => (
-                                                <SelectItem key={c.id} value={c.id}>
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="font-mono text-xs">{c.id.slice(0, 8)}</span>
-                                                        <Badge
-                                                            variant="outline"
-                                                            className={`text-[10px] ${c.status === 'active' ? 'text-green-400 border-green-500/20' :
-                                                                    c.status === 'failed' ? 'text-red-400 border-red-500/20' :
-                                                                        'text-amber-400 border-amber-500/20'
-                                                                }`}
-                                                        >
-                                                            {c.status}
-                                                        </Badge>
-                                                        <span className="text-zinc-500">${parseFloat(c.currentBalance).toFixed(0)}</span>
-                                                    </div>
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                )}
-                            </div>
-
-                            {/* Reset Button */}
-                            <div className="flex items-end">
-                                <Button
-                                    variant="destructive"
-                                    className="w-full bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/20"
-                                    onClick={handleResetChallenge}
-                                    disabled={resetting || !selectedChallenge}
-                                >
-                                    {resetting ? (
-                                        <>
-                                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                            Resetting...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Trash2 className="h-4 w-4 mr-2" />
-                                            Reset Challenge
-                                        </>
-                                    )}
-                                </Button>
-                            </div>
-                        </div>
-
-                        {/* Selected Challenge Info */}
-                        {selectedChallengeData && (
-                            <div className="flex items-center gap-4 text-xs text-zinc-500 pt-2 border-t border-white/5">
-                                <span>Platform: <span className="text-zinc-300">{selectedChallengeData.platform}</span></span>
-                                <span>Phase: <span className="text-zinc-300">{selectedChallengeData.phase}</span></span>
-                                <span>Balance: <span className="text-zinc-300">${parseFloat(selectedChallengeData.currentBalance).toFixed(2)}</span></span>
-                            </div>
-                        )}
-                    </div>
-                </CardContent>
-            </Card>
 
             {/* Platform Controls */}
             <Card className="bg-zinc-900/40 border-white/5 backdrop-blur-md shadow-2xl">

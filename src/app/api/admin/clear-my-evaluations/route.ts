@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { challenges, positions, trades, users } from "@/db/schema";
+import { challenges, positions, trades, paymentLogs, discountRedemptions, certificates, payouts, auditLogs, users } from "@/db/schema";
 import { eq, and, inArray } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-auth";
@@ -8,8 +8,8 @@ const logger = createLogger("ClearMyEvaluations");
 
 /**
  * DELETE /api/admin/clear-my-evaluations
- * Completely removes ALL challenges, positions, and trades for the current user.
- * Use this to get a completely fresh testing state.
+ * Completely removes ALL challenges, positions, and trades for the current admin user.
+ * All operations run inside a single DB transaction.
  */
 export async function DELETE() {
     const { isAuthorized, response, user } = await requireAdmin();
@@ -44,38 +44,84 @@ export async function DELETE() {
             });
         }
 
-        // 2. Delete all trades for these challenges
-        const deletedTrades = await db
-            .delete(trades)
-            .where(inArray(trades.challengeId, challengeIds))
-            .returning({ id: trades.id });
+        // 2. Execute all mutations in a single transaction
+        const result = await db.transaction(async (tx) => {
+            // Delete trades
+            const deletedTrades = await tx
+                .delete(trades)
+                .where(inArray(trades.challengeId, challengeIds))
+                .returning({ id: trades.id });
 
-        // 3. Delete all positions for these challenges
-        const deletedPositions = await db
-            .delete(positions)
-            .where(inArray(positions.challengeId, challengeIds))
-            .returning({ id: positions.id });
+            // Delete positions
+            const deletedPositions = await tx
+                .delete(positions)
+                .where(inArray(positions.challengeId, challengeIds))
+                .returning({ id: positions.id });
 
-        // 4. Delete all challenges
-        const deletedChallenges = await db
-            .delete(challenges)
-            .where(eq(challenges.userId, userId))
-            .returning({ id: challenges.id });
+            // Null out payment log references (preserve audit trail)
+            for (const cId of challengeIds) {
+                await tx
+                    .update(paymentLogs)
+                    .set({ challengeId: null })
+                    .where(eq(paymentLogs.challengeId, cId));
+            }
 
-        logger.info(`[Admin] Cleared all data for user ${userId}:`, {
-            challenges: deletedChallenges.length,
-            positions: deletedPositions.length,
-            trades: deletedTrades.length
+            // Null out discount redemption references
+            for (const cId of challengeIds) {
+                await tx
+                    .update(discountRedemptions)
+                    .set({ challengeId: null })
+                    .where(eq(discountRedemptions.challengeId, cId));
+            }
+
+            // Null out certificate references
+            for (const cId of challengeIds) {
+                await tx
+                    .update(certificates)
+                    .set({ challengeId: null })
+                    .where(eq(certificates.challengeId, cId));
+            }
+
+            // Null out payout references
+            for (const cId of challengeIds) {
+                await tx
+                    .update(payouts)
+                    .set({ challengeId: null })
+                    .where(eq(payouts.challengeId, cId));
+            }
+
+            // Delete challenges
+            const deletedChallenges = await tx
+                .delete(challenges)
+                .where(eq(challenges.userId, userId))
+                .returning({ id: challenges.id });
+
+            // Audit log
+            await tx.insert(auditLogs).values({
+                action: "CLEAR_ALL_EVALUATIONS",
+                adminId: userId,
+                details: {
+                    userId,
+                    deletedChallenges: deletedChallenges.length,
+                    deletedTrades: deletedTrades.length,
+                    deletedPositions: deletedPositions.length,
+                    challengeIds,
+                },
+            });
+
+            return {
+                challenges: deletedChallenges.length,
+                positions: deletedPositions.length,
+                trades: deletedTrades.length,
+            };
         });
+
+        logger.info(`[Admin] Cleared all data for user ${userId}:`, result);
 
         return NextResponse.json({
             success: true,
             message: "All evaluations cleared!",
-            deleted: {
-                challenges: deletedChallenges.length,
-                positions: deletedPositions.length,
-                trades: deletedTrades.length
-            }
+            deleted: result,
         });
 
     } catch (error) {

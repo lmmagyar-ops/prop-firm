@@ -1,21 +1,21 @@
 import { db } from "@/db";
-import { challenges, trades, positions } from "@/db/schema";
+import { challenges, trades, positions, paymentLogs, discountRedemptions, certificates, auditLogs } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-auth";
 import { createLogger } from "@/lib/logger";
-const logger = createLogger("[id]");
+const logger = createLogger("AdminChallenge");
 
 /**
  * DELETE /api/admin/challenges/[id]
- * Delete a single challenge and all its associated trades + positions.
- * Keeps the user account intact — useful for cleaning up test data.
+ * Delete a single challenge and all its associated data.
+ * All operations run inside a single DB transaction.
  */
 export async function DELETE(
     request: Request,
     { params }: { params: Promise<{ id: string }> }
 ) {
-    const { isAuthorized, response } = await requireAdmin();
+    const { isAuthorized, response, user: admin } = await requireAdmin();
     if (!isAuthorized) return response;
 
     const { id: challengeId } = await params;
@@ -36,32 +36,69 @@ export async function DELETE(
             return NextResponse.json({ error: "Challenge not found" }, { status: 404 });
         }
 
-        // Cascade delete in FK order: trades → positions → challenge
-        const deletedTrades = await db
-            .delete(trades)
-            .where(eq(trades.challengeId, challengeId))
-            .returning({ id: trades.id });
+        const result = await db.transaction(async (tx) => {
+            // Cascade delete in FK order: dependents first, then the challenge
 
-        const deletedPositions = await db
-            .delete(positions)
-            .where(eq(positions.challengeId, challengeId))
-            .returning({ id: positions.id });
+            // 1. Delete trades (references challenges)
+            const deletedTrades = await tx
+                .delete(trades)
+                .where(eq(trades.challengeId, challengeId))
+                .returning({ id: trades.id });
 
-        await db
-            .delete(challenges)
-            .where(eq(challenges.id, challengeId));
+            // 2. Delete positions (references challenges)
+            const deletedPositions = await tx
+                .delete(positions)
+                .where(eq(positions.challengeId, challengeId))
+                .returning({ id: positions.id });
 
-        logger.info(`[Admin] Deleted challenge ${challengeId}:`, {
-            trades: deletedTrades.length,
-            positions: deletedPositions.length,
+            // 3. Null out payment log references (preserve audit trail)
+            await tx
+                .update(paymentLogs)
+                .set({ challengeId: null })
+                .where(eq(paymentLogs.challengeId, challengeId));
+
+            // 4. Null out discount redemption references
+            await tx
+                .update(discountRedemptions)
+                .set({ challengeId: null })
+                .where(eq(discountRedemptions.challengeId, challengeId));
+
+            // 5. Null out certificate references
+            await tx
+                .update(certificates)
+                .set({ challengeId: null })
+                .where(eq(certificates.challengeId, challengeId));
+
+            // 6. Delete the challenge
+            await tx
+                .delete(challenges)
+                .where(eq(challenges.id, challengeId));
+
+            // 7. Audit log
+            await tx.insert(auditLogs).values({
+                action: "DELETE_CHALLENGE",
+                adminId: admin!.id,
+                targetId: challengeId,
+                details: {
+                    challengeId,
+                    userId: challenge.userId,
+                    deletedTrades: deletedTrades.length,
+                    deletedPositions: deletedPositions.length,
+                },
+            });
+
+            return { deletedTrades: deletedTrades.length, deletedPositions: deletedPositions.length };
         });
+
+        logger.info(`[Admin] Deleted challenge ${challengeId}: ` +
+            `${result.deletedTrades} trades, ${result.deletedPositions} positions`);
 
         return NextResponse.json({
             success: true,
             message: `Challenge deleted successfully`,
             deleted: {
-                trades: deletedTrades.length,
-                positions: deletedPositions.length,
+                trades: result.deletedTrades,
+                positions: result.deletedPositions,
             }
         });
 

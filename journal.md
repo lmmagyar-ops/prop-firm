@@ -8,14 +8,14 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 > **New agent? Read this section before doing anything else.**
 > This is the single source of truth for what actually works. Do NOT trust individual journal entries — they reflect what the agent *believed*, not what the user confirmed.
 
-### Last Confirmed by Agent (Feb 20, 9:30 AM CT)
-- **PnL direction bug FIXED** — `trade/position/route.ts` inline formula replaced with canonical `calculatePositionMetrics()` (`b08ac91`)
-- `trade/execute/route.ts` was already fixed (uses `calculatePositionMetrics` since PnL consolidation)
-- **grep confirmed**: zero remaining `(current - entry) * shares` in `src/`
-- DB migration complete — `payment_logs` table live, dead `positions.closure_reason` dropped
-- Branches: `develop` 1 commit ahead of `main` (`b08ac91`)
+### Last Confirmed by Agent (Feb 20, 9:45 AM CT)
+- **All 3 morning action items COMPLETE** — DB migration, PnL fix, db:check script
+- PnL direction bug fixed in `trade/position/route.ts` (`b08ac91`), `trade/execute/route.ts` was already fixed
+- `db:check` script rewritten to use `drizzle-kit push --strict` with `spawn` (`eb4447f`)
+- DB migration: `payment_logs` table live, dead `positions.closure_reason` column dropped
+- **Branches synced**: `develop` = `main` at `eb4447f`
 - Test suite: **1115/1115** pass (77 files), `tsc` 0 errors, `test:engine` 60/60
-- Pre-existing local env issues: `test:safety` worker timeout, `test:lifecycle` Phase 5 no market data (both CI-green)
+- `npm run db:check` → `✅ Schema is in sync with database`
 
 ### Previous Confirmed (Payment Security Audit Feb 20, 1:30 AM CT)
 - **6 payment flow security bugs fixed** across 2 commits (`a77d25b`, `3a15a34`)
@@ -55,8 +55,7 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 - 1087/1087 tests pass, tsc clean
 
 ### Known Open Issues
-- **Feb 18 — LIVE BUG**: `src/app/api/trade/execute/route.ts` line 129 — inline PnL `(current - entry) * shares` has **no direction adjustment**. For NO positions, the PnL returned in the BUY response is wrong. Fix: replace with `calculatePositionMetrics()`. Does NOT affect balance or DB — only the JSON response the UI receives after a BUY.
-- **2 pre-existing tsc warnings** in `DashboardView.tsx` + `MarketTicker.tsx` — cosmetic, unrelated to business logic
+- None — all prior issues resolved and deployed to production.
 
 ### Shipped & Browser-Verified (Feb 18 Audit)
 - PnL consolidation, price validator, drawdown label — all display correctly in dashboard
@@ -78,14 +77,11 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ### Tomorrow Morning (Priority × Risk)
 
-**1. 🚀 Merge `develop` → `main` (PnL fix) — then verify production**
-`develop` is 1 commit ahead (`b08ac91`). Fast-forward merge, then browser smoke test production.
-
-**2. 🧹 Fix `db:check` script (5 min, LOW RISK)**
-`scripts/check-schema-drift.ts` uses `--dry-run` flag which doesn't exist in current drizzle-kit.
-
-**3. 📊 User confirmation smoke test (5 min)**
+**1. 📊 User confirmation smoke test (5 min)**
 Mat should spot-check: dashboard equity, place a trade, verify toast shares match.
+
+**2. 🚀 Continue app development**
+All blockers cleared — payment pipeline hardened, PnL canonical, schema in sync, branches merged.
 
 ---
 

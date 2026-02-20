@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { challenges, positions, trades } from "@/db/schema";
+import { challenges, positions, trades, paymentLogs, auditLogs } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-auth";
@@ -9,13 +9,15 @@ const logger = createLogger("ResetChallenge");
 /**
  * POST /api/admin/reset-challenge
  * Resets a challenge to its initial state for testing purposes.
- * - Deletes all positions and trades
- * - Resets balance to starting balance
- * - Resets status to 'active'
- * - Clears high water mark
+ * 
+ * All operations run inside a single DB transaction:
+ * - Deletes all trades, positions, and payment logs for the challenge
+ * - Resets balance, HWM, startOfDayBalance to starting balance
+ * - Resets status to 'active', phase to 'challenge'
+ * - Writes an audit_logs entry for traceability
  */
 export async function POST(req: Request) {
-    const { isAuthorized, response } = await requireAdmin();
+    const { isAuthorized, response, user: admin } = await requireAdmin();
     if (!isAuthorized) return response;
 
     try {
@@ -35,8 +37,6 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Challenge not found" }, { status: 404 });
         }
 
-        // FIX: Use the startingBalance column directly, NOT rulesConfig
-        // rulesConfig.startingBalance may not exist for webhook-created challenges
         const startingBalance = parseFloat(challenge.startingBalance);
         if (isNaN(startingBalance) || startingBalance <= 0) {
             return NextResponse.json({
@@ -45,36 +45,67 @@ export async function POST(req: Request) {
             }, { status: 400 });
         }
 
+        const previousBalance = challenge.currentBalance;
 
-        // 2. Delete all trades for this challenge
-        await db.delete(trades).where(eq(trades.challengeId, challengeId));
+        // 2. Execute all mutations in a single transaction
+        const result = await db.transaction(async (tx) => {
+            // Delete trades
+            const deletedTrades = await tx
+                .delete(trades)
+                .where(eq(trades.challengeId, challengeId))
+                .returning({ id: trades.id });
 
-        // 3. Delete all positions for this challenge
-        await db.delete(positions).where(eq(positions.challengeId, challengeId));
+            // Delete positions
+            const deletedPositions = await tx
+                .delete(positions)
+                .where(eq(positions.challengeId, challengeId))
+                .returning({ id: positions.id });
 
-        // 4. Reset challenge state (including phase for funded accounts)
-        await db
-            .update(challenges)
-            .set({
-                currentBalance: String(startingBalance),
-                startOfDayBalance: String(startingBalance),
-                highWaterMark: String(startingBalance),
-                status: "active",
-                phase: "challenge",  // Reset funded accounts back to challenge phase
-                pendingFailureAt: null,  // Clear any pending failure
-                activeTradingDays: 0,  // Reset trading day count
-                startedAt: new Date(),  // Reset start date for fresh evaluation period
-            })
-            .where(eq(challenges.id, challengeId));
+            // Null out payment log references (preserve audit trail, remove FK link)
+            await tx
+                .update(paymentLogs)
+                .set({ challengeId: null })
+                .where(eq(paymentLogs.challengeId, challengeId));
 
-        // FORENSIC LOGGING: Track admin reset
-        logger.info(`[BALANCE_FORENSIC] ${JSON.stringify({
-            timestamp: new Date().toISOString(),
-            operation: 'ADMIN_RESET',
-            challengeId: challengeId.slice(0, 8),
-            newBalance: `$${startingBalance}`,
-            source: 'admin/reset-challenge'
-        })}`);
+            // Reset challenge state
+            await tx
+                .update(challenges)
+                .set({
+                    currentBalance: String(startingBalance),
+                    startOfDayBalance: String(startingBalance),
+                    highWaterMark: String(startingBalance),
+                    status: "active",
+                    phase: "challenge",
+                    pendingFailureAt: null,
+                    activeTradingDays: 0,
+                    startedAt: new Date(),
+                })
+                .where(eq(challenges.id, challengeId));
+
+            // Write audit log
+            await tx.insert(auditLogs).values({
+                action: "RESET_CHALLENGE",
+                adminId: admin!.id,
+                targetId: challengeId,
+                details: {
+                    challengeId,
+                    userId: challenge.userId,
+                    previousBalance,
+                    newBalance: String(startingBalance),
+                    deletedTrades: deletedTrades.length,
+                    deletedPositions: deletedPositions.length,
+                },
+            });
+
+            return {
+                deletedTrades: deletedTrades.length,
+                deletedPositions: deletedPositions.length,
+            };
+        });
+
+        logger.info(`[Admin] Reset challenge ${challengeId.slice(0, 8)}: ` +
+            `${result.deletedTrades} trades, ${result.deletedPositions} positions deleted, ` +
+            `balance ${previousBalance} → ${startingBalance}`);
 
         return NextResponse.json({
             success: true,
@@ -82,7 +113,9 @@ export async function POST(req: Request) {
             data: {
                 challengeId,
                 newBalance: startingBalance,
-                status: "active"
+                status: "active",
+                deletedTrades: result.deletedTrades,
+                deletedPositions: result.deletedPositions,
             }
         });
 

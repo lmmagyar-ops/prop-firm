@@ -34,7 +34,6 @@ interface QuickStats {
 export function AdminQuickActions() {
     const [stats, setStats] = useState<QuickStats | null>(null);
     const [loading, setLoading] = useState(true);
-    const [resetting, setResetting] = useState(false);
     const [clearing, setClearing] = useState(false);
 
     useEffect(() => {
@@ -52,40 +51,6 @@ export function AdminQuickActions() {
             console.error("Failed to fetch quick stats:", error);
         } finally {
             setLoading(false);
-        }
-    };
-
-    const handleResetMyEvaluation = async () => {
-        if (!stats?.myActiveChallenge) {
-            toast.error("No active challenge to reset");
-            return;
-        }
-
-        if (!confirm("Reset your evaluation? This will delete all trades and restore starting balance.")) {
-            return;
-        }
-
-        setResetting(true);
-        try {
-            const res = await fetch("/api/admin/reset-challenge", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ challengeId: stats.myActiveChallenge.id }),
-            });
-
-            if (res.ok) {
-                toast.success("Evaluation reset successfully!");
-                fetchStats();
-                // Refresh the page to update dashboard
-                window.location.reload();
-            } else {
-                const data = await res.json();
-                toast.error(data.error || "Failed to reset");
-            }
-        } catch (error) {
-            toast.error("Failed to reset evaluation");
-        } finally {
-            setResetting(false);
         }
     };
 
@@ -253,25 +218,6 @@ export function AdminQuickActions() {
                         )}
                     </div>
                     <div className="flex gap-2">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={handleResetMyEvaluation}
-                            disabled={resetting || !stats?.myActiveChallenge}
-                            className="text-xs border-zinc-700 hover:border-amber-500/50 hover:text-amber-500"
-                        >
-                            {resetting ? (
-                                <>
-                                    <RefreshCw className="w-3 h-3 mr-1 animate-spin" />
-                                    Resetting...
-                                </>
-                            ) : (
-                                <>
-                                    <RefreshCw className="w-3 h-3 mr-1" />
-                                    Reset My Evaluation
-                                </>
-                            )}
-                        </Button>
                         <Button
                             variant="outline"
                             size="sm"
