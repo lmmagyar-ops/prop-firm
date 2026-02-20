@@ -8,13 +8,12 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 > **New agent? Read this section before doing anything else.**
 > This is the single source of truth for what actually works. Do NOT trust individual journal entries — they reflect what the agent *believed*, not what the user confirmed.
 
-### Last Confirmed by Agent (Feb 20, 11:20 AM CT)
-- **Admin panel audit + hardening** — `6143de8`
-- Consolidated challenge reset to Users page only (removed from QuickActions + Settings)
-- All 4 destructive admin routes wrapped in `db.transaction()`
-- `audit_logs` entries on reset, delete challenge, clear evaluations, delete user
-- FK orphan risks fixed: paymentLogs, discountRedemptions, certificates, payouts, userBadges, affiliates
-- Fixed user balance: $4,999.66 → $5,000.00 (direct DB reset)
+### Last Confirmed by Agent (Feb 20, 12:30 PM CT)
+- **Mat's feedback fixes** — 3 commits: `6143de8`, `d8dc7a8`, `6380619`
+- **Category noise filter** (`risk.ts`): Polymarket's "Breaking"/"New" tags grouped unrelated markets (Fed rates + Iran strikes = $999 "Breaking" exposure, blocking trades). Added `filterNoiseCategories()` to strip noise tags. Cross-referenced: "Breaking" $999→removed, real categories correct.
+- **Float erosion fix** (`getCategoryExposureFromCache`): `shares × entryPrice` = $500.0002 → rounds to $500.00
+- **Drawdown risk warning** (`EventDetailModal.tsx`, `MobileTradeSheet.tsx`): Reactive amber at 10%+ of remaining drawdown, red at 100%+. Per Mat's request.
+- **Financial verification:** ✅ 24/24 assertions passed, engine 60/60, browser checks clean
 - Test suite: **1115/1115** pass (77 files), `tsc` 0 errors
 
 ### Previous Confirmed (Payment Security Audit Feb 20, 1:30 AM CT)
