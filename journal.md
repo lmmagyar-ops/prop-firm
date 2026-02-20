@@ -8,7 +8,13 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 > **New agent? Read this section before doing anything else.**
 > This is the single source of truth for what actually works. Do NOT trust individual journal entries — they reflect what the agent *believed*, not what the user confirmed.
 
-### Last Confirmed by Agent (Production Deploy Feb 19, 7:00 PM CT)
+### Last Confirmed by Agent (CI Hardening Feb 19, 11:00 PM CT)
+- **CI Pipeline Fixed** — 10 real-DB test files were running in the unit test job (no `DATABASE_URL`), causing `ECONNREFUSED` → cascading skip of all integration tests
+- Excluded all 10 from unit job, moved to integration job (Postgres 16 + Redis 7)
+- CI run #623 (`f359bb6`): ALL GREEN — Unit ✅, Integration ✅ (engine/safety/lifecycle), Build ✅, E2E ✅
+- Branches synced: `main` fast-forwarded to match `develop`
+
+### Previous Confirmed (Production Deploy Feb 19, 7:00 PM CT)
 - **DEPLOYED TO PRODUCTION** via staging-first workflow (`7bfa463..2c16608`)
 - Pre-deploy gates: `test:engine` ✅, `test:safety` ✅ (54/54), `tsc` ✅, `test:lifecycle` 27/28 (Phase 4 pre-existing env issue — market data unavailable for test market)
 - Staging smoke test ✅: homepage, login, 5K→$79, 25K→$299 all verified on `prop-firmx-git-develop-...vercel.app`
