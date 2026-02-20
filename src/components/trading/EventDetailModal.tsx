@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, Component, type ReactNode } from "react";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
-import { X, TrendingUp, Calendar, Loader2 } from "lucide-react";
+import { X, TrendingUp, Calendar, Loader2, AlertTriangle } from "lucide-react";
 import { formatPrice } from "@/lib/formatters";
 import Image from "next/image";
 import dynamic from "next/dynamic";
@@ -774,6 +774,29 @@ function TradingSidebar({ market, eventTitle, onTradeComplete, initialSide = 'ye
                             <span className="text-emerald-500 font-semibold">${toWin > 0 ? toWin.toFixed(2) : '0.00'}</span>
                         </div>
                     </div>
+
+                    {/* Drawdown Risk Warning — reactive, only shows when trade risks significant drawdown */}
+                    {amount > 0 && limits && limits.limits.drawdownRemaining > 0 && (() => {
+                        const ddPercent = (amount / limits.limits.drawdownRemaining) * 100;
+                        if (ddPercent < 10) return null;
+                        const isDanger = ddPercent >= 100;
+                        return (
+                            <div className={cn(
+                                "flex items-start gap-2 rounded-lg px-3 py-2.5 text-xs font-medium animate-in fade-in slide-in-from-top-1 duration-200",
+                                isDanger
+                                    ? "bg-red-500/10 text-red-400 border border-red-500/20"
+                                    : "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                            )}>
+                                <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                                <span>
+                                    {isDanger
+                                        ? `This trade exceeds your remaining drawdown ($${limits.limits.drawdownRemaining.toLocaleString()})`
+                                        : `This trade risks ${ddPercent.toFixed(0)}% of your remaining drawdown ($${limits.limits.drawdownRemaining.toLocaleString()} left)`
+                                    }
+                                </span>
+                            </div>
+                        );
+                    })()}
 
                     {/* Submit Button */}
                     <button

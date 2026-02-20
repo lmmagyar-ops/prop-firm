@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence, useDragControls, PanInfo } from "framer-motion";
-import { X, TrendingUp, TrendingDown, Loader2 } from "lucide-react";
+import { X, TrendingUp, TrendingDown, Loader2, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { haptics } from "@/lib/haptics";
 import { toast } from "sonner";
@@ -297,7 +297,29 @@ export function MobileTradeSheet({
                                 </div>
                             </div>
 
-                            {/* Trade Button */}
+                            {/* Drawdown Risk Warning */}
+                            {amount > 0 && limits && limits.limits.drawdownRemaining > 0 && (() => {
+                                const ddPercent = (amount / limits.limits.drawdownRemaining) * 100;
+                                if (ddPercent < 10) return null;
+                                const isDanger = ddPercent >= 100;
+                                return (
+                                    <div className={cn(
+                                        "flex items-start gap-2 rounded-xl px-3 py-2.5 text-xs font-medium animate-in fade-in slide-in-from-top-1 duration-200",
+                                        isDanger
+                                            ? "bg-red-500/10 text-red-400 border border-red-500/20"
+                                            : "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                                    )}>
+                                        <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                                        <span>
+                                            {isDanger
+                                                ? `This trade exceeds your remaining drawdown ($${limits.limits.drawdownRemaining.toLocaleString()})`
+                                                : `This trade risks ${ddPercent.toFixed(0)}% of your remaining drawdown ($${limits.limits.drawdownRemaining.toLocaleString()} left)`
+                                            }
+                                        </span>
+                                    </div>
+                                );
+                            })()}
+
                             <button
                                 onClick={handleTrade}
                                 disabled={loading || amount <= 0 || amount > effectiveMax}
