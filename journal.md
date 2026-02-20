@@ -8,12 +8,15 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 > **New agent? Read this section before doing anything else.**
 > This is the single source of truth for what actually works. Do NOT trust individual journal entries — they reflect what the agent *believed*, not what the user confirmed.
 
-### Last Confirmed by Agent (Feb 20, 2:30 PM CT)
-- **Post-ship hardening** — commit `4b50ef3`
-- **16 regression tests added:** 7 for `filterNoiseCategories` (including Mat's exact $499 bug), 1 float rounding, 9 drawdown warning thresholds
+### Last Confirmed by Agent (Feb 20, 3:30 PM CT)
+- **Affiliate Growth Hub** — commit `04f131b` (9 files, 739 ins)
+- **New:** `config/affiliates.ts` (centralized rates), `/ref/[code]` landing route, checkout attribution, webhook commission (fail-closed), `/api/affiliate/stats`, `/dashboard/affiliate` page, sidebar "Refer & Earn" link
 - Full suite: **1131/1131** pass (77 files), `tsc` 0 errors
-- Smoke test position closed: $50 YES round-trip, $1.79 spread cost, balance $4,998.21
-- Production verified: constraint shows "Event limit" not "Category limit" ✅
+- Financial path: webhook calculates commission, enforces Tier 1 monthly cap, errors never block payment
+
+### Previous Confirmed (Feb 20, 2:30 PM CT)
+- **Post-ship hardening** — commit `4b50ef3`
+- 16 regression tests, suite 1131/1131, smoke test position closed ($4,998.21)
 
 ### Previous Confirmed (Payment Security Audit Feb 20, 1:30 AM CT)
 - **6 payment flow security bugs fixed** across 2 commits (`a77d25b`, `3a15a34`)
