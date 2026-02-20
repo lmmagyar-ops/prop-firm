@@ -97,8 +97,9 @@ jobs:
         run: npm install --ignore-scripts
 
       # CI=true triggers vitest.config.ts to skip simulation/ tests
+      # Exclude real-DB tests — they run in the 'integration' job with Postgres
       - name: Run tests
-        run: npm run test -- --run --exclude tests/integration.test.ts
+        run: npm run test -- --run --exclude tests/integration.test.ts --exclude tests/lib/settlement.test.ts
         env:
           CI: true
 
@@ -160,7 +161,7 @@ jobs:
           DATABASE_URL: postgres://test:test@localhost:5432/propfirm_test
 
       - name: Run vitest integration tests
-        run: npx vitest run tests/integration.test.ts
+        run: npx vitest run tests/integration.test.ts tests/lib/settlement.test.ts
         env:
           DATABASE_URL: postgres://test:test@localhost:5432/propfirm_test
           REDIS_URL: redis://localhost:6379
