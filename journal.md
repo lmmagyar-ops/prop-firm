@@ -8,11 +8,31 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 > **New agent? Read this section before doing anything else.**
 > This is the single source of truth for what actually works. Do NOT trust individual journal entries — they reflect what the agent *believed*, not what the user confirmed.
 
-### Last Confirmed by Agent (Feb 20, 3:30 PM CT)
-- **Affiliate Growth Hub** — commit `04f131b` (9 files, 739 ins)
+### Last Confirmed by Agent (Feb 20, 3:50 PM CT)
+- **Affiliate Growth Hub backend** — commit `04f131b` (9 files, 739 ins) ✅ SHIPPED
 - **New:** `config/affiliates.ts` (centralized rates), `/ref/[code]` landing route, checkout attribution, webhook commission (fail-closed), `/api/affiliate/stats`, `/dashboard/affiliate` page, sidebar "Refer & Earn" link
 - Full suite: **1131/1131** pass (77 files), `tsc` 0 errors
 - Financial path: webhook calculates commission, enforces Tier 1 monthly cap, errors never block payment
+- **UI redesign IN PROGRESS** — functional but flat, needs Apple-grade polish (see Tomorrow Morning)
+
+### 🌅 Tomorrow Morning — Prioritized Next Steps (ranked by leverage × risk)
+
+> **1. Affiliate Dashboard UI Polish** (HIGH leverage, LOW risk)
+> The `/dashboard/affiliate` page is functional but visually flat — just a basic CTA card.
+> ReactBits components already exist in `src/components/reactbits/` (Aurora, CountUp, ShinyText, SpotlightCard).
+> **Task:** Rewrite `src/app/dashboard/affiliate/page.tsx` using:
+> - `Aurora` as ambient background behind the hero/referral link card
+> - `CountUp` for animated stat numbers (clicks, conversions, earnings)
+> - `SpotlightCard` for stat cards (cursor-following highlight on hover)
+> - `ShinyText` for the "Become an Affiliate" CTA or earnings amount
+> - Proper visual hierarchy: larger referral link card, smaller stat grid, referral table
+> - Match the existing dashboard dark theme (`#0f1926`, `#162231`, primary `#29af73`)
+>
+> **2. Browser Smoke Test** (MEDIUM leverage, LOW risk)
+> After UI polish, smoke test `/dashboard/affiliate` and `/ref/TESTCODE` redirect on localhost.
+>
+> **3. Merge to Main & Deploy** (HIGH leverage, MEDIUM risk)
+> Current affiliate code is on `develop` only. Merge to `main` when ready.
 
 ### Previous Confirmed (Feb 20, 2:30 PM CT)
 - **Post-ship hardening** — commit `4b50ef3`
