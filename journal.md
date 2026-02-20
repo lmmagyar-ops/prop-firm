@@ -8,14 +8,14 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 > **New agent? Read this section before doing anything else.**
 > This is the single source of truth for what actually works. Do NOT trust individual journal entries — they reflect what the agent *believed*, not what the user confirmed.
 
-### Last Confirmed by Agent (Feb 20, 9:45 AM CT)
-- **All 3 morning action items COMPLETE** — DB migration, PnL fix, db:check script
-- PnL direction bug fixed in `trade/position/route.ts` (`b08ac91`), `trade/execute/route.ts` was already fixed
-- `db:check` script rewritten to use `drizzle-kit push --strict` with `spawn` (`eb4447f`)
-- DB migration: `payment_logs` table live, dead `positions.closure_reason` column dropped
-- **Branches synced**: `develop` = `main` at `eb4447f`
-- Test suite: **1115/1115** pass (77 files), `tsc` 0 errors, `test:engine` 60/60
-- `npm run db:check` → `✅ Schema is in sync with database`
+### Last Confirmed by Agent (Feb 20, 11:20 AM CT)
+- **Admin panel audit + hardening** — `6143de8`
+- Consolidated challenge reset to Users page only (removed from QuickActions + Settings)
+- All 4 destructive admin routes wrapped in `db.transaction()`
+- `audit_logs` entries on reset, delete challenge, clear evaluations, delete user
+- FK orphan risks fixed: paymentLogs, discountRedemptions, certificates, payouts, userBadges, affiliates
+- Fixed user balance: $4,999.66 → $5,000.00 (direct DB reset)
+- Test suite: **1115/1115** pass (77 files), `tsc` 0 errors
 
 ### Previous Confirmed (Payment Security Audit Feb 20, 1:30 AM CT)
 - **6 payment flow security bugs fixed** across 2 commits (`a77d25b`, `3a15a34`)
