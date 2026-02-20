@@ -64,6 +64,13 @@ function CheckoutContent() {
     // Payment Method State
     const [paymentMethod, setPaymentMethod] = useState<"card" | "crypto">("card");
 
+    // Referral Attribution — read ref cookie set by /ref/[code] landing route
+    const [refCode, setRefCode] = useState<string | null>(null);
+    useEffect(() => {
+        const match = document.cookie.match(/(?:^|;\s*)ref=([^;]*)/);
+        if (match) setRefCode(match[1]);
+    }, []);
+
 
 
     // Discount Code State
@@ -146,6 +153,7 @@ function CheckoutContent() {
                     platform: "polymarket",
                     discountCode: appliedDiscount?.code || null,
                     discountAmount: appliedDiscount?.discountAmount || 0,
+                    refCode: refCode || null,
                 }),
                 headers: { "Content-Type": "application/json" }
             });

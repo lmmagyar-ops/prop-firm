@@ -5,6 +5,7 @@ import { affiliates } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import { createLogger } from "@/lib/logger";
+import { AFFILIATE_TIERS, REFERRAL_COOKIE_NAME } from "@/config/affiliates";
 const logger = createLogger("Signup");
 
 /**
@@ -41,15 +42,16 @@ export async function POST(req: NextRequest) {
         const referralLink = `${process.env.NEXT_PUBLIC_BASE_URL || 'https://yoursite.com'}/ref/${referralCode}`;
 
         // Create Tier 1 affiliate (auto-approved)
+        const tier1 = AFFILIATE_TIERS[1];
         const newAffiliate = await db.insert(affiliates).values({
             userId,
             tier: 1,
             status: "active", // Tier 1 is auto-approved
-            commissionRate: "10.00", // 10% base rate for Tier 1
-            lifetimeValueRate: "0.00", // No LTV bonus for Tier 1
+            commissionRate: String(tier1.commissionRate) + ".00",
+            lifetimeValueRate: String(tier1.lifetimeValueRate) + ".00",
             referralCode,
             referralLink,
-            monthlyEarningCap: "500.00", // $500/month cap for Tier 1
+            monthlyEarningCap: tier1.monthlyEarningCap ? String(tier1.monthlyEarningCap) + ".00" : null,
             applicationData: null,
             approvedBy: null,
             approvedAt: new Date()

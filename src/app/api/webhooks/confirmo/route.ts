@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { challenges, discountCodes, discountRedemptions, paymentLogs } from "@/db/schema";
+import { challenges, discountCodes, discountRedemptions, paymentLogs, affiliates, affiliateReferrals } from "@/db/schema";
 import { eq, and, sql } from "drizzle-orm";
 import crypto from "crypto";
 import { buildRulesConfig, getTierConfig } from "@/config/tiers";
@@ -62,6 +62,10 @@ export async function POST(req: NextRequest) {
             const discountCode = refParts[3] || null;
             // refParts[4] (discountAmount) deliberately NOT used — re-derived from DB below.
             const originalPrice = refParts[5] ? parseFloat(refParts[5]) : 0;
+
+            // Extract affiliate referral code from reference (format: `:ref=CODE` at end)
+            const refCodeMatch = payload.reference.match(/:ref=([A-Z0-9]+)$/i);
+            const affiliateRefCode = refCodeMatch ? refCodeMatch[1].toUpperCase() : null;
 
             // Confirmo invoice ID — canonical idempotency key
             // If payload.id is absent (malformed), fall back so we don't crash, but log it.
@@ -249,7 +253,97 @@ export async function POST(req: NextRequest) {
                 discountCode: discountCode || "none",
                 challengeId: newChallenge.id.slice(0, 8),
                 confirmoInvoiceId: confirmoInvoiceId.slice(0, 12),
+                affiliateRefCode: affiliateRefCode || "none",
             });
+
+            // ─── AFFILIATE COMMISSION (Fail-closed: errors logged, never block payment) ──
+            if (affiliateRefCode) {
+                try {
+                    // Look up active affiliate by referral code
+                    const affiliate = await db.query.affiliates.findFirst({
+                        where: and(
+                            eq(affiliates.referralCode, affiliateRefCode),
+                            eq(affiliates.status, "active")
+                        ),
+                    });
+
+                    if (affiliate) {
+                        const commissionRate = parseFloat(affiliate.commissionRate);
+                        const grossCommission = (paidAmount * commissionRate) / 100;
+
+                        // Enforce monthly earning cap (Tier 1)
+                        let netCommission = grossCommission;
+                        if (affiliate.monthlyEarningCap) {
+                            const cap = parseFloat(affiliate.monthlyEarningCap);
+                            const monthStart = new Date();
+                            monthStart.setDate(1);
+                            monthStart.setHours(0, 0, 0, 0);
+
+                            // Sum commissions earned this month
+                            const [monthlyTotal] = await db
+                                .select({ total: sql<number>`COALESCE(SUM(${affiliateReferrals.commissionEarned}), 0)` })
+                                .from(affiliateReferrals)
+                                .where(and(
+                                    eq(affiliateReferrals.affiliateId, affiliate.id),
+                                    sql`${affiliateReferrals.purchaseTimestamp} >= ${monthStart}`
+                                ));
+
+                            const currentMonthEarnings = Number(monthlyTotal?.total || 0);
+                            const remainingCap = Math.max(0, cap - currentMonthEarnings);
+                            netCommission = Math.min(grossCommission, remainingCap);
+
+                            if (netCommission < grossCommission) {
+                                logger.info("[Affiliate] Monthly cap applied", {
+                                    affiliateId: affiliate.id.slice(0, 8),
+                                    gross: grossCommission,
+                                    net: netCommission,
+                                    cap,
+                                    currentMonth: currentMonthEarnings,
+                                });
+                            }
+                        }
+
+                        if (netCommission > 0) {
+                            // Find the click record for this affiliate (most recent unattributed click)
+                            // and update it with purchase data, or create a new referral record
+                            await db.insert(affiliateReferrals).values({
+                                affiliateId: affiliate.id,
+                                userId,
+                                clickTimestamp: null,
+                                signupTimestamp: null,
+                                purchaseTimestamp: new Date(),
+                                source: "link",
+                                discountCodeId: null,
+                                purchaseAmount: paidAmount.toString(),
+                                commissionEarned: netCommission.toFixed(2),
+                                commissionPaid: false,
+                                payoutId: null,
+                                referrerUrl: null,
+                                ipAddress: null,
+                                userAgent: null,
+                            });
+
+                            logger.info("[Affiliate] Commission recorded", {
+                                affiliateId: affiliate.id.slice(0, 8),
+                                refCode: affiliateRefCode,
+                                purchaseAmount: paidAmount,
+                                commission: netCommission,
+                                tier: affiliate.tier,
+                            });
+                        } else {
+                            logger.info("[Affiliate] Commission $0 (monthly cap reached)", {
+                                affiliateId: affiliate.id.slice(0, 8),
+                                refCode: affiliateRefCode,
+                            });
+                        }
+                    } else {
+                        logger.warn("[Affiliate] Ref code in invoice not found or inactive", { code: affiliateRefCode });
+                    }
+                } catch (affError) {
+                    // FAIL CLOSED: Log the error but NEVER block the payment/challenge creation
+                    logger.error("[Affiliate] Commission calculation failed — payment NOT affected", affError, { code: affiliateRefCode });
+                }
+            }
         }
 
         return NextResponse.json({ received: true });

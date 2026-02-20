@@ -17,6 +17,7 @@ import {
     Lock,
     ChevronsLeft,
     ChevronsRight,
+    Gift,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -36,6 +37,7 @@ function getActiveFromPath(pathname: string): string {
     if (pathname.includes("/dashboard/verification")) return "Verification";
     if (pathname.includes("/dashboard/settings")) return "Settings";
     if (pathname.includes("/dashboard/payouts")) return "Payouts";
+    if (pathname.includes("/dashboard/affiliate")) return "Refer & Earn";
     if (pathname.includes("/dashboard/faq")) return "FAQ";
     if (pathname.includes("/dashboard/leaderboard")) return "Leaderboard";
     if (pathname.includes("/dashboard/history")) return "Trade History";
@@ -180,6 +182,13 @@ export function Sidebar({
                         label="Payouts"
                         href="/dashboard/payouts"
                         isActive={activePage === "Payouts"}
+                        collapsed={isCollapsed}
+                    />
+                    <NavItem
+                        icon={Gift}
+                        label="Refer & Earn"
+                        href="/dashboard/affiliate"
+                        isActive={activePage === "Refer & Earn"}
                         collapsed={isCollapsed}
                     />
                     <NavItem

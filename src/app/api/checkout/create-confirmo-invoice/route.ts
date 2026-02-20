@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
 
     try {
         const body = await req.json();
-        const { tier, platform, discountCode, discountAmount } = body;
+        const { tier, platform, discountCode, discountAmount, refCode } = body;
         const selectedPlatform = platform || "polymarket"; // Default to polymarket
 
         // SERVER-AUTHORITATIVE PRICING: Ignore any client-supplied price.
@@ -156,11 +156,15 @@ export async function POST(req: NextRequest) {
                     amount: price, // Server-authoritative: derived from PLANS config, NOT client input
                     currency_to: "USDC"
                 },
-                // Reference format: userId:tier:platform[:discountCode:discountAmount:originalPrice]
-                // Discount fields appended only when a discount is applied
-                reference: discountCode
-                    ? `${userId}:${tier}:${selectedPlatform}:${discountCode}:${discountAmount || 0}:${price}`
-                    : `${userId}:${tier}:${selectedPlatform}`,
+                // Reference format: userId:tier:platform[:discountCode:discountAmount:originalPrice][:refCode]
+                // refCode appended as final segment for affiliate attribution
+                reference: (() => {
+                    let ref = discountCode
+                        ? `${userId}:${tier}:${selectedPlatform}:${discountCode}:${discountAmount || 0}:${price}`
+                        : `${userId}:${tier}:${selectedPlatform}`;
+                    if (refCode) ref += `:ref=${refCode}`;
+                    return ref;
+                })(),
                 // Webhooks
                 notify_url: `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/confirmo`,
                 return_url: `${process.env.NEXT_PUBLIC_APP_URL}/onboarding/setup?status=success`
