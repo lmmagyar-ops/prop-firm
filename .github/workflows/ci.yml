@@ -97,9 +97,22 @@ jobs:
         run: npm install --ignore-scripts
 
       # CI=true triggers vitest.config.ts to skip simulation/ tests
-      # Exclude real-DB tests — they run in the 'integration' job with Postgres
+      # Exclude real-DB tests — they run in the 'integration' job with Postgres.
+      # These files import @/db directly and need DATABASE_URL to connect.
       - name: Run tests
-        run: npm run test -- --run --exclude tests/integration.test.ts --exclude tests/lib/settlement.test.ts
+        run: |
+          npm run test -- --run \
+            --exclude tests/integration.test.ts \
+            --exclude tests/integration/** \
+            --exclude tests/lib/settlement.test.ts \
+            --exclude tests/single-challenge-gate.test.ts \
+            --exclude tests/pnl-consistency.test.ts \
+            --exclude tests/api-routes.test.ts \
+            --exclude tests/api-routes-execute.test.ts \
+            --exclude tests/api-routes-payout.test.ts \
+            --exclude tests/api-routes-webhook.test.ts \
+            --exclude tests/api-routes-settlement.test.ts \
+            --exclude tests/api-routes-crons.test.ts
         env:
           CI: true
 
@@ -160,8 +173,20 @@ jobs:
         env:
           DATABASE_URL: postgres://test:test@localhost:5432/propfirm_test
 
-      - name: Run vitest integration tests
-        run: npx vitest run tests/integration.test.ts tests/lib/settlement.test.ts
+      - name: Run vitest integration tests (real DB)
+        run: |
+          npx vitest run \
+            tests/integration.test.ts \
+            tests/integration/ \
+            tests/lib/settlement.test.ts \
+            tests/single-challenge-gate.test.ts \
+            tests/pnl-consistency.test.ts \
+            tests/api-routes.test.ts \
+            tests/api-routes-execute.test.ts \
+            tests/api-routes-payout.test.ts \
+            tests/api-routes-webhook.test.ts \
+            tests/api-routes-settlement.test.ts \
+            tests/api-routes-crons.test.ts
         env:
           DATABASE_URL: postgres://test:test@localhost:5432/propfirm_test
           REDIS_URL: redis://localhost:6379
