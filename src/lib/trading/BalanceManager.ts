@@ -15,6 +15,12 @@ const logger = createLogger('BalanceManager');
  * - Before/After balance
  * - Amount changed
  * - Validation checks
+ * 
+ * NOTE: All methods use tx.select().from(challenges).where() instead of
+ * tx.query.challenges.findFirst() because postgres.js's relational query API
+ * (.query.*) does not correctly scope to the transaction connection — it leaks
+ * outside the transaction, reading stale data. The lower-level .select() API
+ * correctly runs within the transaction. (See: Sentry N+1 fix, Feb 2026)
  */
 export class BalanceManager {
 
@@ -51,6 +57,25 @@ export class BalanceManager {
     }
 
     /**
+     * Reads challenge balance within the current transaction.
+     * Uses tx.select() (not tx.query.*) to correctly scope to the tx connection.
+     */
+    private static async readBalance(tx: Transaction, challengeId: string): Promise<{ currentBalance: number; startingBalance: number }> {
+        const rows = await tx.select({
+            currentBalance: challenges.currentBalance,
+            startingBalance: challenges.startingBalance,
+        }).from(challenges).where(eq(challenges.id, challengeId));
+
+        const challenge = rows[0];
+        if (!challenge) throw new Error('Challenge not found');
+
+        return {
+            currentBalance: parseFloat(challenge.currentBalance),
+            startingBalance: parseFloat(challenge.startingBalance),
+        };
+    }
+
+    /**
      * Deducts cost from challenge balance
      */
     static async deductCost(
@@ -59,13 +84,7 @@ export class BalanceManager {
         amount: number,
         source: string = 'trade'
     ): Promise<number> {
-        const challenge = await tx.query.challenges.findFirst({
-            where: eq(challenges.id, challengeId)
-        });
-
-        if (!challenge) throw new Error('Challenge not found');
-
-        const currentBalance = parseFloat(challenge.currentBalance);
+        const { currentBalance } = await this.readBalance(tx, challengeId);
         const newBalance = currentBalance - amount;
 
         // Forensic logging
@@ -96,20 +115,13 @@ export class BalanceManager {
         amount: number,
         source: string = 'trade'
     ): Promise<number> {
-        const challenge = await tx.query.challenges.findFirst({
-            where: eq(challenges.id, challengeId)
-        });
-
-        if (!challenge) throw new Error('Challenge not found');
-
-        const currentBalance = parseFloat(challenge.currentBalance);
+        const { currentBalance, startingBalance } = await this.readBalance(tx, challengeId);
         const newBalance = currentBalance + amount;
 
         // Forensic logging
         this.formatLog('CREDIT', challengeId, currentBalance, newBalance, amount, source);
 
         // VALIDATION: Check for suspiciously large credits
-        const startingBalance = parseFloat(challenge.startingBalance || '10000');
         softInvariant(amount <= startingBalance, 'Credit larger than starting balance', {
             amount, startingBalance, challengeId, source,
         });
@@ -131,13 +143,7 @@ export class BalanceManager {
         newBalance: number,
         source: string = 'funded_transition'
     ): Promise<number> {
-        const challenge = await tx.query.challenges.findFirst({
-            where: eq(challenges.id, challengeId)
-        });
-
-        if (!challenge) throw new Error('Challenge not found');
-
-        const currentBalance = parseFloat(challenge.currentBalance);
+        const { currentBalance } = await this.readBalance(tx, challengeId);
 
         logger.info('Balance RESET', {
             challengeId: challengeId.slice(0, 8),
@@ -164,13 +170,7 @@ export class BalanceManager {
         delta: number,
         source: string
     ): Promise<number> {
-        const challenge = await tx.query.challenges.findFirst({
-            where: eq(challenges.id, challengeId)
-        });
-
-        if (!challenge) throw new Error('Challenge not found');
-
-        const currentBalance = parseFloat(challenge.currentBalance);
+        const { currentBalance, startingBalance } = await this.readBalance(tx, challengeId);
         const newBalance = currentBalance + delta;
 
         // Use existing forensic logging
@@ -192,4 +192,5 @@ export class BalanceManager {
         return newBalance;
     }
 }
+
 

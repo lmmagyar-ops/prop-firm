@@ -19,11 +19,11 @@ vi.mock("@/db", () => {
         },
         update: vi.fn(() => ({
             set: vi.fn(() => ({
-                where: vi.fn().mockResolvedValue({ rowCount: 1 })
+                where: vi.fn().mockResolvedValue({ count: 1 })
             }))
         })),
         insert: vi.fn(() => ({
-            values: vi.fn().mockResolvedValue({ rowCount: 1 })
+            values: vi.fn().mockResolvedValue({ count: 1 })
         })),
         transaction: vi.fn(),
     };

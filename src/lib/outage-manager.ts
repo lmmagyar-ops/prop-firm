@@ -170,7 +170,7 @@ export class OutageManager {
                     isNotNull(challenges.endsAt),
                 ));
 
-            const count = result.rowCount ?? 0;
+            const count = result.count ?? 0;
             logger.info('Extended challenge timers', { count, durationSeconds });
             return count;
         } catch (error) {

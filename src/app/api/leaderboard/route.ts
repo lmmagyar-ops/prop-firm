@@ -137,10 +137,10 @@ export async function GET(request: NextRequest) {
             db.execute(countQuery),
         ]);
 
-        const totalTraders = Number((countRows.rows[0] as Record<string, unknown>)?.total || 0);
+        const totalTraders = Number((countRows[0] as Record<string, unknown>)?.total || 0);
         const totalPages = Math.ceil(totalTraders / limit);
 
-        const entries: LeaderboardEntry[] = leaderboardRows.rows.map((row: Record<string, unknown>) => ({
+        const entries: LeaderboardEntry[] = (leaderboardRows as Record<string, unknown>[]).map((row: Record<string, unknown>) => ({
             rank: Number(row.rank),
             userId: String(row.user_id),
             displayName: String(row.display_name || "Trader"),
@@ -187,8 +187,8 @@ export async function GET(request: NextRequest) {
                 `;
 
                 const myStatsRows = await db.execute(myStatsQuery);
-                if (myStatsRows.rows.length > 0) {
-                    const row = myStatsRows.rows[0] as Record<string, unknown>;
+                if (myStatsRows.length > 0) {
+                    const row = myStatsRows[0] as Record<string, unknown>;
                     myStats = {
                         rank: Number(row.rank),
                         tradingVolume: Number(row.trading_volume || 0),

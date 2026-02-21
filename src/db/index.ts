@@ -1,41 +1,39 @@
-import { drizzle } from "drizzle-orm/node-postgres";
-import { Pool } from "pg";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
 import { createLogger } from "@/lib/logger";
 
 const logger = createLogger("DBPool");
-
-// Detect if we're in a serverless environment
-const isServerless = process.env.VERCEL === '1' || process.env.AWS_LAMBDA_FUNCTION_NAME;
 
 // Enable SSL for cloud databases (Prisma Postgres, Vercel Postgres, etc.)
 const requiresSSL = process.env.NODE_ENV === 'production' ||
     process.env.DATABASE_URL?.includes('prisma.io') ||
     process.env.DATABASE_URL?.includes('sslmode=require');
 
-const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    // Serverless-optimized settings
-    connectionTimeoutMillis: isServerless ? 10000 : 5000,  // 10s for serverless cold starts
-    idleTimeoutMillis: isServerless ? 10000 : 30000,       // Close idle faster in serverless
-    max: isServerless ? 5 : 10,                            // Fewer connections in serverless
-    // SSL required for cloud Postgres (Vercel, Prisma, etc.)
-    ssl: requiresSSL ? { rejectUnauthorized: false } : false,
-    // Keep connections alive
-    keepAlive: true,
-    keepAliveInitialDelayMillis: 10000,
+// Serverless detection: each Vercel function invocation is isolated,
+// so max:1 is correct (no pool-sharing between invocations).
+// In test/dev, process is shared across many concurrent queries — use 5.
+const isServerless = process.env.VERCEL === '1';
+const maxConnections = isServerless ? 1 : 5;
+
+// postgres.js: replaces pg.Pool to fix N+1 pg-pool.connect on Vercel serverless.
+//
+// WHY NOT pg.Pool:
+//   pg.Pool is designed for long-running servers. On Vercel serverless, each
+//   function invocation may spin up its own pool (pool-of-pools anti-pattern),
+//   and max:5 is exhausted by a single /dashboard SSR that runs 5+ sequential
+//   queries — causing N+1 pg-pool.connect events and Failed query errors in
+//   Next.js unstable_cache revalidation.
+//
+// See: Sentry N+1 issue JAVASCRIPT-NEXTJS-1/2 (Feb 2026)
+const client = postgres(process.env.DATABASE_URL!, {
+    ssl: requiresSSL ? 'require' : false,
+    max: maxConnections,
+    idle_timeout: 20,   // release quickly so quota isn't held
+    connect_timeout: 10,
+    onnotice: (notice) => logger.info('DB notice', notice),
 });
 
-// Handle pool errors gracefully (prevents crash on lost connection)
-pool.on('error', (err) => {
-    logger.error('Unexpected error on idle client', err);
-    // Don't throw - let the pool recover
-});
-
-// Add connection test on startup (non-blocking)
-pool.on('connect', () => {
-    logger.info('New client connected');
-});
 
 import * as schema from "./schema";
 
-export const db = drizzle(pool, { schema });
+export const db = drizzle(client, { schema });

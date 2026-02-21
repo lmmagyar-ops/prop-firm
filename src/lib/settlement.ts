@@ -102,7 +102,7 @@ export async function settleResolvedPositions(): Promise<SettlementResult> {
                     const lockedRows = await tx.execute(
                         sql`SELECT id, status FROM positions WHERE id = ${pos.id} FOR UPDATE`
                     );
-                    const locked = lockedRows.rows?.[0] as { id: string; status: string } | undefined;
+                    const locked = (lockedRows as unknown as { id: string; status: string }[])?.[0];
 
                     if (!locked || locked.status !== 'OPEN') {
                         // Already settled by a concurrent run — skip silently

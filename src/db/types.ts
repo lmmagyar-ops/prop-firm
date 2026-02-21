@@ -6,11 +6,11 @@
  */
 
 import { db } from './index';
-import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import type * as schema from './schema';
 
 // Type for the database instance
-export type Database = typeof db;
+export type Database = PostgresJsDatabase<typeof schema>;
 
 // Type for database transactions
 export type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];

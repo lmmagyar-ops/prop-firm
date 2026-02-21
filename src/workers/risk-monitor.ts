@@ -250,7 +250,7 @@ export class RiskMonitor {
                         eq(challenges.status, 'active')
                     ));
 
-                if (!result.rowCount || result.rowCount === 0) {
+                if (!result.count || result.count === 0) {
                     logger.info('Challenge already transitioned, skipping breach', { challengeId: challenge.id });
                     return;
                 }
@@ -330,7 +330,7 @@ export class RiskMonitor {
                         eq(challenges.status, 'active')
                     ));
 
-                if (!result.rowCount || result.rowCount === 0) {
+                if (!result.count || result.count === 0) {
                     logger.info('Challenge already transitioned, skipping pass', { challengeId: challenge.id });
                     return;
                 }
