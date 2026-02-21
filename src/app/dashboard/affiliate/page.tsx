@@ -180,7 +180,9 @@ export default function AffiliateDashboard() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold">Refer & Earn</h1>
+                    <h1 className="text-2xl font-bold">
+                        <ShinyText text="Refer & Earn" speed={4} color="#ffffff" shineColor="#29af73" className="text-2xl font-bold" />
+                    </h1>
                     <p className="text-sm text-zinc-400 mt-1">
                         Share your link and earn {affiliate?.commissionRate}% on every purchase
                     </p>
