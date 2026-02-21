@@ -8,35 +8,40 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 > **New agent? Read this section before doing anything else.**
 > This is the single source of truth for what actually works. Do NOT trust individual journal entries — they reflect what the agent *believed*, not what the user confirmed.
 
-### Last Confirmed by Agent (Feb 20, 7:40 PM CT)
-- **Affiliate Dashboard UI Polish** — 5 commits shipped to `develop` ✅
-- Stat cards: `text-3xl`, icon pills, SpotlightCard glow `0.08→0.2`, size `400→500`, staggered CountUp
-- Referral hero card: Aurora `amplitude 0.8→1.2`, `opacity-40→60`, outer glow shadow
-- Page header: ShinyText metallic shimmer on "Refer & Earn"
-- Progress bar: `h-2→h-4`, pulsing glow fill (ProfitProgress.tsx pattern)
-- Referrals table: dashed empty state, row hover effects, converted row green accent
-- CTA funnel: flat stats replaced with 3-step visual funnel (Share → Buy → Earn 10%)
-- tsc: **0 errors** after every commit
-- **UI polish COMPLETE** — browser verified on localhost:3001
+### Last Confirmed by Agent (Feb 20, 10:53 PM CT)
+
+#### Commits on `develop` today (in order):
+| Commit | What |
+|--------|------|
+| `174d2a5` | Affiliate dashboard: stat cards upgraded (SpotlightCard, CountUp, text-3xl) |
+| `d235a75` | Affiliate dashboard: referral hero card Aurora glow strengthened |
+| `e2bfb99` | Affiliate dashboard: ShinyText on page header |
+| `e5577cf` | Affiliate dashboard: progress bar taller with pulsing glow |
+| `97e849e` | Affiliate dashboard: referrals table row hover + empty state |
+| `f87a93f` | Affiliate dashboard: non-affiliate CTA replaced with 3-step funnel |
+| `dd9e25e` | **BUG FIX: Phantom daily PnL** — added `startOfDayEquity` column, upgraded daily-reset cron to snapshot true equity, fixed `getEquityStats`, updated `LiveEquityDisplay` to render `— Today` when null |
+| `7b339c4` | Post-mortem: `docs/postmortems/2026-02-20-phantom-daily-pnl.md` |
+| `8c1216e` | **TEST: Financial display boundary suite** — 14 tests, 7 scenarios, pure functions, no DB. Guards the entire phantom-PnL class of bug at every boundary. |
+| `51a0c9c` | **BUG FIX: FundedRiskMeters daily loss uses equity not cash** — added `equity` prop, fixed `dailyLoss = startOfDayBalance - equity` (was cash-only on both sides). |
+
+#### Current state:
+- tsc: **0 errors** | 1146/1146 tests pass (78 files)
+- `develop` is ahead of `main` by all above commits
+- `startOfDayEquity` still null on existing accounts until midnight cron (~1:30 AM CT) → shows `— Today` (correct)
+- **FundedRiskMeters daily loss meter** now uses true equity — funded traders will see accurate daily drawdown
 
 ### 🌅 Tomorrow Morning — Prioritized Next Steps (ranked by leverage × risk)
 
-> **1. Affiliate Dashboard UI Polish** (HIGH leverage, LOW risk)
-> The `/dashboard/affiliate` page is functional but visually flat — just a basic CTA card.
-> ReactBits components already exist in `src/components/reactbits/` (Aurora, CountUp, ShinyText, SpotlightCard).
-> **Task:** Rewrite `src/app/dashboard/affiliate/page.tsx` using:
-> - `Aurora` as ambient background behind the hero/referral link card
-> - `CountUp` for animated stat numbers (clicks, conversions, earnings)
-> - `SpotlightCard` for stat cards (cursor-following highlight on hover)
-> - `ShinyText` for the "Become an Affiliate" CTA or earnings amount
-> - Proper visual hierarchy: larger referral link card, smaller stat grid, referral table
-> - Match the existing dashboard dark theme (`#0f1926`, `#162231`, primary `#29af73`)
->
-> **2. Browser Smoke Test** (MEDIUM leverage, LOW risk)
-> After UI polish, smoke test `/dashboard/affiliate` and `/ref/TESTCODE` redirect on localhost.
->
-> **3. Merge to Main & Deploy** (HIGH leverage, MEDIUM risk)
-> Current affiliate code is on `develop` only. Merge to `main` when ready.
+> **1. Merge `develop` → `main` and deploy** ← NEXT TASK
+> All handoff items complete. Use the `/deploy` workflow.
+> Pre-deploy gates: `test:engine`, `test:lifecycle`, `test:safety`, `test:financial`, `tsc`.
+> Staging smoke test required before prod merge.
+
+> **2. Confirm midnight cron ran** (~1:30 AM CT)
+> Check that `startOfDayEquity` is now populated for Mat's account.
+> Dashboard should show real daily PnL instead of `— Today`.
+
+
 
 ### Previous Confirmed (Feb 20, 2:30 PM CT)
 - **Post-ship hardening** — commit `4b50ef3`
@@ -110,7 +115,61 @@ All blockers cleared — payment pipeline hardened, PnL canonical, schema in syn
 
 ---
 
+## Feb 20, 2026 (10:53 PM CT) — Financial Display Hardening: Tests + FundedRiskMeters Fix
+
+### What
+Completed the two handoff items from the phantom-PnL post-mortem.
+
+### Commit 1: `8c1216e` — Financial Display Boundary Test Suite
+Wrote `tests/financial-display-boundary.test.ts` — 14 tests across 7 scenarios.
+
+**Design:**
+- Imports `getEquityStats` directly from `@/lib/dashboard-service` — zero mocks
+- One shared `BASE_CHALLENGE` fixture, mutated per scenario via `makeChallenge()`
+- Test names read as a human specification without needing to read the code
+
+**Scenarios covered:**
+| # | Scenario | Assertion |
+|---|----------|-----------|
+| 1 | `startOfDayEquity = null` | `dailyPnL` is `null` — never phantom |
+| 2 | After midnight cron | `dailyPnL` = equity − SOD_equity (not cash−cash) |
+| 3 | Flat day | `dailyPnL` = $0 exactly |
+| 4 | Profitable day | `dailyPnL` positive, `totalPnL` positive |
+| 5 | 50% drawdown used | `drawdownUsage` = 50%, `drawdownAmount` = $400 |
+| 6 | 100% daily DD consumed | `dailyDrawdownUsage` = 100%, breach = >100% |
+| 7 | Profit progress clamping | negative → 0%, over target → 100%, midpoint → 50% |
+
+**Self-audit:** Every test asserts behavior (would it catch a formula regression?), not just recomputation. The incident scenario (Scenario 1) is the primary regression guard.
+
+### Commit 2: `51a0c9c` — FundedRiskMeters Daily Loss Bug
+**Root Cause:** `FundedRiskMeters.tsx` computed `dailyLoss = startOfDayBalance - currentBalance` — cash-only on BOTH sides. When a funded trader has open positions losing value, `currentBalance` (cash) stays high while true equity falls → daily loss meter understates actual loss.
+
+**Same class as:** Phantom Daily PnL (Feb 20 post-mortem). Different surface (funded meter vs challenge display), but identical semantic mismatch: cash vs equity.
+
+**Fix:**
+- Added `equity: number` prop (documented with inline comment citing the postmortem)
+- Changed: `dailyLoss = Math.max(0, startOfDayBalance - equity)`
+- `dashboard/page.tsx`: now passes `equity={trueEquity}` (already computed = cash + live positions)
+
+**Why `currentBalance` was there:** Component predates `startOfDayEquity` and was built when the only available "current" value was cash balance. Nobody caught it because funded users are rare and the meter only diverges when positions are open and losing.
+
+### Verification
+- `tsc --noEmit`: 0 errors
+- `npx vitest run`: **1146 / 0 / 78 files** — all pass
+- `grep 'startOfDayBalance - currentBalance' src/`: zero results — pattern eliminated
+
+### Pre-Close Checklist
+- [x] Bug was understood BEFORE writing code — traced data flow from component → prop → usage
+- [x] Root cause traced: UI → dashboard/page.tsx → FundedRiskMeters (cash-only both sides)
+- [x] `grep` confirms zero remaining `startOfDayBalance - currentBalance` in `src/`
+- [x] Full test suite passes (1146)
+- [x] tsc --noEmit passes
+- [ ] UNVERIFIED by user — needs confirmation that funded daily meter shows correct value
+
+---
+
 ## Feb 20, 2026 (9:30 AM CT) — Inline PnL Direction Bug Fix
+
 
 ### What
 Grepped for the flagged `(current - entry) * shares` pattern. Found two locations:
