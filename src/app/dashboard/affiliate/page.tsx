@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import {
     Gift, Copy, Check, TrendingUp, Users, DollarSign,
     MousePointerClick, Loader2, ArrowUpRight, ExternalLink, Crown,
+    Link2, ChevronRight, ShoppingCart,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -140,18 +141,34 @@ export default function AffiliateDashboard() {
                             <Aurora colorStops={['#29af73', '#14F195', '#29af73']} amplitude={0.6} blend={0.7} speed={0.3} />
                         </div>
                         <CardContent className="p-8 space-y-6 relative z-10">
-                            <div className="grid grid-cols-3 gap-6 text-center">
-                                <div>
-                                    <div className="text-2xl font-bold text-primary">10%</div>
-                                    <div className="text-xs text-zinc-500 mt-1">Commission Rate</div>
+                            {/* 3-step funnel */}
+                            <div className="grid grid-cols-5 gap-2 items-center">
+                                <div className="col-span-1 flex flex-col items-center gap-2 text-center">
+                                    <div className="w-11 h-11 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center">
+                                        <Link2 className="w-5 h-5 text-primary" />
+                                    </div>
+                                    <div className="text-xs font-semibold text-white">Share Link</div>
+                                    <div className="text-[11px] text-zinc-500 leading-tight">30-day cookie</div>
                                 </div>
-                                <div>
-                                    <div className="text-2xl font-bold text-white">30 days</div>
-                                    <div className="text-xs text-zinc-500 mt-1">Cookie Window</div>
+                                <div className="col-span-1 flex items-center justify-center">
+                                    <ChevronRight className="w-4 h-4 text-zinc-600" />
                                 </div>
-                                <div>
-                                    <div className="text-2xl font-bold text-white">Instant</div>
-                                    <div className="text-xs text-zinc-500 mt-1">Approval</div>
+                                <div className="col-span-1 flex flex-col items-center gap-2 text-center">
+                                    <div className="w-11 h-11 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
+                                        <ShoppingCart className="w-5 h-5 text-zinc-300" />
+                                    </div>
+                                    <div className="text-xs font-semibold text-white">They Buy</div>
+                                    <div className="text-[11px] text-zinc-500 leading-tight">Instant tracking</div>
+                                </div>
+                                <div className="col-span-1 flex items-center justify-center">
+                                    <ChevronRight className="w-4 h-4 text-zinc-600" />
+                                </div>
+                                <div className="col-span-1 flex flex-col items-center gap-2 text-center">
+                                    <div className="w-11 h-11 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center">
+                                        <DollarSign className="w-5 h-5 text-primary" />
+                                    </div>
+                                    <div className="text-xs font-semibold text-primary">You Earn 10%</div>
+                                    <div className="text-[11px] text-zinc-500 leading-tight">Per purchase</div>
                                 </div>
                             </div>
 
