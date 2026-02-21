@@ -30,7 +30,7 @@ export function CohortRetention() {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const res = await fetch("/api/admin/analytics/metrics");
+            const res = await fetch("/api/admin/analytics/cohorts");
             if (res.ok) {
                 const json = await res.json();
                 setData(json);
