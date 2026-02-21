@@ -8,7 +8,7 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 > **New agent? Read this section before doing anything else.**
 > This is the single source of truth for what actually works. Do NOT trust individual journal entries — they reflect what the agent *believed*, not what the user confirmed.
 
-### Last Confirmed by Agent (Feb 21, 10:00 AM CT)
+### Last Confirmed by Agent (Feb 21, 11:15 AM CT)
 
 #### What happened this session:
 | Action | Result |
@@ -17,22 +17,24 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 | Fixed `vercel.json` | Removed 2 sub-hourly crons that violate Vercel Hobby plan limits |
 | Force-populated `startOfDayEquity` | All 4 active challenges now have correct equity snapshots |
 | Browser-verified production | Dashboard now shows `$-19.05 Today` (red) instead of `— Today` ✅ |
+| Deployed `vercel.json` fix | Pushed to `develop` (`fd19783`) and merged to `main` (`47d618d`) ✅ |
+| Sentry audit | Verified and resolved all 8 issues — traced to pg.Pool exhaustion (already fixed) ✅ |
+| Moved settlement to Railway worker | Added 5-min `setInterval` in `ingestion.ts` `init()` (`e847d25` → `main` `15241b6`) ✅ |
 
 #### Current state:
 - **Daily PnL WORKING** — `startOfDayEquity` populated for all 4 active accounts ✅
-- `vercel.json`: 3 daily crons (daily-reset, inactivity-check, balance-audit) — Hobby-compliant
-- `heartbeat-check` and `settlement` removed from Vercel Cron — need to move to Railway worker (follow-up)
-- tsc: **0 errors** | 1146/1146 tests pass (78 files)
-- **`vercel.json` change NOT YET DEPLOYED** — needs commit + push to `develop` then `main`
+- `vercel.json`: 3 daily crons (daily-reset, inactivity-check, balance-audit) — Hobby-compliant ✅
+- Settlement now runs in Railway worker every 5 minutes (leader-gated, idempotent) ✅
+- Sentry: **0 unresolved issues** ✅
+- tsc: **0 errors** | 1130/1149 tests pass (77/78 files — 1 pre-existing mock issue in balance-manager)
 
 ### 🌅 Next Steps (ranked by leverage × risk)
 
-> **1. Deploy `vercel.json` fix** — commit and push so tomorrow's midnight cron actually fires with the correct code
-> Without this, the same `— Today` bug returns tomorrow.
+> **1. Move heartbeat monitoring to Railway/Sentry** — not urgent, worker self-heals and OutageBanner polls client-side. Use Railway health checks or Sentry Cron Monitors.
 
-> **2. Move `heartbeat-check` and `settlement` to Railway worker** — these sub-hourly checks belong in the always-running worker, not Vercel Cron (which caps at once/day on Hobby). Zero additional cost.
+> **2. Fix pre-existing `balance-manager.test.ts` mock issue** — `tx.select is not a function` in 16 tests. Mock doesn't implement Drizzle query builder.
 
-> **3. Continue app development** — all blocking PnL issues resolved.
+> **3. Continue app development** — all blocking infrastructure issues resolved.
 
 
 
