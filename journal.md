@@ -8,9 +8,9 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 > **New agent? Read this section before doing anything else.**
 > This is the single source of truth for what actually works. Do NOT trust individual journal entries — they reflect what the agent *believed*, not what the user confirmed.
 
-### Last Confirmed by Agent (Feb 20, 11:04 PM CT)
+### Last Confirmed by Agent (Feb 21, 1:30 AM CT)
 
-#### Commits on `develop` today (in order):
+#### Commits on `main` today (in order):
 | Commit | What |
 |--------|------|
 | `174d2a5` | Affiliate dashboard: stat cards upgraded (SpotlightCard, CountUp, text-3xl) |
@@ -24,10 +24,12 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 | `8c1216e` | **TEST: Financial display boundary suite** — 14 tests, 7 scenarios, pure functions, no DB |
 | `51a0c9c` | **BUG FIX: FundedRiskMeters daily loss uses equity not cash** |
 | `5847b6c` | docs: journal entry and CURRENT STATUS |
+| `a463b26` | **INFRA FIX: Replace pg.Pool with postgres.js** — resolves Sentry N+1 pool exhaustion on Vercel |
 
 #### Current state:
-- **DEPLOYED TO PRODUCTION** (`c222298..5847b6c` → `main`) ✅
+- **DEPLOYED TO PRODUCTION** (`5847b6c..a463b26` → `main`) ✅
 - tsc: **0 errors** | 1146/1146 tests pass (78 files)
+
 - Staging smoke: `11/12` ✅ (1 pre-existing CRON_SECRET heartbeat gate — not a regression)
 - Production smoke: `11/12` ✅ (same pre-existing heartbeat gate)
 - `startOfDayEquity` still null on existing accounts until midnight cron (~1:30 AM CT) → shows `— Today` (correct)
@@ -35,11 +37,12 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ### 🌅 Tomorrow Morning — Prioritized Next Steps (ranked by leverage × risk)
 
-> **1. Confirm midnight cron ran** (~1:30 AM CT) — check `startOfDayEquity` populated for Mat's account
+> **1. Verify Sentry N+1 errors gone** — Check Sentry dashboard 24h after deploy to confirm `N+1 pg-pool.connect` events on `/dashboard` and `/dashboard/trade` are resolved. Should see 0 new occurrences of JAVASCRIPT-NEXTJS-1/2.
+
+> **2. Confirm midnight cron ran** — check `startOfDayEquity` populated for existing accounts
 > Dashboard should show real daily PnL instead of `— Today`
 
-> **2. Continue app development** — all blocking issues resolved, payment + PnL + schema + display all hardened
-
+> **3. Continue app development** — all blocking Sentry issues resolved
 
 
 
