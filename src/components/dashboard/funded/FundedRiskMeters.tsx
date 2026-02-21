@@ -9,6 +9,11 @@ interface FundedRiskMetersProps {
     maxTotalDrawdown: number;  // Absolute value (e.g., $1000 for 10k account)
     maxDailyDrawdown: number;  // Absolute value (e.g., $500)
     startOfDayBalance: number;
+    // TRUE equity = cash + unrealized position value.
+    // Must be used for daily loss — using currentBalance (cash-only) would
+    // understate daily loss when open positions are losing value.
+    // Same class of bug as the phantom daily PnL (see postmortem 2026-02-20).
+    equity: number;
     platform: "polymarket" | "kalshi";
 }
 
@@ -18,19 +23,21 @@ export function FundedRiskMeters({
     maxTotalDrawdown,
     maxDailyDrawdown,
     startOfDayBalance,
+    equity,
     platform,
 }: FundedRiskMetersProps) {
     // STATIC drawdown calculation (from initial balance, NOT high water mark)
     const drawdownFromInitial = Math.max(0, startingBalance - currentBalance);
     const drawdownUsagePercent = (drawdownFromInitial / maxTotalDrawdown) * 100;
 
-    // Daily loss calculation
-    const dailyLoss = Math.max(0, startOfDayBalance - currentBalance);
+    // Daily loss calculation — uses TRUE EQUITY (cash + unrealized position value),
+    // not cash balance. Using cash-only would understate loss when positions are down.
+    const dailyLoss = Math.max(0, startOfDayBalance - equity);
     const dailyLossUsagePercent = (dailyLoss / maxDailyDrawdown) * 100;
 
     // Risk floor calculations
     const accountFloor = startingBalance - maxTotalDrawdown;
-    const dailyFloor = startOfDayBalance - maxDailyDrawdown;
+    const dailyFloor = startOfDayBalance - maxDailyDrawdown; // floor is SOD-based ($ value)
 
     // Color logic
     const getColor = (usage: number) => {

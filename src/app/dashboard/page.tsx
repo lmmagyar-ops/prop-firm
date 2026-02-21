@@ -140,6 +140,7 @@ export default async function DashboardPage() {
                                     maxTotalDrawdown={fundedStats.maxTotalDrawdown}
                                     maxDailyDrawdown={fundedStats.maxDailyDrawdown}
                                     startOfDayBalance={activeChallenge.startOfDayBalance}
+                                    equity={trueEquity}
                                     platform={activeChallenge.platform as "polymarket" | "kalshi"}
                                 />
                             </div>
