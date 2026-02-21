@@ -8,7 +8,7 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 > **New agent? Read this section before doing anything else.**
 > This is the single source of truth for what actually works. Do NOT trust individual journal entries — they reflect what the agent *believed*, not what the user confirmed.
 
-### Last Confirmed by Agent (Feb 20, 10:53 PM CT)
+### Last Confirmed by Agent (Feb 20, 11:04 PM CT)
 
 #### Commits on `develop` today (in order):
 | Commit | What |
@@ -19,27 +19,28 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 | `e5577cf` | Affiliate dashboard: progress bar taller with pulsing glow |
 | `97e849e` | Affiliate dashboard: referrals table row hover + empty state |
 | `f87a93f` | Affiliate dashboard: non-affiliate CTA replaced with 3-step funnel |
-| `dd9e25e` | **BUG FIX: Phantom daily PnL** — added `startOfDayEquity` column, upgraded daily-reset cron to snapshot true equity, fixed `getEquityStats`, updated `LiveEquityDisplay` to render `— Today` when null |
+| `dd9e25e` | **BUG FIX: Phantom daily PnL** — `startOfDayEquity` column, cron snapshot, `getEquityStats`, `LiveEquityDisplay` |
 | `7b339c4` | Post-mortem: `docs/postmortems/2026-02-20-phantom-daily-pnl.md` |
-| `8c1216e` | **TEST: Financial display boundary suite** — 14 tests, 7 scenarios, pure functions, no DB. Guards the entire phantom-PnL class of bug at every boundary. |
-| `51a0c9c` | **BUG FIX: FundedRiskMeters daily loss uses equity not cash** — added `equity` prop, fixed `dailyLoss = startOfDayBalance - equity` (was cash-only on both sides). |
+| `8c1216e` | **TEST: Financial display boundary suite** — 14 tests, 7 scenarios, pure functions, no DB |
+| `51a0c9c` | **BUG FIX: FundedRiskMeters daily loss uses equity not cash** |
+| `5847b6c` | docs: journal entry and CURRENT STATUS |
 
 #### Current state:
+- **DEPLOYED TO PRODUCTION** (`c222298..5847b6c` → `main`) ✅
 - tsc: **0 errors** | 1146/1146 tests pass (78 files)
-- `develop` is ahead of `main` by all above commits
+- Staging smoke: `11/12` ✅ (1 pre-existing CRON_SECRET heartbeat gate — not a regression)
+- Production smoke: `11/12` ✅ (same pre-existing heartbeat gate)
 - `startOfDayEquity` still null on existing accounts until midnight cron (~1:30 AM CT) → shows `— Today` (correct)
-- **FundedRiskMeters daily loss meter** now uses true equity — funded traders will see accurate daily drawdown
+- `FundedRiskMeters` daily loss meter now uses true equity — accurate for funded traders with open positions
 
 ### 🌅 Tomorrow Morning — Prioritized Next Steps (ranked by leverage × risk)
 
-> **1. Merge `develop` → `main` and deploy** ← NEXT TASK
-> All handoff items complete. Use the `/deploy` workflow.
-> Pre-deploy gates: `test:engine`, `test:lifecycle`, `test:safety`, `test:financial`, `tsc`.
-> Staging smoke test required before prod merge.
+> **1. Confirm midnight cron ran** (~1:30 AM CT) — check `startOfDayEquity` populated for Mat's account
+> Dashboard should show real daily PnL instead of `— Today`
 
-> **2. Confirm midnight cron ran** (~1:30 AM CT)
-> Check that `startOfDayEquity` is now populated for Mat's account.
-> Dashboard should show real daily PnL instead of `— Today`.
+> **2. Continue app development** — all blocking issues resolved, payment + PnL + schema + display all hardened
+
+
 
 
 
