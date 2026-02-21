@@ -96,11 +96,14 @@ async function main() {
     // ── CHECK 3: Heartbeat Check API ──
     console.log('\n💓 Check 3: Heartbeat Check');
     const heartbeat = await timedFetch('/api/cron/heartbeat-check');
-    // Heartbeat may be "stale" if worker is down — that's OK for deploy smoke.
-    // We just need it to NOT be a 500 (app crash).
+    // Intent: confirm the app didn't crash (no 500). The endpoint requires CRON_SECRET,
+    // so unauthenticated smoke tests correctly receive 401 — that's not a failure.
     assert(heartbeat.status !== 500, `GET /api/cron/heartbeat-check → ${heartbeat.status} (not 500)`);
     assert(heartbeat.ms < 5000, `Response time: ${heartbeat.ms}ms (< 5000ms)`);
-    if (heartbeat.json) {
+    if (heartbeat.status === 401) {
+        // 401 = auth layer working correctly (CRON_SECRET not provided by smoke runner)
+        assert(true, `Heartbeat auth gate active (401 — CRON_SECRET required)`);
+    } else if (heartbeat.json) {
         const hbStatus = heartbeat.json.status as string;
         assert(
             ['healthy', 'stale'].includes(hbStatus),
