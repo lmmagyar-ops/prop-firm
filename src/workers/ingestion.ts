@@ -40,6 +40,7 @@ import { startHealthServer } from "./health-server";
 import { getCategories, sanitizeText, cleanOutcomeName, isSpamMarket } from "./market-classifier";
 import { pruneResolvedMarkets, checkPriceDrift } from "./market-integrity";
 import { MIN_MARKET_VOLUME } from "../config/trading-constants";
+import { settleResolvedPositions } from "../lib/settlement";
 
 dotenv.config();
 
@@ -439,6 +440,28 @@ class IngestionWorker {
                 }
             }, DRIFT_CHECK_INTERVAL);
         }, DRIFT_CHECK_OFFSET);
+
+        // SETTLEMENT CHECK: Detect resolved markets and credit winnings every 5 minutes.
+        // Previously a Vercel Cron (removed for Hobby plan compliance).
+        // Offset by 1 min from market refresh to spread API load.
+        // The settlement function is idempotent (FOR UPDATE + status check).
+        const SETTLEMENT_INTERVAL = 300000; // 5 minutes
+        const SETTLEMENT_OFFSET = 60000;    // 1 minute offset
+        setTimeout(() => {
+            settleResolvedPositions()
+                .then(r => logger.info(`[Settlement] Initial scan: ${r.positionsSettled}/${r.positionsChecked} settled`))
+                .catch(err => logger.error('[Settlement] Initial scan failed:', err));
+            setInterval(async () => {
+                try {
+                    const result = await settleResolvedPositions();
+                    if (result.positionsSettled > 0) {
+                        logger.info(`[Settlement] ✅ ${result.positionsSettled} positions settled, PnL: $${result.totalPnLSettled.toFixed(2)}`);
+                    }
+                } catch (err) {
+                    logger.error('[Settlement] Periodic settlement failed:', err);
+                }
+            }, SETTLEMENT_INTERVAL);
+        }, SETTLEMENT_OFFSET);
     }
 
     /**
