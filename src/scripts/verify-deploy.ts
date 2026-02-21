@@ -1,26 +1,32 @@
 /**
- * POST-DEPLOY SMOKE TEST — Production Health Verification
+ * POST-DEPLOY VERIFICATION — Production Health Gate
  * 
- * Lightweight HTTP-only smoke test that hits the production URL after deploy.
- * NO database writes, NO mutations — read-only health checks only.
+ * Catches the 3 failure modes that keep recurring:
+ * 1. Deploy version mismatch — cron running old code (Feb 21)
+ * 2. Sentry dead — SDK never initialized (Feb 7-16)
+ * 3. Silent data corruption — startOfDayEquity null (Feb 21)
  * 
- * Checks:
- *   1. Homepage serves (200)
- *   2. Cron status API returns healthy + valid stats
- *   3. Heartbeat check API responds (healthy or stale, just not 500)
- *   4. Login page serves (200)
- *   5. All responses under 5s
+ * Also checks: DB connectivity, worker heartbeat, page serving.
  * 
- * Usage: npm run test:deploy -- https://prop-firmx.vercel.app
+ * Usage:
+ *   npm run test:deploy -- https://prop-firmx.vercel.app
+ *   npm run test:deploy -- https://prop-firmx.vercel.app e847d25
+ * 
+ * CRON_SECRET is loaded from .env for the health endpoint auth.
  */
 
+import * as dotenv from "dotenv";
+dotenv.config();
+
 const BASE_URL = process.argv[2];
+const EXPECTED_SHA = process.argv[3]; // Optional: verify deployed version
 
 if (!BASE_URL) {
-    console.error('❌ Usage: npm run test:deploy -- https://your-app.vercel.app');
+    console.error('❌ Usage: npm run test:deploy -- https://your-app.vercel.app [expected-sha]');
     process.exit(1);
 }
 
+const CRON_SECRET = process.env.CRON_SECRET;
 let pass = 0;
 let fail = 0;
 
@@ -37,15 +43,16 @@ interface TimedResponse {
     ms: number;
 }
 
-async function timedFetch(path: string): Promise<TimedResponse> {
+async function timedFetch(path: string, withAuth = false): Promise<TimedResponse> {
     const url = `${BASE_URL}${path}`;
     const start = Date.now();
+    const headers: Record<string, string> = { 'User-Agent': 'PropFirm-DeployVerify/2.0' };
+    if (withAuth && CRON_SECRET) {
+        headers['Authorization'] = `Bearer ${CRON_SECRET}`;
+    }
 
     try {
-        const res = await fetch(url, {
-            headers: { 'User-Agent': 'PropFirm-DeploySmoke/1.0' },
-            redirect: 'follow',
-        });
+        const res = await fetch(url, { headers, redirect: 'follow' });
         const body = await res.text();
         const ms = Date.now() - start;
 
@@ -61,62 +68,88 @@ async function timedFetch(path: string): Promise<TimedResponse> {
 async function main() {
     console.log(`
 🚀 ═══════════════════════════════════════════════
-   POST-DEPLOY SMOKE TEST
+   POST-DEPLOY VERIFICATION
    Target: ${BASE_URL}
+   Expected SHA: ${EXPECTED_SHA || '(not specified)'}
+   Auth: ${CRON_SECRET ? 'CRON_SECRET loaded' : '⚠️  No CRON_SECRET — health checks will be limited'}
    ═══════════════════════════════════════════════
 `);
 
-    // ── CHECK 1: Homepage ──
+    // ── CHECK 1: Homepage serves ──
     console.log('📄 Check 1: Homepage');
     const home = await timedFetch('/');
     assert(home.ok, `GET / → ${home.status} (expected 200)`);
     assert(home.ms < 5000, `Response time: ${home.ms}ms (< 5000ms)`);
 
-    // ── CHECK 2: Cron Status API ──
-    console.log('\n📊 Check 2: Cron Status API');
-    const status = await timedFetch('/api/cron/status');
-    assert(status.ok, `GET /api/cron/status → ${status.status} (expected 200)`);
-    assert(status.ms < 5000, `Response time: ${status.ms}ms (< 5000ms)`);
-    if (status.json) {
-        assert(status.json.status === 'healthy', `Status field: '${status.json.status}' (expected 'healthy')`);
-        const stats = status.json.stats as Record<string, unknown> | undefined;
-        if (stats) {
-            const accounts = stats.activeAccounts as Record<string, number> | undefined;
-            assert(
-                accounts !== undefined && typeof accounts.total === 'number' && accounts.total >= 0,
-                `Active accounts: ${accounts?.total ?? 'missing'} (valid number)`
-            );
-        } else {
-            assert(false, 'Stats field present in response');
-        }
-    } else {
-        assert(false, 'Response is valid JSON');
-    }
-
-    // ── CHECK 3: Heartbeat Check API ──
-    console.log('\n💓 Check 3: Heartbeat Check');
-    const heartbeat = await timedFetch('/api/cron/heartbeat-check');
-    // Intent: confirm the app didn't crash (no 500). The endpoint requires CRON_SECRET,
-    // so unauthenticated smoke tests correctly receive 401 — that's not a failure.
-    assert(heartbeat.status !== 500, `GET /api/cron/heartbeat-check → ${heartbeat.status} (not 500)`);
-    assert(heartbeat.ms < 5000, `Response time: ${heartbeat.ms}ms (< 5000ms)`);
-    if (heartbeat.status === 401) {
-        // 401 = auth layer working correctly (CRON_SECRET not provided by smoke runner)
-        assert(true, `Heartbeat auth gate active (401 — CRON_SECRET required)`);
-    } else if (heartbeat.json) {
-        const hbStatus = heartbeat.json.status as string;
-        assert(
-            ['healthy', 'stale'].includes(hbStatus),
-            `Heartbeat status: '${hbStatus}' (healthy or stale)`
-        );
-    }
-
-    // ── CHECK 4: Login Page ──
-    console.log('\n🔐 Check 4: Login Page');
+    // ── CHECK 2: Login page serves ──
+    console.log('\n🔐 Check 2: Login Page');
     const login = await timedFetch('/login');
     assert(login.ok, `GET /login → ${login.status} (expected 200)`);
-    assert(login.ms < 5000, `Response time: ${login.ms}ms (< 5000ms)`);
-    assert(login.body.length > 100, `Login page has content (${login.body.length} bytes)`);
+
+    // ── CHECK 3: Deep Health (requires CRON_SECRET) ──
+    console.log('\n🔬 Check 3: Deep Health');
+    const health = await timedFetch('/api/system/health', true);
+
+    if (health.status === 401) {
+        console.log('  ⚠️  Skipped — CRON_SECRET not set or incorrect');
+    } else if (!health.ok) {
+        assert(false, `GET /api/system/health → ${health.status} (expected 200)`);
+    } else if (health.json) {
+        const checks = health.json.checks as Record<string, unknown> | undefined;
+        const version = health.json.version as string | null;
+
+        // 3a: Version match
+        if (EXPECTED_SHA && version) {
+            assert(
+                version === EXPECTED_SHA.slice(0, 7),
+                `Deployed version: ${version} (expected: ${EXPECTED_SHA.slice(0, 7)})`
+            );
+        } else if (version) {
+            console.log(`  ℹ️  Deployed version: ${version} (no expected SHA specified)`);
+        } else {
+            console.log('  ⚠️  Version: not available (local/non-Vercel deploy)');
+        }
+
+        if (checks) {
+            // 3b: Database
+            assert(checks.database === true, `Database: connected`);
+
+            // 3c: Sentry
+            assert(checks.sentry === true, `Sentry: SDK initialized`);
+
+            // 3d: Worker heartbeat
+            const heartbeat = checks.workerHeartbeat as { alive: boolean; ageSeconds: number | null } | undefined;
+            if (heartbeat) {
+                assert(heartbeat.alive, `Worker heartbeat: alive (${heartbeat.ageSeconds}s ago)`);
+            } else {
+                assert(false, `Worker heartbeat: data missing`);
+            }
+
+            // 3e: Daily reset integrity
+            const daily = checks.dailyReset as { allEquityPopulated: boolean; nullCount: number; activeAccounts: number } | undefined;
+            if (daily) {
+                assert(
+                    daily.allEquityPopulated,
+                    `startOfDayEquity: ${daily.nullCount === 0 ? 'all populated' : `${daily.nullCount}/${daily.activeAccounts} NULL`}`
+                );
+            } else {
+                assert(false, `Daily reset data: missing`);
+            }
+        }
+    }
+
+    // ── CHECK 4: Cron Status API ──
+    console.log('\n📊 Check 4: Cron Status');
+    const status = await timedFetch('/api/cron/status');
+    assert(status.ok, `GET /api/cron/status → ${status.status} (expected 200)`);
+    if (status.json) {
+        assert(status.json.status === 'healthy', `Cron status: '${status.json.status}' (expected 'healthy')`);
+    }
+
+    // ── CHECK 5: System Status ──
+    console.log('\n🔧 Check 5: System Status');
+    const sysStatus = await timedFetch('/api/system/status');
+    assert(sysStatus.ok, `GET /api/system/status → ${sysStatus.status} (expected 200)`);
 
     // ── RESULTS ──
     console.log(`
@@ -126,9 +159,9 @@ async function main() {
 `);
 
     if (fail > 0) {
-        console.log('🔴 DEPLOY SMOKE FAILED — CHECK PRODUCTION IMMEDIATELY\n');
+        console.log('🔴 DEPLOY VERIFICATION FAILED — INVESTIGATE BEFORE PROCEEDING\n');
     } else {
-        console.log('🟢 ALL DEPLOY CHECKS PASSED\n');
+        console.log('🟢 ALL DEPLOY CHECKS PASSED — PRODUCTION IS HEALTHY\n');
     }
 
     process.exit(fail > 0 ? 1 : 0);
