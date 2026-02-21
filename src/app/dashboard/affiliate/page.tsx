@@ -294,13 +294,17 @@ export default function AffiliateDashboard() {
                                 ${stats.currentMonthEarnings.toFixed(2)} / ${affiliate.monthlyEarningCap.toFixed(2)}
                             </span>
                         </div>
-                        <div className="h-2 bg-[#162231] rounded-full overflow-hidden">
+                        <div className="h-4 bg-[#162231] rounded-full overflow-hidden mb-2 border border-white/5 relative">
                             <div
-                                className="h-full bg-gradient-to-r from-primary to-emerald-400 rounded-full transition-all duration-500"
+                                className="h-full bg-gradient-to-r from-primary to-emerald-400 rounded-full transition-all duration-1000 ease-out relative"
                                 style={{
                                     width: `${Math.min(100, (stats.currentMonthEarnings / affiliate.monthlyEarningCap) * 100)}%`,
                                 }}
-                            />
+                            >
+                                {stats.currentMonthEarnings > 0 && (
+                                    <div className="absolute inset-0 bg-white/20 animate-pulse rounded-full" />
+                                )}
+                            </div>
                         </div>
                         {affiliate.tier === 1 && (
                             <p className="text-xs text-zinc-500 mt-3">
