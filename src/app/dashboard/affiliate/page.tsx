@@ -204,9 +204,9 @@ export default function AffiliateDashboard() {
 
             {/* Referral Link Card */}
             <ScrollReveal>
-                <Card className="bg-[#0f1926] border-primary/20 overflow-hidden relative">
-                    <div className="absolute inset-0 pointer-events-none opacity-40">
-                        <Aurora colorStops={['#29af73', '#14F195', '#29af73']} amplitude={0.8} blend={0.6} speed={0.4} />
+                <Card className="bg-[#0f1926] border-primary/30 overflow-hidden relative shadow-[0_0_40px_rgba(41,175,115,0.08)]">
+                    <div className="absolute inset-0 pointer-events-none opacity-60">
+                        <Aurora colorStops={['#29af73', '#14F195', '#29af73']} amplitude={1.2} blend={0.6} speed={0.4} />
                     </div>
                     <CardContent className="p-6 relative z-10">
                         <div className="flex items-center gap-2 mb-3">
