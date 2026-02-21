@@ -322,31 +322,41 @@ export default function AffiliateDashboard() {
             {/* Recent Referrals */}
             <ScrollReveal delay={0.2}>
                 <Card className="bg-[#0f1926] border-white/5">
-                    <CardHeader>
-                        <CardTitle className="text-base">Recent Referrals</CardTitle>
+                    <CardHeader className="pb-3">
+                        <div className="flex items-center gap-2">
+                            <CardTitle className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">Recent Referrals</CardTitle>
+                            {referrals.length > 0 && (
+                                <span className="text-xs font-mono text-zinc-600">({referrals.length})</span>
+                            )}
+                        </div>
                     </CardHeader>
                     <CardContent>
                         {referrals.length === 0 ? (
-                            <div className="text-center py-8 text-zinc-500">
-                                <MousePointerClick className="w-8 h-8 mx-auto mb-3 opacity-30" />
-                                <p className="text-sm">No referrals yet. Share your link to get started!</p>
+                            <div className="flex flex-col items-center justify-center py-10 border border-dashed border-white/5 rounded-xl text-zinc-600">
+                                <MousePointerClick className="w-7 h-7 mb-3 opacity-25" />
+                                <p className="text-sm font-medium">No referrals yet</p>
+                                <p className="text-xs mt-1 opacity-70">Share your link above to get started</p>
                             </div>
                         ) : (
-                            <div className="space-y-2">
+                            <div className="space-y-1.5">
                                 {referrals.map((ref) => (
                                     <div
                                         key={ref.id}
-                                        className="flex items-center justify-between px-4 py-3 bg-[#162231] rounded-lg border border-white/5"
+                                        className={`flex items-center justify-between px-4 py-3 rounded-lg border transition-colors
+                                            ${ref.status === "converted"
+                                                ? "bg-green-500/5 border-green-500/10 hover:bg-green-500/10"
+                                                : "bg-[#162231] border-white/5 hover:bg-white/5"
+                                            }`}
                                     >
                                         <div className="flex items-center gap-3">
                                             <Badge
                                                 variant="outline"
                                                 className={
                                                     ref.status === "converted"
-                                                        ? "border-green-500/30 text-green-400 bg-green-500/10"
+                                                        ? "border-green-500/40 text-green-400 bg-green-500/10"
                                                         : ref.status === "signed_up"
                                                             ? "border-blue-500/30 text-blue-400 bg-blue-500/10"
-                                                            : "border-zinc-600 text-zinc-400"
+                                                            : "border-zinc-700 text-zinc-500"
                                                 }
                                             >
                                                 {ref.status === "converted"
@@ -365,11 +375,11 @@ export default function AffiliateDashboard() {
                                         </div>
                                         <div className="text-right">
                                             {ref.commissionEarned !== null ? (
-                                                <span className="font-mono text-sm text-green-400">
+                                                <span className="font-mono text-sm font-semibold text-green-400">
                                                     +${ref.commissionEarned.toFixed(2)}
                                                 </span>
                                             ) : (
-                                                <span className="text-xs text-zinc-600">—</span>
+                                                <span className="text-xs text-zinc-700">—</span>
                                             )}
                                         </div>
                                     </div>
