@@ -6,7 +6,7 @@ import SpotlightCard from "@/components/reactbits/SpotlightCard";
 
 interface LiveEquityDisplayProps {
     initialBalance: number;
-    initialDailyPnL: number;
+    initialDailyPnL: number | null;
 }
 
 /**
@@ -35,8 +35,11 @@ export function LiveEquityDisplay({ initialBalance, initialDailyPnL }: LiveEquit
             <div className="transition-opacity duration-300">
                 <BigNumberDisplay value={equity} className="text-5xl md:text-6xl font-medium text-white" />
             </div>
-            <div className={`text-lg font-mono mt-4 font-bold transition-opacity duration-300 ${initialDailyPnL >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                {initialDailyPnL >= 0 ? '+' : ''}${initialDailyPnL.toFixed(2)} Today
+            <div className={`text-lg font-mono mt-4 font-bold transition-opacity duration-300 ${initialDailyPnL === null ? 'text-zinc-500' : initialDailyPnL >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                {initialDailyPnL === null
+                    ? '— Today'
+                    : `${initialDailyPnL >= 0 ? '+' : ''}$${initialDailyPnL.toFixed(2)} Today`
+                }
             </div>
         </SpotlightCard>
     );

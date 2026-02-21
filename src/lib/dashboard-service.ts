@@ -18,6 +18,7 @@ export interface DbChallengeRow {
     currentBalance: string | number;
     highWaterMark: string | number | null;
     startOfDayBalance: string | number | null;
+    startOfDayEquity: string | number | null;
     phase: string;
     status: string;
     platform: string | null;
@@ -139,7 +140,7 @@ export function getPositionsWithPnL(
  * Calculate equity stats (PnL, drawdown, profit progress) from challenge + equity.
  * Pure function — no I/O.
  */
-export function getEquityStats(challenge: DbChallengeRow, equity: number, startingBalance: number) {
+export function getEquityStats(challenge: DbChallengeRow, equity: number, startingBalance: number, cashBalance?: number) {
     const hwmParsed = safeParseFloat(challenge.highWaterMark);
     const highWaterMark = hwmParsed > 0 ? hwmParsed : startingBalance;
     const sodParsed = safeParseFloat(challenge.startOfDayBalance);
@@ -155,7 +156,15 @@ export function getEquityStats(challenge: DbChallengeRow, equity: number, starti
     const dailyDrawdownLimit = dailyDrawdownPercent * startingBalance;
 
     const totalPnL = equity - startingBalance;
-    const dailyPnL = equity - startOfDayBalance;
+
+    // Daily PnL uses startOfDayEquity (true equity at midnight = cash + position value).
+    // startOfDayBalance is cash-only and is intentionally kept for the risk engine's
+    // daily drawdown limit. Mixing the two creates phantom gains equal to open position value.
+    // If null (account created before this column was added), we suppress the display rather
+    // than show a misleading number.
+    const sodeRaw = challenge.startOfDayEquity !== undefined ? safeParseFloat(challenge.startOfDayEquity) : NaN;
+    const startOfDayEquity = !isNaN(sodeRaw) && sodeRaw > 0 ? sodeRaw : null;
+    const dailyPnL: number | null = startOfDayEquity !== null ? equity - startOfDayEquity : null;
 
     const drawdownAmount = Math.max(0, highWaterMark - equity);
     const dailyDrawdownAmount = Math.max(0, startOfDayBalance - equity);
@@ -447,7 +456,8 @@ export async function getDashboardData(userId: string) {
     const equity = cashBalance + totalPositionValue;
 
     // 7. Calculate stats using extracted pure functions
-    const stats = getEquityStats(activeChallenge, equity, startingBalance);
+    // Pass cashBalance so getEquityStats can compare equity vs startOfDayEquity accurately.
+    const stats = getEquityStats(activeChallenge, equity, startingBalance, cashBalance);
 
     // Runtime invariants — catch impossible states at the source
     softInvariant(equity >= 0, "Negative equity in dashboard", { userEmail: user.email, equity, cashBalance, totalPositionValue });

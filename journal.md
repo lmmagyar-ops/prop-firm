@@ -8,12 +8,16 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 > **New agent? Read this section before doing anything else.**
 > This is the single source of truth for what actually works. Do NOT trust individual journal entries — they reflect what the agent *believed*, not what the user confirmed.
 
-### Last Confirmed by Agent (Feb 20, 3:50 PM CT)
-- **Affiliate Growth Hub backend** — commit `04f131b` (9 files, 739 ins) ✅ SHIPPED
-- **New:** `config/affiliates.ts` (centralized rates), `/ref/[code]` landing route, checkout attribution, webhook commission (fail-closed), `/api/affiliate/stats`, `/dashboard/affiliate` page, sidebar "Refer & Earn" link
-- Full suite: **1131/1131** pass (77 files), `tsc` 0 errors
-- Financial path: webhook calculates commission, enforces Tier 1 monthly cap, errors never block payment
-- **UI redesign IN PROGRESS** — functional but flat, needs Apple-grade polish (see Tomorrow Morning)
+### Last Confirmed by Agent (Feb 20, 7:40 PM CT)
+- **Affiliate Dashboard UI Polish** — 5 commits shipped to `develop` ✅
+- Stat cards: `text-3xl`, icon pills, SpotlightCard glow `0.08→0.2`, size `400→500`, staggered CountUp
+- Referral hero card: Aurora `amplitude 0.8→1.2`, `opacity-40→60`, outer glow shadow
+- Page header: ShinyText metallic shimmer on "Refer & Earn"
+- Progress bar: `h-2→h-4`, pulsing glow fill (ProfitProgress.tsx pattern)
+- Referrals table: dashed empty state, row hover effects, converted row green accent
+- CTA funnel: flat stats replaced with 3-step visual funnel (Share → Buy → Earn 10%)
+- tsc: **0 errors** after every commit
+- **UI polish COMPLETE** — browser verified on localhost:3001
 
 ### 🌅 Tomorrow Morning — Prioritized Next Steps (ranked by leverage × risk)
 

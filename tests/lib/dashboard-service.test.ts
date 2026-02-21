@@ -307,15 +307,31 @@ describe("getEquityStats", () => {
     }
 
     it("calculates P&L correctly when in profit", () => {
-        const stats = getEquityStats(mkChallenge(), 10800, 10000);
+        // Must provide startOfDayEquity (true equity SOD) to get a dailyPnL.
+        const stats = getEquityStats(
+            mkChallenge({ startOfDayEquity: "10200" }),
+            10800,
+            10000
+        );
         expect(stats.totalPnL).toBe(800);    // 10800 - 10000
-        expect(stats.dailyPnL).toBe(600);    // 10800 - 10200
+        expect(stats.dailyPnL).toBe(600);    // 10800 - 10200 (equity)
     });
 
     it("calculates P&L correctly when in loss", () => {
-        const stats = getEquityStats(mkChallenge(), 9500, 10000);
+        const stats = getEquityStats(
+            mkChallenge({ startOfDayEquity: "10200" }),
+            9500,
+            10000
+        );
         expect(stats.totalPnL).toBe(-500);
-        expect(stats.dailyPnL).toBe(-700);   // 9500 - 10200
+        expect(stats.dailyPnL).toBe(-700);   // 9500 - 10200 (equity)
+    });
+
+    it("returns null dailyPnL when startOfDayEquity is absent (pre-migration accounts)", () => {
+        // Accounts created before this column was added will have null.
+        // The UI should render '—' rather than a phantom number.
+        const stats = getEquityStats(mkChallenge(), 10800, 10000);
+        expect(stats.dailyPnL).toBeNull();
     });
 
     it("calculates drawdown usage percentage", () => {

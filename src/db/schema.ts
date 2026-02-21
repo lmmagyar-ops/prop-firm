@@ -145,7 +145,8 @@ export const challenges = pgTable("challenges", {
     status: varchar("status", { length: 20 }).notNull(), // 'active', 'failed', 'passed'
 
     startingBalance: decimal("starting_balance", { precision: 12, scale: 2 }).notNull(),
-    startOfDayBalance: decimal("start_of_day_balance", { precision: 12, scale: 2 }).default("10000.00"), // Snapshot at 00:00 UTC
+    startOfDayBalance: decimal("start_of_day_balance", { precision: 12, scale: 2 }).default("10000.00"), // Cash-only snapshot at 00:00 UTC — used by risk engine for daily drawdown limit
+    startOfDayEquity: decimal("start_of_day_equity", { precision: 12, scale: 2 }), // True equity (cash + open positions) at 00:00 UTC — used for display "Today" PnL. Null until first midnight reset after this column was added.
     currentBalance: decimal("current_balance", { precision: 12, scale: 2 }).notNull(),
     highWaterMark: decimal("high_water_mark", { precision: 12, scale: 2 }), // For max drawdown calc
 

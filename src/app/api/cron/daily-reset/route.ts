@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { challenges } from "@/db/schema";
+import { challenges, positions } from "@/db/schema";
 import { eq, and, isNotNull } from "drizzle-orm";
 import { createLogger } from "@/lib/logger";
+import { safeParseFloat } from "@/lib/safe-parse";
+import { getPositionsWithPnL } from "@/lib/dashboard-service";
 const logger = createLogger("DailyReset");
 
 /**
@@ -84,11 +86,45 @@ export async function GET(request: NextRequest) {
                 continue;
             }
 
+            // Compute true equity (cash + open position value) for startOfDayEquity snapshot.
+            // This is separate from startOfDayBalance (cash-only) which the risk engine uses.
+            // Falls back to stored currentPrice if Redis prices are unavailable.
+            let startOfDayEquityValue: string;
+            try {
+                const openPositions = await db.query.positions.findMany({
+                    where: and(
+                        eq(positions.challengeId, challenge.id),
+                        eq(positions.status, 'OPEN')
+                    ),
+                });
+
+                let totalPositionValue = 0;
+                if (openPositions.length > 0) {
+                    const { MarketService } = await import("@/lib/market");
+                    const marketIds = openPositions.map(p => p.marketId);
+                    const [livePrices, marketTitles] = await Promise.all([
+                        MarketService.getBatchOrderBookPrices(marketIds),
+                        MarketService.getBatchTitles(marketIds),
+                    ]);
+                    const enriched = getPositionsWithPnL(openPositions, livePrices, marketTitles);
+                    totalPositionValue = enriched.reduce((sum, p) => sum + p.positionValue, 0);
+                }
+
+                const cashBalance = safeParseFloat(challenge.currentBalance);
+                startOfDayEquityValue = (cashBalance + totalPositionValue).toFixed(2);
+            } catch (err) {
+                // Fail-safe: if position valuation fails, snapshot cash-only.
+                // This means dailyPnL for this account stays null for the day rather than wrong.
+                logger.warn(`[DailyReset] ⚠️ Position valuation failed for ${challenge.id.slice(0, 8)}, snapshotting cash-only equity`, err as object);
+                startOfDayEquityValue = String(challenge.currentBalance);
+            }
+
             // Snapshot current balance as start-of-day balance
             // Also clear pendingFailureAt for fresh start (shouldn't be any, but defensive)
             await db.update(challenges)
                 .set({
                     startOfDayBalance: challenge.currentBalance,
+                    startOfDayEquity: startOfDayEquityValue,
                     lastDailyResetAt: new Date(),
                     pendingFailureAt: null  // New day = fresh start
                 })
