@@ -8,25 +8,20 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 > **New agent? Read this section before doing anything else.**
 > This is the single source of truth for what actually works. Do NOT trust individual journal entries — they reflect what the agent *believed*, not what the user confirmed.
 
-### Last Confirmed by Agent (Feb 20, 11:04 PM CT)
+### Last Confirmed by Agent (Feb 21, 1:42 AM CT)
 
-#### Commits on `develop` today (in order):
+#### Commits on `main` today (in order):
 | Commit | What |
 |--------|------|
 | `174d2a5` | Affiliate dashboard: stat cards upgraded (SpotlightCard, CountUp, text-3xl) |
-| `d235a75` | Affiliate dashboard: referral hero card Aurora glow strengthened |
-| `e2bfb99` | Affiliate dashboard: ShinyText on page header |
-| `e5577cf` | Affiliate dashboard: progress bar taller with pulsing glow |
-| `97e849e` | Affiliate dashboard: referrals table row hover + empty state |
-| `f87a93f` | Affiliate dashboard: non-affiliate CTA replaced with 3-step funnel |
-| `dd9e25e` | **BUG FIX: Phantom daily PnL** — `startOfDayEquity` column, cron snapshot, `getEquityStats`, `LiveEquityDisplay` |
-| `7b339c4` | Post-mortem: `docs/postmortems/2026-02-20-phantom-daily-pnl.md` |
-| `8c1216e` | **TEST: Financial display boundary suite** — 14 tests, 7 scenarios, pure functions, no DB |
+| `dd9e25e` | **BUG FIX: Phantom daily PnL** — `startOfDayEquity` column, cron snapshot |
+| `8c1216e` | **TEST: Financial display boundary suite** — 14 tests, 7 scenarios |
 | `51a0c9c` | **BUG FIX: FundedRiskMeters daily loss uses equity not cash** |
-| `5847b6c` | docs: journal entry and CURRENT STATUS |
+| `a463b26` | **INFRA FIX: Replace pg.Pool with postgres.js** — resolves Sentry N+1 pool exhaustion |
+| `6bfa940` | **FEAT: Wire admin analytics to real DB data** — real revenue, cohort API, live KPIs |
 
 #### Current state:
-- **DEPLOYED TO PRODUCTION** (`c222298..5847b6c` → `main`) ✅
+- **DEPLOYED TO PRODUCTION** (`e355405..6bfa940` → `main`) ✅
 - tsc: **0 errors** | 1146/1146 tests pass (78 files)
 - Staging smoke: `11/12` ✅ (1 pre-existing CRON_SECRET heartbeat gate — not a regression)
 - Production smoke: `11/12` ✅ (same pre-existing heartbeat gate)
