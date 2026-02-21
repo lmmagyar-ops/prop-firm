@@ -11,14 +11,6 @@
         {
             "path": "/api/cron/balance-audit",
             "schedule": "0 2 * * *"
-        },
-        {
-            "path": "/api/cron/heartbeat-check",
-            "schedule": "*/5 * * * *"
-        },
-        {
-            "path": "/api/cron/settlement",
-            "schedule": "*/10 * * * *"
         }
     ]
 }
