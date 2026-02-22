@@ -8,7 +8,7 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 > **New agent? Read this section before doing anything else.**
 > This is the single source of truth for what actually works. Do NOT trust individual journal entries — they reflect what the agent *believed*, not what the user confirmed.
 
-### Last Confirmed by Agent (Feb 21, 11:15 AM CT)
+### Last Confirmed by Agent (Feb 21, 6:55 PM CT)
 
 #### What happened this session:
 | Action | Result |
@@ -20,21 +20,28 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 | Deployed `vercel.json` fix | Pushed to `develop` (`fd19783`) and merged to `main` (`47d618d`) ✅ |
 | Sentry audit | Verified and resolved all 8 issues — traced to pg.Pool exhaustion (already fixed) ✅ |
 | Moved settlement to Railway worker | Added 5-min `setInterval` in `ingestion.ts` `init()` (`e847d25` → `main` `15241b6`) ✅ |
+| **Market filter observability** | Added per-reason filter counters to both ingestion pipelines ✅ |
+| **Configurable volume threshold** | `MIN_MARKET_VOLUME` now env var (set to $50K in Railway) — +8 new markets ✅ |
+| **Risk engine consistency fix** | Caught 2 bugs during review: hardcoded $100K in exposure tiers + baked-in challenge rules ✅ |
 
 #### Current state:
 - **Daily PnL WORKING** — `startOfDayEquity` populated for all 4 active accounts ✅
 - `vercel.json`: 3 daily crons (daily-reset, inactivity-check, balance-audit) — Hobby-compliant ✅
 - Settlement now runs in Railway worker every 5 minutes (leader-gated, idempotent) ✅
 - Sentry: **0 unresolved issues** ✅
+- **Market filter**: 91 binary markets at $50K threshold (was 83 at $100K). Filter report in Railway logs ✅
+- **Risk engine aligned**: volume exposure tiers + RULE 7 now use configurable `MIN_MARKET_VOLUME` ✅
 - tsc: **0 errors** | 1130/1149 tests pass (77/78 files — 1 pre-existing mock issue in balance-manager)
 
 ### 🌅 Next Steps (ranked by leverage × risk)
 
-> **1. Move heartbeat monitoring to Railway/Sentry** — not urgent, worker self-heals and OutageBanner polls client-side. Use Railway health checks or Sentry Cron Monitors.
+> **1. Monitor market filter at $50K** — Check Railway logs for filter reports over next 24h. If users print on low-volume markets, raise threshold back via env var.
 
-> **2. Fix pre-existing `balance-manager.test.ts` mock issue** — `tx.select is not a function` in 16 tests. Mock doesn't implement Drizzle query builder.
+> **2. Move heartbeat monitoring to Railway/Sentry** — not urgent, worker self-heals and OutageBanner polls client-side.
 
-> **3. Continue app development** — all blocking infrastructure issues resolved.
+> **3. Fix pre-existing `balance-manager.test.ts` mock issue** — `tx.select is not a function` in 16 tests.
+
+> **4. Continue app development** — all blocking infrastructure issues resolved.
 
 
 
