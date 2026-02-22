@@ -90,6 +90,7 @@ interface ProcessedSubMarket {
     price: number;
     volume: number;
     groupItemTitle?: string;
+    resolved?: boolean;
 }
 
 /** Processed event for Redis storage */
@@ -594,13 +595,12 @@ class IngestionWorker {
                         const complementToken = clobTokens.length > 1 ? clobTokens[1] : null;
                         const yesPrice = parseFloat(prices[0] || "0");
 
-                        // Skip markets with very low prices (≤1%) - these are either
-                        // delisted, inactive, or effectively untradable.
-                        // At 1%, the NO side is 99¢ which creates bad UX.
-                        if (yesPrice <= 0.01) { fr.priceBounds++; continue; }
-
-                        // Also skip markets with very high prices (≥99%) for same reason
-                        if (yesPrice >= 0.99) { fr.priceBounds++; continue; }
+                        // POLYMARKET PARITY: Mark extreme-price sub-markets as resolved
+                        // instead of dropping them. In threshold events (BTC prices, scores),
+                        // sub-markets at 99%+ are informational context, not stale.
+                        // Users see them in the modal; trade executor blocks execution.
+                        const isResolved = yesPrice <= 0.01 || yesPrice >= 0.99;
+                        if (isResolved) { fr.priceBounds++; }
 
                         // NOTE: 50% filter removed here — the server action layer
                         // (market.ts getActiveEvents) has a smarter volume-aware version
@@ -618,17 +618,18 @@ class IngestionWorker {
                         const marketVolume = parseFloat(market.volume || "0");
 
                         // VOLUME FILTER: Skip sub-markets below the configurable threshold.
-                        // Matches the risk engine's MIN_MARKET_VOLUME (env var, default $100K).
-                        if (marketVolume < MIN_MARKET_VOLUME) { fr.volume++; continue; }
+                        // Exempt resolved sub-markets — their volume is irrelevant for display.
+                        if (!isResolved && marketVolume < MIN_MARKET_VOLUME) { fr.volume++; continue; }
 
                         fr.survived++;
                         subMarkets.push({
                             id: tokenId,
                             question: cleanOutcomeName(sanitizeText(market.question)),
                             outcomes: outcomes,
-                            price: Math.max(yesPrice, 0.01),
+                            price: yesPrice,
                             volume: marketVolume,
                             groupItemTitle: market.groupItemTitle || undefined,
+                            resolved: isResolved || undefined,
                         });
                     }
                     if (fr.total > 0) {

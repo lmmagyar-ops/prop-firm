@@ -30,23 +30,36 @@ vi.mock("@sentry/nextjs", () => ({
 }));
 
 // ── Mock Drizzle transaction ────────────────────────────────────
+// NOTE: BalanceManager.readBalance() uses tx.select().from().where() (NOT tx.query.*)
+// because postgres.js relational API leaks outside transaction scope.
+// See BalanceManager.ts header comment for full explanation.
 
 function createMockTx(currentBalance: string = "10000", startingBalance: string = "10000") {
+    const selectResult = [{ currentBalance, startingBalance }];
     const tx = {
-        query: {
-            challenges: {
-                findFirst: vi.fn().mockResolvedValue({
-                    id: "ch-1",
-                    currentBalance,
-                    startingBalance,
-                }),
-            },
-        },
+        select: vi.fn().mockReturnValue({
+            from: vi.fn().mockReturnValue({
+                where: vi.fn().mockResolvedValue(selectResult),
+            }),
+        }),
         update: vi.fn().mockReturnValue({
             set: vi.fn().mockReturnValue({
                 where: vi.fn().mockResolvedValue(undefined),
             }),
         }),
+    };
+    return tx as unknown as Transaction;
+}
+
+/** Helper: creates a tx mock that returns empty rows (simulates challenge not found) */
+function createNotFoundTx() {
+    const tx = {
+        select: vi.fn().mockReturnValue({
+            from: vi.fn().mockReturnValue({
+                where: vi.fn().mockResolvedValue([]),
+            }),
+        }),
+        update: vi.fn(),
     };
     return tx as unknown as Transaction;
 }
@@ -119,17 +132,10 @@ describe("BalanceManager.deductCost", () => {
     });
 
     it("throws when challenge not found", async () => {
-        const tx = {
-            query: {
-                challenges: {
-                    findFirst: vi.fn().mockResolvedValue(null),
-                },
-            },
-            update: vi.fn(),
-        };
+        const tx = createNotFoundTx();
 
         await expect(
-            BalanceManager.deductCost(tx as unknown as Transaction, "nonexistent", 100)
+            BalanceManager.deductCost(tx, "nonexistent", 100)
         ).rejects.toThrow("Challenge not found");
     });
 });
@@ -182,17 +188,10 @@ describe("BalanceManager.creditProceeds", () => {
     });
 
     it("throws when challenge not found", async () => {
-        const tx = {
-            query: {
-                challenges: {
-                    findFirst: vi.fn().mockResolvedValue(null),
-                },
-            },
-            update: vi.fn(),
-        };
+        const tx = createNotFoundTx();
 
         await expect(
-            BalanceManager.creditProceeds(tx as unknown as Transaction, "nonexistent", 100)
+            BalanceManager.creditProceeds(tx, "nonexistent", 100)
         ).rejects.toThrow("Challenge not found");
     });
 });
@@ -286,17 +285,10 @@ describe("BalanceManager.adjustBalance", () => {
     });
 
     it("throws when challenge not found", async () => {
-        const tx = {
-            query: {
-                challenges: {
-                    findFirst: vi.fn().mockResolvedValue(null),
-                },
-            },
-            update: vi.fn(),
-        };
+        const tx = createNotFoundTx();
 
         await expect(
-            BalanceManager.adjustBalance(tx as unknown as Transaction, "nonexistent", 100, "test")
+            BalanceManager.adjustBalance(tx, "nonexistent", 100, "test")
         ).rejects.toThrow("Challenge not found");
     });
 });
