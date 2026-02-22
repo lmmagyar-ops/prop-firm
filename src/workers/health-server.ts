@@ -413,6 +413,21 @@ export function startHealthServer(
                 return;
             }
 
+            // GET /filter-report — Market filter pipeline statistics
+            if (path === '/filter-report') {
+                const [featuredRaw, binaryRaw] = await Promise.all([
+                    redis.get('filter:report:featured'),
+                    redis.get('filter:report:binary'),
+                ]);
+
+                sendJson(res, {
+                    featured: featuredRaw ? JSON.parse(featuredRaw) : null,
+                    binary: binaryRaw ? JSON.parse(binaryRaw) : null,
+                    timestamp: Date.now(),
+                });
+                return;
+            }
+
             // 404 for all other paths
             sendError(res, 'Not Found', 404);
 
