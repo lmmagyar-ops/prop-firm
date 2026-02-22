@@ -248,7 +248,13 @@ export class RiskEngine {
         }
 
         // RULE 7: Minimum volume filter
-        const minVolume = rules.minMarketVolume || MIN_MARKET_VOLUME;
+        // Use the LOWER of per-challenge rule and global env var.
+        // Existing challenges have minMarketVolume=100K baked into rulesConfig.
+        // Math.min lets the env var loosen restrictions across all challenges.
+        const minVolume = Math.min(
+            rules.minMarketVolume || MIN_MARKET_VOLUME,
+            MIN_MARKET_VOLUME
+        );
         if (marketVolume < minVolume) {
             return this.deny(`This market has insufficient volume ($${marketVolume.toLocaleString()}). Minimum required: $${minVolume.toLocaleString()}.`, audit);
         }
