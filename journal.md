@@ -8,40 +8,67 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 > **New agent? Read this section before doing anything else.**
 > This is the single source of truth for what actually works. Do NOT trust individual journal entries — they reflect what the agent *believed*, not what the user confirmed.
 
-### Last Confirmed by Agent (Feb 21, 6:55 PM CT)
+### Last Confirmed by Agent (Feb 22, 10:55 AM CT)
 
-#### What happened this session:
-| Action | Result |
-|--------|--------|
-| Investigated daily PnL showing `— Today` | Cron ran at midnight UTC but executed OLD code (pre-`dd9e25e` deploy) |
-| Fixed `vercel.json` | Removed 2 sub-hourly crons that violate Vercel Hobby plan limits |
-| Force-populated `startOfDayEquity` | All 4 active challenges now have correct equity snapshots |
-| Browser-verified production | Dashboard now shows `$-19.05 Today` (red) instead of `— Today` ✅ |
-| Deployed `vercel.json` fix | Pushed to `develop` (`fd19783`) and merged to `main` (`47d618d`) ✅ |
-| Sentry audit | Verified and resolved all 8 issues — traced to pg.Pool exhaustion (already fixed) ✅ |
-| Moved settlement to Railway worker | Added 5-min `setInterval` in `ingestion.ts` `init()` (`e847d25` → `main` `15241b6`) ✅ |
-| **Market filter observability** | Added per-reason filter counters to both ingestion pipelines ✅ |
-| **Configurable volume threshold** | `MIN_MARKET_VOLUME` now env var (set to $50K in Railway) — +8 new markets ✅ |
-| **Risk engine consistency fix** | Caught 2 bugs during review: hardcoded $100K in exposure tiers + baked-in challenge rules ✅ |
+#### ✅ Stale-Date Filter Off-By-One Bug — FIXED & COMMITTED (develop)
+Commit `be6918f`. Fixes missing sub-markets for same-day threshold events.
 
-#### Current state:
-- **Daily PnL WORKING** — `startOfDayEquity` populated for all 4 active accounts ✅
-- `vercel.json`: 3 daily crons (daily-reset, inactivity-check, balance-audit) — Hobby-compliant ✅
-- Settlement now runs in Railway worker every 5 minutes (leader-gated, idempotent) ✅
-- Sentry: **0 unresolved issues** ✅
-- **Market filter**: 91 binary markets at $50K threshold (was 83 at $100K). Filter report in Railway logs ✅
-- **Risk engine aligned**: volume exposure tiers + RULE 7 now use configurable `MIN_MARKET_VOLUME` ✅
-- tsc: **0 errors** | 1130/1149 tests pass (77/78 files — 1 pre-existing mock issue in balance-manager)
+**Root Cause:** `getActiveEvents()` in `market.ts` parsed "February 22 2026" as midnight UTC = ~6 PM CT Feb 21. With the 24h grace window (`oneDayAgo`), any same-day market was incorrectly filtered as "in the past" by morning ET. All 11 Bitcoin Feb 22 thresholds (60K–80K) were being dropped from the response despite being correctly stored in Redis.
 
-### 🌅 Next Steps (ranked by leverage × risk)
+**Fix:** Both range-date and single-date parsers now snap to end-of-day ET (`parsedDate.setHours(28, 59, 59, 999)` = 23:59:59 ET = 04:59:59 UTC) before comparing.
 
-> **1. Monitor market filter at $50K** — Check Railway logs for filter reports over next 24h. If users print on low-volume markets, raise threshold back via env var.
+**Verified:** Modal now shows all 11 thresholds (60K–80K), 10 resolved, 1 active (68K at 17.5%). Chart is hidden, table shows OUTCOME / % CHANCE / ACTIONS headers. ✅
 
-> **2. Move heartbeat monitoring to Railway/Sentry** — not urgent, worker self-heals and OutageBanner polls client-side.
+---
 
-> **3. Fix pre-existing `balance-manager.test.ts` mock issue** — `tx.select is not a function` in 16 tests.
+### Last Confirmed by Agent (Feb 22, 9:35 AM CT)
 
-> **4. Continue app development** — all blocking infrastructure issues resolved.
+#### ✅ Market Display Parity Fix — DEPLOYED TO PRODUCTION
+Commit `c34fccb` (develop) / `58028f5` (main). All 10/10 post-deploy health checks passed.
+
+| Check | Result |
+|---|---|
+| `npx tsc --noEmit` | ✅ 0 errors |
+| Full Vitest suite (78 files) | ✅ 1146/1146 passed |
+| `npm run test:engine` | ✅ Pass |
+| `npm run test:safety` | ✅ 54/54 |
+| Staging browser smoke (3 markets) | ✅ `groupItemTitle` outcomes showing, numerically sorted |
+| Production deploy check (10 checks) | ✅ All green — DB, Sentry, worker heartbeat alive |
+
+**What shipped:**
+- `ingestion.ts`: sub-markets at extreme prices now marked `resolved: true` instead of being dropped — they stay in the event so the UI can show them as grayed-out
+- `market.ts` (action): `SubMarket` gets `resolved` field; price filter skips resolved sub-markets; live price overlay marks multi-outcome sub-markets resolved instead of removing
+- `EventDetailModal.tsx`: uses `groupItemTitle` (e.g., "68,000") as outcome name; sorts numerically; grays out resolved outcomes; disables trade buttons on resolved
+- `balance-manager.test.ts`: fixed stale mock left over from postgres.js migration (used `tx.query.*` but `readBalance()` was migrated to `tx.select()`)
+
+**Also noted during smoke test:** The modal *header* for "Bitcoin above _" events still shows the Polymarket raw event title with underscore — this is from upstream Polymarket data and is expected behavior. The specific threshold value IS correctly shown in the sidebar/outcomes list.
+
+#### Previous confirmed items still valid:
+- Daily PnL WORKING ✅
+- Settlement in Railway worker ✅
+- Sentry: initialized, 0 unresolved issues ✅
+- Balance reconciliation: all 4 active challenges at $0.00 drift ✅
+- Risk engine aligned ✅
+
+### 🌅 Tomorrow Morning (ranked by leverage × risk)
+
+> **1. ⚠️ Admin dashboard visual verification** — Needs admin login to verify `MarketFilterDashboard` component renders correctly. Low urgency but still open.
+
+> **2. 📊 Monitor market filter at $50K** — Check Railway logs for filter reports. Verify threshold events are visible in market grid.
+
+> **3. 🧑‍💻 Continue product development** — All blocking issues cleared. Platform is healthy.
+
+
+### ⚠️ ZOMBIE PROCESS INCIDENT — READ THIS
+
+An inline DB script (`npx tsx -e "..."`) hung for **11+ hours**, blocking the IDE terminal and spawning 30+ zombie node processes. Root cause: `postgres.js` holds the Node event loop open indefinitely unless `sql.end()` is called. The inline script never reached cleanup.
+
+**Prevention (now enforced via `/db-scripts` workflow):**
+- ❌ NEVER use `npx tsx -e "..."` for DB operations
+- ✅ Always write scripts to files in `src/scripts/`
+- ✅ Always wrap with `timeout 30 npx tsx src/scripts/<name>.ts`
+- ✅ Always include `sql.end()` + `process.exit()` in both success and error paths
+- ✅ Kill any process that hangs beyond 2 minutes — don't wait
 
 
 
@@ -59,7 +86,50 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ---
 
+## Feb 22, 2026 (9:35 AM CT) — Market Display Parity Fix: Verified & Deployed
+
+### What
+Picked up the market display parity fix written last session (3 files, locally modified, undeployed). Verified, fixed a pre-existing test regression, and shipped to production.
+
+### Pre-Existing Bug Found During Verification
+`tests/lib/trading/balance-manager.test.ts` was failing 16/16 with `TypeError: tx.select is not a function`. Root cause: the `createMockTx` helper was using the old `tx.query.challenges.findFirst()` API, but `BalanceManager.readBalance()` was migrated to `tx.select().from().where()` in the postgres.js fix (last session). The test mocks were never updated. This was pre-existing — not introduced by this session's changes.
+
+**Fix:** Updated `createMockTx` and all 3 inline "not found" tx mocks to provide the Drizzle `select()` builder chain. All 16 tests now pass.
+
+### Market Display Fix (shipped from last session's work)
+Three compounding root causes fixed:
+1. **Price filter dropping sub-markets:** `<=0.01 || >=0.99` filter in both `ingestion.ts` and `market.ts` was silently dropping most sub-markets in threshold events (BTC price, sports scores). Fixed: sub-markets are marked `resolved: true` instead of dropped, so the UI can render them grayed-out.
+2. **groupItemTitle never displayed:** The specific threshold value (e.g., "68,000") was stored in ingestion but the `EventDetailModal` was showing the `question` field ("the price of Bitcoin") instead. Fixed: `EventDetailModal` now uses `groupItemTitle` as the displayed outcome name.
+3. **Numerical sort:** Multi-outcome sub-markets now sort numerically (not alpha) — "60,000" before "68,000" before "80,000".
+
+### Verification
+- `tsc --noEmit`: 0 errors
+- Vitest full suite: 1146/1146 passed (78 files, 0 failures)
+- `npm run test:safety`: 54/54
+- Staging browser smoke: `groupItemTitle` outcome names confirmed, numerical sort confirmed
+- Post-deploy health check (production): 10/10 ✅
+
+### Pre-Close Checklist
+- [x] Bug/task was understood BEFORE writing code — root cause traced from Gamma API → ingestion → action → UI
+- [x] Root cause traced from UI → API → DB: all 3 layers
+- [x] Fix verified with actual multi-outcome markets (Bitcoin threshold events with 11+ sub-markets)
+- [x] `grep` of key patterns — no old `query.challenges` mock patterns in test file
+- [x] Full test suite passes (1146)
+- [x] tsc --noEmit passes
+- [x] CONFIRMED BY BROWSER: staging smoke test verified `groupItemTitle` showing correctly
+- [x] CONFIRMED BY DEPLOY CHECK: production 10/10 health checks passed (commit `58028f5`)
+- [ ] UNVERIFIED BY USER: Mat has not personally confirmed the fix on production yet
+
+### Commits
+| SHA | Branch | What |
+|-----|--------|------|
+| `c34fccb` | develop | Market display parity fix + BalanceManager test mock fix |
+| `58028f5` | main | Merge commit (production) |
+
+---
+
 ## Feb 21, 2026 (10:00 AM CT) — Daily PnL Fix: Cron Infrastructure Root Cause
+
 
 ### What
 User reported daily PnL still showing `— Today` despite previous agent's fix (commit `dd9e25e`). Traced the full data flow and found two compounding issues.
