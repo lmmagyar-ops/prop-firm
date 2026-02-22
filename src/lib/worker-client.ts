@@ -205,6 +205,13 @@ export async function getIngestionHealth(): Promise<unknown | null> {
     return workerFetch('/ingestion-health');
 }
 
+/**
+ * Fetch market filter pipeline report (for admin dashboard).
+ */
+export async function getFilterReport(): Promise<unknown | null> {
+    return workerFetch('/filter-report');
+}
+
 // ──────────────────────────────────────────────
 // WRITE OPERATIONS (replaces Redis pub/sub & writes)
 // ──────────────────────────────────────────────

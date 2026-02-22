@@ -530,6 +530,7 @@ class IngestionWorker {
             const processedEvents: ProcessedEvent[] = [];
             const allEventTokenIds: string[] = [];
             const seenEventTitles = new Set<string>(); // Event-level deduplication
+            const featuredReport = { total: 0, closed: 0, endDate: 0, spam: 0, noPrices: 0, placeholder: 0, archPrefix: 0, noTokens: 0, duplicate: 0, priceBounds: 0, volume: 0, survived: 0 };
 
             for (const event of events) {
                 try {
@@ -632,6 +633,10 @@ class IngestionWorker {
                     }
                     if (fr.total > 0) {
                         logger.info(`[Ingestion] Filter report (${event.title?.slice(0, 30)}): total=${fr.total} closed=${fr.closed} endDate=${fr.endDate} spam=${fr.spam} noPrices=${fr.noPrices} placeholder=${fr.placeholder} priceBounds=${fr.priceBounds} volume=${fr.volume} duplicate=${fr.duplicate} survived=${fr.survived}`);
+                        // Aggregate into pipeline-level report
+                        for (const key of Object.keys(fr) as (keyof typeof fr)[]) {
+                            featuredReport[key] += fr[key];
+                        }
                     }
 
                     if (subMarkets.length === 0) continue;
@@ -705,7 +710,8 @@ class IngestionWorker {
 
             // Store events in Redis
             await this.redis.set("event:active_list", JSON.stringify(processedEvents), 'EX', 600);
-            logger.info(`[Ingestion] Stored ${processedEvents.length} featured events (${allEventTokenIds.length} total markets).`);
+            await this.redis.set("filter:report:featured", JSON.stringify({ ...featuredReport, updatedAt: new Date().toISOString() }), 'EX', 600);
+            logger.info(`[Ingestion] Stored ${processedEvents.length} featured events (${allEventTokenIds.length} total markets). Filter: ${featuredReport.total} checked, ${featuredReport.survived} survived.`);
 
             // Add event token IDs to active polling (with memory bounds)
             const combined = [...this.activeTokenIds, ...allEventTokenIds];
@@ -840,6 +846,20 @@ class IngestionWorker {
                 }
             }
             logger.info(`[Ingestion] Filter report (binary): total=${bfr.total} closed=${bfr.closed} endDate=${bfr.endDate} spam=${bfr.spam} volume=${bfr.volume} multiOutcome=${bfr.multiOutcome} duplicate=${bfr.duplicate} stalePrice=${bfr.stalePrice} placeholderPrice=${bfr.placeholderPrice} nearResolved=${bfr.nearResolved} survived=${bfr.survived}`);
+
+            // Volume distribution of surviving markets
+            const volumeDist = { under50k: 0, '50k_100k': 0, '100k_500k': 0, '500k_1m': 0, over1m: 0 };
+            for (const m of allMarkets) {
+                const v = m.volume;
+                if (v < 50_000) volumeDist.under50k++;
+                else if (v < 100_000) volumeDist['50k_100k']++;
+                else if (v < 500_000) volumeDist['100k_500k']++;
+                else if (v < 1_000_000) volumeDist['500k_1m']++;
+                else volumeDist.over1m++;
+            }
+
+            // Persist filter report + volume distribution to Redis
+            await this.redis.set('filter:report:binary', JSON.stringify({ ...bfr, volumeDistribution: volumeDist, updatedAt: new Date().toISOString() }), 'EX', 600);
 
             // Store in Redis
             await this.redis.set("market:active_list", JSON.stringify(allMarkets), 'EX', 600);

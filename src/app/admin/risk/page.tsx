@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { MarketExposureHeatmap } from "@/components/admin/risk/MarketExposureHeatmap";
+import { MarketFilterDashboard } from "@/components/admin/risk/MarketFilterDashboard";
 import { TraderRiskDistribution } from "@/components/admin/risk/TraderRiskDistribution";
 import { DrawdownWaterfall } from "@/components/admin/risk/DrawdownWaterfall";
 import { KillSwitchControls } from "@/components/admin/risk/KillSwitchControls";
@@ -144,8 +144,8 @@ export default function RiskDeskPage() {
                 </Card>
             )}
 
-            {/* Market Exposure Heatmap - Full Width */}
-            <MarketExposureHeatmap />
+            {/* Market Filter Pipeline Dashboard - Full Width */}
+            <MarketFilterDashboard />
 
             {/* Risk Analysis Charts */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
