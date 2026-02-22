@@ -16,7 +16,8 @@
  */
 
 import * as dotenv from "dotenv";
-dotenv.config();
+dotenv.config(); // .env
+dotenv.config({ path: '.env.local', override: true }); // .env.local overrides
 
 const BASE_URL = process.argv[2];
 const EXPECTED_SHA = process.argv[3]; // Optional: verify deployed version

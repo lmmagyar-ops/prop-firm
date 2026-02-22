@@ -77,15 +77,29 @@ git merge develop
 git push origin main
 ```
 
-### 8. Post-Deploy Smoke Test
+### 8. Post-Deploy Verification (Deep Health)
 ```bash
-# Automated production health check (no DB writes, read-only)
-npm run test:deploy -- https://prop-firmx.vercel.app
+# Wait ~90s for Vercel build to complete, then run deep health verification.
+# Pass the merge commit SHA to verify the correct code is deployed.
+# Requires CRON_SECRET in .env.local for deep checks (DB, Sentry, worker, daily reset).
+npm run test:deploy -- https://prop-firmx.vercel.app $(git rev-parse --short HEAD)
 ```
+
+**All 10 checks must pass before proceeding:**
+- Homepage + Login page serve (200)
+- Deployed version matches expected SHA
+- Database connected
+- Sentry SDK initialized
+- Worker heartbeat alive (< 120s)
+- `startOfDayEquity` populated for all active accounts
+- Cron status healthy
+- System status healthy
+
+**If any check fails, DO NOT proceed. Investigate immediately.**
 
 ### 9. Monitor for 10 Minutes
 - **Sentry:** Check https://prop-firm-org.sentry.io → no new error spikes
-- **Re-run smoke:** `npm run test:deploy -- https://prop-firmx.vercel.app`
+- **Re-run verification:** `npm run test:deploy -- https://prop-firmx.vercel.app`
 - **If error rate spikes:** Run emergency rollback immediately (see below)
 
 ### 10. Switch Back to Develop
@@ -99,7 +113,7 @@ git checkout develop
 | Switch to staging | `git checkout develop` |
 | Push to staging | `git push origin develop` |
 | Promote to prod | `git checkout main && git merge develop && git push` |
-| Post-deploy smoke | `npm run test:deploy -- https://prop-firmx.vercel.app` |
+| Post-deploy verify | `npm run test:deploy -- https://prop-firmx.vercel.app $(git rev-parse --short HEAD)` |
 | Check current branch | `git branch` |
 
 ## Emergency Rollback

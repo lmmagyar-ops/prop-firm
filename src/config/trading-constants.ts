@@ -19,4 +19,4 @@
  * diverge (e.g., higher-tier accounts get access to lower-volume markets),
  * update the ingestion filter to use the LOWEST tier's threshold.
  */
-export const MIN_MARKET_VOLUME = 100_000; // $100K
+export const MIN_MARKET_VOLUME = parseInt(process.env.MIN_MARKET_VOLUME || '100000', 10);
