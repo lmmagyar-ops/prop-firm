@@ -30,17 +30,16 @@ vi.mock("@sentry/nextjs", () => ({
 }));
 
 // ── Mock Drizzle transaction ────────────────────────────────────
-
-// ── Mock Drizzle transaction ────────────────────────────────────
-// BalanceManager.readBalance() uses tx.select({...}).from(challenges).where() — NOT tx.query.*
-// This mock chain must match that exact call shape.
+// NOTE: BalanceManager.readBalance() uses tx.select().from().where() (NOT tx.query.*)
+// because postgres.js relational API leaks outside transaction scope.
+// See BalanceManager.ts header comment for full explanation.
 
 function createMockTx(currentBalance: string = "10000", startingBalance: string = "10000") {
-    const rowResult = [{ currentBalance, startingBalance }];
+    const selectResult = [{ currentBalance, startingBalance }];
     const tx = {
         select: vi.fn().mockReturnValue({
             from: vi.fn().mockReturnValue({
-                where: vi.fn().mockResolvedValue(rowResult),
+                where: vi.fn().mockResolvedValue(selectResult),
             }),
         }),
         update: vi.fn().mockReturnValue({
@@ -52,12 +51,12 @@ function createMockTx(currentBalance: string = "10000", startingBalance: string 
     return tx as unknown as Transaction;
 }
 
-// Helper: mock tx that returns no rows (challenge not found)
-function createMockTxNotFound() {
+/** Helper: creates a tx mock that returns empty rows (simulates challenge not found) */
+function createNotFoundTx() {
     const tx = {
         select: vi.fn().mockReturnValue({
             from: vi.fn().mockReturnValue({
-                where: vi.fn().mockResolvedValue([]), // empty = not found
+                where: vi.fn().mockResolvedValue([]),
             }),
         }),
         update: vi.fn(),
@@ -133,7 +132,7 @@ describe("BalanceManager.deductCost", () => {
     });
 
     it("throws when challenge not found", async () => {
-        const tx = createMockTxNotFound();
+        const tx = createNotFoundTx();
 
         await expect(
             BalanceManager.deductCost(tx, "nonexistent", 100)
@@ -189,7 +188,7 @@ describe("BalanceManager.creditProceeds", () => {
     });
 
     it("throws when challenge not found", async () => {
-        const tx = createMockTxNotFound();
+        const tx = createNotFoundTx();
 
         await expect(
             BalanceManager.creditProceeds(tx, "nonexistent", 100)
@@ -286,7 +285,7 @@ describe("BalanceManager.adjustBalance", () => {
     });
 
     it("throws when challenge not found", async () => {
-        const tx = createMockTxNotFound();
+        const tx = createNotFoundTx();
 
         await expect(
             BalanceManager.adjustBalance(tx, "nonexistent", 100, "test")

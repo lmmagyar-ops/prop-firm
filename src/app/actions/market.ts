@@ -217,6 +217,7 @@ export interface SubMarket {
     price: number;
     volume: number;
     groupItemTitle?: string;
+    resolved?: boolean;
 }
 
 export interface EventMetadata {
@@ -309,9 +310,11 @@ export async function getActiveEvents(keepMarketIdList?: string[]): Promise<Even
                 }
 
                 // DEFENSIVE FILTER 1: Skip markets with invalid prices (≤0.01 or ≥0.99)
-                // These indicate resolved, stale, or otherwise untradable markets
+                // POLYMARKET PARITY: If sub-market is already marked `resolved` by ingestion,
+                // keep it for display — these are informational context in threshold events.
+                // Only filter sub-markets that aren't marked resolved.
                 const price = market.price ?? 0;
-                if (price <= 0.01 || price >= 0.99) {
+                if (!market.resolved && (price <= 0.01 || price >= 0.99)) {
                     // POSITION-SAFE: Never hide a market the user has money in
                     if (!keepMarketIds?.has(market.id)) {
                         return false;
@@ -321,10 +324,13 @@ export async function getActiveEvents(keepMarketIdList?: string[]): Promise<Even
                 // DEFENSIVE FILTER 2: Skip markets with exactly 50% price (±0.5%) AND low volume
                 // 50% + low volume = placeholder with no real trading
                 // 50% + high volume = legitimate contentious market, let it through
-                const isFiftyPercent = Math.abs(price - 0.5) < 0.005;
-                const isLowVolume = (market.volume || 0) < 50000; // Under $50k
-                if (isFiftyPercent && isLowVolume) {
-                    return false;
+                // Skip this filter for resolved sub-markets (they won't be 50% anyway)
+                if (!market.resolved) {
+                    const isFiftyPercent = Math.abs(price - 0.5) < 0.005;
+                    const isLowVolume = (market.volume || 0) < 50000; // Under $50k
+                    if (isFiftyPercent && isLowVolume) {
+                        return false;
+                    }
                 }
 
                 return true; // Keep the market
@@ -443,14 +449,24 @@ export async function getActiveEvents(keepMarketIdList?: string[]): Promise<Even
                         if (liveEntry?.price) {
                             const livePrice = parseFloat(liveEntry.price);
                             if (livePrice > 0.01 && livePrice < 0.99) {
-                                // Tradable range — update price
+                                // Tradable range — update price, clear resolved if it was set
                                 market.price = livePrice;
+                                if (market.resolved) market.resolved = false;
                                 updatedCount++;
                             } else {
                                 // LAYER 1: Market has reached resolution territory.
-                                // Mark for removal UNLESS user has an open position.
+                                // Mark as resolved for display purposes.
+                                // Remove UNLESS user has an open position.
                                 if (!keepMarketIds?.has(market.id)) {
-                                    removedMarketIds.push(market.id);
+                                    // If it came from a multi-outcome event (has groupItemTitle),
+                                    // keep it but mark resolved. Otherwise remove it.
+                                    if (market.groupItemTitle) {
+                                        market.price = livePrice;
+                                        market.resolved = true;
+                                        updatedCount++;
+                                    } else {
+                                        removedMarketIds.push(market.id);
+                                    }
                                 } else {
                                     // User has position — keep the market, update the price
                                     market.price = livePrice;

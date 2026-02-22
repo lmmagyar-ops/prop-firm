@@ -90,6 +90,17 @@ export function EventDetailModal({ event, open, onClose, onTrade, challengeId }:
 
     const selectedMarket = event.markets.find(m => m.id === selectedMarketId) || event.markets[0];
 
+    // POLYMARKET PARITY: Sort sub-markets by groupItemTitle numerically (if available)
+    // so threshold events display 60K → 62K → 64K → ... → 80K
+    const sortedMarkets = [...event.markets].sort((a, b) => {
+        if (a.groupItemTitle && b.groupItemTitle) {
+            const numA = parseFloat(a.groupItemTitle.replace(/,/g, ''));
+            const numB = parseFloat(b.groupItemTitle.replace(/,/g, ''));
+            if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+        }
+        return 0; // Preserve original order for non-numeric titles
+    });
+
     const formatVolume = (volume: number) => {
         if (volume >= 1_000_000) return `$${(volume / 1_000_000).toFixed(1)}M`;
         if (volume >= 1_000) return `$${(volume / 1_000).toFixed(0)}K`;
@@ -163,7 +174,7 @@ export function EventDetailModal({ event, open, onClose, onTrade, challengeId }:
                     {/* Outcome Legend (top outcomes) */}
                     {event.markets.length > 3 && (
                         <div className="flex flex-wrap gap-3 mt-5 pt-4 border-t border-slate-100/50 text-[11px] font-medium tracking-wide">
-                            {event.markets.slice(0, 4).map((market, i) => (
+                            {sortedMarkets.slice(0, 4).map((market, i) => (
                                 <span key={market.id} className="flex items-center gap-1.5 opacity-80 hover:opacity-100 transition-opacity cursor-default">
                                     <span className={cn(
                                         "w-1.5 h-1.5 rounded-full",
@@ -172,7 +183,7 @@ export function EventDetailModal({ event, open, onClose, onTrade, challengeId }:
                                                 i === 2 ? "bg-purple-500" : "bg-emerald-500"
                                     )} />
                                     <span className="text-zinc-400">
-                                        {getDisplayName(market.question, event.title)}
+                                        {market.groupItemTitle || getDisplayName(market.question, event.title)}
                                     </span>
                                 </span>
                             ))}
@@ -227,7 +238,7 @@ export function EventDetailModal({ event, open, onClose, onTrade, challengeId }:
                         </div>
                     </div>
 
-                    {event.markets.map((market) => (
+                    {sortedMarkets.map((market) => (
                         <OutcomeRow
                             key={market.id}
                             market={market}
@@ -289,7 +300,7 @@ export function EventDetailModal({ event, open, onClose, onTrade, challengeId }:
                     "h-[57px]"
                 )}>
                     <h3 className={cn("font-bold text-sm", textColor)}>
-                        {selectedMarket ? getDisplayName(selectedMarket.question, event.title) : 'Select an outcome'}
+                        {selectedMarket ? (selectedMarket.groupItemTitle || getDisplayName(selectedMarket.question, event.title)) : 'Select an outcome'}
                     </h3>
                 </div>
 
@@ -370,8 +381,14 @@ function OutcomeRow({ market, eventTitle, isSelected, onSelect, onTrade }: Outco
         >
             {/* Outcome Name + Volume */}
             < div className="flex-1 min-w-0 pr-4" >
-                <div className="text-[15px] transition-colors flex flex-col justify-center text-white group-hover:text-primary">
-                    {getCleanOutcomeName(market.question, eventTitle)}
+                <div className={cn(
+                    "text-[15px] transition-colors flex flex-col justify-center",
+                    market.resolved ? "text-zinc-500" : "text-white group-hover:text-primary"
+                )}>
+                    {market.groupItemTitle || getCleanOutcomeName(market.question, eventTitle)}
+                    {market.resolved && (
+                        <span className="text-[10px] text-zinc-600 uppercase tracking-wider font-medium">Resolved</span>
+                    )}
                 </div>
                 <div className="text-xs text-zinc-500 mt-0.5">
                     {formatVolume(market.volume)} Vol.
@@ -381,7 +398,8 @@ function OutcomeRow({ market, eventTitle, isSelected, onSelect, onTrade }: Outco
             < div className="w-20 text-right mr-6 flex flex-col items-end justify-center" >
                 <span className={cn(
                     "text-lg font-bold tabular-nums leading-none",
-                    market.price >= 0.5 ? "text-emerald-400" : "text-zinc-400"
+                    market.resolved ? "text-zinc-500" :
+                        market.price >= 0.5 ? "text-emerald-400" : "text-zinc-400"
                 )}>
                     {percentage}
                 </span>
@@ -389,22 +407,34 @@ function OutcomeRow({ market, eventTitle, isSelected, onSelect, onTrade }: Outco
 
             < div className="flex rounded-lg p-1 gap-1 bg-zinc-800/50" >
                 <button
-                    onClick={(e) => { e.stopPropagation(); onTrade('yes'); }}
-                    className="relative w-24 h-10 flex items-center justify-between px-3 rounded-md transition-all group/btn bg-[#00C896] hover:bg-[#00B88A] active:scale-[0.98]"
+                    onClick={(e) => { e.stopPropagation(); if (!market.resolved) onTrade('yes'); }}
+                    className={cn(
+                        "relative w-24 h-10 flex items-center justify-between px-3 rounded-md transition-all group/btn",
+                        market.resolved
+                            ? "bg-zinc-700/50 cursor-not-allowed opacity-50"
+                            : "bg-[#00C896] hover:bg-[#00B88A] active:scale-[0.98]"
+                    )}
+                    disabled={market.resolved}
                 >
-                    <span className="text-xs font-bold uppercase tracking-wide text-[#052e1f]">Yes</span>
-                    <span className="text-base font-bold text-[#052e1f]">
-                        {parseFloat(yesCents) < 1 ? "<1" : yesCents}¢
+                    <span className={cn("text-xs font-bold uppercase tracking-wide", market.resolved ? "text-zinc-400" : "text-[#052e1f]")}>{market.resolved ? "—" : "Yes"}</span>
+                    <span className={cn("text-base font-bold", market.resolved ? "text-zinc-400" : "text-[#052e1f]")}>
+                        {market.resolved ? "—" : (parseFloat(yesCents) < 1 ? "<1" : yesCents) + "¢"}
                     </span>
                 </button>
 
                 <button
-                    onClick={(e) => { e.stopPropagation(); onTrade('no'); }}
-                    className="relative w-24 h-10 flex items-center justify-between px-3 rounded-md transition-all group/btn bg-[#E63E5D] hover:bg-[#D43552] active:scale-[0.98]"
+                    onClick={(e) => { e.stopPropagation(); if (!market.resolved) onTrade('no'); }}
+                    className={cn(
+                        "relative w-24 h-10 flex items-center justify-between px-3 rounded-md transition-all group/btn",
+                        market.resolved
+                            ? "bg-zinc-700/50 cursor-not-allowed opacity-50"
+                            : "bg-[#E63E5D] hover:bg-[#D43552] active:scale-[0.98]"
+                    )}
+                    disabled={market.resolved}
                 >
-                    <span className="text-xs font-bold uppercase tracking-wide text-[#380e14]">No</span>
-                    <span className="text-base font-bold text-[#380e14]">
-                        {parseFloat(noCents) < 1 ? "<1" : noCents}¢
+                    <span className={cn("text-xs font-bold uppercase tracking-wide", market.resolved ? "text-zinc-400" : "text-[#380e14]")}>{market.resolved ? "—" : "No"}</span>
+                    <span className={cn("text-base font-bold", market.resolved ? "text-zinc-400" : "text-[#380e14]")}>
+                        {market.resolved ? "—" : (parseFloat(noCents) < 1 ? "<1" : noCents) + "¢"}
                     </span>
                 </button>
             </div >
@@ -572,7 +602,7 @@ function TradingSidebar({ market, eventTitle, onTradeComplete, initialSide = 'ye
                 </div>
                 <div>
                     <div className="text-sm font-semibold line-clamp-2 text-white">
-                        {getCleanOutcomeName(market.question, eventTitle || "")}
+                        {market.groupItemTitle || getCleanOutcomeName(market.question, eventTitle || "")}
                     </div>
                 </div>
             </div>
