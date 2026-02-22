@@ -546,34 +546,36 @@ class IngestionWorker {
                     // Process each market within the event
                     const subMarkets: ProcessedSubMarket[] = [];
                     const seenQuestions = new Set<string>();
+                    const fr = { total: 0, closed: 0, endDate: 0, spam: 0, noPrices: 0, placeholder: 0, archPrefix: 0, noTokens: 0, duplicate: 0, priceBounds: 0, volume: 0, survived: 0 };
                     for (const market of event.markets) {
-                        if (market.closed || market.archived) continue;
+                        fr.total++;
+                        if (market.closed || market.archived) { fr.closed++; continue; }
 
                         /* eslint-disable @typescript-eslint/no-explicit-any */
                         if ((market as Record<string, any>).endDate) {
                             const endDate = new Date((market as Record<string, any>).endDate);
-                            if (endDate.getTime() < Date.now()) continue;
+                            if (endDate.getTime() < Date.now()) { fr.endDate++; continue; }
                         }
                         /* eslint-enable @typescript-eslint/no-explicit-any */
 
                         // Filter out spam sub-markets (e.g., "Super Bowl cancelled")
-                        if (isSpamMarket(market.question)) continue;
+                        if (isSpamMarket(market.question)) { fr.spam++; continue; }
 
                         const prices = JSON.parse(market.outcomePrices || '[]');
 
                         // Filter out empty prices
-                        if (!prices || prices.length < 2) continue;
+                        if (!prices || prices.length < 2) { fr.noPrices++; continue; }
 
                         // Filter out "Individual [A-Z]" placeholders (confusing for users)
-                        if (market.question.includes("Individual ") || market.question.includes("Someone else")) continue;
+                        if (market.question.includes("Individual ") || market.question.includes("Someone else")) { fr.placeholder++; continue; }
 
                         // Filter out "arch" prefix typos from Polymarket
-                        if (market.question.startsWith("arch")) continue;
+                        if (market.question.startsWith("arch")) { fr.archPrefix++; continue; }
 
                         const clobTokens = JSON.parse(market.clobTokenIds || '[]');
                         const outcomes = JSON.parse(market.outcomes || '[]');
 
-                        if (clobTokens.length === 0) continue;
+                        if (clobTokens.length === 0) { fr.noTokens++; continue; }
 
                         // Deduplication: Don't show the same outcome twice (e.g. "Rick Rieder")
                         // Polymarket sometimes lists the same person twice with different IDs.
@@ -582,7 +584,7 @@ class IngestionWorker {
                         const cleanedName = cleanOutcomeName(sanitizeText(market.question));
                         const normalizedQ = cleanedName.toLowerCase();
                         if (seenQuestions.has(normalizedQ)) {
-                            // If we already have this outcome name, skip the duplicate.
+                            fr.duplicate++;
                             continue;
                         }
                         seenQuestions.add(normalizedQ);
@@ -594,10 +596,10 @@ class IngestionWorker {
                         // Skip markets with very low prices (≤1%) - these are either
                         // delisted, inactive, or effectively untradable.
                         // At 1%, the NO side is 99¢ which creates bad UX.
-                        if (yesPrice <= 0.01) continue;
+                        if (yesPrice <= 0.01) { fr.priceBounds++; continue; }
 
                         // Also skip markets with very high prices (≥99%) for same reason
-                        if (yesPrice >= 0.99) continue;
+                        if (yesPrice >= 0.99) { fr.priceBounds++; continue; }
 
                         // NOTE: 50% filter removed here — the server action layer
                         // (market.ts getActiveEvents) has a smarter volume-aware version
@@ -616,8 +618,9 @@ class IngestionWorker {
 
                         // VOLUME FILTER: Skip sub-markets below the trading threshold.
                         // Without this, users see markets they can't trade (risk engine blocks at $100K).
-                        if (marketVolume < MIN_MARKET_VOLUME) continue;
+                        if (marketVolume < MIN_MARKET_VOLUME) { fr.volume++; continue; }
 
+                        fr.survived++;
                         subMarkets.push({
                             id: tokenId,
                             question: cleanOutcomeName(sanitizeText(market.question)),
@@ -626,6 +629,9 @@ class IngestionWorker {
                             volume: marketVolume,
                             groupItemTitle: market.groupItemTitle || undefined,
                         });
+                    }
+                    if (fr.total > 0) {
+                        logger.info(`[Ingestion] Filter report (${event.title?.slice(0, 30)}): total=${fr.total} closed=${fr.closed} endDate=${fr.endDate} spam=${fr.spam} noPrices=${fr.noPrices} placeholder=${fr.placeholder} priceBounds=${fr.priceBounds} volume=${fr.volume} duplicate=${fr.duplicate} survived=${fr.survived}`);
                     }
 
                     if (subMarkets.length === 0) continue;
@@ -735,22 +741,25 @@ class IngestionWorker {
             const allMarkets: StoredBinaryMarket[] = [];
             const seenIds = new Set<string>();
 
+            const bfr = { total: 0, closed: 0, endDate: 0, spam: 0, volume: 0, multiOutcome: 0, duplicate: 0, stalePrice: 0, placeholderPrice: 0, nearResolved: 0, survived: 0 };
+
             for (const m of data) {
                 try {
-                    if (m.closed === true || m.archived === true) continue;
+                    bfr.total++;
+                    if (m.closed === true || m.archived === true) { bfr.closed++; continue; }
 
                     // STALE MARKET PRUNING: Skip markets whose end_date has passed
                     if (m.endDate) {
                         const endDate = new Date(m.endDate);
-                        if (endDate.getTime() < Date.now()) continue;
+                        if (endDate.getTime() < Date.now()) { bfr.endDate++; continue; }
                     }
 
                     // Filter out spam markets (5-minute crypto bets)
-                    if (isSpamMarket(m.question)) continue;
+                    if (isSpamMarket(m.question)) { bfr.spam++; continue; }
 
                     // LIQUIDITY FILTER: Minimum volume to prevent manipulation
                     const volume = parseFloat(m.volume || "0");
-                    if (volume < MIN_MARKET_VOLUME) continue;
+                    if (volume < MIN_MARKET_VOLUME) { bfr.volume++; continue; }
 
                     const clobTokens = JSON.parse(m.clobTokenIds);
                     const outcomes = JSON.parse(m.outcomes);
@@ -760,14 +769,13 @@ class IngestionWorker {
                     const isMultiOutcome = outcomes.length > 2;
 
                     if (isMultiOutcome) {
-                        // MULTI-OUTCOME: Skip these here. They are handled by fetchFeaturedEvents.
-                        // Exploding them into binary markets creates UI clutter (repetitive cards).
+                        bfr.multiOutcome++;
                         continue;
                     } else {
                         // BINARY MARKET: Process as before
                         const yesToken = clobTokens[0];
                         const noToken = clobTokens.length > 1 ? clobTokens[1] : null;
-                        if (!yesToken || seenIds.has(yesToken)) continue;
+                        if (!yesToken || seenIds.has(yesToken)) { bfr.duplicate++; continue; }
 
                         // DUAL-TOKEN FIX: Store complement mapping
                         if (noToken) {
@@ -789,12 +797,14 @@ class IngestionWorker {
 
                             // Skip stale markets where both prices are 0 or near-0
                             if (yesPrice < 0.001 && noPrice < 0.001) {
+                                bfr.stalePrice++;
                                 continue;
                             }
 
                             // Skip markets with exactly 50% price (±0.5%) - placeholder prices
                             // with no real trading activity. Real markets rarely hit exactly 50%.
                             if (Math.abs(yesPrice - 0.5) < 0.005) {
+                                bfr.placeholderPrice++;
                                 continue;
                             }
 
@@ -803,18 +813,20 @@ class IngestionWorker {
                             // NEAR-RESOLVED FILTER: Skip markets where outcome is effectively decided
                             // YES >= 95% or YES <= 5% means the market is too close to resolution
                             if (yesPrice >= 0.95 || yesPrice <= 0.05) {
+                                bfr.nearResolved++;
                                 continue;
                             }
                         } catch (e) {
                             logger.warn('[Ingestion] Price parse failed for market, using default', { id: m.conditionId, error: String(e) });
                         }
 
+                        bfr.survived++;
                         allMarkets.push({
                             id: yesToken,
                             question: cleanOutcomeName(m.question),
                             description: m.description,
                             image: m.image,
-                            volume: volume, // Use already-parsed volume (line 759)
+                            volume: volume,
                             outcomes: outcomes,
                             end_date: m.endDate,
                             categories: categories,
@@ -827,6 +839,7 @@ class IngestionWorker {
                     logger.warn('[Ingestion] Skipped invalid market', { error: String(e) });
                 }
             }
+            logger.info(`[Ingestion] Filter report (binary): total=${bfr.total} closed=${bfr.closed} endDate=${bfr.endDate} spam=${bfr.spam} volume=${bfr.volume} multiOutcome=${bfr.multiOutcome} duplicate=${bfr.duplicate} stalePrice=${bfr.stalePrice} placeholderPrice=${bfr.placeholderPrice} nearResolved=${bfr.nearResolved} survived=${bfr.survived}`);
 
             // Store in Redis
             await this.redis.set("market:active_list", JSON.stringify(allMarkets), 'EX', 600);
