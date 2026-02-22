@@ -6,6 +6,7 @@ import { getActiveMarkets, getAllMarketsFlat, getMarketById, MarketMetadata } fr
 import { ArbitrageDetector } from "./arbitrage-detector";
 import { MarketService } from "./market";
 import { getPortfolioValue } from "./position-utils";
+import { MIN_MARKET_VOLUME } from "@/config/trading-constants";
 import { createLogger } from "./logger";
 
 const logger = createLogger('RiskEngine');
@@ -247,7 +248,7 @@ export class RiskEngine {
         }
 
         // RULE 7: Minimum volume filter
-        const minVolume = rules.minMarketVolume || 100_000;
+        const minVolume = rules.minMarketVolume || MIN_MARKET_VOLUME;
         if (marketVolume < minVolume) {
             return this.deny(`This market has insufficient volume ($${marketVolume.toLocaleString()}). Minimum required: $${minVolume.toLocaleString()}.`, audit);
         }
@@ -467,7 +468,8 @@ export class RiskEngine {
         if (volume >= 10_000_000) return balance * 0.05;   // >$10M → 5%
         if (volume >= 1_000_000) return balance * 0.025;   // $1-10M → 2.5%
         if (volume >= 100_000) return balance * 0.02;      // $100k-1M → 2%
-        return 0; // Block trading on <$100k volume (handled by RULE 7)
+        if (volume >= MIN_MARKET_VOLUME) return balance * 0.015; // Configurable floor → 1.5%
+        return 0; // Block trading below MIN_MARKET_VOLUME (handled by RULE 7)
     }
 
     // ─── Category exposure (in-memory, using pre-fetched positions) ──

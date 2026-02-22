@@ -616,8 +616,8 @@ class IngestionWorker {
 
                         const marketVolume = parseFloat(market.volume || "0");
 
-                        // VOLUME FILTER: Skip sub-markets below the trading threshold.
-                        // Without this, users see markets they can't trade (risk engine blocks at $100K).
+                        // VOLUME FILTER: Skip sub-markets below the configurable threshold.
+                        // Matches the risk engine's MIN_MARKET_VOLUME (env var, default $100K).
                         if (marketVolume < MIN_MARKET_VOLUME) { fr.volume++; continue; }
 
                         fr.survived++;
