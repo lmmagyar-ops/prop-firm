@@ -281,16 +281,15 @@ export async function getActiveEvents(keepMarketIdList?: string[]): Promise<Even
                     const month = rangeMatch[1];
                     const endDay = parseInt(rangeMatch[3], 10); // Use end of range
                     const currentYear = now.getFullYear();
-                    // Snap to end-of-day ET (UTC-5) to avoid midnight UTC → prior-evening ET off-by-one.
-                    // e.g. "February 22" parses as midnight UTC = 6 PM ET Feb 21 without this fix.
+                    // Use 48h grace window (not 24h) so a market named "February 22" isn't
+                    // pruned at 9 AM CT on Feb 22. new Date(string) parses as midnight LOCAL
+                    // time, which in UTC can appear to be "yesterday" by early-morning ET.
+                    // 48h buffer gives markets a full extra day before pruning.
                     const parsedDate = new Date(`${month} ${endDay} ${currentYear}`);
-                    parsedDate.setHours(23 + 5, 59, 59, 999); // 23:59:59 ET = 04:59:59 UTC next day
+                    const twoDaysAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000);
 
-                    if (!isNaN(parsedDate.getTime())) {
-                        const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-                        if (parsedDate < oneDayAgo) {
-                            return false; // Filter out this market
-                        }
+                    if (!isNaN(parsedDate.getTime()) && parsedDate < twoDaysAgo) {
+                        return false; // Filter out this market
                     }
                 }
 
@@ -301,17 +300,15 @@ export async function getActiveEvents(keepMarketIdList?: string[]): Promise<Even
                     const month = singleMatch[1];
                     const day = parseInt(singleMatch[2], 10);
                     const currentYear = now.getFullYear();
-                    // Snap to end-of-day ET (UTC-5) to avoid midnight UTC → prior-evening ET off-by-one.
-                    // e.g. "February 22" parses as midnight UTC = 6 PM ET Feb 21 without this fix.
+                    // Use 48h grace window (not 24h) so a market named "February 22" isn't
+                    // pruned at 9 AM CT on Feb 22. new Date(string) parses as midnight LOCAL
+                    // time, which in UTC can appear to be "yesterday" by early-morning ET.
+                    // 48h buffer gives markets a full extra day before pruning.
                     const parsedDate = new Date(`${month} ${day} ${currentYear}`);
-                    parsedDate.setHours(23 + 5, 59, 59, 999); // 23:59:59 ET = 04:59:59 UTC next day
+                    const twoDaysAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000);
 
-                    // If parsing worked and date is in the past (with 1 day buffer)
-                    if (!isNaN(parsedDate.getTime())) {
-                        const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-                        if (parsedDate < oneDayAgo) {
-                            return false; // Filter out this market
-                        }
+                    if (!isNaN(parsedDate.getTime()) && parsedDate < twoDaysAgo) {
+                        return false; // Filter out this market
                     }
                 }
 
