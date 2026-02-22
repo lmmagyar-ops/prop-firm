@@ -8,6 +8,19 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 > **New agent? Read this section before doing anything else.**
 > This is the single source of truth for what actually works. Do NOT trust individual journal entries — they reflect what the agent *believed*, not what the user confirmed.
 
+### Last Confirmed by Agent (Feb 22, 10:55 AM CT)
+
+#### ✅ Stale-Date Filter Off-By-One Bug — FIXED & COMMITTED (develop)
+Commit `be6918f`. Fixes missing sub-markets for same-day threshold events.
+
+**Root Cause:** `getActiveEvents()` in `market.ts` parsed "February 22 2026" as midnight UTC = ~6 PM CT Feb 21. With the 24h grace window (`oneDayAgo`), any same-day market was incorrectly filtered as "in the past" by morning ET. All 11 Bitcoin Feb 22 thresholds (60K–80K) were being dropped from the response despite being correctly stored in Redis.
+
+**Fix:** Both range-date and single-date parsers now snap to end-of-day ET (`parsedDate.setHours(28, 59, 59, 999)` = 23:59:59 ET = 04:59:59 UTC) before comparing.
+
+**Verified:** Modal now shows all 11 thresholds (60K–80K), 10 resolved, 1 active (68K at 17.5%). Chart is hidden, table shows OUTCOME / % CHANCE / ACTIONS headers. ✅
+
+---
+
 ### Last Confirmed by Agent (Feb 22, 9:35 AM CT)
 
 #### ✅ Market Display Parity Fix — DEPLOYED TO PRODUCTION

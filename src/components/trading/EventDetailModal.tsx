@@ -171,8 +171,8 @@ export function EventDetailModal({ event, open, onClose, onTrade, challengeId }:
                         </div>
                     </div>
 
-                    {/* Outcome Legend (top outcomes) */}
-                    {event.markets.length > 3 && (
+                    {/* Outcome Legend — only for binary markets (multi-outcome gets full table) */}
+                    {!event.isMultiOutcome && (
                         <div className="flex flex-wrap gap-3 mt-5 pt-4 border-t border-slate-100/50 text-[11px] font-medium tracking-wide">
                             {sortedMarkets.slice(0, 4).map((market, i) => (
                                 <span key={market.id} className="flex items-center gap-1.5 opacity-80 hover:opacity-100 transition-opacity cursor-default">
@@ -192,7 +192,7 @@ export function EventDetailModal({ event, open, onClose, onTrade, challengeId }:
                 </div>
 
                 {/* Large Probability Display (Polymarket style) - For binary markets */}
-                {event.markets.length === 1 && (
+                {!event.isMultiOutcome && (
                     <div className="px-6 py-4 border-b border-white/5 animate-in fade-in duration-300">
                         <div className="flex items-baseline gap-3">
                             <span className={cn(
@@ -201,20 +201,16 @@ export function EventDetailModal({ event, open, onClose, onTrade, challengeId }:
                             )}>
                                 {formatPrice(event.markets[0].price)} chance
                             </span>
-                            <span className={cn(
-                                "text-sm font-medium",
-                                event.markets[0].price >= 0.5 ? "text-emerald-500/60" : "text-rose-500/60"
-                            )}>
-                                {event.markets[0].price >= 0.5 ? "▲" : "▼"} {Math.round(event.markets[0].price * 6)}%
-                            </span>
                         </div>
                     </div>
                 )}
 
                 {/* Outcomes List */}
                 <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col">
-                    {/* Price History Chart — Polymarket only */}
-                    {(
+                    {/* Price History Chart — only for binary markets.
+                        Multi-outcome events (Polymarket threshold/ranker markets) skip the chart
+                        entirely so all outcomes are visible without scrolling. */}
+                    {!event.isMultiOutcome && (
                         <div className="px-6 py-4 border-b border-white/5">
                             <ChartErrorBoundary>
                                 <ProbabilityChart
@@ -291,17 +287,39 @@ export function EventDetailModal({ event, open, onClose, onTrade, challengeId }:
                 borderColor,
                 "bg-zinc-900/50"
             )}>
-                {/* Right Panel Header - Matches Left Side */}
+                {/* Right Panel Header */}
                 <div className={cn(
-                    "flex items-center px-4 py-3 border-b",
+                    "flex items-start gap-3 px-4 py-3 border-b",
                     borderColor,
-                    "bg-transparent",
-                    // Match the height of the left panel header's bottom section or just fixed height
-                    "h-[57px]"
+                    "bg-transparent min-h-[57px]"
                 )}>
-                    <h3 className={cn("font-bold text-sm", textColor)}>
-                        {selectedMarket ? (selectedMarket.groupItemTitle || getDisplayName(selectedMarket.question, event.title)) : 'Select an outcome'}
-                    </h3>
+                    {event.markets.length > 1 ? (
+                        /* Multi-outcome: show outcome name + probability prominently (Polymarket style) */
+                        <div className="flex-1 min-w-0">
+                            <div className={cn("text-xs font-medium uppercase tracking-wider mb-0.5", subTextColor)}>
+                                Selected outcome
+                            </div>
+                            <div className="flex items-baseline gap-2">
+                                <span className={cn("font-bold text-sm leading-tight", textColor)}>
+                                    {selectedMarket ? (selectedMarket.groupItemTitle || getDisplayName(selectedMarket.question, event.title)) : '—'}
+                                </span>
+                                {selectedMarket && (
+                                    <span className={cn(
+                                        "text-sm font-bold tabular-nums",
+                                        selectedMarket.resolved ? "text-zinc-500" :
+                                            selectedMarket.price >= 0.5 ? "text-emerald-400" : "text-zinc-300"
+                                    )}>
+                                        {formatPrice(selectedMarket.price)}
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                    ) : (
+                        /* Binary: just the question */
+                        <h3 className={cn("font-bold text-sm", textColor)}>
+                            {selectedMarket ? (selectedMarket.groupItemTitle || getDisplayName(selectedMarket.question, event.title)) : 'Select an outcome'}
+                        </h3>
+                    )}
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
