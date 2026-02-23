@@ -1,4 +1,4 @@
-import { getCleanOutcomeName } from '@/lib/market-utils';
+import { getCleanOutcomeName, isStaleMarketQuestion } from '@/lib/market-utils';
 
 // Alias for backwards compatibility in tests
 const extractOutcomeLabel = getCleanOutcomeName;
@@ -130,6 +130,92 @@ describe('extractOutcomeLabel', () => {
                 .not.toBe('it');
             expect(extractOutcomeLabel('Will they win the championship?'))
                 .not.toBe('they');
+        });
+    });
+});
+// =====================================================================
+// isStaleMarketQuestion
+// Behavioral tests — the function that had 3 wrong fixes ship without coverage.
+// All tests inject `now` explicitly to be timezone-independent + deterministic.
+// Rule: filter when named_date < (now - 48h). Do NOT use setHours() or mutations.
+// =====================================================================
+describe('isStaleMarketQuestion', () => {
+    // Anchor: Feb 22 2026 at 10:00 UTC (9 AM CT, normal trading morning)
+    const FEB_22_10AM = new Date('2026-02-22T10:00:00.000Z');
+
+    describe('Single date patterns', () => {
+        it('does NOT filter a market that names today (Feb 22) — 48h grace', () => {
+            expect(isStaleMarketQuestion(
+                'Will Bitcoin be above $60,000 on February 22?',
+                FEB_22_10AM
+            )).toBe(false);
+        });
+
+        it('does NOT filter yesterday (Feb 21) — within 48h window', () => {
+            expect(isStaleMarketQuestion(
+                'Will Trump nominate someone on February 21?',
+                FEB_22_10AM
+            )).toBe(false);
+        });
+
+        it('DOES filter Feb 20 — exactly 48h+ in the past', () => {
+            // Feb 22 10:00 UTC - 48h = Feb 20 10:00 UTC. Feb 20 midnight < Feb 20 10:00 UTC → stale.
+            expect(isStaleMarketQuestion(
+                'Will Bitcoin be above $60,000 on February 20?',
+                FEB_22_10AM
+            )).toBe(true);
+        });
+
+        it('DOES filter Feb 19 — clearly old', () => {
+            expect(isStaleMarketQuestion(
+                'Will the Fed raise rates on February 19?',
+                FEB_22_10AM
+            )).toBe(true);
+        });
+
+        it('does NOT filter a future date (March 1)', () => {
+            expect(isStaleMarketQuestion(
+                'Will Bitcoin reach $100,000 by March 1?',
+                FEB_22_10AM
+            )).toBe(false);
+        });
+
+        it('returns false for questions with no date', () => {
+            expect(isStaleMarketQuestion(
+                'Will Bitcoin reach $100,000?',
+                FEB_22_10AM
+            )).toBe(false);
+        });
+    });
+
+    describe('Date range patterns', () => {
+        it('uses the END date of a range for staleness check', () => {
+            // Range "February 10-16" — end date Feb 16 is stale at Feb 22
+            expect(isStaleMarketQuestion(
+                'Will ETH price increase February 10-16?',
+                FEB_22_10AM
+            )).toBe(true);
+        });
+
+        it('does NOT filter range whose end date is within 48h', () => {
+            // Range "February 18-22" — end date Feb 22 is NOT stale
+            expect(isStaleMarketQuestion(
+                'Will BTC go up February 18-22?',
+                FEB_22_10AM
+            )).toBe(false);
+        });
+    });
+
+    describe('Regression: original bugs must NOT recur', () => {
+        it('Bug 1: setHours(23+5) overflows to next day — current code uses twoDaysAgo, no setHours', () => {
+            // The correct fix uses now.getTime() - 48h, no date mutation.
+            // Verify Feb 22 is not filtered (the bug caused Feb 22 to sometimes be filtered).
+            expect(isStaleMarketQuestion('Bitcoin above $60,000 on February 22?', FEB_22_10AM)).toBe(false);
+        });
+
+        it('Bug 2: +2d cutoff was actually +3d window — verify Feb 20 IS filtered (48h rule)', () => {
+            // The bug would have kept Feb 20 alive until Feb 24. Current code: Feb 20 midnight < Feb 20 10:00 UTC → stale.
+            expect(isStaleMarketQuestion('Trade on February 20?', FEB_22_10AM)).toBe(true);
         });
     });
 });
