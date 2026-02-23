@@ -227,8 +227,13 @@ export class TradeExecutor {
         // 5. DB Transaction (with Row Lock for Race Condition Prevention)
 
         const tradeResult = await db.transaction(async (tx) => {
-            // A. Lock the challenge row to prevent concurrent trades
-            // This serializes trades per challenge, preventing exposure limit bypass
+            // A. Lock the challenge row to prevent concurrent trades.
+            // SET LOCAL lock_timeout: if another transaction already holds this lock
+            // (e.g. a previous Vercel function was killed mid-transaction leaving an
+            // orphaned FOR UPDATE), fail fast with 55P03 instead of blocking for 30-60s
+            // until Neon's TCP keepalive detects the dead connection. The route catch
+            // block maps 55P03 → HTTP 409 "LOCK_TIMEOUT" for client retry.
+            await tx.execute(sql`SET LOCAL lock_timeout = '5000ms'`);
             await tx.execute(sql`SELECT id FROM challenges WHERE id = ${challenge.id} FOR UPDATE`);
 
             // B. Re-fetch challenge balance inside transaction (may have changed)

@@ -597,8 +597,15 @@ describe("TradeExecutor - Orchestration", () => {
     it("applies FOR UPDATE row lock before any balance/position ops", async () => {
         const callOrder: string[] = [];
 
+        // The two tx.execute() calls are always in fixed order:
+        //   1st → SET LOCAL lock_timeout (armed before acquiring lock)
+        //   2nd → SELECT ... FOR UPDATE (the actual lock acquisition)
+        // Use call count to distinguish them since Drizzle SQL template objects
+        // don't serialize usefully via String() inside mocks.
+        let executeCallCount = 0;
         mockTx.execute = vi.fn().mockImplementation(() => {
-            callOrder.push("FOR_UPDATE");
+            executeCallCount++;
+            callOrder.push(executeCallCount === 1 ? "SET_LOCK_TIMEOUT" : "FOR_UPDATE");
             return Promise.resolve();
         });
         mockTx.select = vi.fn().mockImplementation(() => {
@@ -618,9 +625,12 @@ describe("TradeExecutor - Orchestration", () => {
             "user-1", "challenge-123", "mkt-1", "BUY", 100
         );
 
-        // FOR UPDATE must come before SELECT
-        expect(callOrder[0]).toBe("FOR_UPDATE");
-        expect(callOrder[1]).toBe("SELECT");
+        // SET LOCAL lock_timeout must fire first, then FOR UPDATE, then SELECT.
+        // This ensures: (1) lock timeout is armed before acquiring the lock,
+        // (2) the lock is acquired before any balance/position reads.
+        expect(callOrder[0]).toBe("SET_LOCK_TIMEOUT");
+        expect(callOrder[1]).toBe("FOR_UPDATE");
+        expect(callOrder[2]).toBe("SELECT");
     });
 
     it("re-validates risk inside transaction (double-check pattern)", async () => {
@@ -642,3 +652,4 @@ describe("TradeExecutor - Orchestration", () => {
         expect(callCount).toBe(2);
     });
 });
+
