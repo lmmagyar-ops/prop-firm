@@ -12,6 +12,13 @@ import { calculatePositionMetrics } from "@/lib/position-utils";
 
 const log = createLogger("TradeAPI");
 
+// Raise Vercel's serverless function ceiling from 10s (default) to 60s.
+// Without this, Vercel kills the function mid-transaction while it holds a
+// FOR UPDATE lock on the challenges row. Neon takes 30-60s to detect the
+// dropped TCP connection and release the lock — causing the next trade
+// attempt to block for 30s until the lock is released.
+export const maxDuration = 60;
+
 export async function POST(req: NextRequest) {
     const session = await auth();
 
@@ -50,13 +57,30 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-        // Get active challenge for this user
-        const activeChallenge = await db.query.challenges.findFirst({
-            where: and(
-                eq(challenges.userId, userId),
-                eq(challenges.status, "active")
-            )
-        });
+        // FAN-OUT: claim idempotency key AND fetch challenge in parallel.
+        // These two operations are independent — neither waits on the other.
+        // Parallel execution saves ~200-500ms on warm paths and avoids the
+        // idempotency kvSetNx delaying the challenge query (or vice versa).
+        const [idempotencyCheck, activeChallenge] = await Promise.all([
+            idempotencyKey
+                ? checkIdempotency(idempotencyKey)
+                : Promise.resolve({ isDuplicate: false as const, cachedResponse: undefined }),
+            db.query.challenges.findFirst({
+                where: and(
+                    eq(challenges.userId, userId),
+                    eq(challenges.status, "active")
+                )
+            })
+        ]);
+
+        // Handle idempotency result (was previously checked before the challenge fetch)
+        if (idempotencyKey && idempotencyCheck.isDuplicate) {
+            if (idempotencyCheck.cachedResponse && typeof idempotencyCheck.cachedResponse === 'object' && 'inProgress' in idempotencyCheck.cachedResponse) {
+                return NextResponse.json({ error: "Trade already in progress" }, { status: 409 });
+            }
+            log.info(`Returning cached response for duplicate trade`, { idempotencyKey: idempotencyKey.slice(0, 8) });
+            return NextResponse.json(idempotencyCheck.cachedResponse);
+        }
 
         if (!activeChallenge) {
             return NextResponse.json({ error: "No active challenge found" }, { status: 400 });
@@ -165,6 +189,22 @@ export async function POST(req: NextRequest) {
 
     } catch (error: unknown) {
         // DEFENSE-IN-DEPTH: Structured error responses for client-side handling
+
+        // Handle Postgres lock_timeout (55P03) — happens when the FOR UPDATE lock
+        // can't be acquired within 5s, meaning another trade is in progress or an
+        // orphaned transaction still holds the lock. Return a retriable 409.
+        const pgCode = (error instanceof Error
+            ? ((error as unknown as Record<string, unknown>).cause as Record<string, unknown>)?.code
+            ?? (error as unknown as Record<string, unknown>).code
+            : undefined);
+        if (pgCode === '55P03') {
+            log.warn('Trade blocked by lock_timeout — orphaned transaction or concurrent trade', { userId });
+            return NextResponse.json(
+                { error: 'Another trade is in progress. Please wait a moment and try again.', code: 'LOCK_TIMEOUT' },
+                { status: 409 }
+            );
+        }
+
         const status = (error instanceof Error && "status" in error ? (error as Record<string, unknown>).status : undefined) || 500;
         const code = (error instanceof Error && "code" in error ? (error as Record<string, unknown>).code : undefined) || 'UNKNOWN';
         const data = (error instanceof Error && "data" in error ? (error as Record<string, unknown>).data : {}) || {};
