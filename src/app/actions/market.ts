@@ -260,7 +260,9 @@ export async function getActiveEvents(keepMarketIdList?: string[]): Promise<Even
                 const endDate = new Date(event.endDate);
                 // Keep events that haven't ended yet
                 // Add 1 hour buffer for settlement time
-                return endDate.getTime() + (60 * 60 * 1000) > now.getTime();
+                // 12-hour buffer: matches ingestion grace period for same-day resolved events
+                // (e.g. Bitcoin daily thresholds that resolve at noon ET but remain visible all day)
+                return endDate.getTime() + (12 * 60 * 60 * 1000) > now.getTime();
             } catch {
                 // If date parsing fails, keep the event
                 return true;
