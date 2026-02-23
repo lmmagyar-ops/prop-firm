@@ -30,8 +30,37 @@ interface UseTradeExecutionOptions {
 }
 
 /**
- * Hook for executing trades via the existing /api/trade/execute endpoint
+ * Typed shape of every response from /api/trade/execute (success + all error codes).
+ * Using a concrete interface rather than 'any' keeps our no-any rule intact and makes
+ * future API changes fail loudly at compile time.
  */
+interface TradeApiResponse {
+    // Error paths
+    error?: string;
+    code?: string;          // e.g. 'MARKET_RESOLVED', 'PRICE_MOVED', 'SLIPPAGE_TOO_HIGH'
+    freshPrice?: number;
+    // Success path
+    trade?: {
+        id: string;
+        shares: number;
+        price: number;
+    };
+    position?: {
+        id: string;
+        shares: number;
+        avgPrice: number;
+        invested: number;
+        currentPnl: number;
+        roi: number;
+        side: "YES" | "NO";
+    };
+    challengeStatus?: string;
+    newBalance?: number;
+}
+
+/** Maximum time to wait for the trade API before aborting and unlocking the button. */
+const TRADE_EXECUTE_TIMEOUT_MS = 30_000;
+
 export function useTradeExecution(options: UseTradeExecutionOptions = {}) {
     const [isLoading, setIsLoading] = useState(false);
     const [lastResult, setLastResult] = useState<TradeResult | null>(null);
@@ -57,19 +86,53 @@ export function useTradeExecution(options: UseTradeExecutionOptions = {}) {
             // Generate unique idempotency key per trade attempt
             const idempotencyKey = crypto.randomUUID();
 
-            const response = await fetch("/api/trade/execute", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                credentials: "include", // Required to send session cookies
-                body: JSON.stringify({
-                    marketId,
-                    outcome,
-                    amount,
-                    idempotencyKey,
-                }),
-            });
+            // TIMEOUT GUARD: 30s AbortController prevents infinite spinner when server hangs
+            // (DB lock contention, connection pool exhaustion, slow risk validation inside
+            // a FOR UPDATE transaction are all real failure modes that produce zero response).
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), TRADE_EXECUTE_TIMEOUT_MS);
 
-            const data = await response.json();
+            let response: Response;
+            try {
+                response = await fetch("/api/trade/execute", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include",
+                    signal: controller.signal,
+                    body: JSON.stringify({
+                        marketId,
+                        outcome,
+                        amount,
+                        idempotencyKey,
+                    }),
+                });
+            } finally {
+                clearTimeout(timeoutId);
+            }
+
+            // Defensively parse response body — some error paths (e.g. empty 409 body from
+            // an upstream middleware) return non-JSON, which would throw SyntaxError here
+            // and produce a cryptic "Unexpected end of JSON" toast rather than the real error.
+            let data: TradeApiResponse = {};
+
+            try {
+                data = await response.json();
+            } catch {
+                // Body was empty or not JSON. Build a synthetic error from the status code.
+                if (!response.ok) {
+                    const errorMsg = `Trade failed (HTTP ${response.status})`;
+                    toast.error(errorMsg);
+                    options.onError?.(errorMsg);
+                    setLastResult({ success: false, error: errorMsg });
+                    return { success: false, error: errorMsg };
+                }
+                // Unexpected: success status but no JSON body. Treat as failure.
+                const errorMsg = "Trade returned no data";
+                toast.error(errorMsg);
+                options.onError?.(errorMsg);
+                setLastResult({ success: false, error: errorMsg });
+                return { success: false, error: errorMsg };
+            }
 
             if (!response.ok) {
                 // Session expired — redirect to login
@@ -142,8 +205,16 @@ export function useTradeExecution(options: UseTradeExecutionOptions = {}) {
             return result;
 
         } catch (error: unknown) {
-            const errorMsg = getErrorMessage(error) || "Network error";
-            toast.error(errorMsg);
+            // Distinguish timeout from genuine network errors for actionable messaging
+            const isTimeout = error instanceof Error && error.name === 'AbortError';
+            const errorMsg = isTimeout
+                ? "Trade timed out — the server is unresponsive. Your funds were NOT debited. Please try again."
+                : (getErrorMessage(error) || "Network error");
+            if (isTimeout) {
+                toast.error(errorMsg, { duration: 8000 });
+            } else {
+                toast.error(errorMsg);
+            }
             options.onError?.(errorMsg);
             setLastResult({ success: false, error: errorMsg });
             return { success: false, error: errorMsg };

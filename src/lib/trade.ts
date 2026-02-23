@@ -234,7 +234,12 @@ export class TradeExecutor {
             // B. Re-fetch challenge balance inside transaction (may have changed)
             const [lockedChallenge] = await tx.select().from(challenges).where(eq(challenges.id, challenge.id));
 
-            // C. Re-validate risk inside transaction
+            // C. Re-validate risk inside transaction (SECURITY REQUIRED — not redundant)
+            // The pre-transaction risk check (step 3 above) ran on live-but-unlocked data.
+            // Race: Trade A and Trade B could both pass the pre-check at t=0 (stale exposure read),
+            // then Trade A executes first. When Trade B acquires this lock, its pre-check result
+            // is stale — Trade A's positions are now committed. Only this in-transaction call
+            // can see the fresh, post-commit exposure and enforce limits correctly.
             if (side === "BUY") {
                 if (parseFloat(lockedChallenge.currentBalance) < amount) {
                     throw new InsufficientFundsError(userId, amount, parseFloat(lockedChallenge.currentBalance));
