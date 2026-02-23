@@ -41,6 +41,8 @@
 - When handing off, leave a "Tomorrow Morning" section with prioritized next steps ranked by leverage × risk.
 - Document root causes, not just fixes. Future agents need the "why."
 - **Update the `## ⚠️ CURRENT STATUS` section at the top of journal.md.** This is the single source of truth for what actually works, what's broken, and what's unverified. Do NOT just append a new entry and declare done.
+- **7-day rolling window.** When writing journal entries, delete all entries older than 7 days from today. Old history lives in the KI forensic audit; the journal is a working context window, not an archive.
+- **Chunk journal writes to ≤40 lines per tool call.** The IDE silently truncates tool call parameters above ~2,000 characters before they execute. Split large updates into sequential writes and confirm each diff. Follow `.agent/workflows/journal.md`.
 
 > [!CAUTION]
 > **If a user reports a bug, you MUST follow the `/fix-bug` workflow.**
@@ -68,7 +70,19 @@ The last line is the most important. A fix is **unverified** until the user conf
 
 ---
 
-## 🐛 Bug Fixing Protocol (MANDATORY)
+## 🧪 Test Accounts
+
+Use these accounts to reproduce user-reported bugs and perform browser smoke tests. **Never use these on production data without user consent.**
+
+| Account | Email | Password | Notes |
+|---------|-------|----------|-------|
+| Mat's test account | `forexampletrader@gmail.com` | `123456rR` | $10k evaluation, has 3 open positions (Fed/FIFA/Iran), used for QA reproduction |
+
+**Login flow:** Navigate to `https://prop-firmx.vercel.app` → Click "Sign In" → "Continue with Google"
+
+---
+
+
 
 > [!CAUTION]
 > **DO NOT skip this section.** Every bug report is treated as evidence of a missing systemic guardrail, not a one-off mistake. The goal is to make the **class of bug impossible**, not just fix the instance.
@@ -575,7 +589,8 @@ Redis-based tiered rate limiting in middleware (works across serverless instance
 
 | Tier | Limit | Endpoints |
 |------|-------|-----------|
-| TRADE | 10/min | `/api/trade/*` |
+| TRADE_EXECUTE | 10/min | `/api/trade/buy`, `/api/trade/sell`, `/api/trade/close` |
+| TRADE_READ | 60/min | `/api/trade/positions`, `/api/trades/history` |
 | PAYOUT | 5/min | `/api/payout/*` |
 | AUTH_SIGNUP | 5/5min | `/signup`, `/register` |
 | AUTH_LOGIN | 10/min | `/login`, `/nextauth` |
@@ -699,7 +714,7 @@ See `.agent/workflows/deploy.md` for the full deployment workflow.
 | **Discount Security** | `tests/discount-security.test.ts` | 47 tests |
 | **Payout Logic** | `tests/payout-logic.test.ts` | Profit splits, eligibility |
 | **Trade Engine** | `npm run test:engine` | 53 assertions, 11 phases |
-| **Lifecycle** | `npm run test:lifecycle` | 73 assertions, 7 phases (full user journey) |
+| **Lifecycle** | `npm run test:lifecycle` | 81 assertions, 7 phases (full user journey) |
 | **Safety** | `npm run test:safety` | 44 assertions — exploit scenario tests (payout deduction, transaction atomicity, funded-phase drawdown, position leak on transition) |
 | **Deploy Smoke** | `npm run test:deploy -- <url>` | HTTP-only production smoke: homepage, cron status, heartbeat, login |
 | **Balance Integrity** | `npm run test:balances` | Balance audit checks |
