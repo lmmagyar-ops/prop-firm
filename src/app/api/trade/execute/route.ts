@@ -43,24 +43,13 @@ export async function POST(req: NextRequest) {
     if (!marketId || !outcome || !amount || amount <= 0) {
         return NextResponse.json({ error: "Invalid request" }, { status: 400 });
     }
-
-    // IDEMPOTENCY GUARD: Prevent duplicate trade execution on client retries
-    if (idempotencyKey) {
-        const { isDuplicate, cachedResponse } = await checkIdempotency(idempotencyKey);
-        if (isDuplicate) {
-            if (cachedResponse && typeof cachedResponse === 'object' && 'inProgress' in cachedResponse) {
-                return NextResponse.json({ error: "Trade already in progress" }, { status: 409 });
-            }
-            log.info(`Returning cached response for duplicate trade`, { idempotencyKey: idempotencyKey.slice(0, 8) });
-            return NextResponse.json(cachedResponse);
-        }
-    }
-
     try {
         // FAN-OUT: claim idempotency key AND fetch challenge in parallel.
         // These two operations are independent — neither waits on the other.
-        // Parallel execution saves ~200-500ms on warm paths and avoids the
-        // idempotency kvSetNx delaying the challenge query (or vice versa).
+        // The idempotency key is claimed atomically here (kvSetNx), so the
+        // old sequential guard above this block has been removed.
+        // Parallel execution saves ~200-500ms on warm paths.
+
         const [idempotencyCheck, activeChallenge] = await Promise.all([
             idempotencyKey
                 ? checkIdempotency(idempotencyKey)
