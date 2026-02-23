@@ -556,7 +556,13 @@ class IngestionWorker {
                         /* eslint-disable @typescript-eslint/no-explicit-any */
                         if ((market as Record<string, any>).endDate) {
                             const endDate = new Date((market as Record<string, any>).endDate);
-                            if (endDate.getTime() < Date.now()) { fr.endDate++; continue; }
+                            // SAME-DAY GRACE: Daily threshold events (e.g. "Bitcoin above ___ on Feb 23?")
+                            // resolve at noon ET but Polymarket keeps them active=true until EOD.
+                            // Without a grace period, all sub-markets are dropped at noon and the event
+                            // disappears from our app for the rest of the day. 12 hours covers the
+                            // full settlement window; these sub-markets get stored with resolved=true.
+                            const RESOLVED_MARKET_GRACE_MS = 12 * 60 * 60 * 1000;
+                            if (endDate.getTime() + RESOLVED_MARKET_GRACE_MS < Date.now()) { fr.endDate++; continue; }
                         }
                         /* eslint-enable @typescript-eslint/no-explicit-any */
 
@@ -964,9 +970,9 @@ class IngestionWorker {
     // Price update batching to reduce Redis commands
     private priceBuffer: Map<string, WebSocketPriceMessage> = new Map();
     private lastFlush: number = 0;
-    // PARITY FIX: 5s interval for near-real-time price display
-    // ~17,280 flushes/day — each flush is 2 Redis commands (SET + PUBLISH), well within limits
-    private readonly FLUSH_INTERVAL_MS = 5000;
+    // 1s flush interval for near-real-time price display
+    // ~86,400 flushes/day — each flush is 2 Redis commands (SET + PUBLISH), well within limits
+    private readonly FLUSH_INTERVAL_MS = 1000;
 
     private async processMessage(message: WebSocketPriceMessage | WebSocketPriceMessage[]) {
         const msgs = Array.isArray(message) ? message : [message];
