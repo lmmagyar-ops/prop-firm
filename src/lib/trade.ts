@@ -14,6 +14,7 @@ import {
     RiskLimitExceededError
 } from "@/errors/trading-errors";
 import { OutageManager } from "./outage-manager";
+import { getAllMarketData, getAllOrderBooks } from "./worker-client";
 
 const logger = createLogger('TradeExecutor');
 
@@ -59,6 +60,16 @@ export class TradeExecutor {
         if (challenge.status !== "active") {
             throw new TradingError("Challenge is not active", 'CHALLENGE_INACTIVE', 400);
         }
+
+        // PRE-WARM: Kick both Railway worker endpoints off in parallel before any
+        // sequential work. This primes the 3-second in-memory cache in worker-client.ts
+        // so that every downstream call (getCanonicalPrice, getBatchOrderBookPrices, and
+        // the in-transaction risk re-check) hits the cache rather than making a live
+        // HTTP request. Without this, four sequential Railway calls at a worst-case
+        // 5 s timeout each = ~25 s total; with it, max(5 s, 5 s) = 5 s and subsequent
+        // calls are free. Returning null is safe — downstream callers have their own
+        // fallbacks (Postgres cache, Gamma API direct).
+        await Promise.all([getAllMarketData(), getAllOrderBooks()]);
 
         // ================================================
         // PRICE RESOLUTION — Single Source of Truth

@@ -81,7 +81,18 @@ vi.mock("@/lib/risk", () => ({
     }
 }));
 
-// ================================================
+// Stub the Railway HTTP layer so the pre-warm in executeTrade() doesn't make
+// real network calls in tests. trade.ts now imports getAllMarketData and
+// getAllOrderBooks directly (added for parallel pre-warming).
+vi.mock("@/lib/worker-client", () => ({
+    getAllMarketData: vi.fn().mockResolvedValue(null),
+    getAllOrderBooks: vi.fn().mockResolvedValue(null),
+    kvSetNx: vi.fn().mockResolvedValue(true),
+    kvGet: vi.fn().mockResolvedValue(null),
+    kvSet: vi.fn().mockResolvedValue(undefined),
+}));
+
+
 // CORE TRADE EXECUTION TESTS
 // ================================================
 
