@@ -45,13 +45,13 @@ const log = createLogger("DashboardPage");
 export default async function DashboardPage() {
     const session = await auth();
 
-    // DEMO MODE: Auth disabled for testing
-    // Redirect if not authenticated
-    // if (!session?.user?.id) {
-    //     redirect('/login');
-    // }
+    // Fail closed: no session → redirect to login. Never fall through to demo data.
+    if (!session?.user?.id) {
+        const { redirect } = await import('next/navigation');
+        redirect('/login');
+    }
 
-    const userId = session?.user?.id || "demo-user-1"; // Fallback for testing
+    const userId = session!.user!.id;
 
     // Use service directly - no HTTP fetch
     let data;

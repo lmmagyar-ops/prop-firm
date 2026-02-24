@@ -35,7 +35,14 @@ function mapToMarketShape(liveMarket: MarketMetadata): MockMarket & { categories
 export default async function TradePage() {
     try {
         const session = await auth();
-        const userId = session?.user?.id || "demo-user-1";
+
+        // Fail closed: no session → redirect to login. Never fall through to demo data.
+        if (!session?.user?.id) {
+            const { redirect } = await import('next/navigation');
+            redirect('/login');
+        }
+
+        const userId = session!.user!.id;
 
         // First get dashboard data
         const data = await getDashboardData(userId);
