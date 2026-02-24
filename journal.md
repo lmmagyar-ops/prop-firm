@@ -8,6 +8,25 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 > **New agent? Read this section before doing anything else.**
 > This is the single source of truth for what actually works. Do NOT trust individual journal entries — they reflect what the agent *believed*, not what the user confirmed.
 
+### Last Confirmed by Agent (Feb 24, 8:27 AM CT) — RESOLVED SUB-MARKET BUG FIX ✅
+
+**Bug (cofounder-reported):** Multi-outcome sub-markets at extreme prices (≥99% or ≤1%) were grayed out and had trade buttons disabled — showing `—` instead of real prices. Polymarket shows these as fully tradeable until the market actually settles.
+
+**Root cause:** Feb 22 fix (`c34fccb`) incorrectly equated "price at extreme" with "market settled." Two code paths set `resolved: true` based on price alone:
+
+| File | Line | Bad logic |
+|------|------|-----------|
+| `ingestion.ts` | 608 | `isResolved = yesPrice <= 0.01 \|\| yesPrice >= 0.99` → stored in Redis |
+| `market.ts` | 442 | Live price overlay re-set `market.resolved = true` on extreme live price |
+
+**Fix:** Removed price-based `resolved` flag from both files. Extreme-price sub-markets now remain fully tradeable. `EventDetailModal.tsx` unchanged — it correctly trusts the flag it receives.
+
+**Not touched:** Trade executor's `entryPrice ∈ (0.01, 0.99)` guard is separate and unchanged. Settlement logic unchanged.
+
+**Verified:** `tsc` clean, 1180/1180 tests (79 files). Pushed to develop.
+
+---
+
 ### Last Confirmed by Agent (Feb 24, 1:05 AM CT) — AUTH FAIL-OPEN FIX ✅
 
 **Security: closed fail-open auth on 3 financial paths (commit `708b541`)**
