@@ -8,49 +8,36 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 > **New agent? Read this section before doing anything else.**
 > This is the single source of truth for what actually works. Do NOT trust individual journal entries — they reflect what the agent *believed*, not what the user confirmed.
 
-### Last Confirmed by Agent (Feb 23, 12:46 PM CT) — HANDOFF
+### Last Confirmed by Agent (Feb 23, 7:00 PM CT) — TRADE FIX VERIFIED ✅
 
-#### Shipped to `develop` this session (pending push to main)
+#### Shipped to `main` this session:
 
-| File | Change |
-|------|--------|
-| `src/hooks/useTradeExecution.ts` | 30s `AbortController` timeout + `TRADE_EXECUTE_TIMEOUT_MS` constant + `TradeApiResponse` interface (no more implicit `any`) + `response.json()` fragility guard |
-| `src/lib/api-fetch.ts` | 15s default `AbortController` timeout on ALL client-side API calls |
-| `src/components/dashboard/PortfolioPanel.tsx` | `error` state now rendered — users see error + Retry button instead of "No active positions" |
-| `src/lib/trade.ts` | Comment only: explains WHY in-transaction `RiskEngine.validateTrade()` is a security guard (race-condition protection), not redundant code |
-| `CLAUDE.md` | Added `🧪 Test Accounts` section with `forexampletrader@gmail.com` credentials |
-| `journal.md` | This update |
+| Commit | File | Change |
+|--------|------|--------|
+| `582a654` | `route.ts` | Removed duplicate sequential idempotency check (regression from `d355bf6`) |
+| `481766d` | `trade.ts`, `trade.test.ts` | Parallel pre-warm `Promise.all([getAllMarketData(), getAllOrderBooks()])` + worker-client test mock |
+| `dfc6212` | `worker-client.ts` | Circuit-breaker penalty box — timed-out Railway paths return null immediately for 20s |
+| **`1495aa4`** | **`db/index.ts`** | **ROOT CAUSE: `max:1` → `max:3` connection pool — deadlock between `db.transaction()` and `RiskEngine.validateTrade` using `db.*` inside callback** |
 
-#### NOT committed yet (written to disk only)
-- `src/workers/ingestion.ts` — `FLUSH_INTERVAL_MS = 1000` (was 5000). **From prior session.** Needs `git commit + push + worker redeploy`. Tracked below.
+**Verified in production:** Trade completed in **~3 seconds**, green toast "Bought 11.90 shares @ 42.0¢", portfolio badge 3→4, balance updated.
 
 ---
 
 ### 🚨 Tomorrow Morning — Ranked by Impact × Risk
 
-**1. CONFIRM: Mat's trade fix (after staging deploy)**
-Log in as `forexampletrader@gmail.com`, attempt a trade. Should resolve within 30s or show clear "Funds NOT debited" error. Infinite spinner = old code.
+**1. CRITICAL — Year-rollover bug in `isStaleMarketQuestion`**
 
-**2. CRITICAL — Year-rollover bug in `isStaleMarketQuestion`**
 `src/lib/market-utils.ts:146,156` — Uses `now.getFullYear()` for date. In January, "December 31" → `new Date("December 31 2026")` = 12 months future → never pruned.
 Fix: when parsed month > now's month, use `now.getFullYear() - 1`.
-Test: clock = Jan 3 2027, "December 31 market" → `true`.
 
-**3. MEDIUM — `isMultiOutcome` undefined at runtime**
-`ingestion.ts:108` declares `isMultiOutcome?: boolean` (optional). Redis events stored before this field will have `undefined` → falsy → binary layout (wrong chart shown).
-Fix: in `getActiveEvents()` spread: `isMultiOutcome: event.isMultiOutcome ?? (event.markets?.length > 1)`.
+**2. MEDIUM — `isMultiOutcome` undefined at runtime**
+`ingestion.ts:108` declares `isMultiOutcome?: boolean` (optional). Redis events stored before this field will have `undefined` → falsy → binary layout.
+Fix: `isMultiOutcome: event.isMultiOutcome ?? (event.markets?.length > 1)`.
 
-**4. LOW — Commit the flush interval change**
-`git add src/workers/ingestion.ts && git commit -m "perf(ingestion): WS flush 5s→1s" && git push origin develop` then redeploy worker.
-
-**5. LOW — Test label mismatch**
-`tests/lib/stale-market-filter.test.ts:43` — says `"returns false for January"` but asserts `toBe(true)`. Test passes; label misleads future readers.
+**3. LOW — Test label mismatch**
+`tests/lib/stale-market-filter.test.ts:43` — says `"returns false for January"` but asserts `toBe(true)`.
 
 
-### Context for next agent
-- Machine CPU-starved today: `npm test` ran 7h+ (hung), Redis node script ran 6h+ (hung). Kill both before starting.
-- Browser subagent connection-reset all day. Use `curl` from terminal for API checks, not the browser agent.
-- Price lag (BTC 68K showing 4.5% vs Polymarket 2-3%) is structural WS latency — flush interval change (#4) partially addresses it.
 
 ---
 
