@@ -8,7 +8,25 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 > **New agent? Read this section before doing anything else.**
 > This is the single source of truth for what actually works. Do NOT trust individual journal entries — they reflect what the agent *believed*, not what the user confirmed.
 
-### Last Confirmed by Agent (Feb 24, 8:27 AM CT) — RESOLVED SUB-MARKET BUG FIX ✅
+### Last Confirmed by Agent (Feb 24, 9:02 AM CT) — RESOLVED SUB-MARKET BUG FIX ✅ VERIFIED
+
+**Bug (cofounder-reported):** Multi-outcome sub-markets at extreme prices (≥99% or ≤1%) were grayed out with "RESOLVED" labels and disabled trade buttons. Polymarket shows all outcomes as fully tradeable until the market actually settles.
+
+**Root cause chain (3 producers, all fixed):**
+
+| # | File | Bad logic | Commit |
+|---|------|-----------|--------|
+| 1 | `ingestion.ts` | `isResolved = yesPrice <= 0.01 \|\| yesPrice >= 0.99` → stored in Redis | `307c6f3` |
+| 2 | `market-integrity.ts` | `pruneResolvedMarkets()` deleted extreme-price sub-markets from `event:active_list` | `342455b` |
+| 3 | `market.ts` | Live price overlay set `market.resolved = true` on extreme live price | `307c6f3` |
+
+**Defensive hardening:** `market.ts` server action now strips any stale `resolved` flags from Redis defensively — this protects against old Railway worker versions without requiring a Railway restart.
+
+**Verified on staging:** Browser smoke test confirmed all rows (30, 40, 50, 60, 90, 100, 110, 120, 130) show actual cent prices ("Yes 100.0¢" / "No <1¢"), zero "RESOLVED" labels, zero "--" dashes. Test suite: `tsc` clean, 1180/1180 (79 files).
+
+---
+
+
 
 **Bug (cofounder-reported):** Multi-outcome sub-markets at extreme prices (≥99% or ≤1%) were grayed out and had trade buttons disabled — showing `—` instead of real prices. Polymarket shows these as fully tradeable until the market actually settles.
 
