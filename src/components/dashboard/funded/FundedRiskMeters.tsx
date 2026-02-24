@@ -14,7 +14,7 @@ interface FundedRiskMetersProps {
     // understate daily loss when open positions are losing value.
     // Same class of bug as the phantom daily PnL (see postmortem 2026-02-20).
     equity: number;
-    platform: "polymarket" | "kalshi";
+    platform: "polymarket";
 }
 
 export function FundedRiskMeters({

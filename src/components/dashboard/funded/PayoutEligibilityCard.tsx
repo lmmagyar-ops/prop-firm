@@ -11,7 +11,7 @@ interface PayoutEligibilityCardProps {
     consistencyFlagged: boolean;
     hasViolations: boolean;
     netProfit: number;
-    platform: "polymarket" | "kalshi";
+    platform: "polymarket";
 }
 
 export function PayoutEligibilityCard({

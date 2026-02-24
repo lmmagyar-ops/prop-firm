@@ -148,7 +148,7 @@ export default async function DashboardPage() {
                                 profitSplit={fundedStats.profitSplit}
                                 payoutCap={fundedStats.payoutCap}
                                 daysUntilPayout={fundedStats.daysUntilPayout}
-                                platform={activeChallenge.platform as "polymarket" | "kalshi"}
+                                platform={activeChallenge.platform as "polymarket"}
                             />
 
                             {/* Equity Display (same as challenge) */}
@@ -168,7 +168,7 @@ export default async function DashboardPage() {
                                     maxDailyDrawdown={fundedStats.maxDailyDrawdown}
                                     startOfDayBalance={activeChallenge.startOfDayBalance}
                                     equity={trueEquity}
-                                    platform={activeChallenge.platform as "polymarket" | "kalshi"}
+                                    platform={activeChallenge.platform as "polymarket"}
                                 />
                             </div>
 
@@ -181,14 +181,14 @@ export default async function DashboardPage() {
                                     consistencyFlagged={fundedStats.consistencyFlagged}
                                     hasViolations={fundedStats.hasViolations}
                                     netProfit={fundedStats.netProfit}
-                                    platform={activeChallenge.platform as "polymarket" | "kalshi"}
+                                    platform={activeChallenge.platform as "polymarket"}
                                 />
                                 <ActivityTracker
                                     tradingDays={fundedStats.activeTradingDays}
                                     requiredDays={fundedStats.requiredTradingDays}
                                     lastActivityAt={fundedStats.lastActivityAt}
                                     payoutCycleStart={fundedStats.payoutCycleStart}
-                                    platform={activeChallenge.platform as "polymarket" | "kalshi"}
+                                    platform={activeChallenge.platform as "polymarket"}
                                 />
                             </div>
 
@@ -200,7 +200,7 @@ export default async function DashboardPage() {
                                         excludedPnl={0}
                                         profitSplit={fundedStats.profitSplit}
                                         payoutCap={fundedStats.payoutCap}
-                                        platform={activeChallenge.platform as "polymarket" | "kalshi"}
+                                        platform={activeChallenge.platform as "polymarket"}
                                     />
                                 </div>
                             )}
@@ -397,7 +397,7 @@ export default async function DashboardPage() {
                     finalPnL: number | null;
                     startedAt: Date;
                     completedAt?: Date | null;
-                    platform?: "polymarket" | "kalshi";
+                    platform?: "polymarket";
                 }>} />
             </div>
 

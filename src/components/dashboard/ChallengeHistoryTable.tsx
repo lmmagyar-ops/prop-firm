@@ -26,14 +26,11 @@ interface ChallengeHistoryTableProps {
         finalPnL: number | null;
         startedAt: Date;
         completedAt?: Date | null;
-        platform?: "polymarket" | "kalshi";
+        platform?: "polymarket";
     }>;
 }
 
-const getPlatformIcon = (platform?: string) => {
-    if (platform === "kalshi") return "🇺🇸";
-    return "🌐";
-};
+const getPlatformIcon = () => "🌐";
 
 const FILTERS = ['all', 'active', 'passed', 'failed'] as const;
 
@@ -101,7 +98,7 @@ export function ChallengeHistoryTable({ challenges }: ChallengeHistoryTableProps
                                     </TableCell>
                                     <TableCell className="text-sm">
                                         <span className="flex items-center gap-1.5">
-                                            <span>{getPlatformIcon(challenge.platform)}</span>
+                                            <span>{getPlatformIcon()}</span>
                                             <span className="text-zinc-400 capitalize">{challenge.platform || "polymarket"}</span>
                                         </span>
                                     </TableCell>

@@ -10,7 +10,7 @@ interface FundedAccountHeaderProps {
     profitSplit: number; // 0.80 = 80%
     payoutCap: number;
     daysUntilPayout: number;
-    platform: "polymarket" | "kalshi";
+    platform: "polymarket";
 }
 
 export function FundedAccountHeader({
