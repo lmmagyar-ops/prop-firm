@@ -40,7 +40,7 @@ describe("isStaleMarketQuestion — single date", () => {
         expect(stale("Will something happen on March 5?")).toBe(false);
     });
 
-    it("returns false for January (this year, but >48h ago)", () => {
+    it("returns true for January 12 (>48h in the past)", () => {
         // January 12 is well past — should be filtered
         expect(stale("Will X happen on January 12?")).toBe(true);
     });
@@ -129,5 +129,49 @@ describe("Regression: Feb 22 Bitcoin event — the original bug", () => {
         for (const question of BITCOIN_FEB22_QUESTIONS) {
             expect(stale(question)).toBe(false);
         }
+    });
+});
+
+// =============================================================================
+// Regression: year-rollover bug (CRITICAL)
+// In January, "December 31" would parse as Dec 31 of the current year (11 months
+// in the future) and never be pruned. The fix decrements the year when the
+// parsed month is >6 months ahead of the current month.
+// =============================================================================
+describe("Regression: year-rollover — December dates parsed in January", () => {
+    // Pin "now" to January 15, 2027 at 10:00 AM CT
+    const JAN_15_10AM_CT = new Date("2027-01-15T16:00:00.000Z");
+    const staleJan = (q: string) => isStaleMarketQuestion(q, JAN_15_10AM_CT);
+
+    it("returns true for 'December 31' when now is January 15 — last year's date", () => {
+        // Without the fix, this parses as Dec 31 2027 (11 months future) → false
+        // With the fix, this parses as Dec 31 2026 (15 days ago) → true
+        expect(staleJan("Will Bitcoin be above $100,000 on December 31?")).toBe(true);
+    });
+
+    it("returns true for 'November 20' when now is January 15 — last year's date", () => {
+        expect(staleJan("Will something happen on November 20?")).toBe(true);
+    });
+
+    it("returns false for 'October 1' when now is January 15 — only 9 months ahead, but rollover still applies", () => {
+        // October is 9 months ahead of January → >6 months → should rollover to last year
+        // Oct 1 2026 is ~3.5 months ago from Jan 15 2027 → stale
+        expect(staleJan("Will X happen on October 1?")).toBe(true);
+    });
+
+    it("returns false for 'June 5' when now is January 15 — 5 months ahead, same year", () => {
+        // June is 5 months ahead of January → ≤6 months → same year (2027)
+        // June 5 2027 is in the future → not stale
+        expect(staleJan("Will Y happen on June 5?")).toBe(false);
+    });
+
+    it("returns true for December range 'December 25-31' when now is January 15", () => {
+        // Range end = Dec 31, rolled back to 2026 → stale
+        expect(staleJan("Holiday special December 25-31?")).toBe(true);
+    });
+
+    it("returns false for 'January 14' when now is January 15 — within 48h grace window", () => {
+        // Same month, same year, within grace → not stale
+        expect(staleJan("Will something happen on January 14?")).toBe(false);
     });
 });
