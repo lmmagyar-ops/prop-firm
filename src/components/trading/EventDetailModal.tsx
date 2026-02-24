@@ -223,16 +223,7 @@ export function EventDetailModal({ event, open, onClose, onTrade, challengeId }:
                         </div>
                     )}
 
-                    <div className={cn(
-                        "flex items-center justify-between px-6 py-2 text-[10px] font-bold uppercase tracking-wider border-b shrink-0 sticky top-0 z-20",
-                        "bg-[#0D1117] border-white/10 text-zinc-500"
-                    )}>
-                        <span>Outcome</span>
-                        <div className="flex gap-16 mr-2">
-                            <span>% Chance</span>
-                            <span>Actions</span>
-                        </div>
-                    </div>
+
 
                     {sortedMarkets.map((market) => (
                         <OutcomeRow
@@ -426,15 +417,15 @@ function OutcomeRow({ market, eventTitle, isSelected, onSelect, onTrade }: Outco
                 <button
                     onClick={(e) => { e.stopPropagation(); if (!market.resolved) onTrade('yes'); }}
                     className={cn(
-                        "relative w-[110px] h-10 flex items-center justify-between px-3 rounded-md transition-all group/btn",
+                        "relative w-[110px] h-10 flex items-center justify-center gap-1.5 rounded-md transition-all group/btn",
                         "border border-transparent",
                         market.resolved
                             ? "bg-zinc-800/50 cursor-not-allowed opacity-50 text-zinc-500"
-                            : "bg-white/[0.03] hover:bg-emerald-500/10 hover:border-emerald-500/20 active:scale-[0.98]"
+                            : "bg-emerald-500/5 hover:bg-emerald-500/10 hover:border-emerald-500/20 active:scale-[0.98]"
                     )}
                     disabled={market.resolved}
                 >
-                    <span className={cn("text-[13px] font-semibold tracking-wide transition-colors", market.resolved ? "text-zinc-500" : "text-zinc-400 group-hover/btn:text-zinc-300")}>{market.resolved ? "—" : "Yes"}</span>
+                    <span className={cn("text-[13px] font-semibold tracking-wide transition-colors", market.resolved ? "text-zinc-500" : "text-emerald-500/80 group-hover/btn:text-emerald-400")}>{market.resolved ? "—" : "Yes"}</span>
                     <span className={cn("text-[15px] font-bold", market.resolved ? "text-zinc-500" : "text-emerald-400")}>
                         {market.resolved ? "—" : (parseFloat(yesCents) < 1 ? "<1" : yesCents) + "¢"}
                     </span>
@@ -443,15 +434,15 @@ function OutcomeRow({ market, eventTitle, isSelected, onSelect, onTrade }: Outco
                 <button
                     onClick={(e) => { e.stopPropagation(); if (!market.resolved) onTrade('no'); }}
                     className={cn(
-                        "relative w-[110px] h-10 flex items-center justify-between px-3 rounded-md transition-all group/btn",
+                        "relative w-[110px] h-10 flex items-center justify-center gap-1.5 rounded-md transition-all group/btn",
                         "border border-transparent",
                         market.resolved
                             ? "bg-zinc-800/50 cursor-not-allowed opacity-50 text-zinc-500"
-                            : "bg-white/[0.03] hover:bg-rose-500/10 hover:border-rose-500/20 active:scale-[0.98]"
+                            : "bg-rose-500/5 hover:bg-rose-500/10 hover:border-rose-500/20 active:scale-[0.98]"
                     )}
                     disabled={market.resolved}
                 >
-                    <span className={cn("text-[13px] font-semibold tracking-wide transition-colors", market.resolved ? "text-zinc-500" : "text-zinc-400 group-hover/btn:text-zinc-300")}>{market.resolved ? "—" : "No"}</span>
+                    <span className={cn("text-[13px] font-semibold tracking-wide transition-colors", market.resolved ? "text-zinc-500" : "text-rose-500/80 group-hover/btn:text-rose-400")}>{market.resolved ? "—" : "No"}</span>
                     <span className={cn("text-[15px] font-bold", market.resolved ? "text-zinc-500" : "text-rose-400")}>
                         {market.resolved ? "—" : (parseFloat(noCents) < 1 ? "<1" : noCents) + "¢"}
                     </span>
