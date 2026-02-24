@@ -415,27 +415,27 @@ function OutcomeRow({ market, eventTitle, isSelected, onSelect, onTrade }: Outco
 
             < div className="w-20 text-right mr-6 flex flex-col items-end justify-center" >
                 <span className={cn(
-                    "text-lg font-bold tabular-nums leading-none",
-                    market.resolved ? "text-zinc-500" :
-                        market.price >= 0.5 ? "text-emerald-400" : "text-zinc-400"
+                    "text-xl font-bold tabular-nums leading-none",
+                    market.resolved ? "text-zinc-500" : "text-white"
                 )}>
                     {percentage}
                 </span>
             </div >
 
-            < div className="flex rounded-lg p-1 gap-1 bg-zinc-800/50" >
+            < div className="flex gap-2" >
                 <button
                     onClick={(e) => { e.stopPropagation(); if (!market.resolved) onTrade('yes'); }}
                     className={cn(
-                        "relative w-24 h-10 flex items-center justify-between px-3 rounded-md transition-all group/btn",
+                        "relative w-[110px] h-10 flex items-center justify-between px-3 rounded-md transition-all group/btn",
+                        "border border-transparent",
                         market.resolved
-                            ? "bg-zinc-700/50 cursor-not-allowed opacity-50"
-                            : "bg-[#00C896] hover:bg-[#00B88A] active:scale-[0.98]"
+                            ? "bg-zinc-800/50 cursor-not-allowed opacity-50 text-zinc-500"
+                            : "bg-white/[0.03] hover:bg-emerald-500/10 hover:border-emerald-500/20 active:scale-[0.98]"
                     )}
                     disabled={market.resolved}
                 >
-                    <span className={cn("text-xs font-bold uppercase tracking-wide", market.resolved ? "text-zinc-400" : "text-[#052e1f]")}>{market.resolved ? "—" : "Yes"}</span>
-                    <span className={cn("text-base font-bold", market.resolved ? "text-zinc-400" : "text-[#052e1f]")}>
+                    <span className={cn("text-[13px] font-semibold tracking-wide transition-colors", market.resolved ? "text-zinc-500" : "text-zinc-400 group-hover/btn:text-zinc-300")}>{market.resolved ? "—" : "Yes"}</span>
+                    <span className={cn("text-[15px] font-bold", market.resolved ? "text-zinc-500" : "text-emerald-400")}>
                         {market.resolved ? "—" : (parseFloat(yesCents) < 1 ? "<1" : yesCents) + "¢"}
                     </span>
                 </button>
@@ -443,15 +443,16 @@ function OutcomeRow({ market, eventTitle, isSelected, onSelect, onTrade }: Outco
                 <button
                     onClick={(e) => { e.stopPropagation(); if (!market.resolved) onTrade('no'); }}
                     className={cn(
-                        "relative w-24 h-10 flex items-center justify-between px-3 rounded-md transition-all group/btn",
+                        "relative w-[110px] h-10 flex items-center justify-between px-3 rounded-md transition-all group/btn",
+                        "border border-transparent",
                         market.resolved
-                            ? "bg-zinc-700/50 cursor-not-allowed opacity-50"
-                            : "bg-[#E63E5D] hover:bg-[#D43552] active:scale-[0.98]"
+                            ? "bg-zinc-800/50 cursor-not-allowed opacity-50 text-zinc-500"
+                            : "bg-white/[0.03] hover:bg-rose-500/10 hover:border-rose-500/20 active:scale-[0.98]"
                     )}
                     disabled={market.resolved}
                 >
-                    <span className={cn("text-xs font-bold uppercase tracking-wide", market.resolved ? "text-zinc-400" : "text-[#380e14]")}>{market.resolved ? "—" : "No"}</span>
-                    <span className={cn("text-base font-bold", market.resolved ? "text-zinc-400" : "text-[#380e14]")}>
+                    <span className={cn("text-[13px] font-semibold tracking-wide transition-colors", market.resolved ? "text-zinc-500" : "text-zinc-400 group-hover/btn:text-zinc-300")}>{market.resolved ? "—" : "No"}</span>
+                    <span className={cn("text-[15px] font-bold", market.resolved ? "text-zinc-500" : "text-rose-400")}>
                         {market.resolved ? "—" : (parseFloat(noCents) < 1 ? "<1" : noCents) + "¢"}
                     </span>
                 </button>
