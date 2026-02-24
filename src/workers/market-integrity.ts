@@ -63,13 +63,6 @@ interface DriftResult {
     deviation: number;
 }
 
-interface IntegritySummary {
-    prunedEvents: number;
-    prunedBinary: number;
-    driftChecked: number;
-    driftAlerts: number;
-}
-
 // ============================================================================
 // Configuration
 // ============================================================================
@@ -90,60 +83,23 @@ const POLYMARKET_API = 'https://gamma-api.polymarket.com/markets';
  * when WebSocket price updates push them into resolved territory.
  */
 export async function pruneResolvedMarkets(redis: Redis): Promise<{ prunedEvents: number; prunedBinary: number }> {
-    let prunedEvents = 0;
+    const prunedEvents = 0;
     let prunedBinary = 0;
 
     try {
-        // --- Prune event:active_list ---
-        const eventData = await redis.get('event:active_list');
-        if (eventData) {
-            const events: StoredEvent[] = JSON.parse(eventData);
-            let modified = false;
+        // --- event:active_list ---
+        // NOTE: Sub-markets in multi-outcome events are NOT pruned by price.
+        // "Price at 99%" ≠ "market settled" — Polymarket shows all outcomes
+        // as tradeable until the market actually closes via API (closed=true).
+        // Example: "Solana above 30" at 99% is still an active, tradeable outcome.
+        // We only prune sub-markets that Polymarket has explicitly closed (market.closed=true),
+        // which is enforced during ingestion (fetchFeaturedEvents skips closed markets).
+        // No further pruning needed here for event sub-markets.
 
-            for (const event of events) {
-                const beforeCount = event.markets.length;
-                const keptMarkets: typeof event.markets = [];
-
-                for (const m of event.markets) {
-                    const isResolved = m.price >= RESOLVED_THRESHOLD_HIGH || m.price <= RESOLVED_THRESHOLD_LOW;
-                    if (isResolved) {
-                        // GUARD: Never prune a market that has open positions
-                        const openCount = await db
-                            .select({ count: sql<number>`count(*)::int` })
-                            .from(positions)
-                            .where(and(
-                                eq(positions.marketId, m.id),
-                                eq(positions.status, 'OPEN')
-                            ));
-                        if (openCount[0].count > 0) {
-                            logger.info(`[Integrity] Skipping prune of "${m.question}" — ${openCount[0].count} open position(s)`);
-                            keptMarkets.push(m);
-                            continue;
-                        }
-                        logger.info(`[Integrity] Pruning resolved sub-market: "${m.question}" (price: ${m.price.toFixed(2)}) from event "${event.title}"`);
-                    } else {
-                        keptMarkets.push(m);
-                    }
-                }
-
-                event.markets = keptMarkets;
-
-                const pruned = beforeCount - event.markets.length;
-                if (pruned > 0) {
-                    prunedEvents += pruned;
-                    modified = true;
-                }
-            }
-
-            if (modified) {
-                // Remove events with no remaining markets
-                const filteredEvents = events.filter(e => e.markets.length > 0);
-                const ttl = await redis.ttl('event:active_list');
-                await redis.set('event:active_list', JSON.stringify(filteredEvents), 'EX', Math.max(ttl, 60));
-            }
-        }
-
-        // --- Prune market:active_list ---
+        // --- Prune market:active_list (standalone binary markets only) ---
+        // Binary markets CAN be pruned at extreme prices because they are independent
+        // yes/no bets — a 99% price effectively means no liquidity on the losing side.
+        // But we still guard against pruning markets with open positions.
         const marketData = await redis.get('market:active_list');
         if (marketData) {
             const markets: StoredBinaryMarket[] = JSON.parse(marketData);

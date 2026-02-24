@@ -247,7 +247,22 @@ export async function getActiveEvents(keepMarketIdList?: string[]): Promise<Even
         const data = await getAllMarketData();
         if (!data) return [];
 
-        const events = (data.events || []) as EventMetadata[];
+        const rawEvents = (data.events || []) as EventMetadata[];
+
+        // DEFENSIVE: events from Redis may lack isMultiOutcome (ingested before the field existed).
+        // Default to markets.length > 1 so EventDetailModal never sees undefined.
+        // DEFENSIVE: also strip any stale `resolved: true` flags written by older versions
+        // of the ingestion worker (pre-fix). "Price at extreme" ≠ "market settled".
+        // We never set resolved here — only truly API-settled markets should be marked resolved.
+        const events = rawEvents.map(e => ({
+            ...e,
+            isMultiOutcome: e.isMultiOutcome ?? (e.markets?.length > 1),
+            // Strip stale `resolved` flags written by old Railway worker versions.
+            // "Price at extreme" ≠ "market settled". We never set resolved from the server action.
+            // FUTURE(v2): Re-enable resolved display when settlement detection comes from
+            // the Polymarket API response (closed_at / resolution fields), not price heuristics.
+            markets: e.markets?.map(m => ({ ...m, resolved: undefined } as SubMarket)) ?? [],
+        }));
 
         const now = new Date();
 
@@ -279,28 +294,19 @@ export async function getActiveEvents(keepMarketIdList?: string[]): Promise<Even
                 // date that is more than 48h in the past (e.g., "on January 5").
                 if (isStaleMarketQuestion(market.question, now)) return false;
 
-                // DEFENSIVE FILTER 1: Skip markets with invalid prices (≤0.01 or ≥0.99)
-                // POLYMARKET PARITY: If sub-market is already marked `resolved` by ingestion,
-                // keep it for display — these are informational context in threshold events.
-                // Only filter sub-markets that aren't marked resolved.
+                // NOTE: Extreme prices (≤0.01 or ≥0.99) are NOT filtered here.
+                // "Price at 99%" ≠ "market settled" — Polymarket shows all outcomes
+                // as tradeable until the market actually closes via API.
+                // Ingestion already filters out low-volume extreme-price sub-markets.
                 const price = market.price ?? 0;
-                if (!market.resolved && (price <= 0.01 || price >= 0.99)) {
-                    // POSITION-SAFE: Never hide a market the user has money in
-                    if (!keepMarketIds?.has(market.id)) {
-                        return false;
-                    }
-                }
 
-                // DEFENSIVE FILTER 2: Skip markets with exactly 50% price (±0.5%) AND low volume
+                // DEFENSIVE FILTER: Skip markets with exactly 50% price (±0.5%) AND low volume
                 // 50% + low volume = placeholder with no real trading
                 // 50% + high volume = legitimate contentious market, let it through
-                // Skip this filter for resolved sub-markets (they won't be 50% anyway)
-                if (!market.resolved) {
-                    const isFiftyPercent = Math.abs(price - 0.5) < 0.005;
-                    const isLowVolume = (market.volume || 0) < 50000; // Under $50k
-                    if (isFiftyPercent && isLowVolume) {
-                        return false;
-                    }
+                const isFiftyPercent = Math.abs(price - 0.5) < 0.005;
+                const isLowVolume = (market.volume || 0) < 50000; // Under $50k
+                if (isFiftyPercent && isLowVolume) {
+                    return false;
                 }
 
                 return true; // Keep the market
@@ -419,24 +425,20 @@ export async function getActiveEvents(keepMarketIdList?: string[]): Promise<Even
                         if (liveEntry?.price) {
                             const livePrice = parseFloat(liveEntry.price);
                             if (livePrice > 0.01 && livePrice < 0.99) {
-                                // Tradable range — update price, clear resolved if it was set
+                                // Tradable range — update price
                                 market.price = livePrice;
-                                if (market.resolved) market.resolved = false;
                                 updatedCount++;
                             } else {
-                                // LAYER 1: Market has reached resolution territory.
-                                // Mark as resolved for display purposes.
-                                // Remove UNLESS user has an open position.
-                                if (!keepMarketIds?.has(market.id)) {
-                                    // If it came from a multi-outcome event (has groupItemTitle),
-                                    // keep it but mark resolved. Otherwise remove it.
-                                    if (market.groupItemTitle) {
-                                        market.price = livePrice;
-                                        market.resolved = true;
-                                        updatedCount++;
-                                    } else {
-                                        removedMarketIds.push(market.id);
-                                    }
+                                // Extreme price — still tradeable until actually settled via API.
+                                // Update the live price so users see the real probability.
+                                // For multi-outcome sub-markets (groupItemTitle), always keep visible.
+                                // For standalone binary markets, remove from card display (reduces noise)
+                                // unless user has an open position in it.
+                                if (market.groupItemTitle) {
+                                    market.price = livePrice;
+                                    updatedCount++;
+                                } else if (!keepMarketIds?.has(market.id)) {
+                                    removedMarketIds.push(market.id);
                                 } else {
                                     // User has position — keep the market, update the price
                                     market.price = livePrice;

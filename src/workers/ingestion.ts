@@ -601,12 +601,12 @@ class IngestionWorker {
                         const complementToken = clobTokens.length > 1 ? clobTokens[1] : null;
                         const yesPrice = parseFloat(prices[0] || "0");
 
-                        // POLYMARKET PARITY: Mark extreme-price sub-markets as resolved
-                        // instead of dropping them. In threshold events (BTC prices, scores),
-                        // sub-markets at 99%+ are informational context, not stale.
-                        // Users see them in the modal; trade executor blocks execution.
-                        const isResolved = yesPrice <= 0.01 || yesPrice >= 0.99;
-                        if (isResolved) { fr.priceBounds++; }
+                        // Track extreme-price sub-markets for diagnostics only.
+                        // "Price at 99%" ≠ "market settled" — Polymarket shows all outcomes
+                        // as tradeable until the market actually closes via API.
+                        // We keep them visible (not resolved) so users can trade them.
+                        const isAtExtremePrice = yesPrice <= 0.01 || yesPrice >= 0.99;
+                        if (isAtExtremePrice) { fr.priceBounds++; }
 
                         // NOTE: 50% filter removed here — the server action layer
                         // (market.ts getActiveEvents) has a smarter volume-aware version
@@ -624,8 +624,9 @@ class IngestionWorker {
                         const marketVolume = parseFloat(market.volume || "0");
 
                         // VOLUME FILTER: Skip sub-markets below the configurable threshold.
-                        // Exempt resolved sub-markets — their volume is irrelevant for display.
-                        if (!isResolved && marketVolume < MIN_MARKET_VOLUME) { fr.volume++; continue; }
+                        // No exemption for extreme-price markets — low volume at extreme price
+                        // means effectively no liquidity to trade against.
+                        if (marketVolume < MIN_MARKET_VOLUME) { fr.volume++; continue; }
 
                         fr.survived++;
                         subMarkets.push({
@@ -635,7 +636,7 @@ class IngestionWorker {
                             price: yesPrice,
                             volume: marketVolume,
                             groupItemTitle: market.groupItemTitle || undefined,
-                            resolved: isResolved || undefined,
+                            // resolved: intentionally not set — only actually-settled markets should be marked resolved
                         });
                     }
                     if (fr.total > 0) {

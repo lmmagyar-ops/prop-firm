@@ -11,7 +11,12 @@ const logger = createLogger("ChallengeActions");
 
 export async function createChallengeAction(tierId: string = "10k_challenge") {
     const session = await auth();
-    const userId = session?.user?.id || "demo-user-1"; // Fallback for your demo if auth fails
+
+    // Fail closed: no session → reject. Never create challenges for phantom users.
+    if (!session?.user?.id) {
+        return { success: false, error: "Authentication required" };
+    }
+    const userId = session.user.id;
 
     // Parse tier from tierId (e.g. "25k_challenge" → "25k", or just "25k")
     const tier = tierId.replace(/_challenge$/, "");

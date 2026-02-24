@@ -1,4 +1,4 @@
-import { XCircle, Trophy, Lock, AlertTriangle } from "lucide-react";
+import { XCircle, Trophy, Lock, AlertTriangle, RefreshCw } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 import { auth } from "@/auth";
@@ -36,20 +36,47 @@ import {
     PayoutProgressCard,
 } from "@/components/dashboard/funded";
 
+import * as Sentry from "@sentry/nextjs";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger("DashboardPage");
+
 // Server component
 export default async function DashboardPage() {
     const session = await auth();
 
-    // DEMO MODE: Auth disabled for testing
-    // Redirect if not authenticated
-    // if (!session?.user?.id) {
-    //     redirect('/login');
-    // }
+    // Fail closed: no session → redirect to login. Never fall through to demo data.
+    if (!session?.user?.id) {
+        const { redirect } = await import('next/navigation');
+        redirect('/login');
+    }
 
-    const userId = session?.user?.id || "demo-user-1"; // Fallback for testing
+    const userId = session!.user!.id;
 
     // Use service directly - no HTTP fetch
-    const data = await getDashboardData(userId);
+    let data;
+    try {
+        data = await getDashboardData(userId);
+    } catch (error) {
+        log.error("Failed to load dashboard data", { error: error instanceof Error ? error.message : String(error) });
+        Sentry.captureException(error, {
+            tags: { page: '/dashboard', type: 'db_connection' },
+            level: 'error',
+        });
+        return (
+            <div className="flex items-center justify-center h-full min-h-[400px]">
+                <div className="text-center space-y-4">
+                    <AlertTriangle className="w-12 h-12 text-amber-500 mx-auto" />
+                    <h1 className="text-xl font-bold">Temporarily Unavailable</h1>
+                    <p className="text-zinc-500 max-w-md">Our database is momentarily unreachable. This usually resolves in a few seconds.</p>
+                    <a href="/dashboard" className="inline-flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-white font-bold rounded-lg transition-colors">
+                        <RefreshCw className="w-4 h-4" />
+                        Retry
+                    </a>
+                </div>
+            </div>
+        );
+    }
 
     if (!data) {
         // Fallback for user not found

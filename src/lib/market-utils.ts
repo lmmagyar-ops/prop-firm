@@ -132,7 +132,26 @@ export function getCleanOutcomeName(question: string, eventTitle?: string): stri
  * - 48h (not 24h) because `new Date("February 22 2026")` parses as midnight
  *   local time, which in UTC can appear to be "yesterday" by early morning ET.
  * - Do NOT use setHours() — timezone-dependent and causes off-by-one bugs.
+ * - Year rollover: if the parsed month is >6 months ahead of the current month,
+ *   the date must refer to the previous year (e.g., "December 31" parsed in
+ *   January should be last year's Dec 31, not 11 months in the future).
  */
+
+/** Parse a "Month Day" string into a Date, adjusting year for rollover. */
+function parseDateWithYearRollover(month: string, day: number, now: Date): Date | null {
+    const parsedDate = new Date(`${month} ${day} ${now.getFullYear()}`);
+    if (isNaN(parsedDate.getTime())) return null;
+
+    // Year-rollover guard: if the parsed month is >6 months ahead of now,
+    // it's referencing last year (e.g., "December 31" parsed in January).
+    const monthDiff = parsedDate.getMonth() - now.getMonth();
+    if (monthDiff > 6) {
+        parsedDate.setFullYear(now.getFullYear() - 1);
+    }
+
+    return parsedDate;
+}
+
 export function isStaleMarketQuestion(question: string, now: Date = new Date()): boolean {
     const q = question.toLowerCase();
     const twoDaysAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000);
@@ -141,20 +160,18 @@ export function isStaleMarketQuestion(question: string, now: Date = new Date()):
     const rangePattern = /(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{1,2})-(\d{1,2})/i;
     const rangeMatch = q.match(rangePattern);
     if (rangeMatch) {
-        const month = rangeMatch[1];
         const endDay = parseInt(rangeMatch[3], 10);
-        const parsedDate = new Date(`${month} ${endDay} ${now.getFullYear()}`);
-        if (!isNaN(parsedDate.getTime()) && parsedDate < twoDaysAgo) return true;
+        const parsedDate = parseDateWithYearRollover(rangeMatch[1], endDay, now);
+        if (parsedDate && parsedDate < twoDaysAgo) return true;
     }
 
     // Check for single date patterns like "January 12" or "January 12?"
     const singlePattern = /(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{1,2})(?:\?|$|\s)/i;
     const singleMatch = q.match(singlePattern);
     if (singleMatch && !rangeMatch) {
-        const month = singleMatch[1];
         const day = parseInt(singleMatch[2], 10);
-        const parsedDate = new Date(`${month} ${day} ${now.getFullYear()}`);
-        if (!isNaN(parsedDate.getTime()) && parsedDate < twoDaysAgo) return true;
+        const parsedDate = parseDateWithYearRollover(singleMatch[1], day, now);
+        if (parsedDate && parsedDate < twoDaysAgo) return true;
     }
 
     return false;
