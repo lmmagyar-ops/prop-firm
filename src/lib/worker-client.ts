@@ -42,7 +42,29 @@ function setCache<T>(key: string, data: T): void {
     cache.set(key, { data, timestamp: Date.now() });
 }
 
+// Per-path failure penalty box — prevents Railway retry storm.
+//
+// Problem: when Railway cold-starts and times out (5 s AbortSignal), null is returned
+// but NOT cached. The next caller hits Railway again, waits another 5 s, etc.
+// In a single trade execution there are 3-4 calls to the same endpoints
+// (pre-warm, pre-tx risk check, in-tx risk check) → 15-20 s of sequential timeouts.
+//
+// Solution: after a timeout/error, record the path + timestamp. Any call to that
+// path within FAILURE_PENALTY_MS returns null immediately (0 ms), allowing
+// fallback logic (Postgres cache, event-list prices) to kick in without hammering
+// Railway. On the next invocation (new Lambda cold start) the map is empty again,
+// so Railway gets a fresh chance every time.
+const recentlyFailed = new Map<string, number>(); // path → epoch ms of last failure
+const FAILURE_PENALTY_MS = 20_000; // must be ≥ max expected single-invocation duration
+
 async function workerFetch<T>(path: string, options?: RequestInit): Promise<T | null> {
+    // Circuit-breaker: skip Railway if this endpoint just timed out
+    const lastFail = recentlyFailed.get(path);
+    if (lastFail !== undefined && Date.now() - lastFail < FAILURE_PENALTY_MS) {
+        logger.debug(`[WorkerClient] ${path} in penalty box — skipping Railway`);
+        return null;
+    }
+
     try {
         const res = await fetch(`${getWorkerUrl()}${path}`, {
             ...options,
@@ -56,15 +78,21 @@ async function workerFetch<T>(path: string, options?: RequestInit): Promise<T | 
 
         if (!res.ok) {
             logger.error(`[WorkerClient] ${path} returned ${res.status}`);
+            recentlyFailed.set(path, Date.now());
             return null;
         }
 
+        // Success — clear any previous failure so Railway gets a fresh chance next time
+        recentlyFailed.delete(path);
         return await res.json() as T;
     } catch (err) {
         logger.error(`[WorkerClient] ${path} failed:`, err instanceof Error ? err.message : err);
+        recentlyFailed.set(path, Date.now());
         return null;
     }
 }
+
+
 
 // ──────────────────────────────────────────────
 // MARKET DATA (replaces actions/market.ts Redis reads)
