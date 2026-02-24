@@ -7,6 +7,11 @@ import type { MockMarket } from "@/lib/mock-markets";
 import { db } from "@/db";
 import { positions } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
+import { AlertTriangle, RefreshCw } from "lucide-react";
+import * as Sentry from "@sentry/nextjs";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger("TradePage");
 
 // Map live market data to the shape expected by MarketCardClient
 function mapToMarketShape(liveMarket: MarketMetadata): MockMarket & { categories?: string[] } {
@@ -28,125 +33,146 @@ function mapToMarketShape(liveMarket: MarketMetadata): MockMarket & { categories
 }
 
 export default async function TradePage() {
-    const session = await auth();
-    const userId = session?.user?.id || "demo-user-1";
+    try {
+        const session = await auth();
+        const userId = session?.user?.id || "demo-user-1";
 
-    // First get dashboard data
-    const data = await getDashboardData(userId);
+        // First get dashboard data
+        const data = await getDashboardData(userId);
 
-    // POSITION-SAFE: Collect market IDs where user has open positions
-    // These must NEVER be filtered out, even if price hits 99¢
-    const activeChallengeId = data?.activeChallenge?.id;
-    let keepMarketIds: string[] | undefined;
-    if (activeChallengeId) {
-        const openPositions = await db.query.positions.findMany({
-            where: and(
-                eq(positions.challengeId, activeChallengeId),
-                eq(positions.status, 'OPEN')
-            ),
-            columns: { marketId: true },
-        });
-        if (openPositions.length > 0) {
-            keepMarketIds = openPositions.map(p => p.marketId);
+        // POSITION-SAFE: Collect market IDs where user has open positions
+        // These must NEVER be filtered out, even if price hits 99¢
+        const activeChallengeId = data?.activeChallenge?.id;
+        let keepMarketIds: string[] | undefined;
+        if (activeChallengeId) {
+            const openPositions = await db.query.positions.findMany({
+                where: and(
+                    eq(positions.challengeId, activeChallengeId),
+                    eq(positions.status, 'OPEN')
+                ),
+                columns: { marketId: true },
+            });
+            if (openPositions.length > 0) {
+                keepMarketIds = openPositions.map(p => p.marketId);
+            }
         }
-    }
 
-    // Parallelize remaining data fetches
-    const [liveMarkets, events] = await Promise.all([
-        getActiveMarkets(),
-        getActiveEvents(keepMarketIds),
-    ]);
+        // Parallelize remaining data fetches
+        const [liveMarkets, events] = await Promise.all([
+            getActiveMarkets(),
+            getActiveEvents(keepMarketIds),
+        ]);
 
-    const balance = data?.activeChallenge
-        ? Number(data.activeChallenge.currentBalance)
-        : 10000;
-
+        const balance = data?.activeChallenge
+            ? Number(data.activeChallenge.currentBalance)
+            : 10000;
 
 
-    const hasActiveChallenge = !!data?.activeChallenge;
 
-    const markets = liveMarkets.map(mapToMarketShape);
+        const hasActiveChallenge = !!data?.activeChallenge;
 
-    return (
-        <div>
-            <div className="space-y-6">
-                {!hasActiveChallenge ? (
-                    // Empty State: No Active Evaluation
-                    <div className="flex items-center justify-center min-h-[60vh]">
-                        <div className="max-w-2xl w-full mx-auto text-center space-y-6 p-8">
-                            <div className="w-20 h-20 mx-auto bg-primary/10 rounded-full flex items-center justify-center">
-                                <svg className="w-10 h-10 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                </svg>
-                            </div>
+        const markets = liveMarkets.map(mapToMarketShape);
 
-                            <div className="space-y-3">
-                                <h2 className="text-3xl font-bold">Get Started with Your Evaluation</h2>
-                                <p className="text-lg opacity-70">
-                                    Purchase an evaluation account to start trading prediction markets and prove your skills.
-                                </p>
-                            </div>
-
-                            <div className="bg-white/50 dark:bg-zinc-900/50 border border-slate-200 dark:border-white/5 rounded-xl p-6 space-y-4">
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-left">
-                                    <div className="space-y-2">
-                                        <div className="w-10 h-10 bg-green-500/10 rounded-lg flex items-center justify-center">
-                                            <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                            </svg>
-                                        </div>
-                                        <h3 className="font-semibold">Instant Access</h3>
-                                        <p className="text-sm opacity-70">Start trading immediately after purchase</p>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                                            <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                            </svg>
-                                        </div>
-                                        <h3 className="font-semibold">Real Markets</h3>
-                                        <p className="text-sm opacity-70">Trade on live prediction markets</p>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <div className="w-10 h-10 bg-purple-500/10 rounded-lg flex items-center justify-center">
-                                            <svg className="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
-                                            </svg>
-                                        </div>
-                                        <h3 className="font-semibold">Earn Profits</h3>
-                                        <p className="text-sm opacity-70">Keep up to 90% of your profits</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="pt-4">
-                                <a
-                                    href="/buy-evaluation"
-                                    className="inline-flex items-center gap-2 px-8 py-4 bg-primary hover:bg-primary/90 text-white font-semibold rounded-xl transition-all shadow-lg shadow-primary/20 hover:shadow-primary/40"
-                                >
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        return (
+            <div>
+                <div className="space-y-6">
+                    {!hasActiveChallenge ? (
+                        // Empty State: No Active Evaluation
+                        <div className="flex items-center justify-center min-h-[60vh]">
+                            <div className="max-w-2xl w-full mx-auto text-center space-y-6 p-8">
+                                <div className="w-20 h-20 mx-auto bg-primary/10 rounded-full flex items-center justify-center">
+                                    <svg className="w-10 h-10 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                                     </svg>
-                                    Buy Evaluation Account
-                                </a>
-                            </div>
+                                </div>
 
-                            <p className="text-sm opacity-50">
-                                Choose from $5K, $10K, or $25K account sizes
-                            </p>
+                                <div className="space-y-3">
+                                    <h2 className="text-3xl font-bold">Get Started with Your Evaluation</h2>
+                                    <p className="text-lg opacity-70">
+                                        Purchase an evaluation account to start trading prediction markets and prove your skills.
+                                    </p>
+                                </div>
+
+                                <div className="bg-white/50 dark:bg-zinc-900/50 border border-slate-200 dark:border-white/5 rounded-xl p-6 space-y-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-left">
+                                        <div className="space-y-2">
+                                            <div className="w-10 h-10 bg-green-500/10 rounded-lg flex items-center justify-center">
+                                                <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                                </svg>
+                                            </div>
+                                            <h3 className="font-semibold">Instant Access</h3>
+                                            <p className="text-sm opacity-70">Start trading immediately after purchase</p>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                                                <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                </svg>
+                                            </div>
+                                            <h3 className="font-semibold">Real Markets</h3>
+                                            <p className="text-sm opacity-70">Trade on live prediction markets</p>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <div className="w-10 h-10 bg-purple-500/10 rounded-lg flex items-center justify-center">
+                                                <svg className="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                                                </svg>
+                                            </div>
+                                            <h3 className="font-semibold">Earn Profits</h3>
+                                            <p className="text-sm opacity-70">Keep up to 90% of your profits</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="pt-4">
+                                    <a
+                                        href="/buy-evaluation"
+                                        className="inline-flex items-center gap-2 px-8 py-4 bg-primary hover:bg-primary/90 text-white font-semibold rounded-xl transition-all shadow-lg shadow-primary/20 hover:shadow-primary/40"
+                                    >
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                        </svg>
+                                        Buy Evaluation Account
+                                    </a>
+                                </div>
+
+                                <p className="text-sm opacity-50">
+                                    Choose from $5K, $10K, or $25K account sizes
+                                </p>
+                            </div>
                         </div>
-                    </div>
-                ) : (
-                    // Normal State: Show Markets with Category Tabs
-                    <MarketGridWithPolling
-                        markets={markets}
-                        initialEvents={events}
-                        balance={balance}
-                        userId={userId}
-                        challengeId={data?.activeChallenge?.id}
-                    />
-                )}
+                    ) : (
+                        // Normal State: Show Markets with Category Tabs
+                        <MarketGridWithPolling
+                            markets={markets}
+                            initialEvents={events}
+                            balance={balance}
+                            userId={userId}
+                            challengeId={data?.activeChallenge?.id}
+                        />
+                    )}
+                </div>
             </div>
-        </div>
-    );
+        );
+    } catch (error) {
+        log.error("Failed to load trade page data", { error: error instanceof Error ? error.message : String(error) });
+        Sentry.captureException(error, {
+            tags: { page: '/dashboard/trade', type: 'db_connection' },
+            level: 'error',
+        });
+        return (
+            <div className="flex items-center justify-center min-h-[60vh]">
+                <div className="text-center space-y-4">
+                    <AlertTriangle className="w-12 h-12 text-amber-500 mx-auto" />
+                    <h1 className="text-xl font-bold">Markets Temporarily Unavailable</h1>
+                    <p className="text-zinc-500 max-w-md">Our database is momentarily unreachable. This usually resolves in a few seconds.</p>
+                    <a href="/dashboard/trade" className="inline-flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-white font-bold rounded-lg transition-colors">
+                        <RefreshCw className="w-4 h-4" />
+                        Retry
+                    </a>
+                </div>
+            </div>
+        );
+    }
 }

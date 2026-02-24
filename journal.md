@@ -8,6 +8,25 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 > **New agent? Read this section before doing anything else.**
 > This is the single source of truth for what actually works. Do NOT trust individual journal entries — they reflect what the agent *believed*, not what the user confirmed.
 
+### Last Confirmed by Agent (Feb 23, 11:25 PM CT) — DB ERROR HANDLING ✅
+
+#### Shipped this session (on `develop`):
+
+| Commit | Files | What |
+|--------|-------|------|
+| `767c513` | `error.tsx` | Human-friendly message for DB errors, explicit `Sentry.captureException`, debug in collapsed `<details>` |
+| `767c513` | `positions/route.ts` | try/catch → 503 + `{positions: [], error: "temporarily_unavailable"}` |
+| `767c513` | `dashboard/page.tsx` | try/catch → inline ⚠️ "Temporarily Unavailable" + Retry button |
+| `767c513` | `trade/page.tsx` | try/catch → inline ⚠️ "Markets Temporarily Unavailable" + Retry button |
+
+**Root cause:** 5 Sentry unhandled errors — all Prisma Postgres intermittent connection drops. Not a code bug, but the user saw raw 500s with Prisma internals. Now: clean UI + explicit Sentry capture with route tags.
+
+**Not touched:** `/api/trade/execute`, webhooks, settlement — fail-hard per fail-closed principle.
+
+**Verified:** `tsc` clean, 1180/1180 tests (79 files).
+
+---
+
 ### Last Confirmed by Agent (Feb 23, 8:30 PM CT) — STALE FILTER FIX ✅
 
 #### Shipped this session (on `develop`):
