@@ -8,6 +8,20 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 > **New agent? Read this section before doing anything else.**
 > This is the single source of truth for what actually works. Do NOT trust individual journal entries — they reflect what the agent *believed*, not what the user confirmed.
 
+### Last Confirmed by Agent (Feb 24, 10:00 AM CT) — EVENT DETAIL MODAL UI POLISH ✅ VERIFIED
+
+**UI Enhancement (Polymarket Parity):** Removed "neon wall" effect from the `EventDetailModal` sub-market list to achieve a cleaner, professional trading terminal aesthetic.
+
+**Changes:**
+1. **White Anchor:** Probability percentage changed to solid white (`text-xl font-bold text-white`) as the primary visual focus.
+2. **Ghost Buttons:** Solid neon backgrounds removed. Buttons now use a dark translucent background (`bg-color/5`) that lightly illuminates with the exact outcome color on hover.
+3. **Typography & Layout:** Buttons widened (`w-[110px]`) with text tightly clustered inside. Outcome text color unified with its signature green/red.
+4. **Header Removed:** The sticky table header was removed entirely to reduce vertical clutter.
+
+**Verified on localhost:** Visual smoke test captured via browser agent confirms perfect grid alignment, unified colors, and lack of visual noise. Test suite: `tsc` clean, 1180/1180 passed (79 files).
+
+---
+
 ### Last Confirmed by Agent (Feb 24, 9:02 AM CT) — RESOLVED SUB-MARKET BUG FIX ✅ VERIFIED
 
 **Bug (cofounder-reported):** Multi-outcome sub-markets at extreme prices (≥99% or ≤1%) were grayed out with "RESOLVED" labels and disabled trade buttons. Polymarket shows all outcomes as fully tradeable until the market actually settles.
