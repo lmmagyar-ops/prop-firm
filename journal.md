@@ -45,6 +45,18 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ---
 
+### Last Confirmed by Agent (Feb 24, 1:12 AM CT) — isMultiOutcome FIX ✅
+
+**Bug:** `event.isMultiOutcome` was `undefined` at runtime in `EventDetailModal`. Events from Redis lack this field if ingested before it was added. Since `!undefined === true`, multi-outcome events rendered as binary — showing chart + large probability incorrectly.
+
+**Fix (commit `b42db8e`):** Added `?? (markets.length > 1)` default in `getActiveEvents()` (`market.ts`).
+
+**Fake press logos:** Exhaustive search — not present in current codebase.
+
+**Verified:** `tsc` clean, 1180/1180 tests. Pushed to staging.
+
+---
+
 ### Last Confirmed by Agent (Feb 23, 8:30 PM CT) — STALE FILTER FIX ✅
 
 #### Shipped this session (on `develop`):
