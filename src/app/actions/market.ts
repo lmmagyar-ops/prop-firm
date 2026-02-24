@@ -247,7 +247,14 @@ export async function getActiveEvents(keepMarketIdList?: string[]): Promise<Even
         const data = await getAllMarketData();
         if (!data) return [];
 
-        const events = (data.events || []) as EventMetadata[];
+        const rawEvents = (data.events || []) as EventMetadata[];
+
+        // DEFENSIVE: events from Redis may lack isMultiOutcome (ingested before the field existed).
+        // Default to markets.length > 1 so EventDetailModal never sees undefined.
+        const events = rawEvents.map(e => ({
+            ...e,
+            isMultiOutcome: e.isMultiOutcome ?? (e.markets?.length > 1),
+        }));
 
         const now = new Date();
 
