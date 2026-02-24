@@ -9,11 +9,21 @@ const requiresSSL = process.env.NODE_ENV === 'production' ||
     process.env.DATABASE_URL?.includes('prisma.io') ||
     process.env.DATABASE_URL?.includes('sslmode=require');
 
-// Serverless detection: each Vercel function invocation is isolated,
-// so max:1 is correct (no pool-sharing between invocations).
-// In test/dev, process is shared across many concurrent queries — use 5.
+// Serverless connection count: must be > 1.
+//
+// WHY NOT 1: db.transaction() holds connection_0 for the entire callback duration.
+// RiskEngine.validateTrade is called INSIDE the callback via `db.*` (not `tx`),
+// so it needs a SECOND connection from the pool. With max:1, it deadlocks waiting
+// for connection_0 to be freed — which won't happen until RiskEngine returns.
+// The function hangs for 60 s (maxDuration) and the client aborts at 30 s.
+//
+// WHY 3: the in-transaction risk check makes 2 sequential db.* queries (challenges
+// + positions). They can share connection_1 (sequential, not parallel), so max:2
+// would suffice. max:3 provides one spare for any other concurrent in-flight queries
+// from Next.js middleware / route handlers on the same warm Lambda invocation.
 const isServerless = process.env.VERCEL === '1';
-const maxConnections = isServerless ? 1 : 5;
+const maxConnections = isServerless ? 3 : 5;
+
 
 // postgres.js: replaces pg.Pool to fix N+1 pg-pool.connect on Vercel serverless.
 //
