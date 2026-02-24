@@ -8,16 +8,19 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 > **New agent? Read this section before doing anything else.**
 > This is the single source of truth for what actually works. Do NOT trust individual journal entries — they reflect what the agent *believed*, not what the user confirmed.
 
-### Last Confirmed by Agent (Feb 24, 10:12 AM CT) — UI AUDIT COMPLETE ✅ VERIFIED
+### Last Confirmed by Agent (Feb 24, 11:30 AM CT) — SHIPPED TO PRODUCTION ✅ VERIFIED
 
-**Comprehensive UI Audit** of all 11 files changed between `main` and `develop`. Code review + automated tests + browser baseline capture.
+**Develop → Main merge (`6d48a0b`).** Full deploy workflow completed.
 
-**Audit Results:**
-- **5 correct patterns confirmed:** Fail-closed auth, DB error handling, isMultiOutcome default, resolved flag stripping, ghost button aesthetic
-- **2 fixes applied:** JSX whitespace (`< div >` → `<div>`) in `EventDetailModal.tsx`, `FUTURE(v2)` comment on resolved stripping in `market.ts`
-- **1 deferred:** Dead `"kalshi"` type union across 7+ funded dashboard components — separate cleanup task
-- **Tests:** 1180/1180 pass, tsc clean
-- **Browser:** Staging baseline captured showing old UI (pre-fix state) — confirms local develop branch has improvements
+**Pre-Deploy Tests:** Engine ✅ | Safety 54/54 ✅ | Lifecycle 81/81 ✅ | Financial 24/24 ✅ | tsc clean ✅
+**Staging Smoke Test:** Ghost buttons ✅, no header ✅, white text ✅, no false RESOLVED labels ✅
+**Post-Deploy Health:** 10/11 pass (1 benign SHA mismatch — merge commit vs develop commit). DB ✅, Sentry ✅, Worker ✅ (49s), Crons ✅, System ✅
+
+**What Shipped:**
+- UI audit fixes: JSX whitespace cleanup, FUTURE(v2) comment on resolved stripping
+- EventDetailModal ghost button aesthetic, header removal, white probability text
+- Fail-closed auth, DB error handling, isMultiOutcome default, resolved flag stripping
+- Browser agent workflow hardened with credential login instructions
 
 **UI Enhancement (Polymarket Parity):** Removed "neon wall" effect from the `EventDetailModal` sub-market list to achieve a cleaner, professional trading terminal aesthetic.
 
