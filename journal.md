@@ -8,6 +8,24 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 > **New agent? Read this section before doing anything else.**
 > This is the single source of truth for what actually works. Do NOT trust individual journal entries — they reflect what the agent *believed*, not what the user confirmed.
 
+### Last Confirmed by Agent (Feb 24, 1:05 AM CT) — AUTH FAIL-OPEN FIX ✅
+
+**Security: closed fail-open auth on 3 financial paths (commit `708b541`)**
+
+| File | Before | After |
+|------|--------|-------|
+| `dashboard/page.tsx` | `session?.user?.id \|\| "demo-user-1"` | `redirect('/login')` if no session |
+| `trade/page.tsx` | Same fallback | Same fix |
+| `challenges.ts` | Same fallback (server action) | Return `{error: "Authentication required"}` |
+
+**Root cause:** Auth was disabled for early testing and never re-enabled. If `auth()` returned null (expired session, edge hiccup), user silently fell through to `demo-user-1`'s data.
+
+**Not touched:** `checkout/route.ts` (already guarded by L18-24 CONFIRMO_API_KEY check), `page.tsx` + `DashboardView.tsx` (client-side landing demo, no auth path).
+
+**Verified:** `tsc` clean, 1180/1180 tests (79 files). Pushed to staging.
+
+---
+
 ### Last Confirmed by Agent (Feb 23, 11:25 PM CT) — DB ERROR HANDLING ✅
 
 #### Shipped this session (on `develop`):
