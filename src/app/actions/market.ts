@@ -251,9 +251,15 @@ export async function getActiveEvents(keepMarketIdList?: string[]): Promise<Even
 
         // DEFENSIVE: events from Redis may lack isMultiOutcome (ingested before the field existed).
         // Default to markets.length > 1 so EventDetailModal never sees undefined.
+        // DEFENSIVE: also strip any stale `resolved: true` flags written by older versions
+        // of the ingestion worker (pre-fix). "Price at extreme" ≠ "market settled".
+        // We never set resolved here — only truly API-settled markets should be marked resolved.
         const events = rawEvents.map(e => ({
             ...e,
             isMultiOutcome: e.isMultiOutcome ?? (e.markets?.length > 1),
+            // Strip stale `resolved` flags written by old Railway worker versions.
+            // "Price at extreme" ≠ "market settled". We never set resolved from the server action.
+            markets: e.markets?.map(m => ({ ...m, resolved: undefined } as SubMarket)) ?? [],
         }));
 
         const now = new Date();

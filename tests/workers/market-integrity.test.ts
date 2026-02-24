@@ -92,35 +92,33 @@ beforeEach(() => {
 
 describe("pruneResolvedMarkets — event sub-markets", () => {
 
-    it("prunes resolved market with no open positions", async () => {
+    it("does NOT prune extreme-price event sub-markets (price ≠ settled)", async () => {
+        // INVARIANT: Multi-outcome event sub-markets at ≥95%/≤5% are still tradeable
+        // on Polymarket until the market actually closes via API. Pruning by price
+        // alone was the Feb 22 bug (c34fccb). This test documents the correct behavior.
         const events = [mkEvent([
-            { id: "mkt-resolved", price: 0.97, question: "Will X happen?" },
-            { id: "mkt-active", price: 0.50, question: "Will Y happen?" },
+            { id: "mkt-extreme-high", price: 0.97, question: "Solana above 30" },
+            { id: "mkt-extreme-low", price: 0.02, question: "Solana above 200" },
+            { id: "mkt-active", price: 0.50, question: "Solana above 100" },
         ])];
 
         const redis = createMockRedis({
             "event:active_list": JSON.stringify(events),
         });
 
-        // No open positions for the resolved market
-        mockDbSelect.mockReturnValue({
-            from: vi.fn().mockReturnValue({
-                where: vi.fn().mockResolvedValue([{ count: 0 }]),
-            }),
-        });
-
         const result = await pruneResolvedMarkets(redis as never);
 
-        expect(result.prunedEvents).toBe(1);
-        // Redis was updated
-        expect(redis.set).toHaveBeenCalled();
-        // The remaining event should only have the active market
-        const savedData = JSON.parse(redis.set.mock.calls[0][1] as string);
-        expect(savedData[0].markets).toHaveLength(1);
-        expect(savedData[0].markets[0].id).toBe("mkt-active");
+        // Nothing should be pruned from event sub-markets
+        expect(result.prunedEvents).toBe(0);
+        // Redis should NOT have been updated (no modifications)
+        expect(redis.set).not.toHaveBeenCalled();
+        // DB should NOT have been queried
+        expect(mockDbSelect).not.toHaveBeenCalled();
     });
 
     it("keeps resolved market when it has open positions", async () => {
+        // This test is kept for documentation: even if we ever add event pruning back,
+        // open position guard must work. For now, event sub-markets are never pruned.
         const events = [mkEvent([
             { id: "mkt-guarded", price: 0.97, question: "Resolved but has positions" },
         ])];
@@ -129,17 +127,11 @@ describe("pruneResolvedMarkets — event sub-markets", () => {
             "event:active_list": JSON.stringify(events),
         });
 
-        // 2 open positions on this market
-        mockDbSelect.mockReturnValue({
-            from: vi.fn().mockReturnValue({
-                where: vi.fn().mockResolvedValue([{ count: 2 }]),
-            }),
-        });
-
         const result = await pruneResolvedMarkets(redis as never);
 
+        // No event sub-markets are ever pruned by price
         expect(result.prunedEvents).toBe(0);
-        // Redis should NOT have been updated (no modifications)
+        // Redis should NOT have been updated
         expect(redis.set).not.toHaveBeenCalled();
     });
 
@@ -155,7 +147,7 @@ describe("pruneResolvedMarkets — event sub-markets", () => {
         const result = await pruneResolvedMarkets(redis as never);
 
         expect(result.prunedEvents).toBe(0);
-        // DB should NOT have been queried (market isn't resolved)
+        // DB should NOT have been queried (no pruning for event sub-markets)
         expect(mockDbSelect).not.toHaveBeenCalled();
     });
 });
@@ -228,27 +220,26 @@ describe("pruneResolvedMarkets — edge cases", () => {
         expect(mockDbSelect).not.toHaveBeenCalled();
     });
 
-    it("removes event entirely when all sub-markets pruned", async () => {
+    it("does NOT prune event entirely even if all sub-markets are at extreme prices", async () => {
+        // INVARIANT: Event sub-markets at extreme prices (≥95%/≤5%) are NOT pruned.
+        // This is the exact scenario that caused the Feb 24 cofounder-reported bug.
+        // "Solana above 30" at 99% is still tradeable — it hasn't settled.
         const events = [mkEvent([
-            { id: "mkt-1", price: 0.99, question: "Resolved A" },
-            { id: "mkt-2", price: 0.01, question: "Resolved B" },
+            { id: "mkt-1", price: 0.99, question: "Solana above 30" },
+            { id: "mkt-2", price: 0.01, question: "Solana above 200" },
         ])];
 
         const redis = createMockRedis({
             "event:active_list": JSON.stringify(events),
         });
 
-        mockDbSelect.mockReturnValue({
-            from: vi.fn().mockReturnValue({
-                where: vi.fn().mockResolvedValue([{ count: 0 }]),
-            }),
-        });
-
         const result = await pruneResolvedMarkets(redis as never);
 
-        expect(result.prunedEvents).toBe(2);
-        // Event with 0 remaining markets should be filtered out
-        const saved = JSON.parse(redis.set.mock.calls[0][1] as string);
-        expect(saved).toHaveLength(0);
+        // Neither market should be pruned
+        expect(result.prunedEvents).toBe(0);
+        // Redis should NOT have been written (nothing changed)
+        expect(redis.set).not.toHaveBeenCalled();
+        // DB should NOT have been queried
+        expect(mockDbSelect).not.toHaveBeenCalled();
     });
 });
