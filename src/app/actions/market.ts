@@ -259,6 +259,8 @@ export async function getActiveEvents(keepMarketIdList?: string[]): Promise<Even
             isMultiOutcome: e.isMultiOutcome ?? (e.markets?.length > 1),
             // Strip stale `resolved` flags written by old Railway worker versions.
             // "Price at extreme" ≠ "market settled". We never set resolved from the server action.
+            // FUTURE(v2): Re-enable resolved display when settlement detection comes from
+            // the Polymarket API response (closed_at / resolution fields), not price heuristics.
             markets: e.markets?.map(m => ({ ...m, resolved: undefined } as SubMarket)) ?? [],
         }));
 

@@ -389,7 +389,7 @@ function OutcomeRow({ market, eventTitle, isSelected, onSelect, onTrade }: Outco
             onClick={onSelect}
         >
             {/* Outcome Name + Volume */}
-            < div className="flex-1 min-w-0 pr-4" >
+            <div className="flex-1 min-w-0 pr-4">
                 <div className={cn(
                     "text-[15px] transition-colors flex flex-col justify-center",
                     market.resolved ? "text-zinc-500" : "text-white group-hover:text-primary"
@@ -402,18 +402,18 @@ function OutcomeRow({ market, eventTitle, isSelected, onSelect, onTrade }: Outco
                 <div className="text-xs text-zinc-500 mt-0.5">
                     {formatVolume(market.volume)} Vol.
                 </div>
-            </div >
+            </div>
 
-            < div className="w-20 text-right mr-6 flex flex-col items-end justify-center" >
+            <div className="w-20 text-right mr-6 flex flex-col items-end justify-center">
                 <span className={cn(
                     "text-xl font-bold tabular-nums leading-none",
                     market.resolved ? "text-zinc-500" : "text-white"
                 )}>
                     {percentage}
                 </span>
-            </div >
+            </div>
 
-            < div className="flex gap-2" >
+            <div className="flex gap-2">
                 <button
                     onClick={(e) => { e.stopPropagation(); if (!market.resolved) onTrade('yes'); }}
                     className={cn(
@@ -447,8 +447,8 @@ function OutcomeRow({ market, eventTitle, isSelected, onSelect, onTrade }: Outco
                         {market.resolved ? "—" : (parseFloat(noCents) < 1 ? "<1" : noCents) + "¢"}
                     </span>
                 </button>
-            </div >
-        </div >
+            </div>
+        </div>
     );
 }
 

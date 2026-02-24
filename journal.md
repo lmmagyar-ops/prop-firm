@@ -8,7 +8,16 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 > **New agent? Read this section before doing anything else.**
 > This is the single source of truth for what actually works. Do NOT trust individual journal entries — they reflect what the agent *believed*, not what the user confirmed.
 
-### Last Confirmed by Agent (Feb 24, 10:00 AM CT) — EVENT DETAIL MODAL UI POLISH ✅ VERIFIED
+### Last Confirmed by Agent (Feb 24, 10:12 AM CT) — UI AUDIT COMPLETE ✅ VERIFIED
+
+**Comprehensive UI Audit** of all 11 files changed between `main` and `develop`. Code review + automated tests + browser baseline capture.
+
+**Audit Results:**
+- **5 correct patterns confirmed:** Fail-closed auth, DB error handling, isMultiOutcome default, resolved flag stripping, ghost button aesthetic
+- **2 fixes applied:** JSX whitespace (`< div >` → `<div>`) in `EventDetailModal.tsx`, `FUTURE(v2)` comment on resolved stripping in `market.ts`
+- **1 deferred:** Dead `"kalshi"` type union across 7+ funded dashboard components — separate cleanup task
+- **Tests:** 1180/1180 pass, tsc clean
+- **Browser:** Staging baseline captured showing old UI (pre-fix state) — confirms local develop branch has improvements
 
 **UI Enhancement (Polymarket Parity):** Removed "neon wall" effect from the `EventDetailModal` sub-market list to achieve a cleaner, professional trading terminal aesthetic.
 
