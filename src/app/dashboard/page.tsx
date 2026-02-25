@@ -26,6 +26,7 @@ import { TraderSpotlight } from "@/components/dashboard/TraderSpotlight";
 import { QuickActions } from "@/components/dashboard/QuickActions";
 import { ActiveChallengeHeading } from "@/components/dashboard/ActiveChallengeHeading";
 import { ScaleUpBanner } from "@/components/dashboard/ScaleUpBanner";
+import { FundedTransitionModal } from "@/components/dashboard/FundedTransitionModal";
 
 // Funded Account Components
 import {
@@ -140,6 +141,17 @@ export default async function DashboardPage() {
                     {/* FUNDED PHASE UI */}
                     {isFunded && fundedStats ? (
                         <>
+                            {/* Funded Transition Modal — shown once when user enters funded phase */}
+                            <FundedTransitionModal
+                                challengeId={activeChallenge.id}
+                                tier={fundedStats.tier as "5k" | "10k" | "25k"}
+                                profitSplit={fundedStats.profitSplit}
+                                payoutCap={fundedStats.payoutCap}
+                                maxDailyDrawdown={fundedStats.maxDailyDrawdown}
+                                maxTotalDrawdown={fundedStats.maxTotalDrawdown}
+                                startingBalance={activeChallenge.startingBalance}
+                                minTradingDays={fundedStats.requiredTradingDays}
+                            />
                             {/* Funded Account Header */}
                             <FundedAccountHeader
                                 startingBalance={activeChallenge.startingBalance}
