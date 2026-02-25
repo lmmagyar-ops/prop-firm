@@ -291,6 +291,11 @@ export class ChallengeEvaluator {
                         activeTradingDays: 0,
                         lastActivityAt: now,
                         endsAt: null,
+                        // Reset SOD fields so daily PnL displays correctly from transition time.
+                        // All positions are closed and balance is reset to startingBalance,
+                        // so SOD = startingBalance is accurate. Next midnight cron updates normally.
+                        startOfDayBalance: startingBalance.toString(),
+                        startOfDayEquity: startingBalance.toString(),
                     })
                     .where(and(
                         eq(challenges.id, challengeId),

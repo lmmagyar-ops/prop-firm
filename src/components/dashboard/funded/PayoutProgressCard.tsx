@@ -7,7 +7,7 @@ interface PayoutProgressCardProps {
     excludedPnl: number;  // Resolution events excluded
     profitSplit: number;  // 0.80 = 80%
     payoutCap: number;
-    platform: "polymarket" | "kalshi";
+    platform: "polymarket";
 }
 
 export function PayoutProgressCard({

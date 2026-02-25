@@ -16,6 +16,46 @@ The browser subagent is powerful but prone to spiraling if not given tight const
 
 When constructing browser tasks, always use the exact URLs above. Never invent domain names like `predictionsfirm.com` or `app.predictionsfirm.com`.
 
+## ⚠️ CRITICAL: Authentication (Google OAuth DOES NOT WORK)
+
+The browser agent **CANNOT** complete Google OAuth login. It will redirect to accounts.google.com, get blocked by bot detection, and spiral. **DO NOT attempt Google OAuth login.**
+
+### How to Authenticate (Credential Login)
+
+The login page at `/login` has TWO methods:
+1. "Continue with Google" button (TOP) — **DO NOT USE THIS**
+2. Email/Password fields (BOTTOM) — **USE THIS**
+
+The credential fields are:
+- An **Email** text input field
+- A **Password** text input field  
+- A green **"Sign In"** button
+
+**Test account credentials:**
+- Email: `forexampletrader@gmail.com`
+- Password: `123456rR`
+
+### Login Task Template (Copy-Paste This)
+
+```
+STEP 1: Navigate to [BASE_URL]/login
+STEP 2: Wait 3 seconds for the page to load.
+STEP 3: You will see a login page with "Continue with Google" at the top and email/password fields below. 
+        DO NOT click "Continue with Google".
+        Instead, find the Email input field below the "OR CONTINUE WITH EMAIL" divider.
+STEP 4: Click the Email input field. Clear any existing text first (select all, delete), then type EXACTLY: forexampletrader@gmail.com
+        IMPORTANT: Do NOT type the email twice. Type it once, slowly.
+STEP 5: Click the Password input field. Type EXACTLY: 123456rR
+STEP 6: Click the green "Sign In" button.
+STEP 7: Wait 5 seconds for the redirect to complete. You should land on /dashboard.
+```
+
+### Known Browser Agent Bugs to Work Around
+
+1. **Double-typing**: The agent sometimes types into a field twice, producing `email@gmail.comemail@gmail.com`. To prevent this, instruct it to "Clear any existing text first (select all, delete), then type".
+2. **Clicking Google OAuth**: Even when told not to, the agent sometimes clicks "Continue with Google" because it's the most prominent button. Put the "DO NOT" instruction BEFORE the action step.
+3. **localhost doesn't work**: The browser agent runs in a sandbox that cannot reach `localhost` or `127.0.0.1`. Always use the Vercel staging/production URLs.
+
 ## Task Description Template
 
 Always structure your browser subagent task description like this:
@@ -58,15 +98,18 @@ Every browser subagent call MUST include these in the task description:
 ❌ **Multi-site tasks** — "Check Polymarket AND Vercel AND the dashboard" → loses context, interleaves poorly
 ✅ **Single-site focus** — Make separate browser_subagent calls, one per site
 
+❌ **Google OAuth login** — "Click Continue with Google, enter email on Google's page"
+✅ **Credential login** — "Use the email/password fields below 'OR CONTINUE WITH EMAIL'"
+
 ## Recommended Step Budgets
 
 | Task Type | Max Steps |
 |---|---|
 | Read a single page | 5 |
 | Fill out a form | 8 |
-| Check deployment logs (Vercel) | 10 |
+| Login + navigate to one page | 12 |
 | Navigate and screenshot | 5 |
-| Multi-page flow (login → dashboard) | 15 |
+| Multi-page flow (login → dashboard → trade) | 15 |
 | Smoke test (check multiple elements) | 15 |
 
 ## When NOT to Use the Browser Agent
@@ -81,31 +124,29 @@ Use terminal commands instead when:
 - You can `curl` an API endpoint
 - You need to check a status via CLI (e.g., `vercel` CLI, `git` commands)
 
-## Example: Good vs Bad
+## Full Smoke Test Example (Login → Dashboard → Trade)
 
-### BAD — Leads to 170+ step spiral
 ```
-Check two Polymarket markets to determine if they are resolved.
-Navigate to https://polymarket.com/event?id=439437288738
-```
-(Browser can't find the page → tries Google → tries GitHub → tries DuckDuckGo → tries Bing → 170 steps later, still no answer)
+You need to verify the staging deployment. Follow these steps EXACTLY:
 
-### GOOD — Completes in 10 steps
-```
-You need to verify that a Vercel deployment succeeded. Follow these steps EXACTLY:
-
-STEP 1: Open https://vercel.com/my-project/deployments
-STEP 2: Wait 5 seconds.
-STEP 3: Read the page. Report the most recent deployment status.
-STEP 4: Navigate to https://vercel.com/my-project/logs
-STEP 5: Wait 5 seconds.
-STEP 6: Read the page. Report any "error" log entries.
-STEP 7: STOP. Report your findings.
+STEP 1: Navigate to https://prop-firmx-git-develop-oversightresearch-4292s-projects.vercel.app/login
+STEP 2: Wait 3 seconds.
+STEP 3: You will see a login page. DO NOT click "Continue with Google".
+        Find the Email input field below the "OR CONTINUE WITH EMAIL" divider.
+STEP 4: Click the Email input field. Clear any existing text (Ctrl+A, Delete), then type EXACTLY: forexampletrader@gmail.com
+STEP 5: Click the Password field. Type EXACTLY: 123456rR
+STEP 6: Click the green "Sign In" button.
+STEP 7: Wait 5 seconds. Verify you are on /dashboard. Take a screenshot.
+STEP 8: Navigate to https://prop-firmx-git-develop-oversightresearch-4292s-projects.vercel.app/dashboard/trade
+STEP 9: Wait 5 seconds. Click on any event card showing outcomes.
+STEP 10: Take a screenshot of the modal. Report what you see.
+STEP 11: STOP. Report your findings.
 
 CRITICAL RULES:
-- Do NOT navigate to any website other than vercel.com
+- Do NOT click "Continue with Google" — use the email/password fields instead
+- Do NOT navigate to any website other than prop-firmx-git-develop-oversightresearch-4292s-projects.vercel.app
 - Do NOT use Google or any search engine
-- Do NOT click on more than 3 things total
+- Do NOT click on more than 10 things total
 - If a page fails to load, report the error and STOP. Do not retry more than once.
-- Your entire task should take no more than 10 steps total.
+- Your entire task should take no more than 15 steps total.
 ```

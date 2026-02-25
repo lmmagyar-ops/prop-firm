@@ -7,7 +7,7 @@ interface ActivityTrackerProps {
     requiredDays: number;
     lastActivityAt: Date | null;
     payoutCycleStart: Date | null;
-    platform: "polymarket" | "kalshi";
+    platform: "polymarket";
     /** Actual dates the user traded — used for the 14-day heatmap */
     tradingDayDates?: string[]; // ISO date strings (YYYY-MM-DD)
 }
