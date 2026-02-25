@@ -326,12 +326,16 @@ export class RiskMonitor {
                     startOfDayEquity: startingBalance.toString(),
                 };
 
-                // Status guard prevents race with evaluator
+                // Status guard + PHASE guard prevents race with evaluator's triggerPass.
+                // Without the phase guard, the evaluator transitions phase to 'funded' but status
+                // remains 'active'. The risk-monitor's next loop would match status='active' again,
+                // close positions a second time, and corrupt the balance.
                 const result = await tx.update(challenges)
                     .set(updatePayload)
                     .where(and(
                         eq(challenges.id, challenge.id),
-                        eq(challenges.status, 'active')
+                        eq(challenges.status, 'active'),
+                        eq(challenges.phase, 'challenge')
                     ));
 
                 if (!result.count || result.count === 0) {
