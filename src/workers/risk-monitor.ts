@@ -320,6 +320,10 @@ export class RiskMonitor {
                     activeTradingDays: 0,
                     lastActivityAt: new Date(),
                     endsAt: null,
+                    // Reset SOD fields so daily PnL displays correctly from transition time.
+                    // Matches the same fix in evaluator.ts — both paths must initialize these.
+                    startOfDayBalance: startingBalance.toString(),
+                    startOfDayEquity: startingBalance.toString(),
                 };
 
                 // Status guard prevents race with evaluator

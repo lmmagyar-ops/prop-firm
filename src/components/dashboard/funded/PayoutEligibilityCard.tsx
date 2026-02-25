@@ -11,6 +11,7 @@ interface PayoutEligibilityCardProps {
     consistencyFlagged: boolean;
     hasViolations: boolean;
     netProfit: number;
+    kycVerified?: boolean;
     platform: "polymarket";
 }
 
@@ -21,6 +22,7 @@ export function PayoutEligibilityCard({
     consistencyFlagged,
     hasViolations,
     netProfit,
+    kycVerified = false,
     platform,
 }: PayoutEligibilityCardProps) {
     const hasProfits = netProfit > 0;
@@ -31,6 +33,7 @@ export function PayoutEligibilityCard({
         { met: hasProfits, label: "Net profit > $0" },
         { met: hasTradingDays, label: `${requiredTradingDays}+ trading days` },
         { met: !hasViolations, label: "No rule violations" },
+        { met: kycVerified, label: "KYC verified" },
     ];
     const metCount = checks.filter(c => c.met).length;
     const progressPercent = (metCount / checks.length) * 100;
@@ -185,6 +188,32 @@ export function PayoutEligibilityCard({
                         </span>
                     </div>
                 )}
+
+                {/* KYC Verification */}
+                <div className={`flex items-center justify-between p-3 rounded-lg border transition-colors
+                    ${kycVerified
+                        ? 'bg-green-500/5 border-green-500/20'
+                        : 'bg-zinc-900/50 border-white/5'
+                    }`}
+                >
+                    <div className="flex items-center gap-3">
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center
+                            ${kycVerified ? 'bg-green-500' : 'bg-zinc-700'}`}
+                        >
+                            {kycVerified ? (
+                                <Check className="w-4 h-4 text-white" />
+                            ) : (
+                                <Clock className="w-4 h-4 text-zinc-400" />
+                            )}
+                        </div>
+                        <span className={kycVerified ? 'text-green-400' : 'text-zinc-400'}>
+                            KYC verification
+                        </span>
+                    </div>
+                    <span className={`text-xs ${kycVerified ? 'text-green-500' : 'text-zinc-500'}`}>
+                        {kycVerified ? "VERIFIED" : "PENDING"}
+                    </span>
+                </div>
             </div>
 
             {/* CTA */}

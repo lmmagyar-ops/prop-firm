@@ -27,7 +27,10 @@ export function FundedRiskMeters({
     platform,
 }: FundedRiskMetersProps) {
     // STATIC drawdown calculation (from initial balance, NOT high water mark)
-    const drawdownFromInitial = Math.max(0, startingBalance - currentBalance);
+    // Uses equity (cash + position value), NOT cash-only currentBalance.
+    // This matches the risk engine (evaluator.ts:123) and prevents buying a
+    // position from appearing as drawdown usage.
+    const drawdownFromInitial = Math.max(0, startingBalance - equity);
     const drawdownUsagePercent = (drawdownFromInitial / maxTotalDrawdown) * 100;
 
     // Daily loss calculation — uses TRUE EQUITY (cash + unrealized position value),

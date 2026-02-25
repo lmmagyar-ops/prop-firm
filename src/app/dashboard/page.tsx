@@ -144,10 +144,12 @@ export default async function DashboardPage() {
                             <FundedAccountHeader
                                 startingBalance={activeChallenge.startingBalance}
                                 currentBalance={activeChallenge.currentBalance}
+                                equity={trueEquity}
                                 tier={fundedStats.tier as "5k" | "10k" | "25k"}
                                 profitSplit={fundedStats.profitSplit}
                                 payoutCap={fundedStats.payoutCap}
                                 daysUntilPayout={fundedStats.daysUntilPayout}
+                                accountNumber={`FA-${activeChallenge.id.slice(0, 8).toUpperCase()}`}
                                 platform={activeChallenge.platform as "polymarket"}
                             />
 

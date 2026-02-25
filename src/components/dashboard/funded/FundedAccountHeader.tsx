@@ -6,23 +6,29 @@ import { Wallet, Calendar, TrendingUp, Sparkles } from "lucide-react";
 interface FundedAccountHeaderProps {
     startingBalance: number;
     currentBalance: number;
+    equity: number; // cash + unrealized position value
     tier: "5k" | "10k" | "25k";
     profitSplit: number; // 0.80 = 80%
     payoutCap: number;
     daysUntilPayout: number;
+    accountNumber: string;
     platform: "polymarket";
 }
 
 export function FundedAccountHeader({
     startingBalance,
     currentBalance,
+    equity,
     tier,
     profitSplit,
     payoutCap,
     daysUntilPayout,
+    accountNumber,
     platform,
 }: FundedAccountHeaderProps) {
-    const profit = currentBalance - startingBalance;
+    // PnL uses equity (cash + unrealized position value), not cash-only.
+    // Without this, buying a $500 position shows as -$500 PnL.
+    const profit = equity - startingBalance;
     const isProfitable = profit > 0;
 
     // Platform-specific accent colors
@@ -37,13 +43,14 @@ export function FundedAccountHeader({
             text: "text-amber-500",
         }
         : {
-            primary: "#8B5CF6",      // Purple for Kalshi funded  
-            secondary: "#7C3AED",
-            glow: "rgba(139, 92, 246, 0.3)",
-            gradient: "from-violet-500 via-purple-500 to-violet-600",
-            border: "border-violet-500/30",
-            bg: "bg-violet-500/10",
-            text: "text-violet-500",
+            // Fallback — Kalshi dead, but type safety requires this branch
+            primary: "#F59E0B",
+            secondary: "#D97706",
+            glow: "rgba(245, 158, 11, 0.3)",
+            gradient: "from-amber-500 via-orange-500 to-amber-600",
+            border: "border-amber-500/30",
+            bg: "bg-amber-500/10",
+            text: "text-amber-500",
         };
 
     return (
@@ -81,6 +88,7 @@ export function FundedAccountHeader({
                                     {tier} Tier
                                 </span>
                             </h2>
+                            <div className="text-xs text-zinc-500 font-mono mt-0.5">{accountNumber}</div>
                         </div>
                     </div>
 
