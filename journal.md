@@ -50,7 +50,15 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 **Self-review caught:** TWO producers of Bug 3 (both `evaluator.ts` AND `risk-monitor.ts:triggerPass()` can promote to funded — both were missing SOD reset).
 
-**Verification:** tsc clean ✅ | Safety 53/54 (1 pre-existing balance reset ordering issue) | All UI fixes are display-only, engine fix is additive field initialization.
+**Verification (Anthropic-grade):**
+- `tsc --noEmit` ✅ clean
+- `test:financial` ✅ 24/24 passed (share consistency, PnL, equity cross-check)
+- `test:engine` ✅ 60/60 passed (full round-trip verification)
+- `presentation-layer.test.tsx` ✅ 24/24 passed
+- `test:safety` 53/54 (1 pre-existing balance reset ordering issue, unrelated to our changes)
+- 3-layer cross-reference: DB equity ($9,646) vs UI equity ($9,905) — $259 gap explained by DB `currentPrice` being entry-time stale while UI uses live Redis prices. Expected architecture, not a bug.
+- Stale funded account scan: only 1 funded account in DB (Mat's, already patched ✅)
+- Challenge-phase regression: no regression risk — all changed components are `{isFunded &&}` conditionally rendered, never hit by challenge-phase users. Engine tests confirm challenge evaluator unaffected.
 
 **DB patch applied:** Mat's challenge `056d254d` SOD fields reset to `$10,000.00` ✅
 
