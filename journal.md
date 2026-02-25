@@ -8,16 +8,18 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 > **New agent? Read this section before doing anything else.**
 > This is the single source of truth for what actually works. Do NOT trust individual journal entries — they reflect what the agent *believed*, not what the user confirmed.
 
-### Last Confirmed by Agent (Feb 24, 8:30 PM CT) — FUNDED FIXES SHIPPED TO PROD ✅
+### Last Confirmed by Agent (Feb 24, 8:50 PM CT) — ALL FOLLOW-UPS SHIPPED ✅
 
-**Develop → Main merge (`725b08d`).** Full deploy workflow completed. Post-deploy 11/11 ✅.
+**Latest merge to main: `7d47227`.** Full deploy workflow. Post-deploy 11/11 ✅.
 
 **What Shipped (this session):**
 - 5 funded account bug fixes: equity-based drawdown/PnL, SOD reset (2 producers), account ID, KYC row
 - DB patch: Mat's challenge `056d254d` SOD fields reset to $10,000
 - Orphaned test data cleaned (killed `test:financial` left 1 user + challenge)
+- **Safety race fix:** `risk-monitor.ts:triggerPass()` missing phase guard → evaluator + risk-monitor could double-transition same challenge. Safety **54/54** (was 53/54).
+- **Funded transition modal:** `FundedTransitionModal.tsx` — congratulatory popup shown once per funded transition with profit split, drawdown limits, payout cycle, KYC requirement.
 
-**Verification:** financial 24/24, engine 60/60, presentation 24/24, safety 53/54 (1 pre-existing), tsc clean, staging browser smoke test ✅
+**Verification:** financial 24/24, engine 60/60, safety **54/54**, tsc clean ✅
 
 **Previous Ship (Feb 24, 11:30 AM CT):** UI audit fixes, EventDetailModal polish, ghost buttons, isMultiOutcome fix.
 
@@ -69,9 +71,9 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 - [ ] CONFIRMED BY USER: User saw +$870 PnL on localhost — visual confirmation of equity-based PnL working. Full funded dashboard NOT yet explicitly confirmed by user as "correct."
 
 ### Tomorrow Morning
-1. **Ask Mat** if the funded dashboard looks right now — his confirmation is the only success signal (leverage × risk: HIGH)
-2. **Funded transition UX** — design congratulatory modal for eval → funded (leverage × risk: MEDIUM)
-3. **Safety test 54/54** — investigate balance reset ordering in evaluator (leverage × risk: LOW)
+1. **Ask Mat** if the funded dashboard + transition modal look right — his confirmation is the only success signal (leverage × risk: HIGH)
+2. ~~**Funded transition UX**~~ → DONE: `FundedTransitionModal.tsx` shipped ✅
+3. ~~**Safety test 54/54**~~ → DONE: `risk-monitor.ts` phase guard fix shipped, 54/54 ✅
 
 ---
 
