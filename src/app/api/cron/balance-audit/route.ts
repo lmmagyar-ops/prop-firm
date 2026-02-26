@@ -4,6 +4,7 @@ import { challenges, trades, positions } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { createLogger } from "@/lib/logger";
 import * as Sentry from "@sentry/nextjs";
+import { verifyCronAuth } from "@/lib/cron-auth";
 const logger = createLogger("BalanceAudit");
 
 /**
@@ -31,13 +32,8 @@ interface BalanceAuditResult {
 }
 
 export async function GET(req: Request) {
-    // Verify cron secret for Vercel Cron
-    const authHeader = req.headers.get("authorization");
-    const cronSecret = process.env.CRON_SECRET;
-
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const authError = verifyCronAuth(req);
+    if (authError) return authError;
 
     logger.info(`[BALANCE_AUDIT] Starting daily balance integrity check...`);
 

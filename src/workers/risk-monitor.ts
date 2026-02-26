@@ -184,7 +184,9 @@ export class RiskMonitor {
             const fundedRules = FUNDED_RULES[tier];
 
             maxDrawdown = fundedRules.maxTotalDrawdown;          // Static from initial balance
-            maxDailyDrawdown = fundedRules.maxDailyDrawdown;     // Static daily limit
+            // Dynamic daily limit = percent × startOfDayBalance (grows with profits)
+            // Must match evaluator.ts — split-brain between these two is a critical bug.
+            maxDailyDrawdown = fundedRules.maxDailyDrawdownPercent * startOfDayBalance;
             profitTarget = Infinity;                              // No profit target in funded phase
         } else {
             // Challenge phase: Use stored rules with normalization guard

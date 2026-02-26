@@ -5,6 +5,7 @@ import { eq, and, isNotNull } from "drizzle-orm";
 import { createLogger } from "@/lib/logger";
 import { safeParseFloat } from "@/lib/safe-parse";
 import { getPositionsWithPnL } from "@/lib/dashboard-service";
+import { verifyCronAuth } from "@/lib/cron-auth";
 const logger = createLogger("DailyReset");
 
 /**
@@ -20,18 +21,12 @@ const logger = createLogger("DailyReset");
  * - External cron service (Railway, Render, etc.)
  * - Manual trigger for testing
  * 
- * Security: Protected by CRON_SECRET environment variable
+ * Security: Protected by CRON_SECRET via verifyCronAuth()
  */
 
 export async function GET(request: NextRequest) {
-    // Verify cron secret to prevent unauthorized calls
-    const authHeader = request.headers.get("authorization");
-    const cronSecret = process.env.CRON_SECRET;
-
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-        logger.info("[DailyReset] ⚠️ Unauthorized cron attempt");
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const authError = verifyCronAuth(request);
+    if (authError) return authError;
 
     logger.info("[DailyReset] 🌅 Starting Daily Reset...");
 

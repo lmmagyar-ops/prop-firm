@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { challenges } from "@/db/schema";
-import { eq, and, isNull } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { getClient } from "@sentry/nextjs";
 import { getHeartbeat } from "@/lib/worker-client";
 import { createLogger } from "@/lib/logger";
+import { verifyCronAuth } from "@/lib/cron-auth";
 
 const logger = createLogger("SystemHealth");
 
@@ -14,8 +15,7 @@ const logger = createLogger("SystemHealth");
  * Returns infrastructure health for post-deploy verification.
  * Each check runs independently — one failure doesn't cascade.
  * 
- * Auth: CRON_SECRET (same pattern as cron endpoints).
- * Fails open when CRON_SECRET is not set (local dev).
+ * Auth: CRON_SECRET via verifyCronAuth() (fail-closed in production).
  * 
  * Usage: GET /api/system/health -H "Authorization: Bearer <CRON_SECRET>"
  */
@@ -39,12 +39,8 @@ interface HealthResponse {
 }
 
 export async function GET(request: NextRequest) {
-    const authHeader = request.headers.get("authorization");
-    const cronSecret = process.env.CRON_SECRET;
-
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const authError = verifyCronAuth(request);
+    if (authError) return authError;
 
     const response: HealthResponse = {
         version: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? null,

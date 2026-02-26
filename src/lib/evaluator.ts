@@ -66,9 +66,12 @@ export class ChallengeEvaluator {
             ? fundedRules.maxTotalDrawdown  // Static: e.g. $1000 for 10k tier
             : normalized.maxDrawdown;  // Trailing for challenge phase
 
-        // Daily loss limit from percentage
+        // Daily loss limit
+        // FUNDED: Dynamic daily limit = percent × startOfDayBalance (grows with profits)
+        //   e.g., 10k tier at SOD $12K → 5% × $12K = $600 (not static $500)
+        // CHALLENGE: Static percent × startingBalance
         const maxDailyLoss = isFunded
-            ? fundedRules.maxDailyDrawdown  // Static daily limit
+            ? fundedRules.maxDailyDrawdownPercent * startOfDayBalance  // Dynamic: per Mat's request
             : (rules.maxDailyDrawdownPercent || 0.04) * startingBalance;
 
         // Calculate Equity (Cash + Unrealized Value of Open Positions)

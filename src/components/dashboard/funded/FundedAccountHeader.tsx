@@ -110,7 +110,7 @@ export function FundedAccountHeader({
                     <div className="bg-[#0E1217]/60 rounded-xl p-4 border border-white/5">
                         <div className="text-xs text-zinc-500 uppercase tracking-wider font-semibold mb-1 flex items-center gap-1">
                             <Wallet className="w-3 h-3" />
-                            Balance
+                            Cash
                         </div>
                         <div className="text-xl font-mono font-bold text-white">
                             ${currentBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}

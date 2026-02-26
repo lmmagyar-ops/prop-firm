@@ -1,29 +1,16 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
 import { db } from "@/db";
 import { activityLogs, users } from "@/db/schema";
-import { desc, eq, sql, and, gte } from "drizzle-orm";
+import { desc, eq, and, gte } from "drizzle-orm";
 import { createLogger } from "@/lib/logger";
+import { requireAdmin } from "@/lib/admin-auth";
 const logger = createLogger("ActivityLogs");
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-    const session = await auth();
-
-    // Admin only
-    if (!session?.user?.id) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Check admin role
-    const user = await db.query.users.findFirst({
-        where: eq(users.id, session.user.id),
-    });
-
-    if (user?.role !== "admin") {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    const adminResult = await requireAdmin();
+    if (!adminResult.isAuthorized) return adminResult.response!;
 
     const { searchParams } = new URL(request.url);
     const limit = Math.min(parseInt(searchParams.get("limit") || "100"), 500);
