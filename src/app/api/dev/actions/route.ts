@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { challenges, positions, trades } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/auth";
 import { createLogger } from "@/lib/logger";
 const logger = createLogger("Actions");
 
@@ -9,6 +10,7 @@ const logger = createLogger("Actions");
  * POST /api/dev/actions
  * Development-only endpoint for testing actions via DevTools.
  * Only works in non-production environments.
+ * Requires authenticated session — scoped to the authenticated user only.
  */
 export async function POST(req: NextRequest) {
     // SAFETY: Only allow in development
@@ -16,12 +18,16 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "Not available in production" }, { status: 403 });
     }
 
-    try {
-        const { action, userId } = await req.json();
+    // Even in dev: require an authenticated session.
+    // This prevents cross-user manipulation via crafted request bodies.
+    const session = await auth();
+    if (!session?.user?.id) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-        if (!userId) {
-            return NextResponse.json({ error: "userId required" }, { status: 400 });
-        }
+    try {
+        const { action } = await req.json();
+        const userId = session.user.id; // always scope to the authenticated user
 
         // Get active challenge for user
         const [activeChallenge] = await db

@@ -152,7 +152,7 @@ export function RecentTradesWidget() {
                                         <p className="text-sm font-medium text-white truncate">
                                             {trade.marketTitle}
                                         </p>
-                                        <div className="flex items-center gap-2 text-xs text-zinc-500">
+                                        <div className="flex items-center gap-2 text-xs text-zinc-500 flex-wrap">
                                             <span className={cn(
                                                 "px-1.5 py-0.5 rounded font-bold",
                                                 trade.type === "BUY"
@@ -160,6 +160,10 @@ export function RecentTradesWidget() {
                                                     : "bg-red-500/10 text-red-400"
                                             )}>
                                                 {trade.type}
+                                            </span>
+                                            {/* Market title snippet — Mat's request: show what option was traded */}
+                                            <span className="text-zinc-400 truncate max-w-[120px]" title={trade.marketTitle}>
+                                                {trade.marketTitle}
                                             </span>
                                             {trade.direction && (
                                                 <span className={cn(

@@ -123,9 +123,14 @@ export const MultiRunnerCard = memo(function MultiRunnerCard({ event, onTrade }:
                 ))}
             </div>
 
-            {/* Footer - Volume */}
-            <div className="px-4 py-3 text-xs text-zinc-500 border-t border-white/5 mt-auto">
+            {/* Footer - Volume + Resolution Date */}
+            <div className="px-4 py-3 text-xs text-zinc-500 border-t border-white/5 mt-auto flex items-center justify-between">
                 <span>{formatVolume(event.volume)} Vol.</span>
+                <span>
+                    {event.endDate
+                        ? new Date(event.endDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+                        : "TBD"}
+                </span>
             </div>
         </div>
     );

@@ -296,7 +296,8 @@ export function getFundedStats(challenge: DbChallengeRow, equity: number, starti
         eligible,
         hasViolations: false,
         maxTotalDrawdown: fundedRules.maxTotalDrawdown,
-        maxDailyDrawdown: fundedRules.maxDailyDrawdown,
+        // Dynamic daily limit = percent × startOfDayBalance (matches evaluator + risk-monitor)
+        maxDailyDrawdown: fundedRules.maxDailyDrawdownPercent * (safeParseFloat(challenge.startOfDayBalance) || startingBalance),
     };
 }
 

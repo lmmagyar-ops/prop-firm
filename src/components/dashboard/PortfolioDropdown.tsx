@@ -100,9 +100,19 @@ export function PortfolioDropdown() {
         };
 
         fetchPositions();
-        // Poll every 5s for P&L updates
-        const interval = setInterval(fetchPositions, 30000);
-        return () => clearInterval(interval);
+        // Poll every 10s for P&L updates (was 30s — too slow for Mat to notice)
+        const interval = setInterval(fetchPositions, 10000);
+
+        // Refresh immediately when a trade executes (same pattern as RecentTradesWidget)
+        const handleBalanceUpdate = () => {
+            fetchPositions();
+        };
+        window.addEventListener('balance-updated', handleBalanceUpdate);
+
+        return () => {
+            clearInterval(interval);
+            window.removeEventListener('balance-updated', handleBalanceUpdate);
+        };
     }, []);
 
     const totalPnL = positions.reduce((acc, p) => acc + p.unrealizedPnL, 0);

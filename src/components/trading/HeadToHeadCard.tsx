@@ -74,6 +74,11 @@ export const HeadToHeadCard = memo(function HeadToHeadCard({ event, onTrade }: H
                                 <Users className="w-3 h-3" />
                                 {event.markets.length} options
                             </span>
+                            <span>
+                                {event.endDate
+                                    ? new Date(event.endDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+                                    : "TBD"}
+                            </span>
                         </div>
                     </div>
                 </div>

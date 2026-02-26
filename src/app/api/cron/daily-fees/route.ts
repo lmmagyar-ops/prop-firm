@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { runFeeSweep } from "@/workers/fees";
 import { createLogger } from "@/lib/logger";
+import { verifyCronAuth } from "@/lib/cron-auth";
 const logger = createLogger("DailyFees");
 
 /**
@@ -14,19 +15,11 @@ const logger = createLogger("DailyFees");
  *   }]
  * }
  * 
- * Security: Vercel automatically adds CRON_SECRET header for verification
+ * Security: Protected by CRON_SECRET via verifyCronAuth()
  */
 export async function GET(request: Request) {
-    // Verify cron secret (Vercel adds this automatically)
-    const authHeader = request.headers.get("authorization");
-    const cronSecret = process.env.CRON_SECRET;
-
-    // In production, verify the secret
-    if (process.env.NODE_ENV === "production" && cronSecret) {
-        if (authHeader !== `Bearer ${cronSecret}`) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        }
-    }
+    const authError = verifyCronAuth(request);
+    if (authError) return authError;
 
     try {
         logger.info("🕛 [Cron] Daily fee sweep triggered at", new Date().toISOString());

@@ -130,7 +130,11 @@ export function OpenPositions({ positions: initialPositions }: OpenPositionsProp
                                 const isPositive = pos.unrealizedPnL >= 0;
 
                                 return (
-                                    <TableRow key={pos.id} className="border-white/5 hover:bg-white/5 h-12">
+                                    <TableRow
+                                        key={pos.id}
+                                        className="border-white/5 hover:bg-white/5 h-12 cursor-pointer transition-colors"
+                                        onClick={() => pos.marketId && router.push(`/dashboard/trade?market=${pos.marketId}`)}
+                                    >
                                         {/* Market — with tooltip for full title */}
                                         <TableCell className="text-sm font-medium text-white max-w-[200px]">
                                             <Tooltip>
@@ -205,7 +209,7 @@ export function OpenPositions({ positions: initialPositions }: OpenPositionsProp
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
-                                                onClick={() => handleClosePosition(pos.id)}
+                                                onClick={(e) => { e.stopPropagation(); handleClosePosition(pos.id); }}
                                                 disabled={closingId === pos.id}
                                                 className="h-7 px-3 text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 font-bold"
                                             >

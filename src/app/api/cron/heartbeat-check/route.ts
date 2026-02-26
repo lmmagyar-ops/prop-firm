@@ -3,6 +3,7 @@ import { getHeartbeat } from "@/lib/worker-client";
 import { alerts } from "@/lib/alerts";
 import { OutageManager } from "@/lib/outage-manager";
 import { createLogger } from "@/lib/logger";
+import { verifyCronAuth } from "@/lib/cron-auth";
 const logger = createLogger("HeartbeatCheck");
 
 /**
@@ -19,12 +20,8 @@ const logger = createLogger("HeartbeatCheck");
 const STALE_THRESHOLD_MS = 3 * 60 * 1000; // 3 minutes
 
 export async function GET(request: NextRequest) {
-    // Verify cron secret (Vercel sends this header for cron jobs)
-    const authHeader = request.headers.get("authorization");
-    const cronSecret = process.env.CRON_SECRET;
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const authError = verifyCronAuth(request);
+    if (authError) return authError;
 
     try {
         const heartbeat = await getHeartbeat() as { timestamp: number; workerId?: string; isLeader?: boolean; activeTokens?: number; priceBufferSize?: number } | null;

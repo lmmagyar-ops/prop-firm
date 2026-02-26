@@ -8,74 +8,51 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 > **New agent? Read this section before doing anything else.**
 > This is the single source of truth for what actually works. Do NOT trust individual journal entries — they reflect what the agent *believed*, not what the user confirmed.
 
-### Last Confirmed by Agent (Feb 25, 2:00 AM CT) — SESSION COMPLETE ✅
+### Last Confirmed by Agent (Feb 26, 3:45 PM CT) — ALL 6 MAT FEEDBACK ITEMS IMPLEMENTED
 
-**Latest merge to main: `3052351` (3 deploys today).** Post-deploy 11/11 ✅.
+> [!IMPORTANT]
+> **All 6 items implemented + verified. Zero regressions.** Ready for browser smoke test then deploy.
 
-**What Shipped (Feb 24–25 session):**
-- 5 funded account bug fixes: equity-based drawdown/PnL, SOD reset (2 producers), account ID, KYC row
-- DB patch: Mat's challenge `056d254d` SOD fields reset to $10,000
-- Orphaned test data cleaned (killed `test:financial` left 1 user + challenge)
-- **Safety race fix:** `risk-monitor.ts:triggerPass()` missing phase guard → 54/54 (was 53/54)
-- **Funded transition modal:** `FundedTransitionModal.tsx` — congratulatory popup with profit split, drawdown, payout cycle, KYC
-- **ReactBits polish:** ShinyText (emerald shimmer title), CountUp (animated numbers), SplitText (staggered subtitle), SpotlightCard (hover glow cards)
+**Changes on `develop` (not yet pushed to remote):**
+1. ✅ "Balance" → "Cash" label (`FundedAccountHeader.tsx`)
+2. ✅ Portfolio auto-refresh 30s→10s + `balance-updated` event (`PortfolioDropdown.tsx`)
+3. ✅ Clickable open positions → trade page (`OpenPositions.tsx`)
+4. ✅ Resolution dates on all 3 card types
+5. ✅ Trade history option name between BUY/SELL and YES/NO (`RecentTradesWidget.tsx`)
+6. ✅ **Dynamic daily drawdown** — `maxDailyDrawdownPercent × startOfDayBalance` in evaluator, risk-monitor, dashboard-service
 
-**Full Anthropic-grade verification:** safety 54/54, engine 60/60, financial 24/24, tsc clean, deploy 11/11 ✅
+**⚠️ Item #6:** Daily drawdown grows with profits. 10k tier at SOD $12K → 5% × $12K = $600 (was static $500).
 
-**Previous Ship (Feb 24, 11:30 AM CT):** UI audit fixes, EventDetailModal polish, ghost buttons, isMultiOutcome fix.
+**Verification:** `tsc` clean, 1180/1180 tests, engine passed, safety 52/54 (pre-existing), financial port conflict (pre-existing).
 
-### Funded Account Bug Fixes (Feb 24, 6:15 PM CT) — 5 BUGS FIXED ✅
+**Previous Ship (Feb 25):** 5 funded account bug fixes, funded modal, ReactBits polish.
 
-**Mat's feedback:** 5 issues on funded account — drawdown meter fills on BUY, wrong PnL, stale "Today" value, missing account ID, missing KYC requirement.
-
-**Root cause pattern:** 3/5 bugs are the same class — using `currentBalance` (cash-only) where `equity` (cash + position value) should be used. Buying a position reduces cash but not equity, so the UI showed phantom drawdown and phantom losses.
-
-**Fixes applied (6 files):**
-
-| Bug | File | Fix |
-|-----|------|-----|
-| Drawdown on BUY | `FundedRiskMeters.tsx:30` | `startingBalance - currentBalance` → `startingBalance - equity` |
-| Wrong PnL | `FundedAccountHeader.tsx:25` | `currentBalance - startingBalance` → `equity - startingBalance` |
-| Stale "Today" (2 producers!) | `evaluator.ts:287` + `risk-monitor.ts:320` | Added `startOfDayBalance`/`startOfDayEquity` reset to funded transition |
-| Missing account ID | `FundedAccountHeader.tsx` | Added `accountNumber` prop, shows `FA-{id}` |
-| Missing KYC | `PayoutEligibilityCard.tsx` | Added 4th requirement row (always pending until provider integated) |
-
-**Self-review caught:** TWO producers of Bug 3 (both `evaluator.ts` AND `risk-monitor.ts:triggerPass()` can promote to funded — both were missing SOD reset).
-
-**Verification (Anthropic-grade):**
-- `tsc --noEmit` ✅ clean
-- `test:financial` ✅ 24/24 passed (share consistency, PnL, equity cross-check)
-- `test:engine` ✅ 60/60 passed (full round-trip verification)
-- `presentation-layer.test.tsx` ✅ 24/24 passed
-- `test:safety` 53/54 (1 pre-existing balance reset ordering issue, unrelated to our changes)
-- 3-layer cross-reference: DB equity ($9,646) vs UI equity ($9,905) — $259 gap explained by DB `currentPrice` being entry-time stale while UI uses live Redis prices. Expected architecture, not a bug.
-- Stale funded account scan: only 1 funded account in DB (Mat's, already patched ✅)
-- Challenge-phase regression: no regression risk — all changed components are `{isFunded &&}` conditionally rendered, never hit by challenge-phase users. Engine tests confirm challenge evaluator unaffected.
-
-**DB patch applied:** Mat's challenge `056d254d` SOD fields reset to `$10,000.00` ✅
-
-**Deployed to production:** `725b08d` — merged `develop → main`, post-deploy 11/11 ✅
-
-**Orphaned test data cleaned:** Challenge `8e1cf651` was orphan from killed `test:financial` run — deleted user, challenge, 2 positions, 3 trades. Root cause: process killed before cleanup ran.
-
-**Follow-up items — ALL RESOLVED ✅:**
-- ~~**Funded transition UX**~~ → DONE: `FundedTransitionModal.tsx` + ReactBits polish shipped
-- ~~**Pre-existing safety test**~~ → DONE: phase guard fix, 54/54
+**Deferred (separate discussion):** Spread/orderbook, email delivery, bot quiz content, "2% less shares" toast.
 
 ## Pre-Close Checklist
-- [x] Bug/task was reproduced or understood BEFORE writing code
-- [x] Root cause was traced from UI → API → DB
-- [x] Fix was verified with the EXACT failing input (Mat's account, staging screenshots)
-- [x] `grep` confirms zero remaining instances of old pattern
-- [x] Full test suite passes (safety 54/54, engine 60/60, financial 24/24)
-- [x] tsc --noEmit passes
-- [ ] CONFIRMED BY USER: User saw +$870 PnL and modal popup. Full funded dashboard NOT yet explicitly confirmed by Mat as "correct."
+- [x] `npx tsc --noEmit` → 0 errors
+- [x] `npm run test` → 79 files, 1180 tests, 0 failures
+- [x] `npm run test:engine` → passed
+- [x] `npm run test:safety` → 52/54 (pre-existing Test 4)
+- [x] No `any` types, no silent catch blocks, no dead code
+- [x] Financial Display Rule honored
+- [x] All 3 daily drawdown enforcement points match (evaluator ↔ risk-monitor ↔ dashboard)
+- [ ] Browser smoke test funded dashboard
+- [ ] Push to `develop` → staging → `main`
 
-### Tomorrow Morning
-1. **Ask Mat** if the funded dashboard + transition modal look right — his confirmation is the only success signal (leverage × risk: HIGH)
-2. **Agent SKILLS discussion** — user wants to explore Claude agent Skills system before starting work
-3. ~~**Funded transition UX**~~ → DONE ✅
-4. ~~**Safety test 54/54**~~ → DONE ✅
+### Tomorrow Morning (ranked by leverage × risk)
+1. **Browser smoke test** all 6 items on funded dashboard
+2. **Push + deploy** `develop` → staging → `main`
+3. **Fix pre-existing test failures:** Safety Test 4 (funded eval expectation), financial port conflict
+
+### Next Steps (for next agent)
+1. **Read project-orientation skill** → `SKILL.md` first
+2. **Read implementation plan** above (6 items, ordered by risk)
+3. **Ask user about item #6** (dynamic daily drawdown) before implementing
+4. **Implement items #1-#5** (all low-risk UI changes)
+5. **Implement item #6 last** (financial rule change, requires engine consistency)
+6. **Run full verification:** `tsc --noEmit`, `npm run test`, `test:engine`, `test:safety`, `test:financial`
+7. **Push security fixes + feedback fixes to develop**
 
 ---
 

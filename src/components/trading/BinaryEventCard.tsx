@@ -93,6 +93,11 @@ export const BinaryEventCard = memo(function BinaryEventCard({ event, onTrade }:
             {/* Footer Stats */}
             <div className="flex items-center justify-between text-xs text-zinc-500 mt-auto">
                 <span>{formatVolume(event.volume)} Vol.</span>
+                <span>
+                    {event.endDate
+                        ? `Resolves: ${new Date(event.endDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`
+                        : "Resolution TBD"}
+                </span>
             </div>
         </div>
     );
