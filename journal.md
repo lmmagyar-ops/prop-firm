@@ -8,10 +8,10 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 > **New agent? Read this section before doing anything else.**
 > This is the single source of truth for what actually works. Do NOT trust individual journal entries — they reflect what the agent *believed*, not what the user confirmed.
 
-### Last Confirmed by Agent (Feb 27, 9:42 AM CT) — FUNDED LAYOUT REORDER DEPLOYED
+### Last Confirmed by Agent (Feb 27, 11:50 AM CT) — MAT FEEDBACK 100% COMPLETE + QA RUNBOOK v2
 
 > [!IMPORTANT]
-> **All 6 Mat feedback items deployed to production. All test suites green. Journal pruned.**
+> **All Mat feedback (Tab 1 + Tab 2) deployed to production. QA Runbook v2 added to Google Doc Tab 3 for Mat to test. All test suites green.**
 
 **Deployed to production:**
 1. ✅ "Balance" → "Cash" label (`FundedAccountHeader.tsx`)
@@ -38,16 +38,38 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 | `npm run test:financial` | ✅ 24/24 |
 | Browser smoke test | ✅ 4/4 checks on staging |
 
-**Deferred (separate discussion):** Spread/orderbook, email delivery, bot quiz content, "2% less shares" toast.
+**Deferred (needs Mat or design input):** Spread/orderbook execution price, server-side funded modal gate.
 
 ### Deferred Work (for future sessions, ranked by leverage × risk)
-1. **Spread/orderbook (-1% on buy/sell)** — financial path, needs requirements clarification from Mat
-2. **"2% less shares" buy toast** — UI display
-3. **Email delivery** — infrastructure
-4. **Bot quiz content** — content
-5. **Server-side funded modal gate** — replace `localStorage` with DB flag for cross-device persistence
-6. **Production health check** — verify "Cash" label on funded header card in real browser
+1. **Spread/orderbook (-1% on buy/sell)** — financial path, needs design decision from Mat
+2. **Server-side funded modal gate** — replace `localStorage` with DB flag for cross-device persistence
 
+### Tomorrow Morning
+1. **Wait for Mat's QA runbook results** (Tab 3 in Google Doc) — highest leverage, any FAILs become the next sprint
+2. **Spread/orderbook design decision** — ask Mat: display-only disclaimer, or absorb the spread? Financial path.
+3. **Server-side funded modal gate** — replace `localStorage` with DB flag
+
+---
+
+## Feb 27, 2026 (11:50 AM CT) — Mat Feedback Completion + QA Runbook v2
+
+### What
+1. Shipped trade history `groupItemTitle` fix (sub-market outcome name display)
+2. Shipped funded dashboard layout reorder (positions/trades above payout)
+3. Audited ALL Mat feedback (Tab 1 + Tab 2) against codebase — confirmed 100% complete
+4. Created comprehensive QA Runbook v2 (11 sections, 80+ checks) and added it to Google Doc Tab 3
+
+### Commits
+| SHA | Branch | What |
+|-----|--------|------|
+| `8d812f9` | develop | Trade history groupItemTitle fix |
+| `042bda4` | main | Merge (production) |
+| `ca35950` | develop | Funded dashboard layout reorder |
+| `693fef2` | main | Merge (production) |
+
+### Verification
+- `tsc --noEmit`: 0 errors
+- `npx vitest run`: 79 files, 1180/1180 tests, 0 failures
 
 ---
 
