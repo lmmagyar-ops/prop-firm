@@ -8,7 +8,7 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 > **New agent? Read this section before doing anything else.**
 > This is the single source of truth for what actually works. Do NOT trust individual journal entries — they reflect what the agent *believed*, not what the user confirmed.
 
-### Last Confirmed by Agent (Feb 26, 6:00 PM CT) — DEPLOYED + TEST FIXES + JOURNAL PRUNE
+### Last Confirmed by Agent (Feb 26, 8:40 PM CT) — TRADE HISTORY OUTCOME NAME FIX DEPLOYED
 
 > [!IMPORTANT]
 > **All 6 Mat feedback items deployed to production. All test suites green. Journal pruned.**
@@ -40,9 +40,49 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 **Deferred (separate discussion):** Spread/orderbook, email delivery, bot quiz content, "2% less shares" toast.
 
-### Tomorrow Morning (ranked by leverage × risk)
-1. **Verify "Cash" label on production** — browser agent screenshot was ambiguous on the funded header card
-2. **Continue deferred Mat items** — spread/orderbook is highest priority
+### Deferred Work (for future sessions, ranked by leverage × risk)
+1. **Spread/orderbook (-1% on buy/sell)** — financial path, needs requirements clarification from Mat
+2. **"2% less shares" buy toast** — UI display
+3. **Email delivery** — infrastructure
+4. **Bot quiz content** — content
+5. **Server-side funded modal gate** — replace `localStorage` with DB flag for cross-device persistence
+6. **Production health check** — verify "Cash" label on funded header card in real browser
+
+
+---
+
+## Feb 26, 2026 (8:40 PM CT) — Trade History: Sub-Market Outcome Name Fix
+
+### What
+Mat reported trade history shows the truncated event title ("What price will Eth...") instead of the specific sub-market outcome ("2,200") for multi-outcome markets.
+
+### Root Cause
+`enrichTrades()` iterated `event.markets` for metadata but only extracted `eventTitle` and `image` — ignored `groupItemTitle`.
+
+### Fix (2 files, ~6 lines)
+1. `route.ts`: Extract `groupItemTitle` from event market data, include in API response
+2. `RecentTradesWidget.tsx`: Prefer `groupItemTitle` over `marketTitle` for the option name
+
+### Commits
+| SHA | Branch |
+|-----|--------|
+| `8d812f9` | develop |
+| `042bda4` | main |
+
+---
+
+## Feb 26, 2026 (6:00 PM CT) — Test Infrastructure Fix + Journal Prune
+
+### Fixes
+1. **Safety Test 4:** Confirmed passing 54/54 — previous failures were transient
+2. **Port conflict:** `test-worker-server.ts` hardcoded port 19876 → dynamic port 0 (OS-assigned)
+3. **Journal prune:** 1101 → 411 lines
+
+### Commits
+| SHA | Branch |
+|-----|--------|
+| `6cb7b9a` | develop |
+| `bd88937` | main |
 
 
 

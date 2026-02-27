@@ -186,6 +186,12 @@ export default async function DashboardPage() {
                                 />
                             </div>
 
+                            {/* Open Positions & Recent Trades — above payout per Mat's feedback */}
+                            <LivePositions initialPositions={positions || []} />
+                            <div className="mt-6">
+                                <RecentTradesWidget />
+                            </div>
+
                             {/* Payout & Activity Grid */}
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
                                 <PayoutEligibilityCard
@@ -271,11 +277,14 @@ export default async function DashboardPage() {
                         </>
                     )}
 
-                    {/* Open Positions with LIVE SSE Updates */}
-                    <LivePositions initialPositions={positions || []} />
-
-                    {/* Recent Trades Widget */}
-                    <RecentTradesWidget />
+                    {/* Open Positions & Recent Trades — challenge/verification only */}
+                    {/* (Funded view renders these above payout section) */}
+                    {!isFunded && (
+                        <>
+                            <LivePositions initialPositions={positions || []} />
+                            <RecentTradesWidget />
+                        </>
+                    )}
 
                 </>
             )}
