@@ -14,6 +14,7 @@ interface Trade {
     marketId: string;
     marketTitle: string;
     eventTitle?: string;
+    groupItemTitle?: string | null;
     image?: string;
     type: "BUY" | "SELL";
     direction: "YES" | "NO" | null;
@@ -161,9 +162,9 @@ export function RecentTradesWidget() {
                                             )}>
                                                 {trade.type}
                                             </span>
-                                            {/* Market title snippet — Mat's request: show what option was traded */}
-                                            <span className="text-zinc-400 truncate max-w-[120px]" title={trade.marketTitle}>
-                                                {trade.marketTitle}
+                                            {/* Option name — prefer groupItemTitle (e.g. "2,200") for multi-outcome events */}
+                                            <span className="text-zinc-400 truncate max-w-[120px]" title={trade.groupItemTitle || trade.marketTitle}>
+                                                {trade.groupItemTitle || trade.marketTitle}
                                             </span>
                                             {trade.direction && (
                                                 <span className={cn(
