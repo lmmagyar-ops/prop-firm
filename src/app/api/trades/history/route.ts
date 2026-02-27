@@ -18,15 +18,19 @@ async function enrichTrades(tradeRecords: (typeof trades.$inferSelect)[]) {
 
     // 2. Event metadata (display-only — eventTitle, image)
     const data = await getAllMarketData();
-    const events = data?.events ? (data.events as { markets?: { id: string; question?: string; title?: string }[]; title?: string; image?: string }[]) : [];
+    const events = data?.events ? (data.events as { markets?: { id: string; question?: string; title?: string; groupItemTitle?: string }[]; title?: string; image?: string }[]) : [];
 
     const eventMetadata: Record<string, { eventTitle: string; image?: string }> = {};
+    const groupItemTitles: Record<string, string> = {};
     for (const event of events) {
         for (const market of event.markets || []) {
             eventMetadata[market.id] = {
                 eventTitle: event.title || "",
                 image: event.image
             };
+            if (market.groupItemTitle) {
+                groupItemTitles[market.id] = market.groupItemTitle;
+            }
         }
     }
 
@@ -36,6 +40,7 @@ async function enrichTrades(tradeRecords: (typeof trades.$inferSelect)[]) {
         // Canonical title: DB-stored (permanent) → Redis (transient) → DB fallback (other trades) → truncated ID
         marketTitle: titleMap.get(trade.marketId) || trade.marketTitle || `Market ${trade.marketId.slice(0, 8)}...`,
         eventTitle: eventMetadata[trade.marketId]?.eventTitle,
+        groupItemTitle: groupItemTitles[trade.marketId] || null,
         image: eventMetadata[trade.marketId]?.image,
         type: trade.type,
         price: parseFloat(trade.price),
