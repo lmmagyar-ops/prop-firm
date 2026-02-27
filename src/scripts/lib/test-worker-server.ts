@@ -18,7 +18,9 @@ import Redis from 'ioredis';
 import { startHealthServer } from '@/workers/health-server';
 import type { Server } from 'http';
 
-const TEST_WORKER_PORT = 19876; // Unlikely to conflict
+// Use port 0 to let the OS assign a free port — eliminates EADDRINUSE collisions
+// when multiple test suites (safety, financial, engine) run concurrently or
+// a previous test process left a stale listener.
 const CONNECT_TIMEOUT_MS = 5000;
 
 export async function startTestWorkerServer(): Promise<{
@@ -72,15 +74,13 @@ export async function startTestWorkerServer(): Promise<{
         );
     }
 
-    // Point the worker-client at our local test server
-    process.env.INGESTION_WORKER_URL = `http://localhost:${TEST_WORKER_PORT}`;
-
+    // Start on port 0 — OS assigns a free ephemeral port
     const server = startHealthServer(redis, {
-        port: TEST_WORKER_PORT,
+        port: 0,
         workerId: 'test-worker',
     });
 
-    // Wait for server to be listening (with timeout)
+    // Wait for server to be listening (with timeout), then read the actual port
     await Promise.race([
         new Promise<void>((resolve) => server.on('listening', resolve)),
         new Promise<never>((_, reject) =>
@@ -90,7 +90,12 @@ export async function startTestWorkerServer(): Promise<{
         ),
     ]);
 
-    console.log(`  ✅ Test worker server started on port ${TEST_WORKER_PORT}`);
+    // Read the OS-assigned port and point the worker-client at it
+    const addr = server.address();
+    const actualPort = typeof addr === 'object' && addr ? addr.port : 0;
+    process.env.INGESTION_WORKER_URL = `http://localhost:${actualPort}`;
+
+    console.log(`  ✅ Test worker server started on port ${actualPort}`);
 
     const cleanup = async () => {
         try { server.close(); } catch { /* ignore */ }
