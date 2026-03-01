@@ -54,7 +54,7 @@ export const FeaturedCarousel = memo(function FeaturedCarousel({
     // Top events by 24h volume
     const featured = useMemo(() => {
         return [...events]
-            .sort((a, b) => (b.volume ?? 0) - (a.volume ?? 0))
+            .sort((a, b) => (b.volume24hr ?? b.volume ?? 0) - (a.volume24hr ?? a.volume ?? 0))
             .slice(0, CAROUSEL_SIZE);
     }, [events]);
 

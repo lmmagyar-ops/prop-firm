@@ -228,6 +228,7 @@ export interface EventMetadata {
     description?: string;
     image?: string;
     volume: number;
+    volume24hr?: number;
     endDate?: string;
     // New fields for Kalshi modal parity
     rules?: string;

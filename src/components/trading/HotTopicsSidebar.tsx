@@ -12,28 +12,79 @@ interface HotTopicsSidebarProps {
 const HOT_COUNT = 5;
 
 /**
- * Common words to skip when extracting topic keywords from event titles.
- * These appear in many market titles but aren't meaningful topics.
+ * Known entity patterns — maps keywords in titles to proper topic names.
+ * Each pattern is a lowercase fragment to match, paired with its display name.
+ * Order matters — longer/more-specific patterns should come first.
  */
-const STOP_WORDS = new Set([
-    "will", "the", "by", "in", "of", "to", "on", "and", "or", "a", "an",
-    "for", "at", "be", "is", "it", "if", "this", "that", "from", "with",
-    "as", "was", "are", "do", "has", "have", "not", "its", "end",
-    "before", "after", "march", "april", "may", "june", "july", "august",
-    "2026", "2027", "winner", "win", "released", "more", "new",
-    "first", "next", "last", "most", "than", "hit", "close", "above",
-    "below", "which", "what", "who", "how", "ends", "strikes",
-    "yes", "no", "vs", "vs.", "up", "down", "over", "under",
-]);
+const ENTITY_PATTERNS: [string, string][] = [
+    // Countries & regions (Polymarket's most common hot topics)
+    ["iran", "Iran"],
+    ["india", "India"],
+    ["cuba", "Cuba"],
+    ["china", "China"],
+    ["ukraine", "Ukraine"],
+    ["russia", "Russia"],
+    ["venezuela", "Venezuela"],
+    ["israel", "Israel"],
+    ["canada", "Canada"],
+    ["mexico", "Mexico"],
+    ["nepal", "Nepal"],
+    ["turkey", "Turkey"],
+    ["north korea", "North Korea"],
 
-/** Well-known multi-word topic phrases to detect as single topics */
-const KNOWN_PHRASES: Record<string, string> = {
-    "texas senate": "Texas Senate",
-    "supreme leader": "Supreme Leader",
-    "nuclear deal": "Nuclear Deal",
-    "crude oil": "Crude Oil",
-    "best picture": "Best Picture",
-};
+    // People
+    ["trump", "Trump"],
+    ["biden", "Biden"],
+    ["elon", "Elon Musk"],
+    ["musk", "Elon Musk"],
+    ["desantis", "DeSantis"],
+    ["kamala", "Kamala Harris"],
+    ["vance", "J.D. Vance"],
+    ["newsom", "Newsom"],
+    ["shapiro", "Shapiro"],
+    ["ocasio", "AOC"],
+    ["rubio", "Rubio"],
+    ["powell", "Powell"],
+    ["khamenei", "Khamenei"],
+
+    // Sports leagues & competitions
+    ["premier league", "Premier League"],
+    ["champions league", "Champions League"],
+    ["world cup", "World Cup"],
+    ["la liga", "La Liga"],
+    ["stanley cup", "Stanley Cup"],
+    ["nba", "NBA"],
+    ["nfl", "NFL"],
+    ["nhl", "NHL"],
+    ["mlb", "MLB"],
+    ["ufc", "UFC"],
+    ["oscars", "Oscars"],
+    ["nba mvp", "NBA MVP"],
+
+    // Finance & crypto
+    ["bitcoin", "Bitcoin"],
+    ["btc", "Bitcoin"],
+    ["ethereum", "Ethereum"],
+    ["eth", "Ethereum"],
+    ["fed ", "Fed"],
+    ["federal reserve", "Fed"],
+    ["interest rate", "Interest Rates"],
+    ["tariff", "Tariffs"],
+    ["s&p", "S&P 500"],
+    ["oil", "Oil"],
+    ["crude", "Oil"],
+    ["gold", "Gold"],
+
+    // Topics
+    ["election", "Elections"],
+    ["midterm", "Midterms"],
+    ["supreme court", "Supreme Court"],
+    ["senate", "Senate"],
+    ["ceasefire", "Ceasefire"],
+    ["nuclear", "Nuclear"],
+    ["ai ", "AI"],
+    ["artificial intelligence", "AI"],
+];
 
 /** Format volume for display: $3M today, $50.8K today */
 function formatVolumeCompact(volume: number): string {
@@ -44,9 +95,9 @@ function formatVolumeCompact(volume: number): string {
 }
 
 /**
- * Extract trending topic keywords from event titles.
- * Groups events by significant proper nouns/entities and sums their volume24hr.
- * Returns top N topics ranked by today's volume.
+ * Extract trending entity topics from event titles using pattern matching.
+ * Groups events by recognized entities and sums their volume24hr.
+ * Falls back to volume (lifetime) if volume24hr isn't available.
  */
 function extractHotTopics(
     events: EventMetadata[],
@@ -57,41 +108,18 @@ function extractHotTopics(
     for (const event of events) {
         if (!event.title) continue;
         const titleLower = event.title.toLowerCase();
-        const vol = event.volume ?? 0;
+        // Use volume24hr (today's volume) when available, fall back to total volume
+        const vol = event.volume24hr ?? event.volume ?? 0;
+        const matched = new Set<string>(); // avoid double-counting same entity from multiple patterns
 
-        // Check known multi-word phrases first
-        for (const [phrase, display] of Object.entries(KNOWN_PHRASES)) {
-            if (titleLower.includes(phrase)) {
+        for (const [pattern, display] of ENTITY_PATTERNS) {
+            if (titleLower.includes(pattern) && !matched.has(display)) {
+                matched.add(display);
                 topicVolume.set(
                     display,
                     (topicVolume.get(display) ?? 0) + vol
                 );
             }
-        }
-
-        // Extract individual words — keep proper nouns (capitalized, 3+ chars)
-        const words = event.title.split(/[\s\-?!.,;:'"()]+/);
-        for (const word of words) {
-            // Must start with uppercase, be 3+ chars, not be a stop word
-            if (
-                word.length < 3 ||
-                word[0] !== word[0].toUpperCase() ||
-                word === word.toUpperCase() || // ALL CAPS like "BTC", "US" — too short
-                STOP_WORDS.has(word.toLowerCase())
-            ) {
-                continue;
-            }
-
-            // Skip numbers and dates
-            if (/^\d+$/.test(word)) continue;
-            // Skip very short all-caps like "US", "UK" (unless 3+ chars like "UFC")
-            if (word.length <= 2) continue;
-
-            const normalized = word.charAt(0).toUpperCase() + word.slice(1);
-            topicVolume.set(
-                normalized,
-                (topicVolume.get(normalized) ?? 0) + vol
-            );
         }
     }
 
@@ -104,7 +132,7 @@ function extractHotTopics(
 
 /**
  * HotTopicsSidebar — Polymarket-style "Hot topics" with 🔥 and "$XM today".
- * Extracts trending entity keywords from event titles ranked by 24h volume.
+ * Extracts trending entity names from event titles ranked by 24h volume.
  */
 export const HotTopicsSidebar = memo(function HotTopicsSidebar({
     events,
