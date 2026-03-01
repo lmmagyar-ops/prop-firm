@@ -103,6 +103,7 @@ interface ProcessedEvent {
     volume: number;
     volume24hr?: number;
     createdAt?: string;
+    endDate?: string;
     categories: string[];
     markets: ProcessedSubMarket[];
     isMultiOutcome?: boolean;
@@ -706,6 +707,7 @@ class IngestionWorker {
                         volume: event.volume || 0,
                         volume24hr: event.volume24hr || 0,
                         createdAt: event.createdAt,
+                        endDate: event.endDate || undefined,
                         categories: categories,
                         markets: filteredSubMarkets,
                         isMultiOutcome: filteredSubMarkets.length > 1,
