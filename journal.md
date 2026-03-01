@@ -8,31 +8,33 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 > **New agent? Read this section before doing anything else.**
 > This is the single source of truth for what actually works. Do NOT trust individual journal entries — they reflect what the agent *believed*, not what the user confirmed.
 
-### Mar 1, 2026 (9:30 AM CT) — Ending Soon Tab ✅ DEPLOYED
+### Mar 1, 2026 (11:15 AM CT) — Production Outage + Mat QA v2
 
-**Ending Soon tab shipped to production.** Commit `12ae2f6` (develop) → `6923620` (main).
+**🔴 PRODUCTION DOWN — Vercel billing.** Payment failed → DB suspended (`unpaidPlanInvoice`). Mat adding new credit card. Both staging and prod affected.
 
-**Verification (all green):**
-| Suite | Result |
-|-------|--------|
-| `tsc --noEmit` | ✅ 0 errors |
-| `npx vitest run` | ✅ 79 files, 1180 tests, 0 failures |
-| Browser smoke (staging) | ✅ Tab renders with clock icon, 19 markets sorted by endDate |
-| Post-deploy (production) | ✅ 10/10 checks passed |
+**Root cause of overspend:** 464 builds triggered in one billing cycle (219 develop + 245 main). Build minutes = 79% of the $43 bill against $20 credit. Fix: `ignoreCommand` in `vercel.json` to skip dependabot builds (`6bd7383`).
 
-**Deferred (future roadmap, user-approved):**
-- Ingest volume24hr, liquidity, competitive from Polymarket API (powers future tabs)
-- Spread/orderbook design decision with Mat
-- Server-side funded modal gate
-- Email delivery infrastructure
+**Mat's QA Runbook v2 (Tab 3) — investigated:**
+- **Trade discrepancy ($5.42):** NOT a bug. Dashboard shows equity (cash + positions), not cash alone. $100 correctly deducted.
+- **Daily drawdown:** CONFIRMED BUG. `dashboard-service.ts:156` used `startingBalance` instead of `startOfDayBalance`. Fixed (`10c3236`). Risk engine + evaluator were already correct — display-only bug.
+- **Position click redirect:** Wiring gap — URL passes `?market=` but trade page doesn't consume it. Deferred.
+
+**Commits on `develop`:**
+- `b9123ef` — Ending Soon 30-day cutoff filter
+- `5398551` — 10 edge-case unit tests for cutoff
+- `6bd7383` — Skip dependabot Vercel builds
+- `10c3236` — Daily drawdown: `startOfDayBalance` fix
+
+**Blocked on billing:**
+- [ ] Browser smoke test Ending Soon 30-day cutoff
+- [ ] Promote `develop` → `main`
 
 **Tomorrow Morning:**
-1. Plan ingestion of volume24hr + liquidity + competitive fields
-2. Await Mat's QA runbook results (Tab 3 in Google Doc)
-3. Spread/orderbook design decision with Mat
+1. (HIGH) Resolve Vercel billing → smoke test → promote to main
+2. (MED) Position click deep-link: wire `?market=` param through trade page
+3. (LOW) Share estimate: label "(est.)" or compute with slippage preview
 
-### Previous Confirmed (Feb 27) — Mat Feedback 100% Complete
-All Mat feedback (Tab 1 + Tab 2) deployed to production. QA Runbook v2 added to Google Doc Tab 3.
+### Previous Confirmed (Mar 1, 9:30 AM) — Ending Soon Tab ✅ DEPLOYED
 
 
 ---
