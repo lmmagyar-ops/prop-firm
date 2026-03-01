@@ -36,6 +36,15 @@
 - Cross-reference numbers: if a value appears in the API response AND the DB AND the UI, verify all three match.
 - **"Tests pass" is NOT a success signal.** Tests verify implementation, not product behavior. Mat seeing correct numbers on his screen is the only success signal.
 
+### Deployment Discipline (Cost-Aware)
+> This rule exists because 464 builds in one billing cycle caused a $43 overage that took production down for 4 hours.
+
+- **NEVER merge to `main` after every fix.** Batch all changes on `develop`. Merge to `main` **once per session**, after all changes are verified together on staging.
+- **Max 2 Vercel builds per session:** one `develop` push (staging), one `main` merge (production). No exceptions unless hotfixing a live incident.
+- **Always verify staging before merging to main.** Run browser smoke test on staging URL before promoting.
+- **Railway worker changes** (`src/workers/ingestion.ts`) require a Railway restart — Vercel deploys don't affect the worker.
+- See `.agents/workflows/deploy.md` for the full step-by-step workflow.
+
 ### Communication
 - Always leave a journal.md entry when completing work.
 - When handing off, leave a "Tomorrow Morning" section with prioritized next steps ranked by leverage × risk.
