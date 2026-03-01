@@ -24,6 +24,7 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 - `5398551` — 10 edge-case unit tests
 - `6bd7383` — Dependabot build skip (cost reduction)
 - `10c3236` — Daily drawdown fix (`startOfDayBalance`)
+- `efb524b` — Position click deep-links to specific market modal
 
 **Post-Incident: Billing Outage (Mar 1, ~8AM–12PM CT)**
 - **Root cause:** Vercel payment failed → DB suspended (`unpaidPlanInvoice`)
@@ -32,9 +33,8 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 - **Prevention:** `ignoreCommand` in `vercel.json` to reduce build minutes (79% of cost)
 
 **Tomorrow Morning:**
-1. (MED) Position click deep-link: wire `?market=` param through trade page
-2. (LOW) Share estimate label clarification
-3. (LOW) Consider Vercel spend alert or split projects for more credit
+1. (LOW) Share estimate label clarification
+2. (LOW) Consider Vercel spend alert or split projects for more credit
 
 
 ---
