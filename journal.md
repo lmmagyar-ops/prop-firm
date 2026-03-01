@@ -25,6 +25,10 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 - `6bd7383` — Dependabot build skip (cost reduction)
 - `10c3236` — Daily drawdown fix (`startOfDayBalance`)
 - `efb524b` — Position click deep-links to specific market modal
+- `3c6e39c` — **Preserve `endDate` from Gamma API** — root cause of Ending Soon showing 1 instead of ~24 markets
+
+> [!IMPORTANT]
+> Railway worker restart required for `3c6e39c` to take effect — `ingestion.ts` runs on Railway, not Vercel.
 
 **Post-Incident: Billing Outage (Mar 1, ~8AM–12PM CT)**
 - **Root cause:** Vercel payment failed → DB suspended (`unpaidPlanInvoice`)
