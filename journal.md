@@ -8,33 +8,33 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 > **New agent? Read this section before doing anything else.**
 > This is the single source of truth for what actually works. Do NOT trust individual journal entries — they reflect what the agent *believed*, not what the user confirmed.
 
-### Mar 1, 2026 (11:15 AM CT) — Production Outage + Mat QA v2
+### Mar 1, 2026 (12:25 PM CT) — Post-Incident Recovery Complete ✅
 
-**🔴 PRODUCTION DOWN — Vercel billing.** Payment failed → DB suspended (`unpaidPlanInvoice`). Mat adding new credit card. Both staging and prod affected.
+**All fixes deployed to production** (`92ebcd0`). Full recovery sequence completed:
 
-**Root cause of overspend:** 464 builds triggered in one billing cycle (219 develop + 245 main). Build minutes = 79% of the $43 bill against $20 credit. Fix: `ignoreCommand` in `vercel.json` to skip dependabot builds (`6bd7383`).
+| Step | Result |
+|------|--------|
+| 1. Verify prod stability | ✅ Healthy, 5 accounts, normal response times |
+| 2. Staging smoke test | ✅ Ending Soon shows 1 market (Mar 8), 30-day cutoff working |
+| 3. Merge develop → main | ✅ `92ebcd0` |
+| 4. Post-deploy verification | ✅ All endpoints healthy |
 
-**Mat's QA Runbook v2 (Tab 3) — investigated:**
-- **Trade discrepancy ($5.42):** NOT a bug. Dashboard shows equity (cash + positions), not cash alone. $100 correctly deducted.
-- **Daily drawdown:** CONFIRMED BUG. `dashboard-service.ts:156` used `startingBalance` instead of `startOfDayBalance`. Fixed (`10c3236`). Risk engine + evaluator were already correct — display-only bug.
-- **Position click redirect:** Wiring gap — URL passes `?market=` but trade page doesn't consume it. Deferred.
-
-**Commits on `develop`:**
+**What shipped:**
 - `b9123ef` — Ending Soon 30-day cutoff filter
-- `5398551` — 10 edge-case unit tests for cutoff
-- `6bd7383` — Skip dependabot Vercel builds
-- `10c3236` — Daily drawdown: `startOfDayBalance` fix
+- `5398551` — 10 edge-case unit tests
+- `6bd7383` — Dependabot build skip (cost reduction)
+- `10c3236` — Daily drawdown fix (`startOfDayBalance`)
 
-**Blocked on billing:**
-- [ ] Browser smoke test Ending Soon 30-day cutoff
-- [ ] Promote `develop` → `main`
+**Post-Incident: Billing Outage (Mar 1, ~8AM–12PM CT)**
+- **Root cause:** Vercel payment failed → DB suspended (`unpaidPlanInvoice`)
+- **Blast radius:** Both staging and prod, all DB-dependent endpoints, ~4 hours
+- **Resolution:** Mat added new credit card, Vercel restored service
+- **Prevention:** `ignoreCommand` in `vercel.json` to reduce build minutes (79% of cost)
 
 **Tomorrow Morning:**
-1. (HIGH) Resolve Vercel billing → smoke test → promote to main
-2. (MED) Position click deep-link: wire `?market=` param through trade page
-3. (LOW) Share estimate: label "(est.)" or compute with slippage preview
-
-### Previous Confirmed (Mar 1, 9:30 AM) — Ending Soon Tab ✅ DEPLOYED
+1. (MED) Position click deep-link: wire `?market=` param through trade page
+2. (LOW) Share estimate label clarification
+3. (LOW) Consider Vercel spend alert or split projects for more credit
 
 
 ---
