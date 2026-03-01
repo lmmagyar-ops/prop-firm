@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useTransition } from "react";
+import { useState, useMemo, useTransition, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { TrendingUp, Clock } from "lucide-react";
 import type { EventMetadata } from "@/app/actions/market";
@@ -16,6 +16,7 @@ interface CategoryTabsProps {
     balance: number;
     userId: string;
     challengeId?: string;
+    initialMarketId?: string;
 }
 
 /** Events with endDate within this window appear in the "Ending Soon" tab */
@@ -46,11 +47,25 @@ const CATEGORIES = [
     { id: 'Other', label: 'World' },
 ];
 
-export function MarketGridWithTabs({ events = [], balance, challengeId }: CategoryTabsProps) {
+export function MarketGridWithTabs({ events = [], balance, challengeId, initialMarketId }: CategoryTabsProps) {
     const [activeTab, setActiveTab] = useState('trending');
     const [selectedEvent, setSelectedEvent] = useState<EventMetadata | null>(null);
     const [detailModalOpen, setDetailModalOpen] = useState(false);
     const [, startTransition] = useTransition();
+    const autoOpenedRef = useRef(false);
+
+    // Auto-open market modal when deep-linked from position click
+    useEffect(() => {
+        if (!initialMarketId || autoOpenedRef.current || events.length === 0) return;
+        const matchingEvent = events.find(e =>
+            e.markets.some(m => m.id === initialMarketId)
+        );
+        if (matchingEvent) {
+            autoOpenedRef.current = true;
+            setSelectedEvent(matchingEvent);
+            setDetailModalOpen(true);
+        }
+    }, [initialMarketId, events]);
 
     // Mobile detection for MobileTradeSheet
     const isMobile = useMediaQuery("(max-width: 768px)");

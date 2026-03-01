@@ -32,7 +32,11 @@ function mapToMarketShape(liveMarket: MarketMetadata): MockMarket & { categories
     };
 }
 
-export default async function TradePage() {
+export default async function TradePage({
+    searchParams,
+}: {
+    searchParams: Promise<{ market?: string }>;
+}) {
     try {
         const session = await auth();
 
@@ -65,10 +69,13 @@ export default async function TradePage() {
         }
 
         // Parallelize remaining data fetches
-        const [liveMarkets, events] = await Promise.all([
+        const [liveMarkets, events, params] = await Promise.all([
             getActiveMarkets(),
             getActiveEvents(keepMarketIds),
+            searchParams,
         ]);
+
+        const initialMarketId = params.market || undefined;
 
         const balance = data?.activeChallenge
             ? Number(data.activeChallenge.currentBalance)
@@ -157,6 +164,7 @@ export default async function TradePage() {
                             balance={balance}
                             userId={userId}
                             challengeId={data?.activeChallenge?.id}
+                            initialMarketId={initialMarketId}
                         />
                     )}
                 </div>
