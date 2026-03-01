@@ -343,9 +343,10 @@ describe("getEquityStats", () => {
 
     it("calculates daily drawdown usage percentage", () => {
         // SOD = 10200, equity = 9700, daily drawdown = 500
-        // maxDailyDrawdown = 0.05 * 10000 = 500, so usage = 100%
+        // maxDailyDrawdown = 0.05 * 10200 (startOfDayBalance) = 510
+        // usage = (500 / 510) * 100 ≈ 98.04%
         const stats = getEquityStats(mkChallenge(), 9700, 10000);
-        expect(stats.dailyDrawdownUsage).toBe(100);
+        expect(stats.dailyDrawdownUsage).toBeCloseTo(98.04, 1);
     });
 
     it("clamps drawdown at zero (no negative drawdown)", () => {
