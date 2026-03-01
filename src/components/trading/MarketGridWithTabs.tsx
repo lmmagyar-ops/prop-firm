@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useTransition } from "react";
 import { cn } from "@/lib/utils";
-import { TrendingUp } from "lucide-react";
+import { TrendingUp, Clock } from "lucide-react";
 import type { EventMetadata } from "@/app/actions/market";
 import { SmartEventCard } from "./SmartEventCard";
 import { EventDetailModal } from "./EventDetailModal";
@@ -22,6 +22,7 @@ interface CategoryTabsProps {
 // All available categories matching Polymarket
 const CATEGORIES = [
     { id: 'trending', label: 'Trending', icon: TrendingUp, special: true },
+    { id: 'ending-soon', label: 'Ending Soon', icon: Clock, special: true },
     { id: 'Breaking', label: 'Breaking', special: true },
     { id: 'New', label: 'New', special: false },
     { id: 'all', label: 'All', special: false },
@@ -71,6 +72,7 @@ export function MarketGridWithTabs({ events = [], balance, challengeId }: Catego
             }
         }
         counts['trending'] = events.length;
+        counts['ending-soon'] = events.filter(e => !!e.endDate).length;
         counts['all'] = events.length;
         return counts;
     }, [events]);
@@ -85,10 +87,19 @@ export function MarketGridWithTabs({ events = [], balance, challengeId }: Catego
         return bVol - aVol;
     };
 
+    // Sort helper: earliest endDate first, events without endDate sink to bottom
+    const sortByEndDate = (a: EventMetadata, b: EventMetadata) => {
+        const aEnd = a.endDate ? new Date(a.endDate).getTime() : Infinity;
+        const bEnd = b.endDate ? new Date(b.endDate).getTime() : Infinity;
+        return aEnd - bEnd;
+    };
+
     // Filter events based on active tab
     const filteredEvents = useMemo(() => {
         if (activeTab === 'trending') {
             return [...events].sort(sortByVolume);
+        } else if (activeTab === 'ending-soon') {
+            return [...events].sort(sortByEndDate);
         } else if (activeTab === 'all') {
             return [...events].sort(sortByVolume);
         } else {
