@@ -153,7 +153,7 @@ export function getEquityStats(challenge: DbChallengeRow, equity: number, starti
     const maxDrawdownLimit = normalized.maxDrawdown;
 
     const dailyDrawdownPercent = (rules.maxDailyDrawdownPercent as number) || 0.04;
-    const dailyDrawdownLimit = dailyDrawdownPercent * startingBalance;
+    const dailyDrawdownLimit = dailyDrawdownPercent * startOfDayBalance;
 
     const totalPnL = equity - startingBalance;
 

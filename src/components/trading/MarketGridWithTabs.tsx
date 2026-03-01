@@ -18,6 +18,16 @@ interface CategoryTabsProps {
     challengeId?: string;
 }
 
+/** Events with endDate within this window appear in the "Ending Soon" tab */
+const ENDING_SOON_WINDOW_DAYS = 30;
+
+/** Returns true if event has an endDate within the ENDING_SOON_WINDOW_DAYS cutoff */
+function isEndingSoon(event: EventMetadata): boolean {
+    if (!event.endDate) return false;
+    const endMs = new Date(event.endDate).getTime();
+    const cutoffMs = Date.now() + ENDING_SOON_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+    return endMs > Date.now() && endMs <= cutoffMs;
+}
 
 // All available categories matching Polymarket
 const CATEGORIES = [
@@ -72,7 +82,7 @@ export function MarketGridWithTabs({ events = [], balance, challengeId }: Catego
             }
         }
         counts['trending'] = events.length;
-        counts['ending-soon'] = events.filter(e => !!e.endDate).length;
+        counts['ending-soon'] = events.filter(isEndingSoon).length;
         counts['all'] = events.length;
         return counts;
     }, [events]);
@@ -99,7 +109,7 @@ export function MarketGridWithTabs({ events = [], balance, challengeId }: Catego
         if (activeTab === 'trending') {
             return [...events].sort(sortByVolume);
         } else if (activeTab === 'ending-soon') {
-            return [...events].sort(sortByEndDate);
+            return events.filter(isEndingSoon).sort(sortByEndDate);
         } else if (activeTab === 'all') {
             return [...events].sort(sortByVolume);
         } else {

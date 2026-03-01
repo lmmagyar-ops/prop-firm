@@ -8,48 +8,41 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 > **New agent? Read this section before doing anything else.**
 > This is the single source of truth for what actually works. Do NOT trust individual journal entries — they reflect what the agent *believed*, not what the user confirmed.
 
-### Last Confirmed by Agent (Feb 27, 11:50 AM CT) — MAT FEEDBACK 100% COMPLETE + QA RUNBOOK v2
+### Mar 1, 2026 (11:15 AM CT) — Production Outage + Mat QA v2
 
-> [!IMPORTANT]
-> **All Mat feedback (Tab 1 + Tab 2) deployed to production. QA Runbook v2 added to Google Doc Tab 3 for Mat to test. All test suites green.**
+**🔴 PRODUCTION DOWN — Vercel billing.** Payment failed → DB suspended (`unpaidPlanInvoice`). Mat adding new credit card. Both staging and prod affected.
 
-**Deployed to production:**
-1. ✅ "Balance" → "Cash" label (`FundedAccountHeader.tsx`)
-2. ✅ Portfolio auto-refresh 30s→10s + `balance-updated` event (`PortfolioDropdown.tsx`)
-3. ✅ Clickable open positions → trade page (`OpenPositions.tsx`)
-4. ✅ Resolution dates on all 3 card types
-5. ✅ Trade history option name between BUY/SELL and YES/NO (`RecentTradesWidget.tsx`)
-6. ✅ **Dynamic daily drawdown** — `maxDailyDrawdownPercent × startOfDayBalance` in evaluator, risk-monitor, dashboard-service
+**Root cause of overspend:** 464 builds triggered in one billing cycle (219 develop + 245 main). Build minutes = 79% of the $43 bill against $20 credit. Fix: `ignoreCommand` in `vercel.json` to skip dependabot builds (`6bd7383`).
 
-**Test infrastructure fix:**
-- ✅ `test-worker-server.ts`: Replaced hardcoded port 19876 with dynamic port 0 (OS-assigned). Eliminates EADDRINUSE.
-- ✅ Safety: 54/54 passed, Financial: 24/24 passed — **running concurrently, zero collisions**
+**Mat's QA Runbook v2 (Tab 3) — investigated:**
+- **Trade discrepancy ($5.42):** NOT a bug. Dashboard shows equity (cash + positions), not cash alone. $100 correctly deducted.
+- **Daily drawdown:** CONFIRMED BUG. `dashboard-service.ts:156` used `startingBalance` instead of `startOfDayBalance`. Fixed (`10c3236`). Risk engine + evaluator were already correct — display-only bug.
+- **Position click redirect:** Wiring gap — URL passes `?market=` but trade page doesn't consume it. Deferred.
 
-**Housekeeping:**
-- ✅ Journal pruned: 1101 → 420 lines (entries before Feb 19 removed)
+**Commits on `develop`:**
+- `b9123ef` — Ending Soon 30-day cutoff filter
+- `5398551` — 10 edge-case unit tests for cutoff
+- `6bd7383` — Skip dependabot Vercel builds
+- `10c3236` — Daily drawdown: `startOfDayBalance` fix
 
-**Verification (all green):**
-| Suite | Result |
-|-------|--------|
-| `tsc --noEmit` | ✅ 0 errors |
-| `npm run test` | ✅ 79 files, 1180 tests, 0 failures |
-| `npm run test:engine` | ✅ Passed |
-| `npm run test:safety` | ✅ 54/54 |
-| `npm run test:financial` | ✅ 24/24 |
-| Browser smoke test | ✅ 4/4 checks on staging |
+**Blocked on billing:**
+- [ ] Browser smoke test Ending Soon 30-day cutoff
+- [ ] Promote `develop` → `main`
 
-**Deferred (needs Mat or design input):** Spread/orderbook execution price, server-side funded modal gate.
+**Tomorrow Morning:**
+1. (HIGH) Resolve Vercel billing → smoke test → promote to main
+2. (MED) Position click deep-link: wire `?market=` param through trade page
+3. (LOW) Share estimate: label "(est.)" or compute with slippage preview
 
-### Deferred Work (for future sessions, ranked by leverage × risk)
-1. **Spread/orderbook (-1% on buy/sell)** — financial path, needs design decision from Mat
-2. **Server-side funded modal gate** — replace `localStorage` with DB flag for cross-device persistence
+### Previous Confirmed (Mar 1, 9:30 AM) — Ending Soon Tab ✅ DEPLOYED
 
-### Tomorrow Morning
-1. **Wait for Mat's QA runbook results** (Tab 3 in Google Doc) — highest leverage, any FAILs become the next sprint
-2. **Spread/orderbook design decision** — ask Mat: display-only disclaimer, or absorb the spread? Financial path.
-3. **Server-side funded modal gate** — replace `localStorage` with DB flag
 
 ---
+
+
+
+
+
 
 ## Feb 27, 2026 (11:50 AM CT) — Mat Feedback Completion + QA Runbook v2
 
@@ -338,19 +331,10 @@ An inline DB script (`npx tsx -e "..."`) hung for **11+ hours**, blocking the ID
 
 
 
-### Previous Confirmed (Feb 21, 1:42 AM CT)
+*(Entries prior to Feb 22 pruned per 7-day rolling window — see KI forensic audit history for archived entries)*
 
-#### Commits on `main` (in order):
-| Commit | What |
-|--------|------|
-| `174d2a5` | Affiliate dashboard: stat cards upgraded (SpotlightCard, CountUp, text-3xl) |
-| `dd9e25e` | **BUG FIX: Phantom daily PnL** — `startOfDayEquity` column, cron snapshot |
-| `8c1216e` | **TEST: Financial display boundary suite** — 14 tests, 7 scenarios |
-| `51a0c9c` | **BUG FIX: FundedRiskMeters daily loss uses equity not cash** |
-| `a463b26` | **INFRA FIX: Replace pg.Pool with postgres.js** — resolves Sentry N+1 pool exhaustion |
-| `6bfa940` | **FEAT: Wire admin analytics to real DB data** — real revenue, cohort API, live KPIs |
 
----
+
 
 ## Feb 22, 2026 (9:35 AM CT) — Market Display Parity Fix: Verified & Deployed
 
@@ -394,79 +378,10 @@ Three compounding root causes fixed:
 
 ---
 
-## Feb 21, 2026 (10:00 AM CT) — Daily PnL Fix: Cron Infrastructure Root Cause
 
 
-### What
-User reported daily PnL still showing `— Today` despite previous agent's fix (commit `dd9e25e`). Traced the full data flow and found two compounding issues.
-
-### Root Cause 1: Cron ran old code
-The midnight cron (`/api/cron/daily-reset`) fired at `2026-02-21T00:00:17Z` — confirmed by `lastDailyResetAt` in the DB. However, it executed the **old deployed code** (pre-commit `dd9e25e`) which didn't have the `startOfDayEquity` logic. The code was deployed to production _after_ midnight, so the cron correctly set `startOfDayBalance` but left `startOfDayEquity` as `null`.
-
-**Evidence:** DB query showed `lastDailyResetAt: 2026-02-21T00:00:17Z` (cron ran) but `startOfDayEquity: null` (new column not written).
-
-### Root Cause 2: Vercel Hobby plan cron limits
-`vercel.json` had 5 crons, 2 of which were sub-hourly (`heartbeat-check` every 5m, `settlement` every 10m). Vercel Hobby plan only allows crons to run once/day max. The sub-hourly crons could cause deployment rejection or silent cron disabling — a ticking time bomb for future deployments.
-
-### Fix Applied
-1. **Removed 2 sub-hourly crons** from `vercel.json` — `heartbeat-check` and `settlement`. Kept 3 daily crons.
-2. **Force-populated `startOfDayEquity`** for all 4 active challenges via temporary API route (created, used, deleted).
-3. **Browser-verified** production dashboard: `$-19.05 Today` now displays correctly (red text, real number).
-
-### Why the previous agent's fix was correct but incomplete
-The code changes (commit `dd9e25e`) were sound — correct column, correct cron logic, correct display handling. The agent tested the code, ran 1146 tests, and verified `tsc`. But they didn't verify:
-- Whether the cron would actually run the new code (deploy timing vs cron timing)
-- Whether `vercel.json` was Hobby-plan compliant (infrastructure, not code)
-
-**Lesson:** "Tests pass" is necessary but not sufficient. Infrastructure deployment timing is a variable too.
-
-### Verification
-- Production dashboard: `$-19.05 Today` (red) ✅
-- DB state: `startOfDayEquity` populated for all 4 active challenges ✅
-- `vercel.json`: 3 crons, all once/day, Hobby-compliant ✅
-- Temp files: all deleted (API route + diagnostic script) ✅
-
-### Pre-Close Checklist
-- [x] Bug was understood BEFORE writing code — traced full data flow from DB → service → UI
-- [x] Root cause traced: deploy timing (cron ran old code) + Vercel Hobby plan limits
-- [x] Fix verified with the EXACT failing input (Mat's dashboard, `— Today` → `$-19.05 Today`)
-- [x] `grep` confirms zero temp files remain
-- [x] Full test suite: not re-run (no production code changed, only `vercel.json` config)
-- [x] tsc --noEmit: not re-run (no .ts changes)
-- [x] CONFIRMED BY BROWSER: Production dashboard shows real daily PnL ✅
-- [ ] UNVERIFIED: `vercel.json` change not yet deployed — needs commit + push
 
 
-### Previous Confirmed (Feb 20, 2:30 PM CT)
-- **Post-ship hardening** — commit `4b50ef3`
-- 16 regression tests, suite 1131/1131, smoke test position closed ($4,998.21)
 
-### Previous Confirmed (Payment Security Audit Feb 20, 1:30 AM CT)
-- **6 payment flow security bugs fixed** across 2 commits (`a77d25b`, `3a15a34`)
-- CI run #629: ALL GREEN — Unit ✅, Integration ✅, Build ✅, E2E ✅
-- `payment_logs` table: audit trail + idempotency key via `uniqueIndex(invoiceId, status)`
-- Webhook idempotency: DB-level `ON CONFLICT DO NOTHING` instead of 5-min window
-- Discount re-derivation: amount fetched from DB, never trusts client reference string
-- Auth guard: unauthenticated requests blocked in production
-- Mock fail-closed: DB error returns 500 (not fake success URL)
-
-### Previous Confirmed (CI Hardening Feb 19, 11:00 PM CT)
-- **CI Pipeline Fixed** — 10 real-DB test files were running in the unit test job (no `DATABASE_URL`), causing `ECONNREFUSED` → cascading skip of all integration tests
-- Excluded all 10 from unit job, moved to integration job (Postgres 16 + Redis 7)
-- CI run #623 (`f359bb6`): ALL GREEN — Unit ✅, Integration ✅ (engine/safety/lifecycle), Build ✅, E2E ✅
-- Branches synced: `main` fast-forwarded to match `develop`
-
-### Previous Confirmed (Production Deploy Feb 19, 7:00 PM CT)
-- **DEPLOYED TO PRODUCTION** via staging-first workflow (`7bfa463..2c16608`)
-- Pre-deploy gates: `test:engine` ✅, `test:safety` ✅ (54/54), `tsc` ✅, `test:lifecycle` 27/28 (Phase 4 pre-existing env issue — market data unavailable for test market)
-- Staging smoke test ✅: homepage, login, 5K→$79, 25K→$299 all verified on `prop-firmx-git-develop-...vercel.app`
-- Production smoke test ✅: homepage, 5K→$79, 25K→$299 all verified on `prop-firmx.vercel.app`
-- All deep testing bugs FIXED + prices consolidated into `config/plans.ts` as single source of truth
-- `checkout/page.tsx`, `discount/validate/route.ts`, `admin-utils.ts` all import from `config/plans.ts`
-- 1114/1114 tests pass (vitest), `tsc` clean
-
-### Known Open Issues (Updated Feb 19)
-- None — all prior issues resolved and deployed to production.
-
-*(Entries prior to Feb 19 pruned per 7-day rolling window — see KI forensic audit history for archived entries)*
+*(Entries prior to Feb 22 pruned per 7-day rolling window — see KI forensic audit history for archived entries)*
 
