@@ -8,6 +8,9 @@ import { SmartEventCard } from "./SmartEventCard";
 import { EventDetailModal } from "./EventDetailModal";
 import { SearchModal } from "./SearchModal";
 import { MobileTradeSheet } from "./MobileTradeSheet";
+import { FeaturedCarousel } from "./FeaturedCarousel";
+import { BreakingNewsSidebar } from "./BreakingNewsSidebar";
+import { HotTopicsSidebar } from "./HotTopicsSidebar";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useTradeExecution } from "@/hooks/useTradeExecution";
 
@@ -189,8 +192,51 @@ export function MarketGridWithTabs({ events = [], balance, challengeId, initialM
 
     const totalItems = filteredEvents.length;
 
+    /** Open event in the detail modal */
+    const handleCarouselEventClick = (event: EventMetadata) => {
+        startTransition(() => {
+            setSelectedEvent(event);
+            setDetailModalOpen(true);
+        });
+    };
+
     return (
-        <div className="space-y-4">
+        <div className="space-y-6">
+            {/* ===== HERO SECTION: Carousel + Sidebars ===== */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                {/* Featured Carousel — 2/3 width on desktop */}
+                <div className="lg:col-span-2">
+                    <FeaturedCarousel
+                        events={events}
+                        onEventClick={handleCarouselEventClick}
+                        onTrade={(marketId, side) => handleQuickTrade(marketId, side)}
+                    />
+                </div>
+
+                {/* Sidebars — 1/3 width on desktop */}
+                <div className="space-y-6">
+                    <BreakingNewsSidebar
+                        events={events}
+                        onEventClick={handleCarouselEventClick}
+                    />
+                    <div className="border-t border-white/5" />
+                    <HotTopicsSidebar events={events} />
+                    <button
+                        className="w-full py-2.5 rounded-full border border-white/10 hover:border-white/20 text-sm text-zinc-400 hover:text-white transition-colors bg-white/5"
+                        onClick={() => {
+                            document.getElementById('all-markets')?.scrollIntoView({ behavior: 'smooth' });
+                        }}
+                    >
+                        Explore all
+                    </button>
+                </div>
+            </div>
+
+            {/* ===== ALL MARKETS SECTION ===== */}
+            <div id="all-markets" className="pt-2">
+                <h2 className="text-lg font-bold text-white mb-4">All markets</h2>
+            </div>
+
             {/* Category Tabs + Search — single unified bar */}
             <div className="relative">
                 <div className={cn(
