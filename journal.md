@@ -26,9 +26,13 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 - `10c3236` — Daily drawdown fix (`startOfDayBalance`)
 - `efb524b` — Position click deep-links to specific market modal
 - `3c6e39c` — **Preserve `endDate` from Gamma API** — root cause of Ending Soon showing 1 instead of ~24 markets
+- `740dc5e` — **Polymarket hero section:** FeaturedCarousel + BreakingNewsSidebar + HotTopicsSidebar + layout restructure
+- `b935ef4` — **Hot Topics fix:** entity-based keyword extraction (Iran, Bitcoin, World Cup) + volume24hr for "today" labels
 
 > [!IMPORTANT]
 > Railway worker restart required for `3c6e39c` to take effect — `ingestion.ts` runs on Railway, not Vercel.
+> 
+> Hero section commits (`740dc5e`, `b935ef4`) are on `develop` only — awaiting approval before merge to `main`. Following deployment discipline (max 2 builds/session).
 
 **Post-Incident: Billing Outage (Mar 1, ~8AM–12PM CT)**
 - **Root cause:** Vercel payment failed → DB suspended (`unpaidPlanInvoice`)
