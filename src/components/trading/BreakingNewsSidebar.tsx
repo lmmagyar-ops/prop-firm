@@ -29,9 +29,9 @@ export const BreakingNewsSidebar = memo(function BreakingNewsSidebar({
                 (c) => c.toLowerCase() === "breaking" || c.toLowerCase() === "new"
             )
         );
-        // Sort by volume descending
+        // Sort by today's volume descending
         const sorted = [...breaking].sort(
-            (a, b) => (b.volume ?? 0) - (a.volume ?? 0)
+            (a, b) => (b.volume24hr ?? b.volume ?? 0) - (a.volume24hr ?? a.volume ?? 0)
         );
 
         // Pad with highest-volume events if not enough breaking
@@ -39,7 +39,7 @@ export const BreakingNewsSidebar = memo(function BreakingNewsSidebar({
             const existing = new Set(sorted.map((e) => e.id));
             const filler = events
                 .filter((e) => !existing.has(e.id))
-                .sort((a, b) => (b.volume ?? 0) - (a.volume ?? 0));
+                .sort((a, b) => (b.volume24hr ?? b.volume ?? 0) - (a.volume24hr ?? a.volume ?? 0));
             sorted.push(...filler.slice(0, BREAKING_COUNT - sorted.length));
         }
 
@@ -56,8 +56,11 @@ export const BreakingNewsSidebar = memo(function BreakingNewsSidebar({
             </div>
             <div className="space-y-1">
                 {items.map((event, i) => {
-                    const market = event.markets[0];
-                    const price = market?.price ?? 0.5;
+                    // Multi-outcome: show highest sub-market price (leading runner)
+                    const topMarket = event.markets.length > 1
+                        ? event.markets.reduce((a, b) => (b.price ?? 0) > (a.price ?? 0) ? b : a)
+                        : event.markets[0];
+                    const price = topMarket?.price ?? 0.5;
                     const priceColor =
                         price >= 0.5 ? "text-emerald-400" : "text-rose-400";
 

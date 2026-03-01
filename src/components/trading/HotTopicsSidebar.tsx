@@ -2,6 +2,7 @@
 
 import { useMemo, memo } from "react";
 import { ChevronRight, Flame } from "lucide-react";
+import { formatVolume } from "@/lib/formatters";
 import type { EventMetadata } from "@/app/actions/market";
 
 interface HotTopicsSidebarProps {
@@ -66,7 +67,7 @@ const ENTITY_PATTERNS: [string, string][] = [
     ["btc", "Bitcoin"],
     ["ethereum", "Ethereum"],
     ["eth", "Ethereum"],
-    ["fed ", "Fed"],
+    ["fed", "Fed"],
     ["federal reserve", "Fed"],
     ["interest rate", "Interest Rates"],
     ["tariff", "Tariffs"],
@@ -82,17 +83,11 @@ const ENTITY_PATTERNS: [string, string][] = [
     ["senate", "Senate"],
     ["ceasefire", "Ceasefire"],
     ["nuclear", "Nuclear"],
-    ["ai ", "AI"],
+    ["ai", "AI"],
     ["artificial intelligence", "AI"],
 ];
 
-/** Format volume for display: $3M today, $50.8K today */
-function formatVolumeCompact(volume: number): string {
-    if (volume >= 1_000_000) return `$${(volume / 1_000_000).toFixed(0)}M`;
-    if (volume >= 100_000) return `$${(volume / 1_000).toFixed(0)}K`;
-    if (volume >= 1_000) return `$${(volume / 1_000).toFixed(1)}K`;
-    return `$${volume.toFixed(0)}`;
-}
+
 
 /**
  * Extract trending entity topics from event titles using pattern matching.
@@ -165,7 +160,7 @@ export const HotTopicsSidebar = memo(function HotTopicsSidebar({
                             {topic}
                         </span>
                         <span className="text-xs text-zinc-500 tabular-nums shrink-0">
-                            {formatVolumeCompact(volume)} today
+                            {formatVolume(volume)} today
                         </span>
                         <Flame className="w-3.5 h-3.5 text-orange-500 shrink-0" />
                         <ChevronRight className="w-3 h-3 text-zinc-600 shrink-0" />

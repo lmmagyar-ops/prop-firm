@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useMemo, useCallback, memo } from "react";
+import { useState, useMemo, useCallback, useEffect, memo } from "react";
 import { cn } from "@/lib/utils";
-import { formatPrice } from "@/lib/formatters";
+import { formatPrice, formatVolume } from "@/lib/formatters";
 import Image from "next/image";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { EventMetadata } from "@/app/actions/market";
@@ -14,13 +14,6 @@ interface FeaturedCarouselProps {
 }
 
 const CAROUSEL_SIZE = 6;
-
-/** Format volume to compact $X.XM / $XXk string */
-function formatVolume(volume: number): string {
-    if (volume >= 1_000_000) return `$${(volume / 1_000_000).toFixed(1)}M`;
-    if (volume >= 1_000) return `$${(volume / 1_000).toFixed(0)}K`;
-    return `$${volume.toFixed(0)}`;
-}
 
 /**
  * Mini sparkline SVG — a simple probability bar visualization.
@@ -65,9 +58,18 @@ export const FeaturedCarousel = memo(function FeaturedCarousel({
         [total]
     );
 
+    // Clamp activeIndex when featured list shrinks (e.g. events prop changes)
+    useEffect(() => {
+        if (total > 0 && activeIndex >= total) {
+            setActiveIndex(0);
+        }
+    }, [total, activeIndex]);
+
     if (total === 0) return null;
 
-    const event = featured[activeIndex];
+    // Safe access — clamp protects against transient out-of-bounds during render
+    const safeIndex = Math.min(activeIndex, total - 1);
+    const event = featured[safeIndex];
     const prevEvent = featured[((activeIndex - 1) % total + total) % total];
     const nextEvent = featured[(activeIndex + 1) % total];
     const market = event.markets[0];
