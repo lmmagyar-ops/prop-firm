@@ -95,15 +95,22 @@ function ProbabilityChart({ price, color }: { price: number; color: string }) {
 
 /** Clean up sub-market question to just the outcome name */
 function getOutcomeName(m: { question?: string; outcomes?: string[] }, eventTitle: string): string {
-    // Try stripping the event title prefix
     if (m.question) {
-        const cleaned = m.question
-            .replace(eventTitle + " - ", "")
-            .replace("Will ", "")
-            .replace(" win the ", " ")
-            .replace("?", "");
-        if (cleaned !== m.question && cleaned.length < 50) return cleaned;
-        if (cleaned.length < 60) return cleaned;
+        let cleaned = m.question;
+        // Strip common prefixes: "Event Title - ", "Will X win..."
+        cleaned = cleaned.replace(eventTitle + " - ", "");
+        cleaned = cleaned.replace("Will ", "");
+        cleaned = cleaned.replace(" win the ", " ");
+        cleaned = cleaned.replace("?", "");
+        // Strip event title words that repeat in the outcome
+        // e.g. "Spain 2026 FIFA World Cup" → "Spain" when title is "2026 FIFA World Cup Winner"
+        const titleWords = eventTitle.toLowerCase().split(/\s+/);
+        const parts = cleaned.split(/\s+/);
+        const filtered = parts.filter(w => !titleWords.includes(w.toLowerCase()));
+        if (filtered.length > 0 && filtered.length < parts.length) {
+            cleaned = filtered.join(" ");
+        }
+        if (cleaned.length > 0 && cleaned.length < 50) return cleaned;
     }
     return m.outcomes?.[0] ?? "Yes";
 }
@@ -195,9 +202,9 @@ export const FeaturedCarousel = memo(function FeaturedCarousel({
                 <div className="px-6 pb-4">
                     {isMulti ? (
                         /* Multi-outcome: stacked runner rows + chart */
-                        <div className="flex gap-6">
-                            {/* Left: outcome list */}
-                            <div className="space-y-2.5 shrink-0 min-w-[140px]">
+                        <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
+                            {/* Outcome list */}
+                            <div className="space-y-2.5 shrink-0 lg:min-w-[140px]">
                                 {event.markets
                                     .sort((a, b) => (b.price ?? 0) - (a.price ?? 0))
                                     .slice(0, 4)
@@ -228,8 +235,8 @@ export const FeaturedCarousel = memo(function FeaturedCarousel({
                                 )}
                             </div>
 
-                            {/* Right: probability chart area */}
-                            <div className="flex-1 min-w-0">
+                            {/* Chart — hidden on mobile, too small to be useful */}
+                            <div className="hidden lg:block flex-1 min-w-0">
                                 <ProbabilityChart
                                     price={primaryPrice}
                                     color={priceColor}
@@ -334,9 +341,9 @@ export const FeaturedCarousel = memo(function FeaturedCarousel({
 
                 <div className="flex-1" />
 
-                {/* Prev/Next Pills */}
+                {/* Prev/Next Pills — hidden on mobile to prevent overflow */}
                 {total > 1 && (
-                    <div className="flex items-center gap-2">
+                    <div className="hidden md:flex items-center gap-2">
                         <button
                             onClick={() => goTo(safeIndex - 1)}
                             className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/10 hover:border-white/20 text-xs text-zinc-400 hover:text-white transition-colors bg-white/5 max-w-[180px]"

@@ -9,64 +9,77 @@ Every push to `main` or `develop` triggers a Vercel build (~2 min each).
 The Vercel Pro plan includes limited build minutes. In Feb 2026, 464 builds
 caused a $43 overage that **took production down for 4 hours**.
 
-## Rules
+## The ONE Rule
 
-### 1. VERIFY LOCALLY — NOT BY PUSHING TO STAGING
-Before ANY push, run these locally:
-// turbo
-```
-npx tsc --noEmit && npx vitest run tests/ --reporter=dot 2>&1 | tail -5
-```
+**Push ONCE per session. At the END of the session. Not in the middle.**
 
-If you need to verify the UI, run the dev server locally:
+Work all day → commit locally → verify locally → push once → done.
+
+The only exception is a mission-critical hotfix (prod is broken).
+
+## Workflow
+
+### 1. WORK LOCALLY ALL SESSION
+Commit as often as you want. Git commits are free. Git pushes are not.
+
+Verify everything with the local dev server:
 // turbo
 ```
 npm run dev
 ```
 
-**DO NOT push to `develop` just to see if something works on staging.**
-Push only when you are confident the code is correct.
+Type-check and run tests:
+// turbo
+```
+npx tsc --noEmit && npx vitest run tests/ --reporter=dot 2>&1 | tail -5
+```
 
-### 2. COMMIT LOCALLY, PUSH ONCE
-You may make as many local git commits as needed. But you only get
-**ONE push to `develop`** per session. That push should contain all
-your batched work.
+Use the browser agent on `http://localhost:3000` to verify UI. Do NOT push
+to staging just to "see if it looks right". That's lazy and expensive.
 
-**❌ Wrong:** commit → push → fix → push → fix → push (3 builds)
-**✅ Right:** commit → commit → commit → verify locally → push once (1 build)
-
-### 3. Verify staging after your ONE push
+### 2. END-OF-SESSION: Push to develop
+When you're done for the day, push everything at once:
 // turbo
 ```
 git push origin develop
 ```
 
-Wait for Vercel to build staging, then browser smoke test staging URL:
+Wait for Vercel to build staging, then do a final browser smoke test:
 `https://prop-firmx-git-develop-oversightresearch-4292s-projects.vercel.app`
 
-### 4. Merge to main (ONE deployment)
+### 3. Merge to main (ONE production deployment)
+Only after staging looks good:
 ```
 git checkout main && git merge develop --no-edit && git push origin main && git checkout develop
 ```
 
-### 5. Post-deploy verification
+### 4. Post-deploy verification
 // turbo
 ```
 curl -s "https://prop-firmx.vercel.app/api/cron/status" | python3 -mjson.tool
 ```
 
-### 6. Railway worker changes
-If `src/workers/ingestion.ts` was modified, the Railway worker also needs
-a restart. Railway auto-deploys from `main` — verify with:
+### 5. Railway worker changes
+If `src/workers/ingestion.ts` was modified, Railway auto-deploys from `main`. Verify:
 // turbo
 ```
 curl -s "https://prop-firmx.vercel.app/api/markets/events" | python3 -c "import json,sys; d=json.load(sys.stdin); print(f'Events: {len(d)}')"
 ```
 
-## Summary: Max 2 Builds Per Session
-1. One `develop` push (staging build) — after ALL local verification passes
-2. One `main` merge (production build) — after staging smoke test passes
+## Summary: Max 2 Builds Total
 
-That's it. No exceptions unless there's a critical hotfix.
+| Build | When | Branch |
+|---|---|---|
+| 1 | End of session | `develop` (staging) |
+| 2 | After staging verified | `main` (production) |
 
-Journal-only or docs-only commits should be **batched with the next code push**, not pushed separately.
+Journal-only or docs-only commits: **batch with the next code push**. Never push alone.
+
+## When to Push Mid-Session (Exceptions)
+
+Only if ALL of these are true:
+1. Production is broken RIGHT NOW
+2. Users are affected
+3. The fix cannot wait until end of session
+
+Everything else waits.
