@@ -164,79 +164,71 @@ export const FeaturedCarousel = memo(function FeaturedCarousel({
     const primaryPrice = topMarket?.price ?? 0.5;
     const priceColor = primaryPrice >= 0.5 ? "#00C896" : "#E63E5D";
 
-    // Category breadcrumb — dot-separated like Polymarket ("Geopolitics · Trump")
-    const categories = event.categories?.slice(0, 2) ?? [];
-    const breadcrumb = categories.length > 0
-        ? categories.join(" · ")
-        : "Trending";
-
     return (
         <div className="space-y-3">
             {/* Main Carousel Card */}
             <div
-                className="relative bg-zinc-900/60 border border-white/5 rounded-2xl overflow-hidden cursor-pointer group"
+                className="relative bg-zinc-900/60 border border-white/5 rounded-2xl overflow-hidden cursor-pointer group hover:border-white/10 transition-colors"
                 onClick={() => onEventClick(event)}
             >
-                {/* Category breadcrumb row */}
-                <div className="flex items-center gap-2 px-6 pt-5 text-xs text-zinc-500">
-                    <span>{breadcrumb}</span>
-                </div>
-
-                {/* Title + Image row */}
-                <div className="px-6 pt-2 pb-3 flex items-start gap-4">
+                {/* Title + Image — tight top section */}
+                <div className="px-5 pt-5 pb-1 flex items-start gap-3.5">
                     {event.image && (
                         <Image
                             src={event.image}
                             alt=""
-                            width={56}
-                            height={56}
-                            className="w-14 h-14 rounded-xl object-cover shrink-0 mt-0.5"
+                            width={48}
+                            height={48}
+                            className="w-12 h-12 rounded-xl object-cover shrink-0"
                         />
                     )}
-                    <h2 className="text-xl font-bold text-white leading-snug line-clamp-2 group-hover:text-white/90 transition-colors flex-1">
+                    <h2 className="text-lg font-bold text-white leading-snug line-clamp-2 group-hover:text-white/90 transition-colors flex-1">
                         {event.title}
                     </h2>
                 </div>
 
-                {/* Content area — binary vs multi-outcome */}
-                <div className="px-6 pb-4">
+                {/* Content area */}
+                <div className="px-5 py-3">
                     {isMulti ? (
-                        /* Multi-outcome: stacked runner rows + chart */
-                        <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
-                            {/* Outcome list */}
-                            <div className="space-y-2.5 shrink-0 lg:min-w-[140px]">
-                                {event.markets
-                                    .sort((a, b) => (b.price ?? 0) - (a.price ?? 0))
-                                    .slice(0, 4)
-                                    .map((m) => {
-                                        const p = m.price ?? 0;
-                                        const c = p >= 0.5 ? "#00C896" : "#E63E5D";
-                                        return (
+                        /* Multi-outcome: probability bars — the visual IS the data */
+                        <div className="space-y-1.5">
+                            {event.markets
+                                .sort((a, b) => (b.price ?? 0) - (a.price ?? 0))
+                                .slice(0, 6)
+                                .map((m) => {
+                                    const p = m.price ?? 0;
+                                    const pct = Math.max(1, Math.round(p * 100));
+                                    const barColor = p >= 0.5
+                                        ? "bg-emerald-500/20"
+                                        : p >= 0.15
+                                            ? "bg-white/[0.06]"
+                                            : "bg-white/[0.03]";
+                                    return (
+                                        <div
+                                            key={m.id}
+                                            className="relative flex items-center justify-between h-9 rounded-lg overflow-hidden"
+                                        >
+                                            {/* Probability fill bar */}
                                             <div
-                                                key={m.id}
-                                                className="flex items-center justify-between gap-4"
-                                            >
-                                                <span className="text-sm text-zinc-400 truncate">
-                                                    {getOutcomeName(m, event.title)}
-                                                </span>
-                                                <span
-                                                    className="text-base font-bold tabular-nums shrink-0"
-                                                    style={{ color: c }}
-                                                >
-                                                    {formatPrice(p)}
-                                                </span>
-                                            </div>
-                                        );
-                                    })}
-                                {event.markets.length > 4 && (
-                                    <span className="text-xs text-zinc-600">
-                                        +{event.markets.length - 4} more
-                                    </span>
-                                )}
-                            </div>
+                                                className={cn(
+                                                    "absolute inset-y-0 left-0 rounded-lg transition-all duration-500",
+                                                    barColor
+                                                )}
+                                                style={{ width: `${Math.max(pct, 8)}%` }}
+                                            />
+                                            {/* Label + value */}
+                                            <span className="relative z-10 text-sm text-zinc-300 pl-3 truncate">
+                                                {getOutcomeName(m, event.title)}
+                                            </span>
+                                            <span className="relative z-10 text-sm font-semibold tabular-nums text-white pr-3">
+                                                {pct}%
+                                            </span>
+                                        </div>
+                                    );
+                                })}
                         </div>
                     ) : (
-                        /* Binary: large price + chart */
+                        /* Binary: confident single number + chart */
                         <div className="space-y-3">
                             <div className="flex items-baseline gap-2">
                                 <span
@@ -257,58 +249,35 @@ export const FeaturedCarousel = memo(function FeaturedCarousel({
                     )}
                 </div>
 
-                {/* Trade buttons */}
-                {topMarket && (
-                    <div className="px-6 pb-5">
-                        {isMulti ? (
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onEventClick(event);
-                                }}
-                                className="px-6 py-2.5 rounded-lg bg-white/5 hover:bg-white/10 text-white text-sm font-semibold transition-colors border border-white/10"
-                            >
-                                View All Outcomes
-                            </button>
-                        ) : (
-                            <div className="flex gap-3">
-                                <button
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        onTrade(topMarket.id, "yes");
-                                    }}
-                                    className="flex-1 py-3 rounded-lg bg-[#00C896]/10 hover:bg-[#00C896]/20 text-[#00C896] font-bold text-sm transition-colors border border-[#00C896]/30 hover:border-[#00C896]/60"
-                                >
-                                    Yes
-                                </button>
-                                <button
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        onTrade(topMarket.id, "no");
-                                    }}
-                                    className="flex-1 py-3 rounded-lg bg-[#E63E5D]/10 hover:bg-[#E63E5D]/20 text-[#E63E5D] font-bold text-sm transition-colors border border-[#E63E5D]/30 hover:border-[#E63E5D]/60"
-                                >
-                                    No
-                                </button>
-                            </div>
-                        )}
+                {/* Trade buttons — only for binary (multi-outcome: card IS the button) */}
+                {!isMulti && topMarket && (
+                    <div className="px-5 pb-4 flex gap-3">
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onTrade(topMarket.id, "yes");
+                            }}
+                            className="flex-1 py-2.5 rounded-lg bg-[#00C896]/10 hover:bg-[#00C896]/20 text-[#00C896] font-bold text-sm transition-colors border border-[#00C896]/30 hover:border-[#00C896]/60"
+                        >
+                            Yes
+                        </button>
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onTrade(topMarket.id, "no");
+                            }}
+                            className="flex-1 py-2.5 rounded-lg bg-[#E63E5D]/10 hover:bg-[#E63E5D]/20 text-[#E63E5D] font-bold text-sm transition-colors border border-[#E63E5D]/30 hover:border-[#E63E5D]/60"
+                        >
+                            No
+                        </button>
                     </div>
                 )}
 
-                {/* Volume badge — bottom-left like Polymarket */}
-                <div className="px-6 pb-4 flex items-center justify-between">
+                {/* Single social proof line */}
+                <div className="px-5 pb-4">
                     <span className="text-xs text-zinc-600 tabular-nums">
-                        {formatVolume(event.volume)} Vol
+                        {formatVolume(event.volume24hr ?? event.volume)} Vol
                     </span>
-                    {event.endDate && (
-                        <span className="text-xs text-zinc-600">
-                            Ends{" "}
-                            {new Date(event.endDate).toLocaleDateString(
-                                undefined,
-                                { month: "short", day: "numeric" }
-                            )}
-                        </span>
-                    )}
                 </div>
             </div>
 
