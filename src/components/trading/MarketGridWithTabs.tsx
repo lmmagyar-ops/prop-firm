@@ -221,14 +221,6 @@ export function MarketGridWithTabs({ events = [], balance, challengeId, initialM
                     />
                     <div className="border-t border-white/5" />
                     <HotTopicsSidebar events={events} />
-                    <button
-                        className="w-full py-2.5 rounded-full border border-white/10 hover:border-white/20 text-sm text-zinc-400 hover:text-white transition-colors bg-white/5"
-                        onClick={() => {
-                            document.getElementById('all-markets')?.scrollIntoView({ behavior: 'smooth' });
-                        }}
-                    >
-                        Explore all
-                    </button>
                 </div>
             </div>
 
