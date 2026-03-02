@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { TradeExecutor } from "@/lib/trade";
+import { ChallengeEvaluator } from "@/lib/evaluator";
 import { db } from "@/db";
 import { challenges, positions, users } from "@/db/schema";
 import { eq } from "drizzle-orm";
@@ -98,7 +99,23 @@ export async function POST(req: NextRequest) {
             { shares } // Explicitly pass share count to sell
         );
 
-        // Fetch updated balance (challenge is updated by TradeExecutor)
+        // AWAIT evaluator: The evaluator runs fire-and-forget inside TradeExecutor,
+        // but for SELL trades we MUST wait for it to finish before reading the
+        // challenge state. Without this, the response returns stale `phase: 'challenge'`
+        // when the evaluator hasn't finished the funded transition yet.
+        // This is safe because close API already has maxDuration = 60.
+        let evalResult;
+        try {
+            evalResult = await ChallengeEvaluator.evaluate(challenge.id);
+            logger.info('Post-close evaluation complete', {
+                challengeId: challenge.id.slice(0, 8),
+                result: evalResult.status,
+            });
+        } catch (e) {
+            logger.error('Post-close evaluation failed (non-blocking)', e);
+        }
+
+        // Fetch updated balance AFTER evaluator finishes
         const updatedChallenge = await db.query.challenges.findFirst({
             where: eq(challenges.id, challenge.id),
         });
@@ -117,7 +134,8 @@ export async function POST(req: NextRequest) {
                 shares: parseFloat(trade.shares),
                 price: parseFloat(trade.price),
             },
-            newBalance: updatedChallenge?.currentBalance || challenge.currentBalance
+            newBalance: updatedChallenge?.currentBalance || challenge.currentBalance,
+            phase: updatedChallenge?.phase || challenge.phase,
         };
 
         // Cache response for idempotency (if key was provided)

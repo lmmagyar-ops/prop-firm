@@ -77,6 +77,13 @@ export function OpenPositions({ positions: initialPositions }: OpenPositionsProp
 
             setPositions(prev => prev.filter(p => p.id !== positionId));
             window.dispatchEvent(new Event("balance-updated"));
+
+            // If the evaluator detected a funded transition, the phase will be
+            // 'funded' in the response. Give a brief delay so the RSC re-render
+            // picks up the updated DB state reliably.
+            if (result.phase === 'funded') {
+                await new Promise(r => setTimeout(r, 300));
+            }
             router.refresh();
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Failed to close position';
