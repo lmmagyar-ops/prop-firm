@@ -8,33 +8,26 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 > **New agent? Read this section before doing anything else.**
 > This is the single source of truth for what actually works. Do NOT trust individual journal entries — they reflect what the agent *believed*, not what the user confirmed.
 
-### Mar 1, 2026 (12:25 PM CT) — Post-Incident Recovery Complete ✅
+### Mar 1, 2026 (9:20 PM CT) — Carousel V2 + Audit + Deploy Discipline ✅
 
-**All fixes deployed to production** (`92ebcd0`). Full recovery sequence completed:
+**On `develop`, ready to merge to `main`:**
 
-| Step | Result |
-|------|--------|
-| 1. Verify prod stability | ✅ Healthy, 5 accounts, normal response times |
-| 2. Staging smoke test | ✅ Ending Soon shows 1 market (Mar 8), 30-day cutoff working |
-| 3. Merge develop → main | ✅ `92ebcd0` |
-| 4. Post-deploy verification | ✅ All endpoints healthy |
+| Commit | What |
+|--------|------|
+| `c232284` | Audit fixes: stale carousel index crash, multi-outcome misleading price, shared formatVolume, entity pattern whitespace |
+| `4f8fdd2` | Carousel V2: filter >95%/<5% resolved markets, SVG probability chart, taller card, dot-separated breadcrumbs, inline Explore All |
+| `81fec63` | Mobile responsive: outcome names stripped ("Spain" not "Spain 2026 FIFA World Cup"), chart hidden on mobile, nav pills hidden on mobile |
 
-**What shipped:**
-- `b9123ef` — Ending Soon 30-day cutoff filter
-- `5398551` — 10 edge-case unit tests
-- `6bd7383` — Dependabot build skip (cost reduction)
-- `10c3236` — Daily drawdown fix (`startOfDayBalance`)
-- `efb524b` — Position click deep-links to specific market modal
-
-**Post-Incident: Billing Outage (Mar 1, ~8AM–12PM CT)**
-- **Root cause:** Vercel payment failed → DB suspended (`unpaidPlanInvoice`)
-- **Blast radius:** Both staging and prod, all DB-dependent endpoints, ~4 hours
-- **Resolution:** Mat added new credit card, Vercel restored service
-- **Prevention:** `ignoreCommand` in `vercel.json` to reduce build minutes (79% of cost)
+**Deployment discipline (non-negotiable):**
+- Added `🚨 DEPLOYMENT COST LIMIT` as FIRST section of CLAUDE.md
+- Git pre-push hook blocks after 2 pushes/day
+- User global rules updated to persist across all agents/conversations
+- **Root cause of past violations:** using staging as visual test environment instead of `npm run dev`
 
 **Tomorrow Morning:**
-1. (LOW) Share estimate label clarification
-2. (LOW) Consider Vercel spend alert or split projects for more credit
+1. (HIGH) Verify production after merge — carousel, sidebars, mobile all working
+2. (MED) Address remaining P2 audit items (fragile substring removal in carousel, HotTopics fallback)
+3. (LOW) Share estimate label clarification
 
 
 ---

@@ -2,6 +2,19 @@
 
 > **Funded Prediction** — A simulated trading platform where users trade on Polymarket data with firm capital.
 
+## 🚨 DEPLOYMENT COST LIMIT — READ BEFORE DOING ANYTHING
+
+> **Every `git push` triggers a Vercel build. In Feb 2026, 464 builds caused a $43 overage that took production down for 4 hours.**
+
+**RULES (NON-NEGOTIABLE):**
+1. **NEVER push mid-session.** Work all day, commit locally, push ONCE at end of session.
+2. **Verify locally with `npm run dev`.** Do NOT push to staging to "see if it looks right."
+3. **Max 2 pushes per day** (1 to `develop`, 1 merge to `main`). A git pre-push hook will BLOCK you after 2.
+4. **Journal/docs-only changes** get batched with the next code push. Never pushed alone.
+5. **Exception:** Production is broken and users are affected RIGHT NOW.
+
+If you push more than once to `develop` in a session, you have failed. See `.agents/workflows/deploy.md` for full process.
+
 ## ⚙️ Engineering Standards (Anthropic-Grade)
 
 ### Core Principles
@@ -35,6 +48,15 @@
 - Browser smoke test any UI change — screenshots prove more than type-checks.
 - Cross-reference numbers: if a value appears in the API response AND the DB AND the UI, verify all three match.
 - **"Tests pass" is NOT a success signal.** Tests verify implementation, not product behavior. Mat seeing correct numbers on his screen is the only success signal.
+
+### Deployment Discipline (Cost-Aware)
+> This rule exists because 464 builds in one billing cycle caused a $43 overage that took production down for 4 hours.
+
+- **NEVER merge to `main` after every fix.** Batch all changes on `develop`. Merge to `main` **once per session**, after all changes are verified together on staging.
+- **Max 2 Vercel builds per session:** one `develop` push (staging), one `main` merge (production). No exceptions unless hotfixing a live incident.
+- **Always verify staging before merging to main.** Run browser smoke test on staging URL before promoting.
+- **Railway worker changes** (`src/workers/ingestion.ts`) require a Railway restart — Vercel deploys don't affect the worker.
+- See `.agents/workflows/deploy.md` for the full step-by-step workflow.
 
 ### Communication
 - Always leave a journal.md entry when completing work.
