@@ -203,26 +203,29 @@ export function MarketGridWithTabs({ events = [], balance, challengeId, initialM
     return (
         <div className="space-y-6">
             {/* ===== HERO SECTION: Carousel + Sidebars ===== */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-                {/* Featured Carousel — 2/3 width on desktop */}
-                <div className="lg:col-span-2">
-                    <FeaturedCarousel
-                        events={events}
-                        onEventClick={handleCarouselEventClick}
-                        onTrade={(marketId, side) => handleQuickTrade(marketId, side)}
-                    />
-                </div>
+            {/* Only shown on the landing view (Trending tab), hidden when filtering by category */}
+            {activeTab === 'trending' && (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                    {/* Featured Carousel — 2/3 width on desktop */}
+                    <div className="lg:col-span-2">
+                        <FeaturedCarousel
+                            events={events}
+                            onEventClick={handleCarouselEventClick}
+                            onTrade={(marketId, side) => handleQuickTrade(marketId, side)}
+                        />
+                    </div>
 
-                {/* Sidebars — 1/3 width on desktop */}
-                <div className="space-y-6">
-                    <BreakingNewsSidebar
-                        events={events}
-                        onEventClick={handleCarouselEventClick}
-                    />
-                    <div className="border-t border-white/5" />
-                    <HotTopicsSidebar events={events} />
+                    {/* Sidebars — 1/3 width on desktop */}
+                    <div className="space-y-6">
+                        <BreakingNewsSidebar
+                            events={events}
+                            onEventClick={handleCarouselEventClick}
+                        />
+                        <div className="border-t border-white/5" />
+                        <HotTopicsSidebar events={events} />
+                    </div>
                 </div>
-            </div>
+            )}
 
             {/* ===== ALL MARKETS SECTION ===== */}
             <div id="all-markets" className="pt-2">
