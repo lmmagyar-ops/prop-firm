@@ -234,14 +234,6 @@ export const FeaturedCarousel = memo(function FeaturedCarousel({
                                     </span>
                                 )}
                             </div>
-
-                            {/* Chart — hidden on mobile, too small to be useful */}
-                            <div className="hidden lg:block flex-1 min-w-0">
-                                <ProbabilityChart
-                                    price={primaryPrice}
-                                    color={priceColor}
-                                />
-                            </div>
                         </div>
                     ) : (
                         /* Binary: large price + chart */
@@ -380,6 +372,6 @@ export const FeaturedCarousel = memo(function FeaturedCarousel({
                     Explore all
                 </button>
             </div>
-        </div>
+        </div >
     );
 });
