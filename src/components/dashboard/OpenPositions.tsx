@@ -116,6 +116,7 @@ export function OpenPositions({ positions: initialPositions }: OpenPositionsProp
                                 <TableHead className="text-xs text-zinc-500 uppercase">Market</TableHead>
                                 <TableHead className="text-xs text-zinc-500 uppercase text-center">Side</TableHead>
                                 <TableHead className="text-xs text-zinc-500 uppercase text-right">Shares</TableHead>
+                                <TableHead className="text-xs text-zinc-500 uppercase text-right">Invested</TableHead>
                                 <TableHead className="text-xs text-zinc-500 uppercase text-right">Entry</TableHead>
                                 <TableHead className="text-xs text-zinc-500 uppercase text-right">Current</TableHead>
                                 <TableHead className="text-xs text-zinc-500 uppercase text-right">Est. P&L</TableHead>
@@ -166,6 +167,11 @@ export function OpenPositions({ positions: initialPositions }: OpenPositionsProp
                                         {/* Shares — consistent 2dp */}
                                         <TableCell className="text-right font-mono text-sm text-zinc-300">
                                             {pos.shares.toFixed(2)}
+                                        </TableCell>
+
+                                        {/* Invested (cost basis = shares × entry) */}
+                                        <TableCell className="text-right font-mono text-sm text-zinc-400">
+                                            ${cost.toFixed(2)}
                                         </TableCell>
 
                                         {/* Entry */}

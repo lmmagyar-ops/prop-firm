@@ -23,7 +23,7 @@ interface CategoryTabsProps {
 }
 
 /** Events with endDate within this window appear in the "Ending Soon" tab */
-const ENDING_SOON_WINDOW_DAYS = 30;
+const ENDING_SOON_WINDOW_DAYS = 7;
 
 /** Returns true if event has an endDate within the ENDING_SOON_WINDOW_DAYS cutoff */
 function isEndingSoon(event: EventMetadata): boolean {

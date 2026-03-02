@@ -32,7 +32,7 @@ function isInteresting(event: EventMetadata): boolean {
  */
 function ProbabilityChart({ price, color }: { price: number; color: string }) {
     const pct = Math.max(2, Math.min(98, price * 100));
-    const id = `gradient-${Math.random().toString(36).slice(2, 8)}`;
+    const id = `gradient-${Math.round(price * 10000)}`;
 
     return (
         <div className="relative w-full h-24 rounded-lg overflow-hidden bg-white/[0.02]">
@@ -165,10 +165,13 @@ export const FeaturedCarousel = memo(function FeaturedCarousel({
     const priceColor = primaryPrice >= 0.5 ? "#00C896" : "#E63E5D";
 
     return (
-        <div className="space-y-3">
+        <div className="space-y-2">
+            {/* Section label */}
+            <span className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Featured</span>
+
             {/* Main Carousel Card */}
             <div
-                className="relative bg-zinc-900/60 border border-white/5 rounded-2xl overflow-hidden cursor-pointer group hover:border-white/10 transition-colors"
+                className="relative bg-gradient-to-b from-zinc-900/80 to-zinc-900/60 border border-white/[0.08] rounded-2xl overflow-hidden cursor-pointer group hover:border-white/15 transition-all shadow-lg shadow-black/25"
                 onClick={() => onEventClick(event)}
             >
                 {/* Title + Image — tight top section */}
@@ -182,7 +185,7 @@ export const FeaturedCarousel = memo(function FeaturedCarousel({
                             className="w-12 h-12 rounded-xl object-cover shrink-0"
                         />
                     )}
-                    <h2 className="text-lg font-bold text-white leading-snug line-clamp-2 group-hover:text-white/90 transition-colors flex-1">
+                    <h2 className="text-xl font-bold text-white leading-snug line-clamp-2 group-hover:text-white/90 transition-colors flex-1">
                         {event.title}
                     </h2>
                 </div>
@@ -191,22 +194,23 @@ export const FeaturedCarousel = memo(function FeaturedCarousel({
                 <div className="px-5 py-3">
                     {isMulti ? (
                         /* Multi-outcome: probability bars — the visual IS the data */
-                        <div className="space-y-1.5">
-                            {event.markets
+                        <div className="space-y-1">
+                            {[...event.markets]
                                 .sort((a, b) => (b.price ?? 0) - (a.price ?? 0))
                                 .slice(0, 6)
-                                .map((m) => {
+                                .map((m, idx) => {
                                     const p = m.price ?? 0;
                                     const pct = Math.max(1, Math.round(p * 100));
-                                    const barColor = p >= 0.5
-                                        ? "bg-emerald-500/20"
-                                        : p >= 0.15
-                                            ? "bg-white/[0.06]"
-                                            : "bg-white/[0.03]";
+                                    const isLeader = idx === 0;
+                                    const barColor = isLeader
+                                        ? "bg-emerald-500/30"
+                                        : p >= 0.10
+                                            ? "bg-white/[0.12]"
+                                            : "bg-white/[0.06]";
                                     return (
                                         <div
                                             key={m.id}
-                                            className="relative flex items-center justify-between h-9 rounded-lg overflow-hidden"
+                                            className="relative flex items-center h-10 rounded-lg overflow-hidden bg-white/[0.03]"
                                         >
                                             {/* Probability fill bar */}
                                             <div
@@ -216,11 +220,15 @@ export const FeaturedCarousel = memo(function FeaturedCarousel({
                                                 )}
                                                 style={{ width: `${Math.max(pct, 8)}%` }}
                                             />
-                                            {/* Label + value */}
-                                            <span className="relative z-10 text-sm text-zinc-300 pl-3 truncate">
+                                            {/* Label — secondary */}
+                                            <span className="relative z-10 text-xs text-zinc-400 pl-3 flex-1 min-w-0 truncate">
                                                 {getOutcomeName(m, event.title)}
                                             </span>
-                                            <span className="relative z-10 text-sm font-semibold tabular-nums text-white pr-3">
+                                            {/* Percentage — hero */}
+                                            <span className={cn(
+                                                "relative z-10 text-base font-bold tabular-nums pr-3 whitespace-nowrap",
+                                                isLeader ? "text-emerald-400" : "text-white"
+                                            )}>
                                                 {pct}%
                                             </span>
                                         </div>
@@ -273,10 +281,10 @@ export const FeaturedCarousel = memo(function FeaturedCarousel({
                     </div>
                 )}
 
-                {/* Single social proof line */}
+                {/* Social proof chip */}
                 <div className="px-5 pb-4">
-                    <span className="text-xs text-zinc-600 tabular-nums">
-                        {formatVolume(event.volume24hr ?? event.volume)} Vol
+                    <span className="inline-flex items-center text-xs text-zinc-400 tabular-nums bg-white/[0.05] px-2.5 py-1 rounded-md">
+                        {formatVolume(event.volume24hr ?? event.volume ?? 0)} Vol
                     </span>
                 </div>
             </div>

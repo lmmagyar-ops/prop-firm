@@ -153,21 +153,25 @@ export function getEquityStats(challenge: DbChallengeRow, equity: number, starti
     const maxDrawdownLimit = normalized.maxDrawdown;
 
     const dailyDrawdownPercent = (rules.maxDailyDrawdownPercent as number) || 0.04;
-    const dailyDrawdownLimit = dailyDrawdownPercent * startOfDayBalance;
 
     const totalPnL = equity - startingBalance;
 
     // Daily PnL uses startOfDayEquity (true equity at midnight = cash + position value).
-    // startOfDayBalance is cash-only and is intentionally kept for the risk engine's
-    // daily drawdown limit. Mixing the two creates phantom gains equal to open position value.
+    // startOfDayBalance is cash-only and is intentionally kept for backwards compatibility.
     // If null (account created before this column was added), we suppress the display rather
     // than show a misleading number.
     const sodeRaw = challenge.startOfDayEquity !== undefined ? safeParseFloat(challenge.startOfDayEquity) : NaN;
     const startOfDayEquity = !isNaN(sodeRaw) && sodeRaw > 0 ? sodeRaw : null;
     const dailyPnL: number | null = startOfDayEquity !== null ? equity - startOfDayEquity : null;
 
+    // Daily drawdown baseline: use startOfDayEquity (equity at midnight) for consistent
+    // equity-vs-equity comparison. Falls back to startOfDayBalance (cash) for pre-migration
+    // accounts where startOfDayEquity is null.
+    const dailyDrawdownBaseline = startOfDayEquity ?? startOfDayBalance;
+    const dailyDrawdownLimit = dailyDrawdownPercent * dailyDrawdownBaseline;
+
     const drawdownAmount = Math.max(0, highWaterMark - equity);
-    const dailyDrawdownAmount = Math.max(0, startOfDayBalance - equity);
+    const dailyDrawdownAmount = Math.max(0, dailyDrawdownBaseline - equity);
 
     const drawdownUsage = (drawdownAmount / maxDrawdownLimit) * 100;
     const dailyDrawdownUsage = (dailyDrawdownAmount / dailyDrawdownLimit) * 100;
@@ -296,8 +300,13 @@ export function getFundedStats(challenge: DbChallengeRow, equity: number, starti
         eligible,
         hasViolations: false,
         maxTotalDrawdown: fundedRules.maxTotalDrawdown,
-        // Dynamic daily limit = percent × startOfDayBalance (matches evaluator + risk-monitor)
-        maxDailyDrawdown: fundedRules.maxDailyDrawdownPercent * (safeParseFloat(challenge.startOfDayBalance) || startingBalance),
+        // Dynamic daily limit = percent × equity at midnight (matches evaluator + risk-monitor + risk.ts)
+        // Falls back to cash (startOfDayBalance) for pre-migration accounts
+        maxDailyDrawdown: fundedRules.maxDailyDrawdownPercent * (
+            (challenge.startOfDayEquity ? safeParseFloat(challenge.startOfDayEquity) : 0) ||
+            safeParseFloat(challenge.startOfDayBalance) ||
+            startingBalance
+        ),
     };
 }
 
@@ -384,7 +393,7 @@ export async function getDashboardData(userId: string) {
         challengesCompleted,
         challengesFailed,
         successRate,
-        totalProfitEarned: totalProfitEarned > 0 ? totalProfitEarned : Math.max(0, totalRealizedPnL),
+        totalProfitEarned: Math.round((totalProfitEarned > 0 ? totalProfitEarned : Math.max(0, totalRealizedPnL)) * 100) / 100,
         bestMarketCategory,
         currentWinStreak,
         avgTradeWinRate: tradeWinRate,

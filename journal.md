@@ -8,6 +8,23 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 > **New agent? Read this section before doing anything else.**
 > This is the single source of truth for what actually works. Do NOT trust individual journal entries — they reflect what the agent *believed*, not what the user confirmed.
 
+### Mar 2, 2026 (5:15 PM CT) — Session End: Mat's Tab 2 Fixes (Daily DD + UI)
+
+**What's on `develop` (NOT pushed yet):**
+
+| Change | Files |
+|--------|-------|
+| **Daily Drawdown Fix** — uses `startOfDayEquity` (equity at midnight) instead of `startOfDayBalance` (cash at midnight) for DD baseline. Fixes apples-to-oranges comparison when positions held overnight. Cross-reference audit caught 2 additional systems. | `dashboard-service.ts`, `daily_reset.ts`, `evaluator.ts`, `risk-monitor.ts`, `risk.ts`, `getFundedStats()` |
+| **Daily Reset Worker** — now computes equity (cash + open position value) at midnight and snapshots both `startOfDayBalance` (cash) and `startOfDayEquity` (equity). | `daily_reset.ts` |
+| **Pre-trade Risk Engine** — `risk.ts` `validateTrade()` and `fetchChallengeContext()` now use equity baseline. Without this fix, pre-trade gate would use different DD baseline than post-trade evaluator (split-brain). | `risk.ts` |
+| **Account ID + Equity in Nav** — compact summary (e.g., `FA-abc12345 / $10,000.00`) shown next to Portfolio button on desktop. | `PortfolioPanel.tsx`, `/api/user/balance/route.ts` |
+| **Invested Column** — cost basis column added to Open Positions table. | `OpenPositions.tsx` |
+| **3 regression tests** — Scenario 8: overnight positions (equity baseline vs cash baseline). | `financial-display-boundary.test.ts` |
+
+**Verification:** 80/80 test files pass (1193 tests), `tsc --noEmit` clean.
+
+**⚠️ Needs before push:** Manual localhost smoke test of the nav bar account summary and positions table.
+
 ### Mar 2, 2026 (7:20 AM CT) — Session End: Carousel on Prod + Apple Redesign Pending
 
 **What shipped to production** (merged `develop` → `main` at `1629b74`):

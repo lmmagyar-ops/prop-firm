@@ -48,6 +48,9 @@ export class ChallengeEvaluator {
         const startingBalance = parseFloat(challenge.startingBalance);
         const highWaterMark = parseFloat(challenge.highWaterMark || challenge.startingBalance);
         const startOfDayBalance = parseFloat(challenge.startOfDayBalance || challenge.startingBalance);
+        // Daily DD baseline: equity at midnight (cash + positions). Falls back to cash-only for pre-migration.
+        const startOfDayEquityRaw = challenge.startOfDayEquity ? parseFloat(challenge.startOfDayEquity) : NaN;
+        const dailyDrawdownBaseline = !isNaN(startOfDayEquityRaw) && startOfDayEquityRaw > 0 ? startOfDayEquityRaw : startOfDayBalance;
         const rules = challenge.rulesConfig as unknown as ChallengeRules;
         const isFunded = challenge.phase === 'funded';
 
@@ -71,7 +74,7 @@ export class ChallengeEvaluator {
         //   e.g., 10k tier at SOD $12K → 5% × $12K = $600 (not static $500)
         // CHALLENGE: Static percent × startingBalance
         const maxDailyLoss = isFunded
-            ? fundedRules.maxDailyDrawdownPercent * startOfDayBalance  // Dynamic: per Mat's request
+            ? fundedRules.maxDailyDrawdownPercent * dailyDrawdownBaseline  // Dynamic: equity at midnight
             : (rules.maxDailyDrawdownPercent || 0.04) * startingBalance;
 
         // Calculate Equity (Cash + Unrealized Value of Open Positions)
@@ -136,7 +139,7 @@ export class ChallengeEvaluator {
         }
 
         // === CHECK DAILY LOSS LIMIT ===
-        const dailyLoss = startOfDayBalance - equity;
+        const dailyLoss = dailyDrawdownBaseline - equity;
         if (dailyLoss >= maxDailyLoss) {
             // Set pending failure (user can recover if they profit back before end of day)
             if (!challenge.pendingFailureAt) {

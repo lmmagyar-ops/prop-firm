@@ -131,9 +131,9 @@ function StatCard({
                     textValue
                 ) : numericValue !== undefined ? (
                     <CountUp
-                        to={numericValue}
-                        from={0}
-                        duration={1.8}
+                        to={parseFloat(numericValue.toFixed(decimals))}
+                        from={parseFloat((numericValue * 0.8).toFixed(decimals))}
+                        duration={1.0}
                         prefix={prefix}
                         suffix={suffix}
                         className={`text-2xl font-mono font-bold ${valueColor}`}
