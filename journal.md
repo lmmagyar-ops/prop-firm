@@ -8,26 +8,44 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 > **New agent? Read this section before doing anything else.**
 > This is the single source of truth for what actually works. Do NOT trust individual journal entries — they reflect what the agent *believed*, not what the user confirmed.
 
-### Mar 1, 2026 (9:20 PM CT) — Carousel V2 + Audit + Deploy Discipline ✅
+### Mar 2, 2026 (7:20 AM CT) — Session End: Carousel on Prod + Apple Redesign Pending
 
-**On `develop`, ready to merge to `main`:**
+**What shipped to production** (merged `develop` → `main` at `1629b74`):
 
 | Commit | What |
 |--------|------|
 | `c232284` | Audit fixes: stale carousel index crash, multi-outcome misleading price, shared formatVolume, entity pattern whitespace |
-| `4f8fdd2` | Carousel V2: filter >95%/<5% resolved markets, SVG probability chart, taller card, dot-separated breadcrumbs, inline Explore All |
-| `81fec63` | Mobile responsive: outcome names stripped ("Spain" not "Spain 2026 FIFA World Cup"), chart hidden on mobile, nav pills hidden on mobile |
+| `4f8fdd2` | Carousel V2: filter >95%/<5% resolved markets, SVG probability chart, taller card, breadcrumbs, inline Explore All |
+| `81fec63` | Mobile responsive: outcome names stripped ("Spain" not "Spain 2026 FIFA World Cup"), chart hidden on mobile, nav pills hidden |
+| `0d18e6d` | Journal + deploy workflow rewrite |
+
+**On `develop` only (NOT pushed yet — needs end-of-session push):**
+
+| Commit | What |
+|--------|------|
+| `c696daa` | Removed chart from multi-outcome cards (flat red line at 14.8% was broken) |
+| `af9e0ac` | Apple-inspired card: probability bars, 6 runners, no breadcrumb, no ghost button, volume-only footer |
+
+**⚠️ INCOMPLETE — Apple-grade polish pass:**
+The carousel card has horizontal probability bars and 6 runners now, BUT it's only a 6/10. Next agent must do the world-class polish pass:
+1. Bars are too faint (`bg-white/[0.06]`) — need visible fills, especially leader (#1) in emerald
+2. Percentages need to be the hero — bigger, bolder than outcome names
+3. Card needs depth — shadow or gradient, not just `border-white/5`
+4. Volume text is ghost text — either make it readable or remove it
+5. Gap between card and nav dots needs tightening
+6. Typography hierarchy is flat — everything same size/weight
 
 **Deployment discipline (non-negotiable):**
-- Added `🚨 DEPLOYMENT COST LIMIT` as FIRST section of CLAUDE.md
+- `🚨 DEPLOYMENT COST LIMIT` is FIRST section of CLAUDE.md
 - Git pre-push hook blocks after 2 pushes/day
-- User global rules updated to persist across all agents/conversations
-- **Root cause of past violations:** using staging as visual test environment instead of `npm run dev`
+- Work all day locally, push ONCE at end of session
+- **NEVER push to staging to "see if it looks right" — use `npm run dev`**
 
-**Tomorrow Morning:**
-1. (HIGH) Verify production after merge — carousel, sidebars, mobile all working
-2. (MED) Address remaining P2 audit items (fragile substring removal in carousel, HotTopics fallback)
-3. (LOW) Share estimate label clarification
+**Tomorrow Morning (prioritized by leverage × risk):**
+1. **(HIGH) Apple-grade carousel polish** — see 6 items above. File: `src/components/trading/FeaturedCarousel.tsx`
+2. **(MED) Push `develop` + merge to `main`** — 2 unpushed commits sitting locally
+3. **(MED) P2 audit items** — fragile substring removal in `getOutcomeName`, HotTopics entity fallback
+4. **(LOW) Share estimate label clarification
 
 
 ---
