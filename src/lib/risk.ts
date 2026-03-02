@@ -109,6 +109,9 @@ export class RiskEngine {
         const currentBalance = parseFloat(challenge.currentBalance);
         const startBalance = parseFloat(challenge.startingBalance);
         const sodBalance = parseFloat(challenge.startOfDayBalance || challenge.currentBalance);
+        // Daily DD baseline: equity at midnight. Falls back to cash for pre-migration accounts.
+        const startOfDayEquityRaw = challenge.startOfDayEquity ? parseFloat(challenge.startOfDayEquity) : NaN;
+        const dailyDrawdownBaseline = !isNaN(startOfDayEquityRaw) && startOfDayEquityRaw > 0 ? startOfDayEquityRaw : sodBalance;
 
         // ── Fetch all open positions ONCE (reused across rules) ────
         const allOpenPositions = await db.query.positions.findMany({
@@ -146,8 +149,8 @@ export class RiskEngine {
         const MAX_TOTAL_DD_PERCENT = rules.maxTotalDrawdownPercent || 0.08;
         const totalEquityFloor = startBalance * (1 - MAX_TOTAL_DD_PERCENT);
         const MAX_DAILY_DD_PERCENT = rules.maxDailyDrawdownPercent || 0.04;
-        const maxDailyLoss = MAX_DAILY_DD_PERCENT * startBalance;
-        const dailyEquityFloor = sodBalance - maxDailyLoss;
+        const maxDailyLoss = MAX_DAILY_DD_PERCENT * dailyDrawdownBaseline;
+        const dailyEquityFloor = dailyDrawdownBaseline - maxDailyLoss;
 
         audit.drawdownRoom = currentEquity - totalEquityFloor;
         audit.dailyLossRoom = currentEquity - dailyEquityFloor;
@@ -337,7 +340,7 @@ export class RiskEngine {
         const drawdownRemaining = Math.max(0, currentEquity - totalEquityFloor);
 
         const MAX_DAILY_DD = rules.maxDailyDrawdownPercent || 0.04;
-        const maxDailyLoss = MAX_DAILY_DD * startBalance;
+        const maxDailyLoss = MAX_DAILY_DD * sodBalance; // sodBalance is dailyDrawdownBaseline from context
         const dailyEquityFloor = sodBalance - maxDailyLoss;
         const dailyLossRemaining = Math.max(0, currentEquity - dailyEquityFloor);
 
@@ -402,7 +405,10 @@ export class RiskEngine {
         const rules = challenge.rulesConfig as unknown as ChallengeRules;
         const currentBalance = parseFloat(challenge.currentBalance);
         const startBalance = parseFloat(challenge.startingBalance);
-        const sodBalance = parseFloat(challenge.startOfDayBalance || challenge.currentBalance);
+        const sodBalanceRaw = parseFloat(challenge.startOfDayBalance || challenge.currentBalance);
+        // Daily DD baseline: equity at midnight. Falls back to cash for pre-migration accounts.
+        const startOfDayEquityRaw = challenge.startOfDayEquity ? parseFloat(challenge.startOfDayEquity) : NaN;
+        const sodBalance = !isNaN(startOfDayEquityRaw) && startOfDayEquityRaw > 0 ? startOfDayEquityRaw : sodBalanceRaw;
 
         const allOpenPositions = await db.query.positions.findMany({
             where: and(

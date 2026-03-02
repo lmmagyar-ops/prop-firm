@@ -54,6 +54,8 @@ export async function GET(req: NextRequest) {
             equity,
             positionValue: portfolio.totalValue,
             positionCount: openPositions.length,
+            challengeId: activeChallenge.id,
+            phase: activeChallenge.phase,
         });
 
     } catch (error) {

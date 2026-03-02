@@ -24,6 +24,8 @@ interface AccountSummary {
     equity: number;
     cash: number;
     positionValue: number;
+    challengeId: string | null;
+    phase: string | null;
 }
 
 export function PortfolioPanel() {
@@ -34,7 +36,7 @@ export function PortfolioPanel() {
     const [closingId, setClosingId] = useState<string | null>(null);
     const isClosingRef = useRef(false);
     const [positions, setPositions] = useState<Position[]>([]);
-    const [summary, setSummary] = useState<AccountSummary>({ equity: 0, cash: 0, positionValue: 0 });
+    const [summary, setSummary] = useState<AccountSummary>({ equity: 0, cash: 0, positionValue: 0, challengeId: null, phase: null });
 
     // Navigate to trade page with market ID
     const handleNavigateToMarket = (marketId: string) => {
@@ -106,6 +108,8 @@ export function PortfolioPanel() {
                     cash: balanceData.balance ?? 0,
                     positionValue: balanceData.positionValue ?? 0,
                     equity: balanceData.equity ?? 0,
+                    challengeId: balanceData.challengeId ?? null,
+                    phase: balanceData.phase ?? null,
                 });
             } else {
                 console.error(`[PortfolioPanel] Balance API error: ${balanceRes.status}`);
@@ -150,29 +154,42 @@ export function PortfolioPanel() {
     return (
         <>
             {/* Trigger Button */}
-            <button
-                className="flex items-center gap-2 px-3 py-2 text-zinc-400 hover:text-white transition-colors relative shrink-0"
-                onClick={() => setIsOpen(true)}
-            >
-                <Briefcase className="w-5 h-5" />
-                <span className="text-sm font-medium hidden md:block">Portfolio</span>
+            <div className="flex items-center gap-2 shrink-0">
+                {/* Account Summary — desktop only */}
+                {summary.challengeId && (
+                    <div className="hidden md:flex flex-col items-end mr-1">
+                        <span className="text-[10px] font-mono text-zinc-500 tracking-wide">
+                            {summary.phase === 'funded' ? 'FA' : 'EV'}-{summary.challengeId.slice(0, 8)}
+                        </span>
+                        <span className="text-xs font-bold font-mono text-white">
+                            ${summary.equity.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                    </div>
+                )}
+                <button
+                    className="flex items-center gap-2 px-3 py-2 text-zinc-400 hover:text-white transition-colors relative"
+                    onClick={() => setIsOpen(true)}
+                >
+                    <Briefcase className="w-5 h-5" />
+                    <span className="text-sm font-medium hidden md:block">Portfolio</span>
 
-                {/* Position Count Badge */}
-                <AnimatePresence>
-                    {positionCount > 0 && (
-                        <motion.span
-                            key={positionCount}
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            exit={{ scale: 0 }}
-                            transition={{ type: "spring", stiffness: 500, damping: 25 }}
-                            className="absolute -top-1 -right-1 flex items-center justify-center w-5 h-5 bg-primary text-[10px] font-bold text-white rounded-full ring-2 ring-zinc-900"
-                        >
-                            {positionCount}
-                        </motion.span>
-                    )}
-                </AnimatePresence>
-            </button>
+                    {/* Position Count Badge */}
+                    <AnimatePresence>
+                        {positionCount > 0 && (
+                            <motion.span
+                                key={positionCount}
+                                initial={{ scale: 0 }}
+                                animate={{ scale: 1 }}
+                                exit={{ scale: 0 }}
+                                transition={{ type: "spring", stiffness: 500, damping: 25 }}
+                                className="absolute -top-1 -right-1 flex items-center justify-center w-5 h-5 bg-primary text-[10px] font-bold text-white rounded-full ring-2 ring-zinc-900"
+                            >
+                                {positionCount}
+                            </motion.span>
+                        )}
+                    </AnimatePresence>
+                </button>
+            </div>
 
             {/* Portal for Backdrop and Panel - renders at document body level */}
             {typeof window !== "undefined" && isOpen && createPortal(

@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState, useEffect, useCallback } from "react";
+import { Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { TopNavActions } from "./TopNavActions";
@@ -13,6 +15,26 @@ interface TopNavProps {
 
 export function TopNav({ userId }: TopNavProps) {
     const pathname = usePathname();
+    const [isMac, setIsMac] = useState(true);
+
+    useEffect(() => {
+        setIsMac(
+            typeof navigator !== "undefined" &&
+            (navigator.platform?.toLowerCase().includes("mac") ||
+                navigator.userAgent?.toLowerCase().includes("mac"))
+        );
+    }, []);
+
+    const openSearch = useCallback(() => {
+        // Dispatch ⌘K / Ctrl+K to trigger the existing SearchModal listener
+        document.dispatchEvent(
+            new KeyboardEvent("keydown", {
+                key: "k",
+                metaKey: true,
+                bubbles: true,
+            })
+        );
+    }, []);
 
     return (
         <>
@@ -61,8 +83,20 @@ export function TopNav({ userId }: TopNavProps) {
                         </Link>
                     </div>
 
+                    {/* Center: Search trigger (desktop only) */}
+                    <button
+                        onClick={openSearch}
+                        className="hidden md:flex items-center gap-2 px-4 py-1.5 bg-zinc-800/40 hover:bg-zinc-800/70 border border-white/[0.06] hover:border-white/[0.12] rounded-lg text-sm text-zinc-500 transition-all cursor-text w-72"
+                    >
+                        <Search className="w-4 h-4 shrink-0" />
+                        <span className="flex-1 text-left">Search markets...</span>
+                        <kbd className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-zinc-700/50 rounded text-[11px] text-zinc-500">
+                            {isMac ? "⌘" : "Ctrl+"}K
+                        </kbd>
+                    </button>
+
                     {/* Right: Challenge Selector + Portfolio + User */}
-                    <div className="flex-1 flex items-center justify-end gap-2 md:gap-4">
+                    <div className="flex-1 md:flex-none flex items-center justify-end gap-2 md:gap-4">
                         <TopNavActions userId={userId} />
                     </div>
                 </div>

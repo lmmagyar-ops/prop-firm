@@ -129,6 +129,9 @@ export class RiskMonitor {
         const startingBalance = parseFloat(challenge.startingBalance);
         const currentBalance = parseFloat(challenge.currentBalance);
         const startOfDayBalance = parseFloat(challenge.startOfDayBalance);
+        // Daily DD baseline: equity at midnight. Falls back to cash-only for pre-migration accounts.
+        const startOfDayEquityRaw = challenge.startOfDayEquity ? parseFloat(challenge.startOfDayEquity) : NaN;
+        const dailyDrawdownBaseline = !isNaN(startOfDayEquityRaw) && startOfDayEquityRaw > 0 ? startOfDayEquityRaw : startOfDayBalance;
         const rules = challenge.rulesConfig as RulesConfig;
         const isFunded = challenge.phase === 'funded';
 
@@ -184,9 +187,9 @@ export class RiskMonitor {
             const fundedRules = FUNDED_RULES[tier];
 
             maxDrawdown = fundedRules.maxTotalDrawdown;          // Static from initial balance
-            // Dynamic daily limit = percent × startOfDayBalance (grows with profits)
+            // Dynamic daily limit = percent × dailyDrawdownBaseline (equity at midnight, grows with profits)
             // Must match evaluator.ts — split-brain between these two is a critical bug.
-            maxDailyDrawdown = fundedRules.maxDailyDrawdownPercent * startOfDayBalance;
+            maxDailyDrawdown = fundedRules.maxDailyDrawdownPercent * dailyDrawdownBaseline;
             profitTarget = Infinity;                              // No profit target in funded phase
         } else {
             // Challenge phase: Use stored rules with normalization guard
@@ -205,7 +208,7 @@ export class RiskMonitor {
             return;
         }
 
-        const dailyDrawdownLimit = startOfDayBalance - maxDailyDrawdown;
+        const dailyDrawdownLimit = dailyDrawdownBaseline - maxDailyDrawdown;
 
         // Check Daily Drawdown (HARD BREACH - per cofounder request)
         if (equity < dailyDrawdownLimit) {

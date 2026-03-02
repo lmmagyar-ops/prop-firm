@@ -128,8 +128,8 @@ export const MultiRunnerCard = memo(function MultiRunnerCard({ event, onTrade }:
                 <span>{formatVolume(event.volume)} Vol.</span>
                 <span>
                     {event.endDate
-                        ? new Date(event.endDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-                        : "TBD"}
+                        ? `Resolves: ${new Date(event.endDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`
+                        : "Resolution TBD"}
                 </span>
             </div>
         </div>

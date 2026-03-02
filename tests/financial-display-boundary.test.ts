@@ -264,3 +264,63 @@ describe("Scenario 7: profitProgress is always clamped to [0, 100]", () => {
         expect(stats.profitProgress).toBeCloseTo(50, 1);
     });
 });
+
+// ───── Scenario 8: Overnight Positions (Mat's Daily DD Bug) ────────────────────
+// ROOT CAUSE: When positions are held overnight, startOfDayBalance (cash) ≠
+// startOfDayEquity (cash + positions). Daily DD must use the equity baseline,
+// not the cash baseline. Using cash creates an apples-to-oranges comparison.
+//
+// Example: $8,000 cash + $2,000 in positions at midnight.
+//   startOfDayBalance = $8,000 (cash only)
+//   startOfDayEquity = $10,000 (cash + positions)
+// Next day equity drops to $9,600:
+//   With cash baseline: daily loss = $8,000 - $9,600 = -$1,600 (NEGATIVE = phantom gain)
+//   With equity baseline: daily loss = $10,000 - $9,600 = $400 (CORRECT)
+describe("Scenario 8: Positions held overnight — daily DD uses equity baseline, not cash", () => {
+    it("dailyDrawdownAmount uses startOfDayEquity, not startOfDayBalance", () => {
+        const challenge = makeChallenge({
+            currentBalance: "8000",      // Cash at midnight
+            startOfDayBalance: "8000",   // Cash snapshot
+            startOfDayEquity: "10000",   // Equity snapshot (cash + $2K in positions)
+        });
+        const equity = 9_600; // Equity dropped from $10K to $9.6K today
+
+        const stats = getEquityStats(challenge, equity, STARTING_BALANCE);
+
+        // Daily DD should be equity($10,000) - equity($9,600) = $400
+        // NOT cash($8,000) - equity($9,600) = -$1,600
+        expect(stats.dailyDrawdownAmount).toBeCloseTo(400, 1);
+    });
+
+    it("dailyDrawdownUsage reflects equity-based calculation", () => {
+        const challenge = makeChallenge({
+            currentBalance: "8000",
+            startOfDayBalance: "8000",
+            startOfDayEquity: "10000",
+        });
+        const equity = 9_600;
+
+        const stats = getEquityStats(challenge, equity, STARTING_BALANCE);
+
+        // Daily limit = 4% × $10,000 (equity baseline) = $400
+        // Daily loss = $10,000 - $9,600 = $400
+        // Usage = ($400 / $400) * 100 = 100%
+        expect(stats.dailyDrawdownUsage).toBeCloseTo(100, 1);
+    });
+
+    it("falls back to startOfDayBalance when startOfDayEquity is null", () => {
+        const challenge = makeChallenge({
+            currentBalance: "10000",
+            startOfDayBalance: "10000",
+            startOfDayEquity: null, // Pre-migration account
+        });
+        const equity = 9_600;
+
+        const stats = getEquityStats(challenge, equity, STARTING_BALANCE);
+
+        // Falls back to cash baseline: $10,000 - $9,600 = $400
+        expect(stats.dailyDrawdownAmount).toBeCloseTo(400, 1);
+        // Limit = 4% × $10,000 = $400, usage = 100%
+        expect(stats.dailyDrawdownUsage).toBeCloseTo(100, 1);
+    });
+});
