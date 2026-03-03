@@ -8,33 +8,24 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 > **New agent? Read this section before doing anything else.**
 > This is the single source of truth for what actually works. Do NOT trust individual journal entries — they reflect what the agent *believed*, not what the user confirmed.
 
-### Mar 3, 2026 (12:30 AM CT) — DEPLOYED TO PRODUCTION ✅
+### Mar 3, 2026 (12:05 PM CT) — LOCAL CHANGES, NOT YET DEPLOYED
 
-**Pushed to `develop` and merged to `main` (`26b438e`). Staging verified via browser smoke test. User eyeballed staging.**
+**Shipped but UNVERIFIED by user:**
 
 | Change | File |
 |--------|------|
-| **Phase-aware balance reconstruction** — Funded challenges now only replay post-transition trades. Detects boundary via last `pass_liquidation` trade. Eliminated `shares * price` recalculation in favor of stored `trade.amount`. | `balance-audit/route.ts` |
-| **Same fix for CLI script** — Same phase-aware logic applied. | `verify-balances.ts` |
-| **Today's Floor = equity − dailyLimit** — Mat reported incorrect value ($24K on $11K equity). Changed `startOfDayBalance - maxDailyDrawdown` → `equity - maxDailyDrawdown` in both funded and challenge risk meters. | `FundedRiskMeters.tsx`, `RiskMeters.tsx` |
-| **Daily loss % bar: equity-corrected baseline** — Numerator used cash-only `startOfDayBalance`, denominator used equity-based SOD. Replaced `startOfDayBalance` prop with `dailyDrawdownBaseline` from `getFundedStats`. | `FundedRiskMeters.tsx`, `dashboard-service.ts`, `page.tsx` |
-| **Formula consistency audit** — Grepped 50+ formula refs across 15 files. Risk engine (evaluator, risk-monitor, risk.ts) all consistent. Found/fixed 3 UI split-brains (above). No further mismatches. | Full audit in `walkthrough.md` |
-| **Rounding fix** — Today's Floor and daily limit now display 2 decimal places (was showing 3). | `FundedRiskMeters.tsx` |
+| **Activity tracking moved into DB transaction** — `recordTradingDay` was fire-and-forget; Vercel serverless killed background query → Sentry error. Now atomic with trade. | `trade.ts` |
+| **checkConsistency downgraded** — `.catch()` uses `logger.warn` instead of `logger.error`. | `trade.ts` |
+| **Order book engine tests** — 24 pure function tests: `invertOrderBook`, `isBookDead`, `buildSyntheticOrderBook`, `calculateImpact`. | `tests/lib/order-book-engine.test.ts` [NEW] |
+| **ChallengeManager tests** — 9 tests: DB writes, status filtering, failure handling. | `tests/lib/challenge-manager.test.ts` [NEW] |
+| **Close route tests** — 9 behavioral tests: auth, ownership, evaluator, idempotency. | `tests/api/close-route.test.ts` [NEW] |
+| **Financial chaos tests** — 35 adversarial/boundary tests. Found 3 NaN edge cases documented in-test. | `tests/financial-chaos.test.ts` [NEW] |
+| **Property-based math** — 25 fast-check invariant tests: direction symmetry (YES+NO=1), inversion symmetry, impact monotonicity, tier monotonicity, portfolio additivity. | `tests/property-based-math.test.ts` [NEW] |
+| **Mocking mirage deleted** — 9 fake `expect(401).toBe(401)` tests removed. | `tests/api/trade-endpoints.test.ts` [DELETED] |
 
-**Root cause:** Balance audit: reconstructed from *all* trade history, but `BalanceManager.resetBalance()` during funded transition resets to `startingBalance`. Formula bugs: Mar 2 Daily Drawdown Correction migrated risk engine to equity-based baselines, but UI components weren't swept in the same pass.
+**Verification:** `tsc --noEmit` clean, 85/85 test files (1,299 passed — up from 1,206, +93 net).
 
-**Verification:** `tsc --noEmit` clean, 81/81 test files (1206 passed). Staging browser smoke test ✅. User-verified on staging ✅.
-
-## Pre-Close Checklist
-- [x] Bug/task was reproduced or understood BEFORE writing code
-- [x] Root cause traced from Sentry → cron route → BalanceManager.resetBalance → evaluator transition
-- [x] Fix verified with full test suite (1206 tests)
-- [x] `grep` confirms no remaining `shares * price` recalculation in audit paths
-- [x] Full test suite passes (1206)
-- [x] tsc --noEmit passes
-- [x] Staging browser smoke test passed
-- [x] User eyeballed staging — confirmed correct
-- [x] Deployed to production (`26b438e`)
+**Previous deploy (Mar 3 12:30 AM):** Production `26b438e` — phase-aware balance reconstruction, formula consistency audit. User-verified ✅.
 
 ---
 
