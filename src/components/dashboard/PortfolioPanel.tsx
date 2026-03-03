@@ -26,6 +26,13 @@ interface AccountSummary {
     positionValue: number;
     challengeId: string | null;
     phase: string | null;
+    startingBalance: number;
+}
+
+function getTierLabel(startingBalance: number): string {
+    if (startingBalance >= 25000) return '25K';
+    if (startingBalance >= 10000) return '10K';
+    return '5K';
 }
 
 export function PortfolioPanel() {
@@ -36,7 +43,7 @@ export function PortfolioPanel() {
     const [closingId, setClosingId] = useState<string | null>(null);
     const isClosingRef = useRef(false);
     const [positions, setPositions] = useState<Position[]>([]);
-    const [summary, setSummary] = useState<AccountSummary>({ equity: 0, cash: 0, positionValue: 0, challengeId: null, phase: null });
+    const [summary, setSummary] = useState<AccountSummary>({ equity: 0, cash: 0, positionValue: 0, challengeId: null, phase: null, startingBalance: 0 });
 
     // Navigate to trade page with market ID
     const handleNavigateToMarket = (marketId: string) => {
@@ -75,6 +82,12 @@ export function PortfolioPanel() {
             }
             setPositions(prev => prev.filter(p => p.id !== positionId));
             window.dispatchEvent(new Event('balance-updated'));
+
+            // If the evaluator detected a funded transition, wait briefly so
+            // the RSC re-render picks up the updated DB state.
+            if (result.phase === 'funded') {
+                await new Promise(r => setTimeout(r, 300));
+            }
             router.refresh();
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Failed to close position';
@@ -110,6 +123,7 @@ export function PortfolioPanel() {
                     equity: balanceData.equity ?? 0,
                     challengeId: balanceData.challengeId ?? null,
                     phase: balanceData.phase ?? null,
+                    startingBalance: balanceData.startingBalance ?? 0,
                 });
             } else {
                 console.error(`[PortfolioPanel] Balance API error: ${balanceRes.status}`);
@@ -155,16 +169,19 @@ export function PortfolioPanel() {
         <>
             {/* Trigger Button */}
             <div className="flex items-center gap-2 shrink-0">
-                {/* Account Summary — desktop only */}
+                {/* Account Summary — desktop only, clickable to open portfolio */}
                 {summary.challengeId && (
-                    <div className="hidden md:flex flex-col items-end mr-1">
-                        <span className="text-[10px] font-mono text-zinc-500 tracking-wide">
-                            {summary.phase === 'funded' ? 'FA' : 'EV'}-{summary.challengeId.slice(0, 8)}
+                    <button
+                        onClick={() => setIsOpen(true)}
+                        className="hidden md:flex flex-col items-end mr-1 cursor-pointer hover:opacity-80 transition-opacity"
+                    >
+                        <span className="text-[10px] font-medium text-zinc-500 tracking-wide uppercase">
+                            {getTierLabel(summary.startingBalance)} {summary.phase === 'funded' ? 'Funded' : 'Evaluation'}
                         </span>
-                        <span className="text-xs font-bold font-mono text-white">
+                        <span className="text-sm font-semibold font-mono text-white">
                             ${summary.equity.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
-                    </div>
+                    </button>
                 )}
                 <button
                     className="flex items-center gap-2 px-3 py-2 text-zinc-400 hover:text-white transition-colors relative"

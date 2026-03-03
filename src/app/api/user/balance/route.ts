@@ -56,6 +56,7 @@ export async function GET(req: NextRequest) {
             positionCount: openPositions.length,
             challengeId: activeChallenge.id,
             phase: activeChallenge.phase,
+            startingBalance: parseFloat(activeChallenge.startingBalance),
         });
 
     } catch (error) {
