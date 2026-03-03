@@ -46,7 +46,7 @@ export function RiskMeters({
     const drawdownRounded = Math.round(drawdownUsage * 100) / 100;
     const dailyDrawdownRounded = Math.round(dailyDrawdownUsage * 100) / 100;
     const maxDrawdownFloor = Math.round(startingBalance * (1 - maxDrawdownPercent / 100) * 100) / 100;
-    const dailyLossFloor = Math.round(startOfDayBalance * (1 - dailyDrawdownPercent / 100) * 100) / 100;
+    const dailyLossFloor = Math.round((equity - dailyDrawdownDollars) * 100) / 100;
 
     // Absolute dollars used — prefer raw values over back-calculated
     const ddUsedDollars = rawDdUsed != null ? rawDdUsed : Math.max(0, (drawdownRounded / 100) * maxDrawdownDollars);

@@ -16,6 +16,7 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 |--------|------|
 | **Phase-aware balance reconstruction** — Funded challenges now only replay post-transition trades. Detects boundary via last `pass_liquidation` trade. Eliminated `shares * price` recalculation in favor of stored `trade.amount`. | `balance-audit/route.ts` |
 | **Same fix for CLI script** — Same phase-aware logic applied. | `verify-balances.ts` |
+| **Today's Floor = equity − dailyLimit** — Mat reported incorrect value ($24K on $11K equity). Changed `startOfDayBalance - maxDailyDrawdown` → `equity - maxDailyDrawdown` in both funded and challenge risk meters. | `FundedRiskMeters.tsx`, `RiskMeters.tsx` |
 
 **Root cause:** The audit reconstructed balance from *all* trade history, but `BalanceManager.resetBalance()` during funded transition resets balance to `startingBalance`. The audit's `calculatedBalance` included ~$1,079 of challenge-phase profits that were no longer reflected in the stored balance.
 

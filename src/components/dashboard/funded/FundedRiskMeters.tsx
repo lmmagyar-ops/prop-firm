@@ -40,7 +40,7 @@ export function FundedRiskMeters({
 
     // Risk floor calculations
     const accountFloor = startingBalance - maxTotalDrawdown;
-    const dailyFloor = startOfDayBalance - maxDailyDrawdown; // floor is SOD-based ($ value)
+    const dailyFloor = equity - maxDailyDrawdown; // floor = current equity minus daily limit (per Mat)
 
     // Color logic
     const getColor = (usage: number) => {
