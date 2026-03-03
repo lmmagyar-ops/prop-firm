@@ -41,16 +41,36 @@ async function reconcile() {
         const startingBalance = parseFloat(challenge.startingBalance || '0');
         const currentBalance = parseFloat(challenge.currentBalance || '0');
 
-        // Get all trades for this challenge
+        // Get all trades for this challenge, ordered by execution time
         const challengeTrades = await db.query.trades.findMany({
-            where: eq(trades.challengeId, challenge.id)
+            where: eq(trades.challengeId, challenge.id),
+            orderBy: (trades, { asc }) => [asc(trades.executedAt)],
         });
+
+        // PHASE-AWARE RECONSTRUCTION:
+        // When a challenge transitions to funded, BalanceManager.resetBalance()
+        // hard-resets currentBalance to startingBalance. We must only replay
+        // trades after the transition boundary (last pass_liquidation trade).
+        let tradesToReplay = challengeTrades;
+
+        if (challenge.phase === 'funded') {
+            let transitionIndex = -1;
+            for (let i = challengeTrades.length - 1; i >= 0; i--) {
+                if (challengeTrades[i].closureReason === 'pass_liquidation') {
+                    transitionIndex = i;
+                    break;
+                }
+            }
+            if (transitionIndex >= 0) {
+                tradesToReplay = challengeTrades.slice(transitionIndex + 1);
+            }
+        }
 
         // Recompute balance from trade history:
         // BUY deducts the trade amount, SELL credits the trade amount
         let recomputedBalance = startingBalance;
 
-        for (const trade of challengeTrades) {
+        for (const trade of tradesToReplay) {
             const amount = parseFloat(trade.amount || '0');
             if (trade.type === 'BUY') {
                 recomputedBalance -= amount;
