@@ -163,7 +163,7 @@ export function FundedRiskMeters({
                                 {dailyLossUsagePercent.toFixed(1)}%
                             </span>
                             <div className="text-xs text-zinc-500">
-                                ${dailyLoss.toFixed(2)} / ${maxDailyDrawdown}
+                                ${dailyLoss.toFixed(2)} / ${maxDailyDrawdown.toFixed(2)}
                             </div>
                         </div>
                     </div>
@@ -183,7 +183,7 @@ export function FundedRiskMeters({
                             <span>Today&apos;s Floor:</span>
                         </div>
                         <span className={`font-mono font-semibold ${colorMap[dailyColor].text}`}>
-                            ${dailyFloor.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                            ${dailyFloor.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
                     </div>
                 </div>
