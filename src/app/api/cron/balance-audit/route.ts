@@ -52,23 +52,55 @@ export async function GET(req: Request) {
             const startingBalance = parseFloat(challenge.startingBalance || '10000');
             const storedBalance = parseFloat(challenge.currentBalance);
 
-            // Get all trades for this challenge
+            // Get all trades for this challenge, ordered by execution time
             const allTrades = await db.query.trades.findMany({
-                where: eq(trades.challengeId, challenge.id)
+                where: eq(trades.challengeId, challenge.id),
+                orderBy: (trades, { asc }) => [asc(trades.executedAt)],
             });
 
+            // PHASE-AWARE RECONSTRUCTION:
+            // When a challenge transitions to funded, BalanceManager.resetBalance()
+            // hard-resets currentBalance to startingBalance. All challenge-phase trades
+            // are now irrelevant to the current balance. We must only replay trades
+            // that occurred AFTER the reset.
+            //
+            // Detection: funded-phase challenges have pass_liquidation SELL trades
+            // at the transition boundary. We find the last one and skip everything
+            // before (and including) it.
+            let tradesToReplay = allTrades;
+
+            if (challenge.phase === 'funded') {
+                // Find the index of the last pass_liquidation trade (transition boundary)
+                let transitionIndex = -1;
+                for (let i = allTrades.length - 1; i >= 0; i--) {
+                    if (allTrades[i].closureReason === 'pass_liquidation') {
+                        transitionIndex = i;
+                        break;
+                    }
+                }
+
+                if (transitionIndex >= 0) {
+                    // Only replay trades after the transition
+                    tradesToReplay = allTrades.slice(transitionIndex + 1);
+                    logger.info(`[BALANCE_AUDIT] Funded challenge ${challenge.id.slice(0, 8)}: skipping ${transitionIndex + 1} pre-transition trades, replaying ${tradesToReplay.length}`);
+                }
+            }
+
             // Calculate expected balance from trade history
+            // Start from startingBalance (which is correct for both phases:
+            //   - Challenge: never reset, startingBalance is original
+            //   - Funded: balance was reset to startingBalance at transition)
             let calculatedBalance = startingBalance;
-            for (const trade of allTrades) {
+            for (const trade of tradesToReplay) {
+                // Use stored trade.amount for both BUY and SELL.
+                // This matches what BalanceManager actually deducted/credited,
+                // avoiding floating-point rounding drift from recalculating shares*price.
                 const amount = parseFloat(trade.amount);
-                const shares = parseFloat(trade.shares);
-                const price = parseFloat(trade.price);
 
                 if (trade.type === "BUY") {
                     calculatedBalance -= amount;
                 } else if (trade.type === "SELL") {
-                    const proceeds = shares * price;
-                    calculatedBalance += proceeds;
+                    calculatedBalance += amount;
                 }
             }
 

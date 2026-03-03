@@ -677,6 +677,144 @@ describe("ChallengeEvaluator - Edge Cases", () => {
 
         expect(result.status).toBe("failed");
     });
+
+    it("should SURVIVE when $1 under drawdown limit (funded phase)", async () => {
+        const underLimitChallenge = {
+            id: "under-limit",
+            status: "active",
+            phase: "funded",
+            currentBalance: "9001",       // $999 drawdown = UNDER $1000 limit
+            startingBalance: "10000",
+            highWaterMark: "10000",
+            startOfDayBalance: "9001",    // Same as current — no daily loss
+            rulesConfig: {
+                maxDrawdown: 1000,
+                maxDailyDrawdownPercent: 0.05
+            },
+            pendingFailureAt: null,
+            endsAt: null,
+        };
+
+        vi.mocked(db.query.challenges.findFirst).mockResolvedValue(underLimitChallenge as any);
+        vi.mocked(db.query.positions.findMany).mockResolvedValue([]);
+
+        const result = await ChallengeEvaluator.evaluate("under-limit");
+
+        // $999 drawdown < $1000 limit → MUST survive
+        expect(result.status).toBe("active");
+    });
+
+    it("should fail challenge phase at exact HWM-trailing drawdown limit", async () => {
+        // Challenge phase uses HWM-trailing (not static from startingBalance)
+        // HWM = $10,500, maxDrawdown = $1000, floor = $9,500
+        const atHwmLimit = {
+            id: "hwm-exact",
+            status: "active",
+            phase: "challenge",
+            currentBalance: "9500",       // Exactly at floor ($10500 - $1000)
+            startingBalance: "10000",
+            highWaterMark: "10500",       // Trader was profitable, now gave it back
+            startOfDayBalance: "9500",
+            rulesConfig: {
+                profitTarget: 1000,
+                maxDrawdown: 1000,
+                maxDailyDrawdownPercent: 0.05
+            },
+            pendingFailureAt: null,
+            endsAt: null,
+        };
+
+        vi.mocked(db.query.challenges.findFirst).mockResolvedValue(atHwmLimit as any);
+        vi.mocked(db.query.positions.findMany).mockResolvedValue([]);
+
+        const result = await ChallengeEvaluator.evaluate("hwm-exact");
+
+        // drawdownAmount = HWM - equity = 10500 - 9500 = 1000 >= 1000 → FAIL
+        expect(result.status).toBe("failed");
+    });
+
+    it("should SURVIVE challenge phase $1 under HWM-trailing limit", async () => {
+        const underHwmLimit = {
+            id: "hwm-under",
+            status: "active",
+            phase: "challenge",
+            currentBalance: "9501",       // $999 below HWM of $10500
+            startingBalance: "10000",
+            highWaterMark: "10500",
+            startOfDayBalance: "9501",
+            rulesConfig: {
+                profitTarget: 1000,
+                maxDrawdown: 1000,
+                maxDailyDrawdownPercent: 0.05
+            },
+            pendingFailureAt: null,
+            endsAt: null,
+        };
+
+        vi.mocked(db.query.challenges.findFirst).mockResolvedValue(underHwmLimit as any);
+        vi.mocked(db.query.positions.findMany).mockResolvedValue([]);
+
+        const result = await ChallengeEvaluator.evaluate("hwm-under");
+
+        // drawdownAmount = 10500 - 9501 = 999 < 1000 → SURVIVE
+        expect(result.status).toBe("active");
+    });
+
+    it("should trigger pending_failure at exact daily drawdown limit", async () => {
+        // Daily drawdown limit = 4% of $10k startingBalance = $400
+        // SOD balance = $10000, current = $9600 → daily loss = $400 (exact)
+        const atDailyLimit = {
+            id: "daily-exact",
+            status: "active",
+            phase: "challenge",
+            currentBalance: "9600",       // $400 daily loss = EXACT limit
+            startingBalance: "10000",
+            highWaterMark: "10000",
+            startOfDayBalance: "10000",
+            rulesConfig: {
+                profitTarget: 1000,
+                maxDrawdown: 1000,
+                maxDailyDrawdownPercent: 0.04  // 4% = $400
+            },
+            pendingFailureAt: null,
+            endsAt: null,
+        };
+
+        vi.mocked(db.query.challenges.findFirst).mockResolvedValue(atDailyLimit as any);
+        vi.mocked(db.query.positions.findMany).mockResolvedValue([]);
+
+        const result = await ChallengeEvaluator.evaluate("daily-exact");
+
+        // dailyLoss = SOD - equity = 10000 - 9600 = 400 >= 400 → PENDING FAILURE
+        expect(result.status).toBe("pending_failure");
+    });
+
+    it("should SURVIVE when $1 under daily drawdown limit", async () => {
+        const underDailyLimit = {
+            id: "daily-under",
+            status: "active",
+            phase: "challenge",
+            currentBalance: "9601",       // $399 daily loss < $400 limit
+            startingBalance: "10000",
+            highWaterMark: "10000",
+            startOfDayBalance: "10000",
+            rulesConfig: {
+                profitTarget: 1000,
+                maxDrawdown: 1000,
+                maxDailyDrawdownPercent: 0.04  // 4% = $400
+            },
+            pendingFailureAt: null,
+            endsAt: null,
+        };
+
+        vi.mocked(db.query.challenges.findFirst).mockResolvedValue(underDailyLimit as any);
+        vi.mocked(db.query.positions.findMany).mockResolvedValue([]);
+
+        const result = await ChallengeEvaluator.evaluate("daily-under");
+
+        // dailyLoss = 10000 - 9601 = 399 < 400 → SURVIVE
+        expect(result.status).toBe("active");
+    });
 });
 
 // ================================================

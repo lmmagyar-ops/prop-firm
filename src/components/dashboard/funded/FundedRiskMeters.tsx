@@ -8,7 +8,7 @@ interface FundedRiskMetersProps {
     startingBalance: number;
     maxTotalDrawdown: number;  // Absolute value (e.g., $1000 for 10k account)
     maxDailyDrawdown: number;  // Absolute value (e.g., $500)
-    startOfDayBalance: number;
+    dailyDrawdownBaseline: number; // equity at midnight (or cash fallback) — same base used for maxDailyDrawdown
     // TRUE equity = cash + unrealized position value.
     // Must be used for daily loss — using currentBalance (cash-only) would
     // understate daily loss when open positions are losing value.
@@ -22,7 +22,7 @@ export function FundedRiskMeters({
     startingBalance,
     maxTotalDrawdown,
     maxDailyDrawdown,
-    startOfDayBalance,
+    dailyDrawdownBaseline,
     equity,
     platform,
 }: FundedRiskMetersProps) {
@@ -35,12 +35,12 @@ export function FundedRiskMeters({
 
     // Daily loss calculation — uses TRUE EQUITY (cash + unrealized position value),
     // not cash balance. Using cash-only would understate loss when positions are down.
-    const dailyLoss = Math.max(0, startOfDayBalance - equity);
+    const dailyLoss = Math.max(0, dailyDrawdownBaseline - equity);
     const dailyLossUsagePercent = (dailyLoss / maxDailyDrawdown) * 100;
 
     // Risk floor calculations
     const accountFloor = startingBalance - maxTotalDrawdown;
-    const dailyFloor = startOfDayBalance - maxDailyDrawdown; // floor is SOD-based ($ value)
+    const dailyFloor = equity - maxDailyDrawdown; // floor = current equity minus daily limit (per Mat)
 
     // Color logic
     const getColor = (usage: number) => {
@@ -163,7 +163,7 @@ export function FundedRiskMeters({
                                 {dailyLossUsagePercent.toFixed(1)}%
                             </span>
                             <div className="text-xs text-zinc-500">
-                                ${dailyLoss.toFixed(2)} / ${maxDailyDrawdown}
+                                ${dailyLoss.toFixed(2)} / ${maxDailyDrawdown.toFixed(2)}
                             </div>
                         </div>
                     </div>
@@ -183,7 +183,7 @@ export function FundedRiskMeters({
                             <span>Today&apos;s Floor:</span>
                         </div>
                         <span className={`font-mono font-semibold ${colorMap[dailyColor].text}`}>
-                            ${dailyFloor.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                            ${dailyFloor.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
                     </div>
                 </div>

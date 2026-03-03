@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback, useEffect, memo } from "react";
 import { cn } from "@/lib/utils";
 import { formatPrice, formatVolume } from "@/lib/formatters";
+import { getCleanOutcomeName } from "@/lib/market-utils";
 import Image from "next/image";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { EventMetadata } from "@/app/actions/market";
@@ -93,27 +94,7 @@ function ProbabilityChart({ price, color }: { price: number; color: string }) {
     );
 }
 
-/** Clean up sub-market question to just the outcome name */
-function getOutcomeName(m: { question?: string; outcomes?: string[] }, eventTitle: string): string {
-    if (m.question) {
-        let cleaned = m.question;
-        // Strip common prefixes: "Event Title - ", "Will X win..."
-        cleaned = cleaned.replace(eventTitle + " - ", "");
-        cleaned = cleaned.replace("Will ", "");
-        cleaned = cleaned.replace(" win the ", " ");
-        cleaned = cleaned.replace("?", "");
-        // Strip event title words that repeat in the outcome
-        // e.g. "Spain 2026 FIFA World Cup" → "Spain" when title is "2026 FIFA World Cup Winner"
-        const titleWords = eventTitle.toLowerCase().split(/\s+/);
-        const parts = cleaned.split(/\s+/);
-        const filtered = parts.filter(w => !titleWords.includes(w.toLowerCase()));
-        if (filtered.length > 0 && filtered.length < parts.length) {
-            cleaned = filtered.join(" ");
-        }
-        if (cleaned.length > 0 && cleaned.length < 50) return cleaned;
-    }
-    return m.outcomes?.[0] ?? "Yes";
-}
+
 
 /**
  * FeaturedCarousel — Polymarket-style hero carousel.
@@ -165,7 +146,7 @@ export const FeaturedCarousel = memo(function FeaturedCarousel({
     const priceColor = primaryPrice >= 0.5 ? "#00C896" : "#E63E5D";
 
     return (
-        <div className="space-y-2">
+        <div className="space-y-1.5">
             {/* Section label */}
             <span className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Featured</span>
 
@@ -221,12 +202,12 @@ export const FeaturedCarousel = memo(function FeaturedCarousel({
                                                 style={{ width: `${Math.max(pct, 8)}%` }}
                                             />
                                             {/* Label — secondary */}
-                                            <span className="relative z-10 text-xs text-zinc-400 pl-3 flex-1 min-w-0 truncate">
-                                                {getOutcomeName(m, event.title)}
+                                            <span className="relative z-10 text-[13px] text-zinc-400 pl-3 flex-1 min-w-0 truncate">
+                                                {m.groupItemTitle || getCleanOutcomeName(m.question ?? '', event.title)}
                                             </span>
                                             {/* Percentage — hero */}
                                             <span className={cn(
-                                                "relative z-10 text-base font-bold tabular-nums pr-3 whitespace-nowrap",
+                                                "relative z-10 text-lg font-bold tabular-nums pr-3 whitespace-nowrap",
                                                 isLeader ? "text-emerald-400" : "text-white"
                                             )}>
                                                 {pct}%
@@ -283,7 +264,7 @@ export const FeaturedCarousel = memo(function FeaturedCarousel({
 
                 {/* Social proof chip */}
                 <div className="px-5 pb-4">
-                    <span className="inline-flex items-center text-xs text-zinc-400 tabular-nums bg-white/[0.05] px-2.5 py-1 rounded-md">
+                    <span className="inline-flex items-center text-xs text-zinc-300 tabular-nums bg-white/[0.05] px-2.5 py-1 rounded-md">
                         {formatVolume(event.volume24hr ?? event.volume ?? 0)} Vol
                     </span>
                 </div>

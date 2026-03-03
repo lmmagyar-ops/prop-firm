@@ -307,6 +307,13 @@ export function getFundedStats(challenge: DbChallengeRow, equity: number, starti
             safeParseFloat(challenge.startOfDayBalance) ||
             startingBalance
         ),
+        // Equity-corrected baseline for daily drawdown: equity at midnight, or cash fallback.
+        // FundedRiskMeters uses this as the daily loss numerator base (dailyDrawdownBaseline - equity).
+        dailyDrawdownBaseline: (
+            (challenge.startOfDayEquity ? safeParseFloat(challenge.startOfDayEquity) : 0) ||
+            safeParseFloat(challenge.startOfDayBalance) ||
+            startingBalance
+        ),
     };
 }
 
