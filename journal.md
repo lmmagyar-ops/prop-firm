@@ -8,7 +8,7 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 > **New agent? Read this section before doing anything else.**
 > This is the single source of truth for what actually works. Do NOT trust individual journal entries — they reflect what the agent *believed*, not what the user confirmed.
 
-### Mar 2, 2026 (10:10 PM CT) — Balance Audit False Positive Fix
+### Mar 2, 2026 (11:20 PM CT) — Balance Audit Fix + Financial Formula Audit
 
 **Committed locally (NOT pushed):**
 
@@ -17,6 +17,8 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 | **Phase-aware balance reconstruction** — Funded challenges now only replay post-transition trades. Detects boundary via last `pass_liquidation` trade. Eliminated `shares * price` recalculation in favor of stored `trade.amount`. | `balance-audit/route.ts` |
 | **Same fix for CLI script** — Same phase-aware logic applied. | `verify-balances.ts` |
 | **Today's Floor = equity − dailyLimit** — Mat reported incorrect value ($24K on $11K equity). Changed `startOfDayBalance - maxDailyDrawdown` → `equity - maxDailyDrawdown` in both funded and challenge risk meters. | `FundedRiskMeters.tsx`, `RiskMeters.tsx` |
+| **Daily loss % bar: equity-corrected baseline** — Numerator used cash-only `startOfDayBalance`, denominator used equity-based SOD. Replaced `startOfDayBalance` prop with `dailyDrawdownBaseline` from `getFundedStats`. | `FundedRiskMeters.tsx`, `dashboard-service.ts`, `page.tsx` |
+| **Formula consistency audit** — Grepped 50+ formula refs across 15 files. Risk engine (evaluator, risk-monitor, risk.ts) all consistent. Found/fixed 3 UI split-brains (above). No further mismatches. | Full audit in `walkthrough.md` |
 
 **Root cause:** The audit reconstructed balance from *all* trade history, but `BalanceManager.resetBalance()` during funded transition resets balance to `startingBalance`. The audit's `calculatedBalance` included ~$1,079 of challenge-phase profits that were no longer reflected in the stored balance.
 
@@ -59,9 +61,10 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 #### 1. Push Code to `develop` (LOW RISK)
 All changes committed locally, not pushed. Includes:
 - Balance audit false-positive fix (phase-aware trade reconstruction)
+- Today's Floor + daily loss % bar formula fixes (equity-corrected baseline)
 - Trade idempotency tests (8 tests) + drawdown boundary tests (5 tests)
 - Carousel `getOutcomeName` dedup + CSS polish
-- Safe to push — all test-only or bug fixes, no behavioral changes.
+- Safe to push — all bug fixes + tests, no behavioral changes.
 
 #### 2. Execute the 200-Test Gap Fill Plan (HIGH LEVERAGE)
 Current: 1,206 tests. Target: ~1,400. The plan is fully scoped — see `task.md` artifact. Four phases:

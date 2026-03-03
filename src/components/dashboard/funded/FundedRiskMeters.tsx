@@ -8,7 +8,7 @@ interface FundedRiskMetersProps {
     startingBalance: number;
     maxTotalDrawdown: number;  // Absolute value (e.g., $1000 for 10k account)
     maxDailyDrawdown: number;  // Absolute value (e.g., $500)
-    startOfDayBalance: number;
+    dailyDrawdownBaseline: number; // equity at midnight (or cash fallback) — same base used for maxDailyDrawdown
     // TRUE equity = cash + unrealized position value.
     // Must be used for daily loss — using currentBalance (cash-only) would
     // understate daily loss when open positions are losing value.
@@ -22,7 +22,7 @@ export function FundedRiskMeters({
     startingBalance,
     maxTotalDrawdown,
     maxDailyDrawdown,
-    startOfDayBalance,
+    dailyDrawdownBaseline,
     equity,
     platform,
 }: FundedRiskMetersProps) {
@@ -35,7 +35,7 @@ export function FundedRiskMeters({
 
     // Daily loss calculation — uses TRUE EQUITY (cash + unrealized position value),
     // not cash balance. Using cash-only would understate loss when positions are down.
-    const dailyLoss = Math.max(0, startOfDayBalance - equity);
+    const dailyLoss = Math.max(0, dailyDrawdownBaseline - equity);
     const dailyLossUsagePercent = (dailyLoss / maxDailyDrawdown) * 100;
 
     // Risk floor calculations

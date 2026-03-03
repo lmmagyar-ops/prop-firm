@@ -180,7 +180,7 @@ export default async function DashboardPage() {
                                     startingBalance={activeChallenge.startingBalance}
                                     maxTotalDrawdown={fundedStats.maxTotalDrawdown}
                                     maxDailyDrawdown={fundedStats.maxDailyDrawdown}
-                                    startOfDayBalance={activeChallenge.startOfDayBalance}
+                                    dailyDrawdownBaseline={fundedStats.dailyDrawdownBaseline}
                                     equity={trueEquity}
                                     platform={activeChallenge.platform as "polymarket"}
                                 />
