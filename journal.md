@@ -8,16 +8,35 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 > **New agent? Read this section before doing anything else.**
 > This is the single source of truth for what actually works. Do NOT trust individual journal entries — they reflect what the agent *believed*, not what the user confirmed.
 
-### Mar 4, 2026 (10:25 AM CT) — 1-Hour Crypto Markets Integration
+### Mar 4, 2026 (11:55 AM CT) — PRODUCTION INCIDENT: Risk Monitor Blind
+
+> [!CAUTION]
+> **INCIDENT:** `market:prices:all` was EMPTY in production Redis. Risk monitor heartbeat was active, but with no prices, the fail-closed guard silently skipped ALL challenge checks. Mat's funded account breached 133.4% daily drawdown — undetected.
+
+| Root Cause | Detail |
+|------------|--------|
+| **WS price stream down** | `market:prices:all` had TTL -2 (expired). WS not reconnecting after deploy. |
+| **No fallback** | `batchFetchPrices()` only checked `market:prices:all`. When empty, returned 0 prices → fail-closed guard skipped every challenge. |
+| **Silent failure** | The guard logged an error but no alert. Risk monitor appeared "healthy" via heartbeat. |
+
+| Fix | File |
+|-----|------|
+| **Order book fallback** — `batchFetchPrices()` now falls back to `market:orderbooks` (REST poller, 1,986 tokens, `last_trade_price`). Logs warning on fallback, error on unrecoverable gaps. | `risk-monitor.ts` |
+
+**Commits:** `c4c4c3b` (crypto markets), `d7577f7` (merge to main), `4500534` (hotfix). Push #3 used under production-broken exception.
+**Verification:** tsc clean ✅, 85/85 test files ✅, 1,299/1,299 tests ✅
+
+---
+
+### Mar 4, 2026 (10:25 AM CT) — 1-Hour Crypto Markets LIVE ✅
 
 | Change | File |
 |--------|------|
 | **Hourly crypto ingestion** — New `fetchHourlyCryptoMarkets()` queries 4 hardcoded series (`btc/eth/solana/xrp-up-or-down-hourly`) via `/series` endpoint. Uses series aggregate volume (not individual market volume). Read-modify-write on `event:active_list`. | `ingestion.ts` |
 | **1% trade cap** — `HOURLY_CRYPTO_MAX_POSITION_PERCENT = 0.01` (Mat's directive). Risk engine override in both `validateTrade` and `getPreflightLimits`. | `trading-constants.ts`, `risk.ts` |
 | **Belt-and-suspenders detection** — `isHourlyCryptoMarket()` checks category AND question pattern. Fail-closed: if either matches, 1% cap applies. | `risk.ts` |
-| **No bleed-over** — Hourly markets only enter via dedicated pipeline. `isSpamMarket` still blocks them in general fetch methods. | `ingestion.ts` (unchanged spam filter) |
 
-**NOT YET DEPLOYED** — needs staging test with live Redis + ingestion worker.
+**DEPLOYED + VERIFIED:** 40 hourly crypto events live in production under Crypto tab. Browser-tested with screenshots.
 
 **Verification:** tsc clean ✅, 85/85 test files ✅, 1,299/1,299 tests ✅
 
