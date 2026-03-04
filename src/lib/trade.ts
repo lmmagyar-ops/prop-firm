@@ -1,6 +1,7 @@
 import { db } from "@/db";
 import { trades, positions, challenges } from "@/db/schema";
 import { eq, and, sql } from "drizzle-orm";
+import { isSameDay } from "date-fns";
 import { MarketService } from "./market";
 import { RiskEngine } from "./risk";
 import { PositionManager } from "./trading/PositionManager";
@@ -353,6 +354,27 @@ export class TradeExecutor {
                     .where(eq(trades.id, newTrade.id));
             }
 
+            // ACTIVITY TRACKING — inside transaction for reliability.
+            // Previously fire-and-forget after response, which failed in serverless
+            // (Vercel kills function → orphaned query → Sentry error).
+            if (lockedChallenge.phase === "funded") {
+                const now = new Date();
+                const lastActivity = lockedChallenge.lastActivityAt;
+                const isFirstTradeOfDay = !lastActivity || !isSameDay(lastActivity, now);
+
+                if (isFirstTradeOfDay) {
+                    const newDays = (lockedChallenge.activeTradingDays || 0) + 1;
+                    await tx.update(challenges)
+                        .set({ activeTradingDays: newDays, lastActivityAt: now })
+                        .where(eq(challenges.id, challenge.id));
+                    logger.info(`Activity: new trading day recorded (${newDays} total)`, { challengeId: challenge.id.slice(0, 8) });
+                } else {
+                    await tx.update(challenges)
+                        .set({ lastActivityAt: now })
+                        .where(eq(challenges.id, challenge.id));
+                }
+            }
+
             return newTrade;
         });
 
@@ -362,15 +384,15 @@ export class TradeExecutor {
             .then(({ ChallengeEvaluator }) => ChallengeEvaluator.evaluate(challenge.id))
             .catch((e) => logger.error("Adjudication failed post-trade", e));
 
-        // 7. ACTIVITY TRACKING (for funded accounts)
-        // Records trading days and checks consistency rules
+        // 7. CONSISTENCY CHECK (fire-and-forget — soft flag for admin review, non-critical)
+        // recordTradingDay has been moved into the transaction above.
         if (challenge.phase === "funded") {
             import("./activity-tracker")
-                .then(({ ActivityTracker }) => {
-                    ActivityTracker.recordTradingDay(challenge.id);
-                    ActivityTracker.checkConsistency(challenge.id);
-                })
-                .catch((e) => logger.error("Activity tracking failed", e));
+                .then(({ ActivityTracker }) =>
+                    ActivityTracker.checkConsistency(challenge.id)
+                        .catch((e) => logger.warn("Consistency check failed (non-critical)", e))
+                )
+                .catch((e) => logger.warn("Activity tracker import failed", e));
         }
 
         logger.info(`Trade Complete: ${tradeResult.id}`, { tradeId: tradeResult.id });

@@ -20,3 +20,13 @@
  * update the ingestion filter to use the LOWEST tier's threshold.
  */
 export const MIN_MARKET_VOLUME = parseInt(process.env.MIN_MARKET_VOLUME || '100000', 10);
+
+/**
+ * Max per-trade exposure for hourly crypto "Up or Down" markets.
+ * These are short-lived (1h), lower-liquidity markets — Mat's directive caps
+ * them at 1% of starting balance vs the normal 5% per-event limit.
+ *
+ * Used by risk.ts to override maxPositionSizePercent for markets
+ * detected as hourly crypto (via category + question pattern).
+ */
+export const HOURLY_CRYPTO_MAX_POSITION_PERCENT = 0.01; // 1% of balance

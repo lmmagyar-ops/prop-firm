@@ -6,7 +6,7 @@ import { getActiveMarkets, getAllMarketsFlat, getMarketById, MarketMetadata } fr
 import { ArbitrageDetector } from "./arbitrage-detector";
 import { MarketService } from "./market";
 import { getPortfolioValue } from "./position-utils";
-import { MIN_MARKET_VOLUME } from "@/config/trading-constants";
+import { MIN_MARKET_VOLUME, HOURLY_CRYPTO_MAX_POSITION_PERCENT } from "@/config/trading-constants";
 import { createLogger } from "./logger";
 
 const logger = createLogger('RiskEngine');
@@ -171,10 +171,18 @@ export class RiskEngine {
             );
         }
 
-        // ── RULE 3: PER-EVENT EXPOSURE (5%) ───────────────────────
+        // ── Fetch market metadata early (needed by Rule 3 + Rule 4) ──
+        const market = await getMarketById(marketId);
+
+        // ── RULE 3: PER-EVENT EXPOSURE ─────────────────────────────
+        // Hourly crypto markets: 1% cap (Mat's directive) vs normal 5%
+        const isHourlyCrypto = this.isHourlyCryptoMarket(market);
+        const positionSizePercent = isHourlyCrypto
+            ? HOURLY_CRYPTO_MAX_POSITION_PERCENT
+            : (rules.maxPositionSizePercent || 0.05);
         const { getEventInfoForMarket } = await import("@/app/actions/market");
         const eventInfo = await getEventInfoForMarket(marketId);
-        const maxPerEvent = startBalance * (rules.maxPositionSizePercent || 0.05);
+        const maxPerEvent = startBalance * positionSizePercent;
 
         // Sum exposure across ALL sibling markets in this event
         const marketIdsToCheck = eventInfo?.siblingMarketIds || [marketId];
@@ -191,7 +199,7 @@ export class RiskEngine {
         }
 
         // ── RULE 4: PER-CATEGORY EXPOSURE (10%) ───────────────────
-        const market = await getMarketById(marketId);
+        // (market already fetched above Rule 3)
 
         const rawCategories = market?.categories?.length
             ? market.categories
@@ -299,7 +307,13 @@ export class RiskEngine {
         // ── Per-event limit ────────────────────────────────────────
         const { getEventInfoForMarket } = await import("@/app/actions/market");
         const eventInfo = await getEventInfoForMarket(marketId);
-        const perEvent = startBalance * (rules.maxPositionSizePercent || 0.05);
+        const market = await getMarketById(marketId);
+        // Hourly crypto: 1% cap (Mat's directive) vs normal 5%
+        const isHourlyCrypto = this.isHourlyCryptoMarket(market);
+        const positionSizePercent = isHourlyCrypto
+            ? HOURLY_CRYPTO_MAX_POSITION_PERCENT
+            : (rules.maxPositionSizePercent || 0.05);
+        const perEvent = startBalance * positionSizePercent;
         const marketIdsToCheck = eventInfo?.siblingMarketIds || [marketId];
         const currentEventExposure = allOpenPositions
             .filter(p => marketIdsToCheck.includes(p.marketId))
@@ -307,7 +321,7 @@ export class RiskEngine {
         const perEventRemaining = Math.max(0, perEvent - currentEventExposure);
 
         // ── Per-category limit ─────────────────────────────────────
-        const market = await getMarketById(marketId);
+        // (market already fetched above)
         const rawCats = market?.categories?.length
             ? market.categories
             : this.inferCategoriesFromTitle(market?.question || "");
@@ -463,6 +477,23 @@ export class RiskEngine {
         audit.reason = reason;
         logger.warn('Risk check blocked', audit);
         return { allowed: false, reason };
+    }
+
+    // ─── Hourly crypto market detection (belt-and-suspenders) ────
+
+    /**
+     * Detect hourly crypto "Up or Down" markets via category OR question pattern.
+     * Uses dual detection to fail-closed: if ingestion bug drops the category,
+     * the question pattern still catches it.
+     */
+    private static isHourlyCryptoMarket(market: { categories?: string[]; question?: string } | null): boolean {
+        if (!market) return false;
+        // Primary: category set by ingestion pipeline
+        if (market.categories?.includes('Hourly Crypto')) return true;
+        // Fallback: question pattern match (e.g. "Bitcoin up or down by 11 AM ET")
+        const q = (market.question || '').toLowerCase();
+        if (q.includes('up or down') && /\d{1,2}\s*(am|pm)\s*et/.test(q)) return true;
+        return false;
     }
 
     // ─── Tier-based position limits ──────────────────────────────
