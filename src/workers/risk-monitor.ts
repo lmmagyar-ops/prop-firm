@@ -447,23 +447,73 @@ export class RiskMonitor {
     }
 
     /**
-     * Batch fetch prices from Redis - reads from single consolidated key
+     * Batch fetch prices from Redis with fallback.
+     * 
+     * Primary: market:prices:all (WS stream, updates every 1s)
+     * Fallback: market:orderbooks (REST poller, updates every 5m)
+     * 
+     * INCIDENT 2026-03-04: WS stream went down after deploy. With no fallback,
+     * risk monitor was completely blind — daily drawdown breach went undetected.
+     * Now falls back to order book last_trade_price to maintain breach detection.
      */
     private async batchFetchPrices(marketIds: string[]): Promise<Map<string, number>> {
         const prices = new Map<string, number>();
         if (marketIds.length === 0) return prices;
 
         try {
-            // COST OPTIMIZATION: Read from single key instead of 300+ individual keys
-            // This is 1 Redis command instead of ~300!
+            // Primary source: WS price stream (near real-time)
             const data = await this.redis.get('market:prices:all');
-            if (!data) return prices;
+            if (data) {
+                const allPrices = JSON.parse(data);
+                for (const id of marketIds) {
+                    if (allPrices[id]) {
+                        const parsed = allPrices[id];
+                        prices.set(id, parseFloat(parsed.price || parsed.mid || '0'));
+                    }
+                }
+            }
 
-            const allPrices = JSON.parse(data);
-            for (const id of marketIds) {
-                if (allPrices[id]) {
-                    const parsed = allPrices[id];
-                    prices.set(id, parseFloat(parsed.price || parsed.mid || '0'));
+            // Check for missing prices — fall back to order books
+            const missingIds = marketIds.filter(id => !prices.has(id));
+            if (missingIds.length > 0) {
+                const bookData = await this.redis.get('market:orderbooks');
+                if (bookData) {
+                    const books = JSON.parse(bookData);
+                    let recovered = 0;
+                    for (const id of missingIds) {
+                        if (books[id]) {
+                            const book = books[id];
+                            // Prefer last_trade_price, then derive midpoint from bid/ask
+                            let price: number | null = null;
+                            if (book.last_trade_price) {
+                                price = parseFloat(book.last_trade_price);
+                            } else if (book.bids?.[0]?.price && book.asks?.[0]?.price) {
+                                price = (parseFloat(book.bids[0].price) + parseFloat(book.asks[0].price)) / 2;
+                            }
+                            if (price !== null && price > 0) {
+                                prices.set(id, price);
+                                recovered++;
+                            }
+                        }
+                    }
+                    if (recovered > 0) {
+                        logger.warn('Price fallback: recovered from order books', {
+                            wsAvailable: !data ? 0 : marketIds.length - missingIds.length,
+                            recoveredFromBooks: recovered,
+                            stillMissing: missingIds.length - recovered,
+                        });
+                    }
+                }
+
+                // ALERT: If we still have missing prices after both sources, log it loud
+                const finalMissing = marketIds.filter(id => !prices.has(id));
+                if (finalMissing.length > 0) {
+                    logger.error('PRICE GAP: No price source for positions', {
+                        missing: finalMissing.length,
+                        total: marketIds.length,
+                        wsDown: !data,
+                        tokens: finalMissing.map(id => id.slice(0, 12)),
+                    });
                 }
             }
         } catch (error: unknown) {
