@@ -8,24 +8,38 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 > **New agent? Read this section before doing anything else.**
 > This is the single source of truth for what actually works. Do NOT trust individual journal entries — they reflect what the agent *believed*, not what the user confirmed.
 
-### Mar 3, 2026 (12:05 PM CT) — LOCAL CHANGES, NOT YET DEPLOYED
-
-**Shipped but UNVERIFIED by user:**
+### Mar 4, 2026 (10:25 AM CT) — 1-Hour Crypto Markets Integration
 
 | Change | File |
 |--------|------|
-| **Activity tracking moved into DB transaction** — `recordTradingDay` was fire-and-forget; Vercel serverless killed background query → Sentry error. Now atomic with trade. | `trade.ts` |
+| **Hourly crypto ingestion** — New `fetchHourlyCryptoMarkets()` queries 4 hardcoded series (`btc/eth/solana/xrp-up-or-down-hourly`) via `/series` endpoint. Uses series aggregate volume (not individual market volume). Read-modify-write on `event:active_list`. | `ingestion.ts` |
+| **1% trade cap** — `HOURLY_CRYPTO_MAX_POSITION_PERCENT = 0.01` (Mat's directive). Risk engine override in both `validateTrade` and `getPreflightLimits`. | `trading-constants.ts`, `risk.ts` |
+| **Belt-and-suspenders detection** — `isHourlyCryptoMarket()` checks category AND question pattern. Fail-closed: if either matches, 1% cap applies. | `risk.ts` |
+| **No bleed-over** — Hourly markets only enter via dedicated pipeline. `isSpamMarket` still blocks them in general fetch methods. | `ingestion.ts` (unchanged spam filter) |
+
+**NOT YET DEPLOYED** — needs staging test with live Redis + ingestion worker.
+
+**Verification:** tsc clean ✅, 85/85 test files ✅, 1,299/1,299 tests ✅
+
+---
+
+### Mar 3, 2026 (3:25 PM CT) — DEPLOYED TO PRODUCTION ✅
+
+**Production commit:** `26b438e` — Sentry fix + 93 new tests.
+
+| Change | File |
+|--------|------|
+| **Activity tracking moved into DB transaction** — `recordTradingDay` was fire-and-forget; now atomic with trade. Fixes Sentry error. | `trade.ts` |
 | **checkConsistency downgraded** — `.catch()` uses `logger.warn` instead of `logger.error`. | `trade.ts` |
-| **Order book engine tests** — 24 pure function tests: `invertOrderBook`, `isBookDead`, `buildSyntheticOrderBook`, `calculateImpact`. | `tests/lib/order-book-engine.test.ts` [NEW] |
-| **ChallengeManager tests** — 9 tests: DB writes, status filtering, failure handling. | `tests/lib/challenge-manager.test.ts` [NEW] |
-| **Close route tests** — 9 behavioral tests: auth, ownership, evaluator, idempotency. | `tests/api/close-route.test.ts` [NEW] |
-| **Financial chaos tests** — 35 adversarial/boundary tests. Found 3 NaN edge cases documented in-test. | `tests/financial-chaos.test.ts` [NEW] |
-| **Property-based math** — 25 fast-check invariant tests: direction symmetry (YES+NO=1), inversion symmetry, impact monotonicity, tier monotonicity, portfolio additivity. | `tests/property-based-math.test.ts` [NEW] |
-| **Mocking mirage deleted** — 9 fake `expect(401).toBe(401)` tests removed. | `tests/api/trade-endpoints.test.ts` [DELETED] |
+| **Order book engine tests** — 24 pure function tests. | `tests/lib/order-book-engine.test.ts` [NEW] |
+| **ChallengeManager tests** — 9 tests. | `tests/lib/challenge-manager.test.ts` [NEW] |
+| **Close route tests** — 9 behavioral tests. | `tests/api/close-route.test.ts` [NEW] |
+| **Financial chaos tests** — 35 adversarial/boundary tests. | `tests/financial-chaos.test.ts` [NEW] |
+| **Property-based math** — 25 fast-check invariant tests. | `tests/property-based-math.test.ts` [NEW] |
+| **Mocking mirage deleted** — 9 fake tests removed. | `tests/api/trade-endpoints.test.ts` [DELETED] |
 
-**Verification:** `tsc --noEmit` clean, 85/85 test files (1,299 passed — up from 1,206, +93 net).
-
-**Previous deploy (Mar 3 12:30 AM):** Production `26b438e` — phase-aware balance reconstruction, formula consistency audit. User-verified ✅.
+**Pre-deploy:** test:engine 60/60 ✅, test:safety 54/54 ✅, test:lifecycle 81/81 ✅, tsc clean ✅
+**Post-deploy:** 11/11 health checks pass (homepage, login, DB, Sentry, worker, SOD equity, cron, system status) ✅
 
 ---
 
@@ -46,20 +60,19 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 **Ranked by leverage × risk:**
 
-#### 1. Execute the 200-Test Gap Fill Plan (HIGH LEVERAGE)
-Current: 1,206 tests. Target: ~1,400. The plan is fully scoped — see `task.md` artifact from previous conversation. Four phases:
+#### 1. Deploy 1-Hour Crypto Markets (HIGH LEVERAGE — code complete, needs staging test)
 
-| Phase | Tests | What |
-|-------|-------|------|
-| **Property-based math** | ~50 | Install `fast-check`. Invariant tests for `position-utils`, `order-book-engine`, drawdown formulas. |
-| **API contracts + error paths** | ~60 | Close route (15), dashboard route (10), discount routes (10), auth edge cases (10), response shape contracts (15). |
-| **Chaos/failure injection** | ~40 | Redis down mid-trade, DB failure mid-transaction, NaN/corrupt price feeds, concurrent double-execution. |
-| **Targeted integration gaps** | ~50 | ChallengeManager DB writes, order-book inversion, funded-rules tier logic, cross-system invariants. |
+Code is done (see Mar 4 entry). Before deploying:
+- Push to `develop`, verify ingestion logs show "Fetching hourly crypto markets..."
+- Confirm hourly markets appear under Crypto category on trade page
+- Test trade > 1% of balance on hourly market → should be blocked
+- Test normal market trade → still allows 5%
 
-#### 2. Quick Wins (if short on time)
-1. **Close API route tests** — auth, ownership, idempotency, phase field, evaluator await
-2. **ChallengeManager tests** — create/fail DB writes
-3. **Order book inversion** — empty books, single-entry, bid/ask crossing
+#### 2. API Contract + Error Path Tests (MEDIUM LEVERAGE)
+~60 remaining tests from the test gap fill plan: dashboard route, discount routes, auth edge cases, response shape contracts.
+
+#### 3. Update Tier Config When Mat Sends Numbers (BLOCKED — waiting on Mat)
+Mat is finalizing new DD/target values for 5k/10k/25k tiers. Once he sends them, update `funded-rules.ts` and `plans.ts`. Run full suite to verify.
 
 ---
 

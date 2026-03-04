@@ -160,6 +160,16 @@ const FORCE_INCLUDE_KEYWORDS = [
     "taiwan"
 ];
 
+// Hourly crypto "Up or Down" series — curated, recurring markets from Polymarket.
+// Each series resolves hourly based on Binance 1H candle direction.
+// Hardcoded to prevent accidental admission of unknown series.
+const HOURLY_CRYPTO_SERIES = [
+    'btc-up-or-down-hourly',
+    'eth-up-or-down-hourly',
+    'solana-up-or-down-hourly',
+    'xrp-up-or-down-hourly',
+];
+
 class IngestionWorker {
     private ws: WebSocket | null = null;
     private redis: Redis;
@@ -400,9 +410,10 @@ class IngestionWorker {
     }
 
     private async init() {
-        logger.info('[Ingestion] 🚀 CODE VERSION: 2026-02-06-v4 (supá bowl encoding fix)');
+        logger.info('[Ingestion] 🚀 CODE VERSION: 2026-03-04-v5 (hourly crypto markets)');
         await this.fetchFeaturedEvents(); // Fetch curated trending events first
         await this.fetchActiveMarkets(); // Then fetch remaining markets
+        await this.fetchHourlyCryptoMarkets(); // Hourly crypto "Up or Down" series
         await pruneResolvedMarkets(this.redis); // Prune any resolved markets immediately
         this.connectWS();
         this.startBookPolling();
@@ -416,6 +427,7 @@ class IngestionWorker {
                 logger.info('[Ingestion] 🔄 Periodic market refresh...');
                 await this.fetchFeaturedEvents();
                 await this.fetchActiveMarkets();
+                await this.fetchHourlyCryptoMarkets();
                 await pruneResolvedMarkets(this.redis); // Prune after every refresh
                 // Re-subscribe WebSocket to include any new token IDs
                 if (this.ws?.readyState === WebSocket.OPEN) {
@@ -886,6 +898,165 @@ class IngestionWorker {
 
         } catch (err) {
             logger.error("[Ingestion] Failed to fetch markets:", err);
+        }
+    }
+
+    /**
+     * Fetch hourly crypto "Up or Down" markets from known Polymarket series.
+     *
+     * Two-step fetch:
+     * 1. /series?slug=<slug> — returns event metadata (slugs, endDates) but NOT markets
+     * 2. /events?slug=<event_slug> — returns full event with markets (clobTokenIds, prices)
+     *
+     * Design decisions:
+     * - Hardcoded series slugs (no dynamic discovery)
+     * - Uses series aggregate volume (not individual market volume)
+     * - Sets 'Hourly Crypto' category for risk engine detection (1% cap)
+     * - Limits to 10 soonest events per series to avoid API spam
+     * - Read-modify-write on event:active_list to avoid overwriting featured events
+     * - Does NOT call isSpamMarket — these are known curated markets
+     */
+    private async fetchHourlyCryptoMarkets() {
+        try {
+            logger.info('[Ingestion] Fetching hourly crypto markets...');
+            const hourlyCryptoEvents: ProcessedEvent[] = [];
+            const hourlyCryptoTokenIds: string[] = [];
+            const MAX_EVENTS_PER_SERIES = 10; // Only fetch the soonest 10 events per series
+
+            for (const seriesSlug of HOURLY_CRYPTO_SERIES) {
+                try {
+                    // Step 1: Get event slugs from series
+                    const seriesUrl = `https://gamma-api.polymarket.com/series?slug=${seriesSlug}`;
+                    const seriesResponse = await fetch(seriesUrl);
+                    const seriesData = await seriesResponse.json();
+
+                    const series = Array.isArray(seriesData) ? seriesData[0] : seriesData;
+                    if (!series || !series.events || !Array.isArray(series.events)) {
+                        logger.warn(`[Ingestion] No events found for series: ${seriesSlug}`);
+                        continue;
+                    }
+
+                    // Series-level aggregate volume — used as effective volume for all child markets.
+                    // Use volume24hr (rolling 24h) not volume (lifetime cumulative).
+                    // Lifetime cumulative for smaller series (SOL=$52K, XRP=$35K) would fail
+                    // MIN_MARKET_VOLUME ($100K), while their 24h volumes ($492K, $447K) pass easily.
+                    const seriesVolume = parseFloat(series.volume24hr || series.volume || '0');
+                    const seriesVolume24hr = parseFloat(series.volume24hr || '0');
+
+                    // Filter to active, non-expired events and take the soonest N
+                    const now = Date.now();
+                    const activeEventSlugs = series.events
+                        .filter((e: { closed?: boolean; archived?: boolean; active?: boolean; endDate?: string }) => {
+                            if (e.closed || e.archived || !e.active) return false;
+                            if (e.endDate && new Date(e.endDate).getTime() < now) return false;
+                            return true;
+                        })
+                        .sort((a: { endDate?: string }, b: { endDate?: string }) => {
+                            const aEnd = a.endDate ? new Date(a.endDate).getTime() : Infinity;
+                            const bEnd = b.endDate ? new Date(b.endDate).getTime() : Infinity;
+                            return aEnd - bEnd; // Soonest first
+                        })
+                        .slice(0, MAX_EVENTS_PER_SERIES);
+
+                    logger.info(`[Ingestion] Series ${seriesSlug}: ${activeEventSlugs.length} active events to fetch`);
+
+                    // Step 2: Fetch each event individually to get market data
+                    for (const seriesEvent of activeEventSlugs) {
+                        try {
+                            const eventUrl = `https://gamma-api.polymarket.com/events?slug=${seriesEvent.slug}`;
+                            const eventResponse = await fetch(eventUrl);
+                            const eventData = await eventResponse.json();
+                            const event = Array.isArray(eventData) ? eventData[0] : eventData;
+
+                            if (!event || !event.markets || !Array.isArray(event.markets) || event.markets.length === 0) continue;
+
+                            const subMarkets: ProcessedSubMarket[] = [];
+
+                            for (const market of event.markets) {
+                                if (market.closed || market.archived) continue;
+
+                                const prices = JSON.parse(market.outcomePrices || '[]');
+                                if (!prices || prices.length < 2) continue;
+
+                                const clobTokens = JSON.parse(market.clobTokenIds || '[]');
+                                const outcomes = JSON.parse(market.outcomes || '[]');
+                                if (clobTokens.length === 0) continue;
+
+                                const tokenId = clobTokens[0];
+                                const complementToken = clobTokens.length > 1 ? clobTokens[1] : null;
+                                const yesPrice = parseFloat(prices[0] || '0');
+
+                                // Store complement mapping for dual-token trading
+                                if (complementToken) {
+                                    await this.redis.hset('market:complements', tokenId, complementToken);
+                                }
+
+                                hourlyCryptoTokenIds.push(tokenId);
+
+                                subMarkets.push({
+                                    id: tokenId,
+                                    question: sanitizeText(market.question || event.title || ''),
+                                    outcomes: outcomes, // ["Up", "Down"] — not Yes/No
+                                    price: yesPrice,
+                                    volume: seriesVolume, // Series aggregate, not individual
+                                });
+                            }
+
+                            if (subMarkets.length === 0) continue;
+
+                            hourlyCryptoEvents.push({
+                                id: event.id || event.slug,
+                                title: sanitizeText(event.title || ''),
+                                slug: event.slug,
+                                description: event.description,
+                                image: event.image || series.image,
+                                volume: seriesVolume,
+                                volume24hr: seriesVolume24hr,
+                                createdAt: event.createdAt,
+                                endDate: event.endDate,
+                                categories: ['Crypto', 'Hourly Crypto'], // Risk engine keys on 'Hourly Crypto'
+                                markets: subMarkets,
+                                isMultiOutcome: false, // Binary Up/Down
+                            });
+                        } catch (eventErr: unknown) {
+                            // Skip individual event failures — don't block the rest
+                            const msg = eventErr instanceof Error ? eventErr.message : String(eventErr);
+                            logger.warn(`[Ingestion] Failed to fetch event ${seriesEvent.slug}: ${msg}`);
+                        }
+                    }
+
+                    logger.info(`[Ingestion] Series ${seriesSlug}: processed ${hourlyCryptoEvents.length} events with markets`);
+                } catch (seriesErr) {
+                    // Fail gracefully per-series — don't let one broken series block others
+                    logger.error(`[Ingestion] Failed to fetch series ${seriesSlug}:`, seriesErr);
+                }
+            }
+
+            if (hourlyCryptoEvents.length === 0) {
+                logger.info('[Ingestion] No active hourly crypto markets found.');
+                return;
+            }
+
+            // Read-modify-write: append to existing event list (don't overwrite featured events)
+            const existingData = await this.redis.get('event:active_list');
+            const existingEvents: ProcessedEvent[] = existingData ? JSON.parse(existingData) : [];
+
+            // Dedup by event ID — hourly crypto events should not duplicate featured events
+            const existingIds = new Set(existingEvents.map(e => e.id));
+            const newEvents = hourlyCryptoEvents.filter(e => !existingIds.has(e.id));
+
+            const merged = [...existingEvents, ...newEvents];
+            const ttl = await this.redis.ttl('event:active_list');
+            await this.redis.set('event:active_list', JSON.stringify(merged), 'EX', Math.max(ttl, 300));
+
+            // Add token IDs to active polling (with memory bounds)
+            const combined = [...new Set([...this.activeTokenIds, ...hourlyCryptoTokenIds])];
+            this.activeTokenIds = combined.slice(0, this.MAX_ACTIVE_TOKENS);
+
+            logger.info(`[Ingestion] ✅ Added ${newEvents.length} hourly crypto events (${hourlyCryptoTokenIds.length} tokens). Total events: ${merged.length}`);
+        } catch (err) {
+            // Fail gracefully — don't break main ingestion if hourly crypto fails
+            logger.error('[Ingestion] Failed to fetch hourly crypto markets:', err);
         }
     }
 
