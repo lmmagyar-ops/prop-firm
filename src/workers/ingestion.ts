@@ -410,7 +410,7 @@ class IngestionWorker {
     }
 
     private async init() {
-        logger.info('[Ingestion] 🚀 CODE VERSION: 2026-03-04-v5 (hourly crypto markets)');
+        logger.info('[Ingestion] 🚀 CODE VERSION: 2026-03-04-v6 (risk monitor uses MarketService)');
         await this.fetchFeaturedEvents(); // Fetch curated trending events first
         await this.fetchActiveMarkets(); // Then fetch remaining markets
         await this.fetchHourlyCryptoMarkets(); // Hourly crypto "Up or Down" series
