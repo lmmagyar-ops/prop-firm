@@ -226,6 +226,17 @@ export function startHealthServer(
                 return;
             }
 
+            // GET /risk-heartbeat — Risk monitor heartbeat (for production canary)
+            if (path === '/risk-heartbeat') {
+                const raw = await redis.get('worker:risk-monitor:heartbeat');
+                sendJson(res, {
+                    heartbeat: raw ? parseInt(raw) : null,
+                    ageMs: raw ? Date.now() - parseInt(raw) : null,
+                    timestamp: Date.now(),
+                });
+                return;
+            }
+
             // GET /ingestion-health — Full ingestion health status
             if (path === '/ingestion-health') {
                 const [polyData, kalshiData, leaderKey, lastPolyUpdate, lastKalshiUpdate] = await Promise.all([
