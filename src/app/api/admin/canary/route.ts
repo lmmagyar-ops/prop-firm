@@ -1,20 +1,3 @@
-/**
- * Production Canary — Infrastructure Health Traffic Lights
- *
- * Answers: "Is the infrastructure that protects capital actually working?"
- *
- * 5 real-time checks:
- * 1. Risk Monitor Heartbeat — Is the 30s loop running?
- * 2. Position Price Coverage — Can ALL funded positions be priced right now?
- * 3. Daily Reset Freshness — Did the midnight reset actually run?
- * 4. Order Book Freshness — Does the worker have market data?
- * 5. Worker Reachability — Can we reach the Railway worker at all?
- *
- * INCIDENT 2026-03-04: Risk monitor appeared healthy (heartbeat green) but
- * had ZERO prices. Mat's 133% drawdown breach went undetected. This canary
- * exists to prevent that class of silent infrastructure failure.
- */
-
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-auth";
 import { db } from "@/db";
@@ -23,7 +6,6 @@ import { eq, and } from "drizzle-orm";
 import { MarketService } from "@/lib/market";
 import { getIngestionHealth, getAllOrderBooks } from "@/lib/worker-client";
 import { createLogger } from "@/lib/logger";
-import Redis from "ioredis";
 
 const logger = createLogger("Canary");
 
@@ -56,26 +38,34 @@ export async function GET(): Promise<NextResponse> {
     const checks: CanaryCheck[] = [];
 
     // ── Check 1: Risk Monitor Heartbeat ──
+    // Uses /risk-heartbeat on the Railway worker (which has Redis access)
+    // instead of connecting to Redis directly from Vercel (fails with maxRetriesPerRequest)
     try {
-        const redis = new Redis(process.env.REDIS_URL!);
-        const heartbeat = await redis.get("worker:risk-monitor:heartbeat");
-        redis.disconnect();
+        const WORKER_URL = process.env.INGESTION_WORKER_URL || 'https://ingestion-worker-production.up.railway.app';
+        const res = await fetch(`${WORKER_URL}/risk-heartbeat`, {
+            signal: AbortSignal.timeout(5000),
+            cache: 'no-store' as RequestCache,
+        });
 
-        if (!heartbeat) {
-            checks.push(makeCheck("heartbeat", "Risk Monitor Heartbeat", "RED", "No heartbeat found in Redis — risk monitor may not be running"));
+        if (!res.ok) {
+            checks.push(makeCheck("heartbeat", "Risk Monitor Heartbeat", "RED", `Worker returned ${res.status}`));
         } else {
-            const ageMs = Date.now() - parseInt(heartbeat);
-            const ageSec = Math.round(ageMs / 1000);
-            if (ageSec <= 60) {
-                checks.push(makeCheck("heartbeat", "Risk Monitor Heartbeat", "GREEN", `Last beat ${ageSec}s ago`));
-            } else if (ageSec <= 300) {
-                checks.push(makeCheck("heartbeat", "Risk Monitor Heartbeat", "YELLOW", `Stale: last beat ${ageSec}s ago (>60s)`));
+            const data = await res.json() as { heartbeat: number | null; ageMs: number | null };
+            if (!data.heartbeat) {
+                checks.push(makeCheck("heartbeat", "Risk Monitor Heartbeat", "RED", "No heartbeat found — risk monitor may not be running"));
             } else {
-                checks.push(makeCheck("heartbeat", "Risk Monitor Heartbeat", "RED", `Dead: last beat ${ageSec}s ago (>5min)`));
+                const ageSec = Math.round((data.ageMs || 0) / 1000);
+                if (ageSec <= 60) {
+                    checks.push(makeCheck("heartbeat", "Risk Monitor Heartbeat", "GREEN", `Last beat ${ageSec}s ago`));
+                } else if (ageSec <= 300) {
+                    checks.push(makeCheck("heartbeat", "Risk Monitor Heartbeat", "YELLOW", `Stale: last beat ${ageSec}s ago (>60s)`));
+                } else {
+                    checks.push(makeCheck("heartbeat", "Risk Monitor Heartbeat", "RED", `Dead: last beat ${ageSec}s ago (>5min)`));
+                }
             }
         }
     } catch (error: unknown) {
-        checks.push(makeCheck("heartbeat", "Risk Monitor Heartbeat", "RED", `Redis error: ${error instanceof Error ? error.message : String(error)}`));
+        checks.push(makeCheck("heartbeat", "Risk Monitor Heartbeat", "RED", `Worker unreachable: ${error instanceof Error ? error.message : String(error)}`));
     }
 
     // ── Check 2: Position Price Coverage ──
