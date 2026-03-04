@@ -17,6 +17,8 @@ import { normalizeRulesConfig } from "../lib/normalize-rules";
 import { createLogger } from "../lib/logger";
 import { BalanceManager } from "../lib/trading/BalanceManager";
 import { getDirectionAdjustedPrice } from "../lib/position-utils";
+import { MarketService } from "../lib/market";
+import { safeParseFloat } from "../lib/safe-parse";
 import { type Transaction } from "../db/types";
 
 const logger = createLogger('RiskMonitor');
@@ -447,118 +449,43 @@ export class RiskMonitor {
     }
 
     /**
-     * Batch fetch prices from Redis with fallback.
-     * 
-     * Primary: market:prices:all (WS stream, updates every 1s)
-     * Fallback: market:orderbooks (REST poller, updates every 5m)
-     * 
-     * INCIDENT 2026-03-04: WS stream went down after deploy. With no fallback,
-     * risk monitor was completely blind — daily drawdown breach went undetected.
-     * Now falls back to order book last_trade_price to maintain breach detection.
+     * Batch fetch prices using the SAME chain as the dashboard.
+     *
+     * INCIDENT 2026-03-04: Custom WS-first pricing was a dead letter — the WS
+     * stream has been non-functional, so the risk monitor never had prices and
+     * never detected breaches. Mat's account breached 133% daily drawdown
+     * without being auto-failed.
+     *
+     * FIX: Delegate to MarketService.getBatchOrderBookPrices() which uses:
+     *   1. Order book mid-price (best bid + best ask / 2)
+     *   2. Event list price fallback
+     *   3. Gamma API price fallback
+     * This is the exact chain the dashboard uses — if the dashboard can show
+     * a breach, the risk monitor WILL catch it.
      */
     private async batchFetchPrices(marketIds: string[]): Promise<Map<string, number>> {
         const prices = new Map<string, number>();
         if (marketIds.length === 0) return prices;
 
         try {
-            // Primary source: WS price stream (near real-time)
-            const data = await this.redis.get('market:prices:all');
-            if (data) {
-                const allPrices = JSON.parse(data);
-                for (const id of marketIds) {
-                    if (allPrices[id]) {
-                        const parsed = allPrices[id];
-                        prices.set(id, parseFloat(parsed.price || parsed.mid || '0'));
-                    }
+            const marketPrices = await MarketService.getBatchOrderBookPrices(marketIds);
+
+            for (const [id, mp] of marketPrices) {
+                const price = safeParseFloat(mp.price);
+                if (price > 0) {
+                    prices.set(id, price);
                 }
             }
 
-            // Check for missing prices — fall back to order books
-            const missingIds = marketIds.filter(id => !prices.has(id));
-            if (missingIds.length > 0) {
-                const bookData = await this.redis.get('market:orderbooks');
-                if (bookData) {
-                    const books = JSON.parse(bookData);
-                    let recovered = 0;
-                    for (const id of missingIds) {
-                        if (books[id]) {
-                            const book = books[id];
-                            // Prefer last_trade_price, then derive midpoint from bid/ask
-                            let price: number | null = null;
-                            if (book.last_trade_price) {
-                                price = parseFloat(book.last_trade_price);
-                            } else if (book.bids?.[0]?.price && book.asks?.[0]?.price) {
-                                price = (parseFloat(book.bids[0].price) + parseFloat(book.asks[0].price)) / 2;
-                            }
-                            if (price !== null && price > 0) {
-                                prices.set(id, price);
-                                recovered++;
-                            }
-                        }
-                    }
-                    if (recovered > 0) {
-                        logger.warn('Price fallback: recovered from order books', {
-                            wsAvailable: !data ? 0 : marketIds.length - missingIds.length,
-                            recoveredFromBooks: recovered,
-                            stillMissing: missingIds.length - recovered,
-                        });
-                    }
-                }
-
-                // Tertiary fallback: Direct CLOB API fetch for still-missing tokens
-                // This catches positions in markets that the ingestion worker no longer tracks
-                // (pruned, older events, etc.) — the user still holds them, risk monitor must price them.
-                const afterBookMissing = marketIds.filter(id => !prices.has(id));
-                if (afterBookMissing.length > 0) {
-                    logger.warn('Attempting direct CLOB API fetch for unpriced positions', {
-                        count: afterBookMissing.length,
-                        tokens: afterBookMissing.map(id => id.slice(0, 12)),
-                    });
-
-                    const CLOB_BATCH_SIZE = 5; // Don't hammer the API
-                    for (let i = 0; i < afterBookMissing.length; i += CLOB_BATCH_SIZE) {
-                        const batch = afterBookMissing.slice(i, i + CLOB_BATCH_SIZE);
-                        const results = await Promise.allSettled(
-                            batch.map(async (tokenId) => {
-                                const res = await fetch(`https://clob.polymarket.com/book?token_id=${tokenId}`);
-                                if (!res.ok) return null;
-                                const book = await res.json();
-                                let price: number | null = null;
-                                if (book.last_trade_price) {
-                                    price = parseFloat(book.last_trade_price);
-                                } else if (book.bids?.[0]?.price && book.asks?.[0]?.price) {
-                                    price = (parseFloat(book.bids[0].price) + parseFloat(book.asks[0].price)) / 2;
-                                }
-                                return { tokenId, price };
-                            })
-                        );
-
-                        for (const result of results) {
-                            if (result.status === 'fulfilled' && result.value?.price && result.value.price > 0) {
-                                prices.set(result.value.tokenId, result.value.price);
-                            }
-                        }
-                    }
-
-                    const clobRecovered = afterBookMissing.filter(id => prices.has(id)).length;
-                    if (clobRecovered > 0) {
-                        logger.warn('Price fallback: recovered from CLOB API', {
-                            recoveredFromClob: clobRecovered,
-                            stillMissing: afterBookMissing.length - clobRecovered,
-                        });
-                    }
-                }
-
-                // ALERT: If we STILL have missing prices after all three sources, log critical
-                const finalMissing = marketIds.filter(id => !prices.has(id));
-                if (finalMissing.length > 0) {
-                    logger.error('CRITICAL PRICE GAP: All sources exhausted', {
-                        missing: finalMissing.length,
-                        total: marketIds.length,
-                        wsDown: !data,
-                        tokens: finalMissing.map(id => id.slice(0, 12)),
-                    });
-                }
+            // Log coverage for monitoring
+            const missing = marketIds.length - prices.size;
+            if (missing > 0) {
+                logger.error('Price gap after MarketService chain', {
+                    resolved: prices.size,
+                    missing,
+                    total: marketIds.length,
+                    missingIds: marketIds.filter(id => !prices.has(id)).map(id => id.slice(0, 12)),
+                });
             }
         } catch (error: unknown) {
             logger.error('Price fetch error', error instanceof Error ? error : null);
