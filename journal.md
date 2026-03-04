@@ -8,22 +8,24 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 > **New agent? Read this section before doing anything else.**
 > This is the single source of truth for what actually works. Do NOT trust individual journal entries — they reflect what the agent *believed*, not what the user confirmed.
 
-### Mar 4, 2026 (11:55 AM CT) — PRODUCTION INCIDENT: Risk Monitor Blind
+### Mar 4, 2026 (12:43 PM CT) — PRODUCTION INCIDENT: Risk Monitor Never Worked ⚠️→✅
 
 > [!CAUTION]
-> **INCIDENT:** `market:prices:all` was EMPTY in production Redis. Risk monitor heartbeat was active, but with no prices, the fail-closed guard silently skipped ALL challenge checks. Mat's funded account breached 133.4% daily drawdown — undetected.
+> **INCIDENT:** Risk monitor's 30-second breach detection was a **dead letter** — it has NEVER worked in production. Mat's funded account breached 133% daily drawdown without being auto-failed.
 
 | Root Cause | Detail |
 |------------|--------|
-| **WS price stream down** | `market:prices:all` had TTL -2 (expired). WS not reconnecting after deploy. |
-| **No fallback** | `batchFetchPrices()` only checked `market:prices:all`. When empty, returned 0 prices → fail-closed guard skipped every challenge. |
-| **Silent failure** | The guard logged an error but no alert. Risk monitor appeared "healthy" via heartbeat. |
+| **WS stream never functional** | `market:prices:all` has been empty. The custom `batchFetchPrices()` relied on it — with no data, the fail-closed guard silently skipped ALL checks. |
+| **Wrong price source** | Risk monitor used WS stream (dead) while the dashboard used `MarketService.getBatchOrderBookPrices()` (alive, 1,986 tokens). Different code paths, different availability. |
+| **Mocking mirage** | 1,299 tests all mock Redis with pre-populated prices. Tests verified "does math work?" — yes. Never tested "do prices actually exist?" |
+| **Only trade-time detection** | The evaluator (runs on position close) was the ONLY path catching breaches/passes. Mat spotted this pattern. |
 
 | Fix | File |
 |-----|------|
-| **Order book fallback** — `batchFetchPrices()` now falls back to `market:orderbooks` (REST poller, 1,986 tokens, `last_trade_price`). Logs warning on fallback, error on unrecoverable gaps. | `risk-monitor.ts` |
+| **Delegate to MarketService** — `batchFetchPrices()` now calls `MarketService.getBatchOrderBookPrices()` which uses: (1) order book mid-price, (2) event list fallback, (3) Gamma API fallback. Exact same chain as the dashboard. | `risk-monitor.ts` |
 
-**Commits:** `c4c4c3b` (crypto markets), `d7577f7` (merge to main), `4500534` (hotfix). Push #3 used under production-broken exception.
+**Result:** Funded count dropped 2→1 at 18:43 UTC. Breach auto-detected ✅
+**Commits:** `d9babad` (final fix on main). Code version v6.
 **Verification:** tsc clean ✅, 85/85 test files ✅, 1,299/1,299 tests ✅
 
 ---
