@@ -98,9 +98,11 @@ Use these accounts to reproduce user-reported bugs and perform browser smoke tes
 
 | Account | Email | Password | Notes |
 |---------|-------|----------|-------|
-| Mat's test account | `forexampletrader@gmail.com` | `123456rR` | $10k evaluation, has 3 open positions (Fed/FIFA/Iran), used for QA reproduction |
+| Mat's test account | `forexampletrader@gmail.com` | `123456rR` | Has funded account history, used for QA reproduction |
 
-**Login flow:** Navigate to `https://prop-firmx.vercel.app` → Click "Sign In" → "Continue with Google"
+**Login flow:** Navigate to `https://prop-firmx.vercel.app/login` → Use the email/password form below "OR CONTINUE WITH EMAIL" → Enter email and password → Click "Sign In".
+
+> **Browser agent note:** Do NOT click "Continue with Google" — use the email/password fields directly.
 
 ---
 
@@ -311,8 +313,9 @@ DATABASE_URL="..." npx tsx scripts/grant-admin.ts email@example.com
 │  ┌───────────────────────────────────────────────────────────┐  │
 │  │  ingestion-worker                                          │  │
 │  │  - Polymarket WebSocket (live prices)                      │  │
-│  │  - RiskMonitor (5s breach detection)                       │  │
-│  │  - Health server (:3001/health)                            │  │
+│  │  - RiskMonitor (30s breach detection)                      │  │
+│  │  - Health server (:3001 — /health, /prices, /orderbooks,   │  │
+│  │    /markets, /kv/*, /risk-heartbeat, etc.)                 │  │
 │  └───────────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -359,8 +362,8 @@ src/
 │   ├── ingestion.ts        # Polymarket WebSocket + data pipeline
 │   ├── market-classifier.ts # Category classification + spam filtering
 │   ├── market-integrity.ts # Resolved market pruning + price drift monitoring
-│   ├── risk-monitor.ts     # Real-time breach detection (5s loop)
-│   └── health-server.ts    # HTTP health endpoint for Railway
+│   ├── risk-monitor.ts     # Real-time breach detection (30s loop)
+│   └── health-server.ts    # HTTP market data + KV proxy server for Railway
 └── scripts/
     ├── grant-admin.ts      # Grant admin role
     ├── verify-engine.ts    # 53-assertion trade engine test
@@ -496,9 +499,12 @@ Pre-trade validation in `RiskEngine.validateTrade()`:
 
 Runs every 30 seconds in the ingestion worker (`CHECK_INTERVAL_MS = 30000`):
 1. Fetches all active challenges
-2. Gets live prices from Redis
-3. Calculates equity (cash + unrealized P&L)
+2. Gets live prices via `MarketService.getBatchOrderBookPrices()` (order book mid-price → event list fallback → Gamma API fallback)
+3. Calculates equity (cash + position value using `getDirectionAdjustedPrice`)
 4. **Max Drawdown breach** → HARD FAIL (closes all positions) | **Daily Drawdown breach** → HARD FAIL (closes all positions) | **Profit Target hit** → PASS (closes all positions, transitions to funded)
+
+> [!CAUTION]
+> **INCIDENT 2026-03-04:** The risk monitor had ZERO prices from launch because `market:prices:all` (WS stream) was always empty. The fail-closed guard silently skipped all checks — Mat's 133% drawdown went undetected. Fixed by delegating to `MarketService.getBatchOrderBookPrices()` (same chain as dashboard). **E2E verified:** controlled breach test auto-failed within 30s.
 
 > [!IMPORTANT]
 > **Transaction safety:** `triggerBreach`, `triggerPass`, and `closeAllPositions` run inside `db.transaction()`. Status update + position closes + balance credit + audit log are fully atomic — if any step crashes, everything rolls back. Redis reads happen before the transaction (not transactional).
@@ -574,11 +580,28 @@ Heartbeat Healthy → OutageManager.recordOutageEnd()
 
 **Grant access:** `DATABASE_URL="..." npx tsx scripts/grant-admin.ts user@email.com`
 
-**Admin routes:** Overview, Risk Desk, Analytics, Growth, Discounts, Traders — all under `/admin/*`.
+**Admin pages:** Overview, Risk Desk, Canary (infra health), Users, User Activity, Traders DNA, Security, Analytics, Docs, Growth Hub, Discount Codes, Affiliates, Settings, Events, Simulation — all under `/admin/*`.
 
 **Shared utilities:** `src/lib/admin-utils.ts` — `TIER_PRICES`, `getTierPrice()`, `EXPOSURE_CAP`, `VAR_MULTIPLIER`, `HEDGE_RATIO`.
 
-### 6. Waitlist System
+### 6. Production Canary (Infrastructure Health)
+
+Admin page at `/admin/canary` — 5 traffic-light health checks, auto-refreshes every 30s:
+
+| Check | What It Catches | Source |
+|-------|----------------|--------|
+| 💓 Heartbeat | Risk monitor 30s loop alive? | Worker `/risk-heartbeat` → Redis |
+| 💰 Price Coverage | All funded positions priceable? | `MarketService.getBatchOrderBookPrices()` |
+| 🔄 Daily Reset | Midnight reset ran for all accounts? | DB query |
+| 📊 Order Books | Worker has market data? | Worker `/orderbooks` |
+| ⚙️ Worker | Railway reachable? | Worker `/health` |
+
+> [!IMPORTANT]
+> The canary does NOT connect to Redis directly from Vercel (fails with `maxRetriesPerRequest`). All Redis reads go through the Railway health server's HTTP endpoints.
+
+**File:** `src/app/api/admin/canary/route.ts`, `src/app/admin/canary/page.tsx`
+
+### 7. Waitlist System
 
 Standalone Next.js app in `propshot-waitlist/`. Deployed separately to Vercel.
 
@@ -777,12 +800,12 @@ See `.agent/workflows/deploy.md` for the full deployment workflow.
 
 | Account | Email | Password | Auth Method | Purpose |
 |---------|-------|----------|-------------|---------|
-| **Mat (trader)** | `forexampletrader@gmail.com` | `123456rR` | Google OAuth | Real trader account with positions and trades |
+| **Mat (trader)** | `forexampletrader@gmail.com` | `123456rR` | Email/Password | Real trader account with funded history |
 | **E2E Bot** | `e2e-test@propshot.io` | (see GitHub secret) | Email/Password | Automated E2E tests |
 
-> **Login flow:** The app uses **Google OAuth only** in the UI. To log in as Mat, click "Continue with Google" on `/login`, enter the email and password on Google's auth page. There is NO email/password form in the app itself.
+> **Login flow:** Navigate to `/login` → use the email/password form below "OR CONTINUE WITH EMAIL" → Enter email and password → Click "Sign In".
 
-> **Browser agent note:** Set the browser to **desktop width (1280px+)** before testing. Mobile view hides the login button and causes agent confusion.
+> **Browser agent note:** Do NOT click "Continue with Google" — use the email/password fields directly. Set the browser to **desktop width (1280px+)** before testing.
 
 ---
 

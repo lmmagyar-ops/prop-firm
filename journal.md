@@ -8,6 +8,20 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 > **New agent? Read this section before doing anything else.**
 > This is the single source of truth for what actually works. Do NOT trust individual journal entries — they reflect what the agent *believed*, not what the user confirmed.
 
+### Mar 4, 2026 (5:30 PM CT) — Production Canary + E2E Breach Test ✅
+
+| Change | File |
+|--------|------|
+| **Production Canary page** — 5 traffic-light health checks (heartbeat, price coverage, daily reset, order book data, worker reachability). Auto-refreshes every 30s. | `api/admin/canary/route.ts`, `admin/canary/page.tsx`, `AdminSidebar.tsx` |
+| **Heartbeat fix** — Canary originally connected to Redis directly from Vercel (maxRetriesPerRequest failure). Added `/risk-heartbeat` endpoint to Railway health server. Canary now calls via HTTP. | `health-server.ts`, `canary/route.ts` |
+| **E2E breach detection test** — Created controlled breach scenario: funded challenge with rigged $50k start-of-day equity → daily floor $47.5k > actual equity $10k. **Risk monitor auto-failed the account within 30s.** Audit log: `detectionMethod: real_time_monitoring`. | `risk-monitor.ts` (no code change — test of existing fix) |
+| **CLAUDE.md audit** — Fixed 9 stale sections: 5s→30s interval, missing canary section, wrong login flow, outdated admin routes, stale test account notes. | `CLAUDE.md` |
+
+**Verification:** tsc clean ✅, 85/85 test files ✅, 1,299/1,299 tests ✅, browser-verified 5/5 GREEN on production ✅
+**Commits:** `c54dfd1` (heartbeat fix), `a82e6b3` (canary)
+
+---
+
 ### Mar 4, 2026 (12:43 PM CT) — PRODUCTION INCIDENT: Risk Monitor Never Worked ⚠️→✅
 
 > [!CAUTION]
@@ -81,13 +95,8 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 **Ranked by leverage × risk:**
 
-#### 1. Deploy 1-Hour Crypto Markets (HIGH LEVERAGE — code complete, needs staging test)
-
-Code is done (see Mar 4 entry). Before deploying:
-- Push to `develop`, verify ingestion logs show "Fetching hourly crypto markets..."
-- Confirm hourly markets appear under Crypto category on trade page
-- Test trade > 1% of balance on hourly market → should be blocked
-- Test normal market trade → still allows 5%
+#### 1. Monitor Canary (LOW EFFORT — just check)
+Visit `/admin/canary` and confirm all 5 lights are GREEN. If any are YELLOW/RED, investigate immediately.
 
 #### 2. API Contract + Error Path Tests (MEDIUM LEVERAGE)
 ~60 remaining tests from the test gap fill plan: dashboard route, discount routes, auth edge cases, response shape contracts.
@@ -115,19 +124,4 @@ Shipped trade history `groupItemTitle` fix and funded dashboard layout reorder. 
 
 ---
 
-### Feb 26, 2026 — Security Fixes + Test Infrastructure
-
-- Auth fail-open fix on 3 financial paths (dashboard, trade, challenges)
-- DB error handling (503 + clean UI instead of raw 500s)
-- `isMultiOutcome` undefined fix
-- Test port conflict fix (hardcoded → dynamic)
-
----
-
-### Feb 24, 2026 — PROMOTION_PNL_MISMATCH Sentry Alert (FALSE POSITIVE ✅)
-
-Mat's challenge triggered the sanity gate during funded promotion. Timing window between `BalanceManager.credit()` and trade record query caused natural divergence for large single-trade PnL swings. Self-corrected on next evaluation cycle. No code fix needed.
-
----
-
-*(Entries prior to Feb 24 pruned per 7-day rolling window — see KI forensic audit history for archived entries)*
+*(Entries prior to Feb 27 pruned per 7-day rolling window — see KI forensic audit history for archived entries)*
