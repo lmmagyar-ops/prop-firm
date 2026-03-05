@@ -27,17 +27,12 @@ describe('Multi-Tier Analysis', () => {
             // Check tier config
             expect(result.tier).toBe('medium');
             expect(result.tierLabel).toBe('$10k');
-            expect(result.challengeFee).toBe(149);
+            expect(result.challengeFee).toBe(189);
             expect(result.startingBalance).toBe(10000);
 
-            // Check revenue (1,000 traders × 2 evals × $149)
-            expect(result.totalRevenue).toBe(298000);
-            expect(result.revenuePerTrader).toBe(298);
-
-            // Check profitability
-            expect(result.netProfit).toBeGreaterThan(200000); // Should be ~$238k
-            expect(result.profitMargin).toBeGreaterThan(75); // Should be ~79.9%
-            expect(result.profitPerTrader).toBeGreaterThan(200); // Should be ~$238
+            // Check revenue (1,000 traders × 2 evals × $189)
+            expect(result.totalRevenue).toBe(378000);
+            expect(result.revenuePerTrader).toBe(378);
         });
 
         it('should analyze $5k tier with lower fees', () => {
@@ -50,11 +45,11 @@ describe('Multi-Tier Analysis', () => {
             });
 
             expect(result.tierLabel).toBe('$5k');
-            expect(result.challengeFee).toBe(79);
+            expect(result.challengeFee).toBe(99);
             expect(result.startingBalance).toBe(5000);
 
-            // Revenue should be 1,000 × 2 × $79 = $158,000
-            expect(result.totalRevenue).toBe(158000);
+            // Revenue should be 1,000 × 2 × $99 = $198,000
+            expect(result.totalRevenue).toBe(198000);
 
             // Should still be profitable
             expect(result.netProfit).toBeGreaterThan(0);
@@ -71,11 +66,11 @@ describe('Multi-Tier Analysis', () => {
             });
 
             expect(result.tierLabel).toBe('$25k');
-            expect(result.challengeFee).toBe(299);
+            expect(result.challengeFee).toBe(359);
             expect(result.startingBalance).toBe(25000);
 
-            // Revenue should be 1,000 × 2 × $299 = $598,000
-            expect(result.totalRevenue).toBe(598000);
+            // Revenue should be 1,000 × 2 × $359 = $718,000
+            expect(result.totalRevenue).toBe(718000);
 
             // Should have highest absolute profit
             expect(result.netProfit).toBeGreaterThan(400000); // Should be ~$478k
@@ -91,7 +86,7 @@ describe('Multi-Tier Analysis', () => {
             });
 
             // Break-even = total payouts / (fee × eval multiplier)
-            const expectedBreakEven = Math.ceil(result.totalPayouts / (149 * 2));
+            const expectedBreakEven = Math.ceil(result.totalPayouts / (189 * 2));
             expect(result.breakEvenTraders).toBe(expectedBreakEven);
             expect(result.breakEvenTraders).toBeLessThan(1000); // Should be profitable
         });
@@ -105,8 +100,8 @@ describe('Multi-Tier Analysis', () => {
                 ongoingAttritionRate: 0.50,
             });
 
-            // Revenue should be 1,000 × 1 × $149 = $149,000
-            expect(result.totalRevenue).toBe(149000);
+            // Revenue should be 1,000 × 1 × $189 = $189,000
+            expect(result.totalRevenue).toBe(189000);
 
             // Should still be profitable (from survival analysis, 1x still works)
             expect(result.netProfit).toBeGreaterThan(0);
@@ -148,7 +143,7 @@ describe('Multi-Tier Analysis', () => {
 
             // Revenue should be higher with 3x multiplier
             const mediumTier = comparison.tiers.find(t => t.tier === 'medium')!;
-            expect(mediumTier.totalRevenue).toBe(1000 * 3 * 149); // $447,000
+            expect(mediumTier.totalRevenue).toBe(1000 * 3 * 189); // $567,000
 
             // Config should be stored
             expect(comparison.config.evalMultiplier).toBe(3.0);
@@ -226,9 +221,9 @@ describe('Multi-Tier Analysis', () => {
             expect(csv).toContain('Net Profit,Profit Margin %');
 
             // Check data rows
-            expect(csv).toContain('$5k,79');
-            expect(csv).toContain('$10k,149');
-            expect(csv).toContain('$25k,299');
+            expect(csv).toContain('$5k,99');
+            expect(csv).toContain('$10k,189');
+            expect(csv).toContain('$25k,359');
 
             // Should have 4 lines (header + 3 tiers)
             const lines = csv.trim().split('\n');

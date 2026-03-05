@@ -19,8 +19,8 @@ describe('Trade Flow Contracts', () => {
 
             expect(rules.startingBalance).toBe(5000);
             expect(rules.maxOpenPositions).toBe(10);
-            expect(rules.maxDailyDrawdownPercent).toBe(0.04);
-            expect(rules.maxTotalDrawdownPercent).toBe(0.08);
+            expect(rules.maxDailyDrawdownPercent).toBe(0.03);
+            expect(rules.maxTotalDrawdownPercent).toBe(0.06);
         });
 
         it('should have correct 10k tier trading limits', () => {
@@ -28,8 +28,8 @@ describe('Trade Flow Contracts', () => {
 
             expect(rules.startingBalance).toBe(10000);
             expect(rules.maxOpenPositions).toBe(15);
-            expect(rules.maxDailyDrawdownPercent).toBe(0.05);
-            expect(rules.maxTotalDrawdownPercent).toBe(0.10);
+            expect(rules.maxDailyDrawdownPercent).toBe(0.04);
+            expect(rules.maxTotalDrawdownPercent).toBe(0.08);
         });
 
         it('should have correct 25k tier trading limits', () => {
@@ -37,8 +37,8 @@ describe('Trade Flow Contracts', () => {
 
             expect(rules.startingBalance).toBe(25000);
             expect(rules.maxOpenPositions).toBe(20);
-            expect(rules.maxDailyDrawdownPercent).toBe(0.05);
-            expect(rules.maxTotalDrawdownPercent).toBe(0.10);
+            expect(rules.maxDailyDrawdownPercent).toBe(0.03);
+            expect(rules.maxTotalDrawdownPercent).toBe(0.06);
         });
     });
 
@@ -79,28 +79,28 @@ describe('Trade Flow Contracts', () => {
     describe('Risk Engine Contract', () => {
         it('should calculate correct daily loss floor', () => {
             const startOfDayBalance = 10000;
-            const maxDailyLossPercent = 0.05; // 5%
+            const maxDailyLossPercent = 0.04; // 4%
 
             const dailyLossFloor = startOfDayBalance * (1 - maxDailyLossPercent);
-            expect(dailyLossFloor).toBe(9500);
+            expect(dailyLossFloor).toBe(9600);
         });
 
         it('should calculate correct total drawdown floor (funded)', () => {
             const startingBalance = 10000;
-            const maxTotalDrawdownPercent = 0.10; // 10%
+            const maxTotalDrawdownPercent = 0.08; // 8%
 
             // Funded uses STATIC drawdown from starting balance
             const drawdownFloor = startingBalance * (1 - maxTotalDrawdownPercent);
-            expect(drawdownFloor).toBe(9000);
+            expect(drawdownFloor).toBe(9200);
         });
 
         it('should calculate correct trailing drawdown floor (evaluation)', () => {
             const highWaterMark = 11000; // Grew from 10k
-            const maxTotalDrawdownPercent = 0.10; // 10%
+            const maxTotalDrawdownPercent = 0.08; // 8%
 
             // Evaluation uses TRAILING drawdown from HWM
             const drawdownFloor = highWaterMark * (1 - maxTotalDrawdownPercent);
-            expect(drawdownFloor).toBe(9900);
+            expect(drawdownFloor).toBe(10120);
         });
     });
 

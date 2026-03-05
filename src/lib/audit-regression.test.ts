@@ -55,10 +55,10 @@ describe("REGRESSION: createChallengeAction rulesConfig", () => {
         const { buildRulesConfig } = await import("@/config/tiers");
         const rules = buildRulesConfig("10k");
 
-        expect(rules.maxDrawdown).toBe(1000);           // 10% of $10k = $1000
-        expect(rules.profitTarget).toBe(1000);           // 10% of $10k = $1000
-        expect(rules.maxTotalDrawdownPercent).toBe(0.10);
-        expect(rules.maxDailyDrawdownPercent).toBe(0.05);
+        expect(rules.maxDrawdown).toBe(800);           // 8% of $10k = $800
+        expect(rules.profitTarget).toBe(1200);           // 12% of $10k = $1200
+        expect(rules.maxTotalDrawdownPercent).toBe(0.08);
+        expect(rules.maxDailyDrawdownPercent).toBe(0.04);
         expect(rules.maxPositionSizePercent).toBe(0.05);
         expect(rules.maxCategoryExposurePercent).toBe(0.10);
         expect(rules.durationDays).toBe(60);

@@ -17,7 +17,7 @@ const faqCategories = [
             },
             {
                 q: "Do I risk my own money?",
-                a: "No. You pay a one-time evaluation fee ($79/$149/$299 depending on tier), but you never risk your own capital during trading. All positions are funded by us. Your only cost is the evaluation fee, which is refunded with your first payout if you pass."
+                a: "No. You pay a one-time evaluation fee ($99/$189/$359 depending on tier), but you never risk your own capital during trading. All positions are funded by us. Your only cost is the evaluation fee, which is refunded with your first payout if you pass."
             },
             {
                 q: "What if I lose?",
@@ -36,11 +36,11 @@ const faqCategories = [
         questions: [
             {
                 q: "Which tier should I choose?",
-                a: "Most traders start with the 10k Grinder tier ($149). It offers the best balance of capital size and cost. If you're completely new to prediction markets, start with the 5k Scout tier ($79). Experienced traders who want maximum capital choose the 25k Executive tier ($299)."
+                a: "Most traders start with the 10k Grinder tier ($189). It offers the best balance of capital size and cost. If you're completely new to prediction markets, start with the 5k Scout tier ($99). Experienced traders who want maximum capital choose the 25k Executive tier ($359)."
             },
             {
                 q: "Is the evaluation fee refundable?",
-                a: "Yes, IF you pass the evaluation. Your evaluation fee is fully refunded with your first payout. So if you pay $149 for the 10k tier and make $1,000 profit, you'll receive $800 (80% split) + $149 (fee refund) = $949 total. If you fail, the fee is non-refundable."
+                a: "Yes, IF you pass the evaluation. Your evaluation fee is fully refunded with your first payout. So if you pay $189 for the 10k tier and make $1,200 profit, you'll receive $960 (80% split) + $189 (fee refund) = $1,149 total. If you fail, the fee is non-refundable."
             },
             {
                 q: "Can I buy multiple evaluations?",
@@ -63,11 +63,11 @@ const faqCategories = [
             },
             {
                 q: "Is there a daily loss limit?",
-                a: "Yes. Scout (5k): 4% ($200), Grinder (10k): 5% ($500), Executive (25k): 5% ($1,250). Daily limits reset at midnight UTC."
+                a: "Yes. Scout (5k): 3% ($150), Grinder (10k): 4% ($400), Executive (25k): 3% ($750). Daily limits reset at midnight UTC."
             },
             {
                 q: "What is the max drawdown limit?",
-                a: "Scout (5k): 8% max drawdown. Grinder (10k): 10% max drawdown. Executive (25k): 10% max drawdown. The drawdown is \"trailing\" from your high-water mark."
+                a: "Scout (5k): 6% max drawdown. Grinder (10k): 8% max drawdown. Executive (25k): 6% max drawdown. The drawdown is \"trailing\" from your high-water mark."
             },
             {
                 q: "How long do I have to complete the evaluation?",
@@ -128,7 +128,7 @@ const faqCategories = [
         questions: [
             {
                 q: "How much does a challenge cost?",
-                a: "Scout (5k): $79, Grinder (10k): $149, Executive (25k): $299. Check pricing page for current promotions."
+                a: "Scout (5k): $99, Grinder (10k): $189, Executive (25k): $359. Check pricing page for current promotions."
             },
             {
                 q: "Are there monthly fees?",
@@ -279,7 +279,7 @@ export default function FAQPage() {
                     <div className="text-sm text-zinc-400">Profit Split</div>
                 </div>
                 <div className="bg-[#1A232E] border border-[#2E3A52] rounded-xl p-4 text-center">
-                    <div className="text-2xl font-bold text-green-400">$79-299</div>
+                    <div className="text-2xl font-bold text-green-400">$99-359</div>
                     <div className="text-sm text-zinc-400">Evaluation Fee</div>
                 </div>
                 <div className="bg-[#1A232E] border border-[#2E3A52] rounded-xl p-4 text-center">

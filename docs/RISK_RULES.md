@@ -18,8 +18,8 @@ The risk engine enforces 9 layers of protection to prevent traders from excessiv
 
 | Rule | Name | Limit | Formula | Status |
 |------|------|-------|---------|--------|
-| **1** | Max Total Drawdown | 8% | `equity < startBalance * 0.92` | ✅ Active |
-| **2** | Max Daily Drawdown | 4% | `equity < sodBalance * 0.96` | ✅ Active |
+| **1** | Max Total Drawdown | 6-8% | `equity < startBalance * (1 - maxDD)` | ✅ Active |
+| **2** | Max Daily Drawdown | 3-4% | `equity < sodBalance * (1 - dailyDD)` | ✅ Active |
 | **3** | Per-Event Exposure | 5% | `eventExposure + trade > startBalance * 0.05` | ✅ Active |
 | **4** | Per-Category Exposure | 10% | `catExposure + trade > startBalance * 0.10` | ✅ Active |
 | **5** | Volume-Tiered Limit | Tiered | See below | ✅ Active |
@@ -32,13 +32,19 @@ The risk engine enforces 9 layers of protection to prevent traders from excessiv
 
 ## Detailed Rules
 
-### RULE 1: Max Total Drawdown (8%)
+### RULE 1: Max Total Drawdown (6-8%)
 
 **Purpose**: Prevent catastrophic account loss.
 
+| Tier | Max DD | Floor |
+|------|--------|-------|
+| 5k Scout | 6% | $4,700 |
+| 10k Grinder | 8% | $9,200 |
+| 25k Executive | 6% | $23,500 |
+
 **Formula**: 
 ```
-equityFloor = startBalance * 0.92
+equityFloor = startBalance * (1 - maxTotalDrawdownPercent)
 if (currentEquity - estimatedLoss < equityFloor) → BLOCK
 ```
 
@@ -48,19 +54,25 @@ if (currentEquity - estimatedLoss < equityFloor) → BLOCK
 
 ---
 
-### RULE 2: Max Daily Drawdown (4%)
+### RULE 2: Max Daily Drawdown (3-4%)
 
 **Purpose**: Prevent single-day blowups.
 
+| Tier | Daily DD | Typical Floor |
+|------|----------|---------------|
+| 5k Scout | 3% | $4,850 |
+| 10k Grinder | 4% | $9,600 |
+| 25k Executive | 3% | $24,250 |
+
 **Formula**:
 ```
-dailyFloor = startOfDayBalance * 0.96
+dailyFloor = startOfDayEquity * (1 - maxDailyDrawdownPercent)
 if (currentEquity - estimatedLoss < dailyFloor) → BLOCK
 ```
 
 **Notes**:
 - Uses **equity** (cash + position value)
-- Floor resets at midnight UTC based on end-of-day balance
+- Floor resets at midnight UTC based on end-of-day equity
 
 ---
 

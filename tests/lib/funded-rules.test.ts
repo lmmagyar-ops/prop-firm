@@ -16,11 +16,11 @@ describe("FUNDED_RULES Configuration", () => {
             expect(tier.startingBalance).toBe(5000);
         });
 
-        it("has correct drawdown limits (4% daily, 8% total)", () => {
-            expect(tier.maxDailyDrawdownPercent).toBe(0.04);
-            expect(tier.maxTotalDrawdownPercent).toBe(0.08);
-            expect(tier.maxDailyDrawdown).toBe(200);   // 4% of $5000
-            expect(tier.maxTotalDrawdown).toBe(400);   // 8% of $5000
+        it("has correct drawdown limits (3% daily, 6% total)", () => {
+            expect(tier.maxDailyDrawdownPercent).toBe(0.03);
+            expect(tier.maxTotalDrawdownPercent).toBe(0.06);
+            expect(tier.maxDailyDrawdown).toBe(150);   // 3% of $5000
+            expect(tier.maxTotalDrawdown).toBe(300);   // 6% of $5000
         });
 
         it("has correct payout configuration", () => {
@@ -41,11 +41,11 @@ describe("FUNDED_RULES Configuration", () => {
             expect(tier.startingBalance).toBe(10000);
         });
 
-        it("has correct drawdown limits (5% daily, 10% total)", () => {
-            expect(tier.maxDailyDrawdownPercent).toBe(0.05);
-            expect(tier.maxTotalDrawdownPercent).toBe(0.10);
-            expect(tier.maxDailyDrawdown).toBe(500);   // 5% of $10000
-            expect(tier.maxTotalDrawdown).toBe(1000);  // 10% of $10000
+        it("has correct drawdown limits (4% daily, 8% total)", () => {
+            expect(tier.maxDailyDrawdownPercent).toBe(0.04);
+            expect(tier.maxTotalDrawdownPercent).toBe(0.08);
+            expect(tier.maxDailyDrawdown).toBe(400);   // 4% of $10000
+            expect(tier.maxTotalDrawdown).toBe(800);  // 8% of $10000
         });
 
         it("has correct payout configuration", () => {
@@ -66,11 +66,11 @@ describe("FUNDED_RULES Configuration", () => {
             expect(tier.startingBalance).toBe(25000);
         });
 
-        it("has correct drawdown limits (5% daily, 10% total)", () => {
-            expect(tier.maxDailyDrawdownPercent).toBe(0.05);
-            expect(tier.maxTotalDrawdownPercent).toBe(0.10);
-            expect(tier.maxDailyDrawdown).toBe(1250);  // 5% of $25000
-            expect(tier.maxTotalDrawdown).toBe(2500);  // 10% of $25000
+        it("has correct drawdown limits (3% daily, 6% total)", () => {
+            expect(tier.maxDailyDrawdownPercent).toBe(0.03);
+            expect(tier.maxTotalDrawdownPercent).toBe(0.06);
+            expect(tier.maxDailyDrawdown).toBe(750);  // 3% of $25000
+            expect(tier.maxTotalDrawdown).toBe(1500);  // 6% of $25000
         });
 
         it("has correct payout configuration", () => {

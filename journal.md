@@ -8,6 +8,61 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 > **New agent? Read this section before doing anything else.**
 > This is the single source of truth for what actually works. Do NOT trust individual journal entries — they reflect what the agent *believed*, not what the user confirmed.
 
+### Mar 5, 2026 (1:28 AM CT) — Tier Pricing & Risk Update (Mat's New Numbers)
+
+| Change | File(s) |
+|--------|---------|
+| **Prices** — $79→$99, $149→$189, $299→$359 | `plans.ts`, `tiers.ts`, `seed-rules.ts`, `LandingPage.tsx`, `LandingContent.tsx`, `BuyEvaluationButton.tsx`, `dashboard/page.tsx`, `faq/page.tsx` |
+| **Max DD** — 5k: 8%→6%, 10k: 10%→8%, 25k: 10%→6% | `tiers.ts`, `funded-rules.ts`, `challenges.ts`, `account-tiers.ts`, `simulation/config.ts` |
+| **Daily DD** — 5k: 4%→3%, 10k: 5%→4%, 25k: 5%→3% | Same config files |
+| **Profit Targets** — 10k: 10%→12% ($1,200), 25k: 12%→10% ($2,500) | Same config files |
+| **Docs** — `CLAUDE.md` pricing table, `RISK_RULES.md` Rules 1&2 now tier-dependent | `CLAUDE.md`, `docs/RISK_RULES.md` |
+| **Tests** — Updated 7 test files (22 total files touched) | `trade-flow.test.ts`, `funded-rules.test.ts`, `audit-regression.test.ts`, `evaluator-integration.test.ts`, `evaluator.test.ts`, `multi-tier-analysis.test.ts`, `api-routes-webhook.test.ts` |
+
+**Root cause:** Mat wants higher prices to fund 30% affiliate/discount program (15% discount + 15% rev share).
+**Grandfathering:** Existing challenges use snapshotted `rulesConfig` — unaffected.
+**Verification:** tsc clean ✅, 85/85 test files ✅, 1,299/1,299 tests ✅
+
+### 🔜 Tomorrow Morning — Prioritized by Leverage × Risk
+
+> [!IMPORTANT]
+> **Nothing has been pushed yet.** All changes are local only. Follow `/deploy` workflow when ready.
+
+1. **🟥 Browser Smoke Test (HIGH — blocks push)**
+   - Kill any stale `next dev` process (`lsof -ti:3000 | xargs kill`), then `npm run dev`
+   - Verify on localhost:
+     - Landing page (`/`) — 3 pricing cards show $99 / $189 / $359
+     - FAQ page (`/dashboard/faq`) — no stale $79/$149/$299 references
+     - Buy Evaluation flow (`/buy-evaluation`) — correct prices in Confirmo checkout
+   - Use browser subagent against **staging** URL after push to `develop` for final visual proof
+
+2. **🟧 Push to `develop` (MEDIUM — after smoke test passes)**
+   - `git add -A && git commit -m "feat: update tier pricing and risk params (Mat's new numbers)"` 
+   - `git push origin develop` (counts as push 1/2 for the day)
+   - Verify staging deployment at `https://prop-firmx-git-develop-oversightresearch-4292s-projects.vercel.app`
+   - Browser smoke test on staging URL (browser agent CAN reach this)
+
+3. **🟨 Merge to `main` (LOWER — after Mat confirms staging looks good)**
+   - Get Mat's visual confirmation on staging
+   - Merge `develop` → `main` (push 2/2)
+   - Verify production at `https://prop-firmx.vercel.app`
+
+4. **🟩 Seed DB rules if needed (LOW)**
+   - `seed-rules.ts` was updated but the DB isn't auto-seeded — new challenges will pick up the canonical config from `tiers.ts` / `buildRulesConfig()`, so seeding is only needed if admin manually queries `businessRules` table
+   - Run `npx tsx src/db/seed-rules.ts` if needed after deploy
+
+### ⚠️ What the Next Agent Must Know
+
+- **22 files were changed** — all local, no commits yet. Run `git diff --stat` to see full list.
+- **All 85 test files pass** (1,299 tests). Run `npx vitest run` to re-verify.
+- **`tsc --noEmit` is clean** — no type errors.
+- **The dev server was left running on port 3000** — user is restarting laptop to clear it. Start fresh with `npm run dev`.
+- **Browser agent CANNOT reach localhost** — use staging URL for browser verification per `.agents/skills/browser-agent/SKILL.md`.
+- **Deployment rules**: Max 2 pushes/day (`develop` then `main`). Never push just to "see if it looks right" — verify locally first.
+- **Confirmo webhook test** (`api-routes-webhook.test.ts`) requires a real DB connection — it uses the test DB, not mocks. If it fails on a fresh machine, ensure `.env.local` has `DATABASE_URL` set.
+
+---
+
 ### Mar 4, 2026 (5:30 PM CT) — Production Canary + E2E Breach Test ✅
 
 | Change | File |

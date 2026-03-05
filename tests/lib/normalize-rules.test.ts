@@ -102,14 +102,14 @@ describe("normalizeRulesConfig", () => {
 
     it("should use defaults when rules is null", () => {
         const result = normalizeRulesConfig(null, 10000);
-        // Default: 8% drawdown, 10% profit target
-        expect(result.maxDrawdown).toBe(800);
+        // Default: 6% drawdown (most conservative), 10% profit target
+        expect(result.maxDrawdown).toBe(600);
         expect(result.profitTarget).toBe(1000);
     });
 
     it("should use defaults when rules is undefined", () => {
         const result = normalizeRulesConfig(undefined, 10000);
-        expect(result.maxDrawdown).toBe(800);
+        expect(result.maxDrawdown).toBe(600);
         expect(result.profitTarget).toBe(1000);
     });
 
@@ -118,13 +118,13 @@ describe("normalizeRulesConfig", () => {
             { maxDrawdown: 0, profitTarget: 0 },
             10000
         );
-        expect(result.maxDrawdown).toBe(800);
+        expect(result.maxDrawdown).toBe(600);
         expect(result.profitTarget).toBe(1000);
     });
 
     it("should use defaults when values are missing from rules", () => {
         const result = normalizeRulesConfig({}, 5000);
-        expect(result.maxDrawdown).toBe(400);   // 5000 * 0.08
+        expect(result.maxDrawdown).toBe(300);   // 5000 * 0.06
         expect(result.profitTarget).toBe(500);   // 5000 * 0.10
     });
 

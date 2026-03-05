@@ -29,11 +29,11 @@ export interface TraderArchetype {
  * Current firm configuration (ACTUAL production values - $10k account tier)
  */
 export const FIRM_CONFIG: FirmConfig = {
-    challengeFee: 149,               // $10k account tier price
+    challengeFee: 189,               // $10k account tier price
     startingBalance: 10000,
-    maxDrawdownPercent: 0.10,        // 10% max drawdown (STATIC)
-    dailyLossLimitPercent: 0.05,     // 5% daily loss limit
-    profitTargetPercent: 0.10,       // 10% profit target
+    maxDrawdownPercent: 0.08,        // 8% max drawdown (STATIC)
+    dailyLossLimitPercent: 0.04,     // 4% daily loss limit
+    profitTargetPercent: 0.12,       // 12% profit target
     payoutSplit: 0.80,               // 80% to trader, 20% to firm
     payoutCap: 2.0,                  // 2x starting balance max payout
     minTradingDays: 5,               // Minimum days to trade

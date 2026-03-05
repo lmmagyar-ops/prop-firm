@@ -19,7 +19,7 @@ export function OnboardingSequence({ challenge }: OnboardingProps) {
     const router = useRouter();
     const [step, setStep] = useState(0); // 0=Logs, 1=Vault, 2=Brief
 
-    const { startingBalance, profitTarget, maxDrawdown } = challenge || { startingBalance: 10000, profitTarget: 500, maxDrawdown: 1000 };
+    const { startingBalance, profitTarget, maxDrawdown } = challenge || { startingBalance: 10000, profitTarget: 1200, maxDrawdown: 800 };
 
     // Sequence Timing
     useEffect(() => {

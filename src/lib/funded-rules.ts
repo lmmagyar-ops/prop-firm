@@ -12,10 +12,10 @@ export const FUNDED_RULES = {
         startingBalance: 5000,
 
         // Drawdown Rules (Static)
-        maxDailyDrawdownPercent: 0.04,   // 4% = $200
-        maxTotalDrawdownPercent: 0.08,    // 8% = $400 (static from initial balance)
-        maxDailyDrawdown: 200,            // Absolute value
-        maxTotalDrawdown: 400,            // Absolute value
+        maxDailyDrawdownPercent: 0.03,   // 3% = $150
+        maxTotalDrawdownPercent: 0.06,    // 6% = $300 (static from initial balance)
+        maxDailyDrawdown: 150,            // Absolute value
+        maxTotalDrawdown: 300,            // Absolute value
 
         // Position Limits
         maxOpenPositions: 10,
@@ -45,10 +45,10 @@ export const FUNDED_RULES = {
         startingBalance: 10000,
 
         // Drawdown Rules (Static)
-        maxDailyDrawdownPercent: 0.05,   // 5% = $500
-        maxTotalDrawdownPercent: 0.10,    // 10% = $1000 (static from initial balance)
-        maxDailyDrawdown: 500,
-        maxTotalDrawdown: 1000,
+        maxDailyDrawdownPercent: 0.04,   // 4% = $400
+        maxTotalDrawdownPercent: 0.08,    // 8% = $800 (static from initial balance)
+        maxDailyDrawdown: 400,
+        maxTotalDrawdown: 800,
 
         // Position Limits
         maxOpenPositions: 15,
@@ -78,10 +78,10 @@ export const FUNDED_RULES = {
         startingBalance: 25000,
 
         // Drawdown Rules (Static)
-        maxDailyDrawdownPercent: 0.05,   // 5% = $1250
-        maxTotalDrawdownPercent: 0.10,    // 10% = $2500 (static from initial balance)
-        maxDailyDrawdown: 1250,
-        maxTotalDrawdown: 2500,
+        maxDailyDrawdownPercent: 0.03,   // 3% = $750
+        maxTotalDrawdownPercent: 0.06,    // 6% = $1500 (static from initial balance)
+        maxDailyDrawdown: 750,
+        maxTotalDrawdown: 1500,
 
         // Position Limits
         maxOpenPositions: 20,

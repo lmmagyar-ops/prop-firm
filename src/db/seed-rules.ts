@@ -4,32 +4,32 @@ import { businessRules } from "./schema";
 
 const DEFAULT_RULES = {
     "5k": {
-        challenge_fees: 79,
+        challenge_fees: 99,
         profit_target_percent: 0.10,      // 10%
         duration_days: 60,                // 60 days
-        max_drawdown_percent: 0.08,       // 8% Static
-        daily_loss_percent: 0.04,         // 4% Daily
+        max_drawdown_percent: 0.06,       // 6% Static
+        daily_loss_percent: 0.03,         // 3% Daily
         min_trades: 5,
         profit_split: 0.80, // Base
         payout_frequency: "Bi-weekly"
     },
     "10k": {
-        challenge_fees: 149,
-        profit_target_percent: 0.10,      // 10%
+        challenge_fees: 189,
+        profit_target_percent: 0.12,      // 12%
         duration_days: 60,                // 60 days
-        max_drawdown_percent: 0.10,       // 10% Static
-        daily_loss_percent: 0.05,         // 5% Daily
+        max_drawdown_percent: 0.08,       // 8% Static
+        daily_loss_percent: 0.04,         // 4% Daily
         min_trades: 5,
         profit_split: 0.80,
         payout_frequency: "Bi-weekly"
     },
     // Same ratios for larger accounts
     "25k": {
-        challenge_fees: 299,
-        profit_target_percent: 0.12,      // 12% Target for 25k plan
+        challenge_fees: 359,
+        profit_target_percent: 0.10,      // 10% Target for 25k plan
         duration_days: 60,
-        max_drawdown_percent: 0.10,       // 10% Static
-        daily_loss_percent: 0.05,         // 5% Daily
+        max_drawdown_percent: 0.06,       // 6% Static
+        daily_loss_percent: 0.03,         // 3% Daily
         min_trades: 5,
         profit_split: 0.80,
         payout_frequency: "Bi-weekly"

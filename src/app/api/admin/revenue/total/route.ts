@@ -11,7 +11,7 @@ const logger = createLogger("Total");
  * Returns total revenue from completed challenge purchases
  * 
  * Revenue is calculated from the startingBalance field of challenges,
- * which represents the tier price paid (5k->$79, 10k->$149, 25k->$299)
+ * which represents the tier price paid (5k->$99, 10k->$189, 25k->$359)
  */
 export async function GET() {
     // SECURITY: Verify admin access

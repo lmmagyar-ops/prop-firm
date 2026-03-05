@@ -6,7 +6,7 @@
 No. We are the world's first prediction market-based prop firm. We provide capital for traders to trade on Polymarket and Kalshi. You keep 80-90% of profits (depending on if you buy the profit split upgrade). It's a legitimate business model used by hundreds of prop firms in forex/futures - we're just the first to do it for prediction markets.
 
 ### Do I risk my own money?
-No. You pay a one-time evaluation fee ($79/$149/$299 depending on tier), but you never risk your own capital during trading. All positions are funded by us. Your only cost is the evaluation fee, which is refunded with your first payout if you pass.
+No. You pay a one-time evaluation fee ($99/$189/$359 depending on tier), but you never risk your own capital during trading. All positions are funded by us. Your only cost is the evaluation fee, which is refunded with your first payout if you pass.
 
 ### What if I lose?
 Your evaluation ends when you hit the drawdown limit. The challenge fee is non-refundable if you fail. You can purchase a new evaluation when you're ready. Many of our successful traders failed 2-3 times before getting funded - it's part of the learning process.
@@ -19,10 +19,10 @@ We make money from the profit split when you succeed (20% base, or 10% if you bo
 ## Pricing & Tiers
 
 ### Which tier should I choose?
-**Most traders start with the 10k Grinder tier ($149)**. It offers the best balance of capital size and cost. If you're completely new to prediction markets, start with the 5k Scout tier ($79). Experienced traders who want maximum capital choose the 25k Executive tier ($299).
+**Most traders start with the 10k Grinder tier ($189)**. It offers the best balance of capital size and cost. If you're completely new to prediction markets, start with the 5k Scout tier ($99). Experienced traders who want maximum capital choose the 25k Executive tier ($359).
 
 ### Is the evaluation fee refundable?
-Yes, IF you pass the evaluation and request a funded account. Your evaluation fee is fully refunded with your first payout. So if you pay $149 for the 10k tier and make $1,000 profit, you'll receive $800 (80% split) + $149 (fee refund) = $949 total. If you fail the challenge, the fee is non-refundable.
+Yes, IF you pass the evaluation and request a funded account. Your evaluation fee is fully refunded with your first payout. So if you pay $189 for the 10k tier and make $1,200 profit, you'll receive $960 (80% split) + $189 (fee refund) = $1,149 total. If you fail the challenge, the fee is non-refundable.
 
 ### Can I buy multiple evaluations?
 Yes. You can run multiple evaluations simultaneously. Many traders run 2-3 accounts at once to diversify across different markets and strategies.
@@ -42,9 +42,9 @@ No. All positions are 1:1 (no leverage). This is a platform limitation on Polyma
 
 ### Is there a daily loss limit?
 Yes. You cannot lose more than your tier's daily loss limit in a single trading day:
-- Scout (5k): 4% daily loss limit ($200)
-- Grinder (10k): 5% daily loss limit ($500)
-- Executive (25k): 5% daily loss limit ($1,250)
+- Scout (5k): 3% daily loss limit ($150)
+- Grinder (10k): 4% daily loss limit ($400)
+- Executive (25k): 3% daily loss limit ($750)
 
 Daily limits reset at midnight UTC. This prevents revenge trading.
 
@@ -59,9 +59,9 @@ Your account ends immediately and the evaluation is over. The challenge fee is n
 
 ### What is the max drawdown limit?
 It varies by tier:
-- Scout (5k): 8% max drawdown
-- Grinder (10k): 10% max drawdown  
-- Executive (25k): 10% max drawdown
+- Scout (5k): 6% max drawdown
+- Grinder (10k): 8% max drawdown  
+- Executive (25k): 6% max drawdown
 
 The drawdown is "trailing" - it's calculated from your account's highest point (high-water mark), not your starting balance.
 
@@ -97,7 +97,7 @@ Network fees apply for crypto payouts (standard blockchain transaction costs). P
 
 ### How is this different from other prop firms?
 1. **Markets**: We're the only firm offering prediction markets (Polymarket/Kalshi). Others only do futures/forex.
-2. **Fair Loss Limits**: We have daily loss limits (4-5%) and trailing drawdowns (8-10%).
+2. **Fair Loss Limits**: We have daily loss limits (3-4%) and trailing drawdowns (6-8%).
 3. **Instant Funding**: No "consistency phase" - pass and get funded immediately.
 4. **Competitive Split**: 80% base profit share (90% upgrade available) vs 70-80% at most firms.
 
@@ -109,9 +109,9 @@ Prediction markets are less correlated to traditional markets, offer unique alph
 ## Fees & Costs
 
 ### How much does a challenge cost?
-- Scout (5k): $79
-- Grinder (10k): $149  
-- Executive (25k): $299
+- Scout (5k): $99
+- Grinder (10k): $189  
+- Executive (25k): $359
 
 Check the pricing page for current promotions.
 

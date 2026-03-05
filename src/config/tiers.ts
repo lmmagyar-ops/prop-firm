@@ -47,16 +47,16 @@ export interface TierConfig {
 /**
  * Tier definitions — values match plans.ts (the user-facing display)
  * 
- * $5k:  4% daily / 8% max DD / 10% profit target ($500)
- * $10k: 5% daily / 10% max DD / 10% profit target ($1,000)
- * $25k: 5% daily / 10% max DD / 12% profit target ($3,000)
+ * $5k:  3% daily / 6% max DD / 10% profit target ($500)
+ * $10k: 4% daily / 8% max DD / 12% profit target ($1,200)
+ * $25k: 3% daily / 6% max DD / 10% profit target ($2,500)
  */
 export const TIERS: Record<string, TierConfig> = {
     "5k": {
         id: "5k",
         startingBalance: 5000,
-        maxDailyDrawdownPercent: 0.04,    // 4% = $200
-        maxTotalDrawdownPercent: 0.08,    // 8% = $400
+        maxDailyDrawdownPercent: 0.03,    // 3% = $150
+        maxTotalDrawdownPercent: 0.06,    // 6% = $300
         profitTargetPercent: 0.10,        // 10% = $500
         maxPositionSizePercent: 0.05,
         maxCategoryExposurePercent: 0.10,
@@ -74,9 +74,9 @@ export const TIERS: Record<string, TierConfig> = {
     "10k": {
         id: "10k",
         startingBalance: 10000,
-        maxDailyDrawdownPercent: 0.05,    // 5% = $500
-        maxTotalDrawdownPercent: 0.10,    // 10% = $1,000
-        profitTargetPercent: 0.10,        // 10% = $1,000
+        maxDailyDrawdownPercent: 0.04,    // 4% = $400
+        maxTotalDrawdownPercent: 0.08,    // 8% = $800
+        profitTargetPercent: 0.12,        // 12% = $1,200
         maxPositionSizePercent: 0.05,
         maxCategoryExposurePercent: 0.10,
         lowVolumeThreshold: 10_000_000,
@@ -93,9 +93,9 @@ export const TIERS: Record<string, TierConfig> = {
     "25k": {
         id: "25k",
         startingBalance: 25000,
-        maxDailyDrawdownPercent: 0.05,    // 5% = $1,250
-        maxTotalDrawdownPercent: 0.10,    // 10% = $2,500
-        profitTargetPercent: 0.12,        // 12% = $3,000
+        maxDailyDrawdownPercent: 0.03,    // 3% = $750
+        maxTotalDrawdownPercent: 0.06,    // 6% = $1,500
+        profitTargetPercent: 0.10,        // 10% = $2,500
         maxPositionSizePercent: 0.05,
         maxCategoryExposurePercent: 0.10,
         lowVolumeThreshold: 10_000_000,
