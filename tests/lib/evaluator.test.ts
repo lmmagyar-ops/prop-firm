@@ -411,21 +411,21 @@ describe("ChallengeEvaluator - Funded Phase Static Drawdown", () => {
     });
 
     it("should use STATIC drawdown from initial balance (not HWM) for funded accounts", async () => {
-        // Funded with $10k initial, current balance = $9200
+        // Funded with $10k initial, current balance = $9201
         // HWM = $11000 (profit was made, then lost)
-        // Static drawdown = $10000 - $9200 = $800 (under $1000 limit)
-        // If it used HWM trailing: $11000 - $9200 = $1800 (would fail)
+        // Static drawdown = $10000 - $9201 = $799 (under $800 limit)
+        // If it used HWM trailing: $11000 - $9201 = $1799 (would fail)
         const fundedChallenge = {
             id: "funded-1",
             status: "active",
             phase: "funded",              // FUNDED phase
-            currentBalance: "9200",       // $800 below starting
+            currentBalance: "9201",       // $799 below starting
             startingBalance: "10000",
             highWaterMark: "11000",       // Was at $11k profit before dropping
             startOfDayBalance: "9500",
             rulesConfig: {
-                maxDrawdown: 1000,        // $1000 max drawdown from INITIAL
-                maxDailyDrawdownPercent: 0.05
+                maxDrawdown: 800,        // $800 max drawdown from INITIAL (8%)
+                maxDailyDrawdownPercent: 0.04
             },
             pendingFailureAt: null,
             endsAt: null,
@@ -452,7 +452,7 @@ describe("ChallengeEvaluator - Funded Phase Static Drawdown", () => {
             startOfDayBalance: "9000",
             rulesConfig: {
                 maxDrawdown: 1000,        // Only $1000 allowed
-                maxDailyDrawdownPercent: 0.05
+                maxDailyDrawdownPercent: 0.04
             },
             pendingFailureAt: null,
             endsAt: null,
@@ -481,7 +481,7 @@ describe("ChallengeEvaluator - Funded Phase Static Drawdown", () => {
             rulesConfig: {
                 profitTarget: 1000,       // Would "pass" if this were checked
                 maxDrawdown: 1000,
-                maxDailyDrawdownPercent: 0.05
+                maxDailyDrawdownPercent: 0.04
             },
             pendingFailureAt: null,
             endsAt: null,
@@ -508,7 +508,7 @@ describe("ChallengeEvaluator - Funded Phase Static Drawdown", () => {
             startOfDayBalance: "10000",   // 6% daily loss (over 5%)
             rulesConfig: {
                 maxDrawdown: 1000,
-                maxDailyDrawdownPercent: 0.05  // 5% daily limit = $500
+                maxDailyDrawdownPercent: 0.04  // 4% daily limit = $400
             },
             pendingFailureAt: null,
             endsAt: null,
@@ -638,7 +638,7 @@ describe("ChallengeEvaluator - Edge Cases", () => {
             startOfDayBalance: "9500",
             rulesConfig: {
                 maxDrawdown: 1000,        // Exactly at limit
-                maxDailyDrawdownPercent: 0.05
+                maxDailyDrawdownPercent: 0.04
             },
             pendingFailureAt: null,
             endsAt: null,
@@ -664,7 +664,7 @@ describe("ChallengeEvaluator - Edge Cases", () => {
             startOfDayBalance: "9500",
             rulesConfig: {
                 maxDrawdown: 1000,
-                maxDailyDrawdownPercent: 0.05
+                maxDailyDrawdownPercent: 0.04
             },
             pendingFailureAt: null,
             endsAt: null,
@@ -683,13 +683,13 @@ describe("ChallengeEvaluator - Edge Cases", () => {
             id: "under-limit",
             status: "active",
             phase: "funded",
-            currentBalance: "9001",       // $999 drawdown = UNDER $1000 limit
+            currentBalance: "9201",       // $799 drawdown = UNDER $800 limit
             startingBalance: "10000",
             highWaterMark: "10000",
-            startOfDayBalance: "9001",    // Same as current — no daily loss
+            startOfDayBalance: "9201",    // Same as current — no daily loss
             rulesConfig: {
-                maxDrawdown: 1000,
-                maxDailyDrawdownPercent: 0.05
+                maxDrawdown: 800,
+                maxDailyDrawdownPercent: 0.04
             },
             pendingFailureAt: null,
             endsAt: null,
@@ -700,7 +700,7 @@ describe("ChallengeEvaluator - Edge Cases", () => {
 
         const result = await ChallengeEvaluator.evaluate("under-limit");
 
-        // $999 drawdown < $1000 limit → MUST survive
+        // $799 drawdown < $800 limit → MUST survive
         expect(result.status).toBe("active");
     });
 

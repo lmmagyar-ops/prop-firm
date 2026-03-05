@@ -16,7 +16,7 @@
 ## Test 1: Buy an Evaluation
 
 1. Go to the **Buy Evaluation** page (sidebar → "Buy Evaluation")
-2. Pick the **Scout ($5K)** tier — it's the cheapest at $79
+2. Pick the **Scout ($5K)** tier — it's the cheapest at $99
 3. Complete the checkout
 4. After purchase, you should land on the **Dashboard**
 5. ✅ **Check:** Dashboard shows your balance as **$5,000.00**
@@ -124,10 +124,10 @@ Drop these in the Google Doc or text Les directly.
 | **Balance** | Your cash (money not in positions) |
 | **Equity** | Balance + value of all open positions |
 | **Drawdown** | How much you've lost from your starting balance |
-| **Max Drawdown** | The most you're allowed to lose (8% = $400 on $5K) |
-| **Daily Drawdown** | Max loss allowed in a single day (4-5%) |
+| **Max Drawdown** | The most you're allowed to lose (6% = $300 on $5K) |
+| **Daily Drawdown** | Max loss allowed in a single day (3-4%) |
 | **Profit Target** | How much profit you need to pass (10% = $500 on $5K) |
 
 ---
 
-*Last updated: Feb 9, 2026*
+*Last updated: Mar 5, 2026*

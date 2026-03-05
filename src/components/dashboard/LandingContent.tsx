@@ -393,8 +393,8 @@ export function LandingContent() {
                         </div>
 
                         <div className="mt-6 pt-6 border-t border-[var(--vapi-border)]">
-                            <div className="text-3xl font-normal text-white mb-4">$79</div>
-                            <Link href="/signup?intent=buy_evaluation&tier=scout&price=79" className="block">
+                            <div className="text-3xl font-normal text-white mb-4">$99</div>
+                            <Link href="/signup?intent=buy_evaluation&tier=scout&price=99" className="block">
                                 <button className="w-full py-4 rounded-full thin-border-card text-white font-bold group-hover:bg-white group-hover:text-black transition-all">
                                     Start Challenge
                                 </button>
@@ -415,15 +415,15 @@ export function LandingContent() {
                         <div className="flex-1 space-y-0 text-sm">
                             <div className="flex justify-between py-2.5 border-b border-[var(--vapi-border)]">
                                 <span className="text-[var(--vapi-gray-text)]">Profit Target</span>
-                                <span className="text-white font-mono">$1,000 <span className="text-[var(--vapi-mint)]">(10%)</span></span>
+                                <span className="text-white font-mono">$1,200 <span className="text-[var(--vapi-mint)]">(12%)</span></span>
                             </div>
                             <div className="flex justify-between py-2.5 border-b border-[var(--vapi-border)]">
                                 <span className="text-[var(--vapi-gray-text)]">Max Drawdown</span>
-                                <span className="text-white font-mono">10%</span>
+                                <span className="text-white font-mono">8%</span>
                             </div>
                             <div className="flex justify-between py-2.5 border-b border-[var(--vapi-border)]">
                                 <span className="text-[var(--vapi-gray-text)]">Daily Loss Limit</span>
-                                <span className="text-white font-mono">5%</span>
+                                <span className="text-white font-mono">4%</span>
                             </div>
                             <div className="flex justify-between py-2.5 border-b border-[var(--vapi-border)]">
                                 <span className="text-[var(--vapi-gray-text)]">Time Limit</span>
@@ -448,8 +448,8 @@ export function LandingContent() {
                         </div>
 
                         <div className="mt-6 pt-6 border-t border-[var(--vapi-border)]">
-                            <div className="text-3xl font-normal text-white mb-4">$149</div>
-                            <Link href="/signup?intent=buy_evaluation&tier=grinder&price=149" className="block">
+                            <div className="text-3xl font-normal text-white mb-4">$189</div>
+                            <Link href="/signup?intent=buy_evaluation&tier=grinder&price=189" className="block">
                                 <button className="pill-btn pill-btn-mint w-full py-4 flex items-center justify-center gap-2">
                                     Start Challenge <ArrowRight className="w-4 h-4" />
                                 </button>
@@ -470,11 +470,11 @@ export function LandingContent() {
                             </div>
                             <div className="flex justify-between py-2.5 border-b border-[var(--vapi-border)]">
                                 <span className="text-[var(--vapi-gray-text)]">Max Drawdown</span>
-                                <span className="text-white font-mono">10%</span>
+                                <span className="text-white font-mono">6%</span>
                             </div>
                             <div className="flex justify-between py-2.5 border-b border-[var(--vapi-border)]">
                                 <span className="text-[var(--vapi-gray-text)]">Daily Loss Limit</span>
-                                <span className="text-white font-mono">5%</span>
+                                <span className="text-white font-mono">3%</span>
                             </div>
                             <div className="flex justify-between py-2.5 border-b border-[var(--vapi-border)]">
                                 <span className="text-[var(--vapi-gray-text)]">Time Limit</span>
@@ -499,8 +499,8 @@ export function LandingContent() {
                         </div>
 
                         <div className="mt-6 pt-6 border-t border-[var(--vapi-border)]">
-                            <div className="text-3xl font-normal text-white mb-4">$299</div>
-                            <Link href="/signup?intent=buy_evaluation&tier=executive&price=299" className="block">
+                            <div className="text-3xl font-normal text-white mb-4">$359</div>
+                            <Link href="/signup?intent=buy_evaluation&tier=executive&price=359" className="block">
                                 <button className="w-full py-4 rounded-full thin-border-card text-white font-bold group-hover:bg-white group-hover:text-black transition-all">
                                     Start Challenge
                                 </button>

@@ -383,9 +383,9 @@ propshot-waitlist/          # Landing Page (Standalone Next.js)
 
 | Tier | Size | Price | Profit Target | Max Drawdown |
 |------|------|-------|---------------|--------------|
-| Scout | $5K | $79 | 10% ($500) | 8% |
-| Grinder | $10K | $149 | 10% ($1,000) | 10% |
-| Executive | $25K | $299 | 12% ($3,000) | 10% |
+| Scout | $5K | $99 | 10% ($500) | 6% |
+| Grinder | $10K | $189 | 12% ($1,200) | 8% |
+| Executive | $25K | $359 | 10% ($2,500) | 6% |
 
 ### Challenge Flow (1-Step Model)
 

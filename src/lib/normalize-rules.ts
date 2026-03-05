@@ -35,12 +35,14 @@ export function normalizeRulesConfig(
 ): NormalizedRules {
     const safeRules = rules || {};
 
-    // Read raw values, falling back to tier-appropriate defaults
-    let maxDrawdown = (safeRules.maxDrawdown as number) || startingBalance * 0.08;
+    // Read raw values, falling back to MOST CONSERVATIVE defaults (fail-closed).
+    // Uses tightest DD (6% — 5k/25k) and lowest profit target (10% — 5k/25k).
+    // This ensures corrupted/missing data triggers the strictest risk limits.
+    let maxDrawdown = (safeRules.maxDrawdown as number) || startingBalance * 0.06;
     let profitTarget = (safeRules.profitTarget as number) || startingBalance * 0.10;
 
     // GUARD: If stored as decimal percentage (< 1), convert to absolute dollars.
-    // A $5k account (smallest tier) has maxDrawdown = $400 at minimum.
+    // A $5k account (smallest tier) has maxDrawdown = $300 at minimum (6%).
     // Any value < 1 is clearly a percentage, not a dollar amount.
     if (maxDrawdown > 0 && maxDrawdown < 1) {
         logger.warn(

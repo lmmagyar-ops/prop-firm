@@ -107,9 +107,9 @@ function createMockChallenge(overrides: Partial<any> = {}) {
         pendingFailureAt: null,
         endsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
         rulesConfig: {
-            profitTarget: 1000,     // $1000 profit target
-            maxDrawdown: 1000,      // $1000 max drawdown (10%)
-            maxDailyDrawdownPercent: 0.05, // 5%
+            profitTarget: 1200,     // $1200 profit target
+            maxDrawdown: 800,      // $800 max drawdown (8%)
+            maxDailyDrawdownPercent: 0.04, // 4%
         },
         startedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 7 days ago
         ...overrides,
@@ -301,13 +301,13 @@ describe('ChallengeEvaluator - Profit Target & Pass', () => {
         const challenge = createMockChallenge({
             phase: 'challenge',
             startingBalance: '10000.00',
-            currentBalance: '11100.00', // $1,100 profit > $1,000 target
+            currentBalance: '11300.00', // $1,300 profit > $1,200 target
         });
 
         vi.mocked(db.query.challenges.findFirst).mockResolvedValue(challenge as any);
         vi.mocked(db.query.positions.findMany).mockResolvedValue([]);
         vi.mocked(db.query.trades.findMany).mockResolvedValue([
-            { type: 'SELL', realizedPnL: '1100.00' },
+            { type: 'SELL', realizedPnL: '1300.00' },
         ] as any);
 
         const result = await ChallengeEvaluator.evaluate('test-challenge-1');
@@ -320,20 +320,14 @@ describe('ChallengeEvaluator - Profit Target & Pass', () => {
         const challenge = createMockChallenge({
             phase: 'challenge',
             startingBalance: '10000.00',
-            currentBalance: '10500.00', // Only $500 realized
-            startOfDayBalance: '10500.00', // Avoid daily loss trigger
-            highWaterMark: '10500.00',
+            currentBalance: '10700.00', // Only $700 realized
+            startOfDayBalance: '10700.00', // Avoid daily loss trigger
+            highWaterMark: '10700.00',
         });
 
-        // Position with ~$600 unrealized gain (need enough to hit $11k)
-        // 100 shares at entry 0.50, current 0.56 = 100 * 0.56 = $56 value
-        // Equity = cash + position value = $10,500 + $56 = $10,556 (NOT profit)
-        // For profit target: we need equity >= starting + target = $10k + $1k = $11k
-        // So we need position value to add $500 more to $10,500
-        // 100 shares * price = $500 -> price = $5/share but shares are fractional contracts
-        // Actually the evaluator adds position VALUE, so we need 100 * price >= $500
-        // price = 5.0 is impossible (max is 1.0)
-        // Let's use more shares: 1000 shares @ 0.56 = $560 value
+        // Position with unrealized gain to push equity above $11,200 target
+        // 1000 shares @ current 0.56 = $560 position value
+        // Equity = cash + position value = $10,700 + $560 = $11,260 > $11,200 target
         const position = createMockPosition({
             shares: '1000',
             entryPrice: '0.50',
@@ -343,10 +337,10 @@ describe('ChallengeEvaluator - Profit Target & Pass', () => {
         vi.mocked(db.query.challenges.findFirst).mockResolvedValue(challenge as any);
         vi.mocked(db.query.positions.findMany).mockResolvedValue([position as any]);
         // Sanity gate: realized + unrealized must match equity profit.
-        // Unrealized = 1000 * (0.56 - 0.50) = $60. Equity profit = $1060.
-        // So realized trade PnL must be ~$1000.
+        // Unrealized = 1000 * (0.56 - 0.50) = $60. Equity profit = $1260.
+        // So realized trade PnL must be ~$1200.
         vi.mocked(db.query.trades.findMany).mockResolvedValue([
-            { type: 'SELL', realizedPnL: '1000.00' },
+            { type: 'SELL', realizedPnL: '1200.00' },
         ] as any);
         // Mock batch price fetch - returns Map of marketId -> price data
         vi.mocked(MarketService.getBatchOrderBookPrices).mockResolvedValue(
@@ -360,7 +354,7 @@ describe('ChallengeEvaluator - Profit Target & Pass', () => {
 
         const result = await ChallengeEvaluator.evaluate('test-challenge-1');
 
-        // Equity = $10,500 + $560 = $11,060 > $11,000 target
+        // Equity = $10,700 + $560 = $11,260 > $11,200 target
         expect(result.status).toBe('passed');
     });
 
@@ -391,8 +385,8 @@ describe('ChallengeEvaluator - Position Calculations', () => {
     it('should calculate NO position value correctly as (1 - yesPrice)', async () => {
         const challenge = createMockChallenge({
             startingBalance: '10000.00',
-            currentBalance: '9000.00',
-            startOfDayBalance: '9000.00', // Set SOD = current to avoid daily loss trigger
+            currentBalance: '9600.00',
+            startOfDayBalance: '9600.00', // Set SOD = current to avoid daily loss trigger
             highWaterMark: '10000.00',
         });
 
@@ -418,10 +412,10 @@ describe('ChallengeEvaluator - Position Calculations', () => {
 
         // NO position value: 100 shares * (1 - 0.30) = 100 * 0.70 = $70
         // Entry was at 100 * 0.50 = $50, so $20 profit
-        // Equity = $9,000 + $70 = $9,070
-        // Drawdown from HWM = $10,000 - $9,070 = $930 < $1,000
+        // Equity = $9,600 + $70 = $9,670
+        // Drawdown from HWM = $10,000 - $9,670 = $330 < $800
         expect(result.status).toBe('active');
-        expect(result.equity).toBeCloseTo(9070, 0);
+        expect(result.equity).toBeCloseTo(9670, 0);
     });
 
     it('should aggregate multiple positions correctly', async () => {
@@ -531,7 +525,7 @@ describe('ChallengeEvaluator - Tier-Specific Rules', () => {
         const challenge = createMockChallenge({
             phase: 'funded',
             startingBalance: '25000.00',
-            currentBalance: '23000.00', // $2000 down (under $2500 limit)
+            currentBalance: '24100.00', // $900 down (under $1500 limit)
         });
 
         vi.mocked(db.query.challenges.findFirst).mockResolvedValue(challenge as any);
@@ -539,7 +533,7 @@ describe('ChallengeEvaluator - Tier-Specific Rules', () => {
 
         const result = await ChallengeEvaluator.evaluate('test-challenge-1');
 
-        // 25k tier max drawdown = $2500, we're at $2000 down = ACTIVE
+        // 25k tier max drawdown = $1500, we're at $900 down = ACTIVE
         expect(result.status).toBe('active');
     });
 });

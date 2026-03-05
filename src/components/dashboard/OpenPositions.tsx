@@ -31,6 +31,7 @@ interface OpenPositionsProps {
         currentPrice: number;
         shares: number;
         unrealizedPnL: number;
+        groupItemTitle?: string | null;
     }>;
 }
 
@@ -155,6 +156,9 @@ export function OpenPositions({ positions: initialPositions }: OpenPositionsProp
                                                     <p>{pos.marketTitle}</p>
                                                 </TooltipContent>
                                             </Tooltip>
+                                            {pos.groupItemTitle && (
+                                                <span className="text-xs text-zinc-500 mt-0.5 block">↑ {pos.groupItemTitle}</span>
+                                            )}
                                         </TableCell>
 
                                         {/* Side */}

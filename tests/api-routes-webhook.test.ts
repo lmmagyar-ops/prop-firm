@@ -124,7 +124,7 @@ describe('API Routes: Confirmo Webhook', () => {
             id: makeInvoiceId(),
             status: 'paid',
             reference: `${fixture.userId}:10k:polymarket`,
-            amount: '149',
+            amount: '189',
         };
         const response = await webhookPost(makeWebhookRequest(body, 'invalid-signature') as any);
         expect(response.status).toBe(401);
@@ -135,7 +135,7 @@ describe('API Routes: Confirmo Webhook', () => {
             id: makeInvoiceId(),
             status: 'paid',
             reference: `${fixture.userId}:10k:polymarket`,
-            amount: '149', // 10k tier price
+            amount: '189', // 10k tier price
         };
         const bodyStr = JSON.stringify(body);
         const sig = sign(bodyStr);
@@ -166,7 +166,7 @@ describe('API Routes: Confirmo Webhook', () => {
         expect(log).toBeDefined();
         expect(log!.status).toBe('paid');
         expect(log!.challengeId).toBe(challenge!.id);
-        expect(parseFloat(log!.amountPaid)).toBe(149);
+        expect(parseFloat(log!.amountPaid)).toBe(189);
     });
 
     it('deduplicates webhook retries using invoice ID (not time window)', async () => {
@@ -177,7 +177,7 @@ describe('API Routes: Confirmo Webhook', () => {
             id: invoiceId,
             status: 'paid',
             reference: `${fixture.userId}:10k:polymarket`,
-            amount: '149',
+            amount: '189',
         };
         const bodyStr = JSON.stringify(body);
         const sig = sign(bodyStr);
@@ -214,7 +214,7 @@ describe('API Routes: Confirmo Webhook', () => {
             id: makeInvoiceId(),
             status: 'paid',
             reference: `${fixture.userId}:10k:polymarket`,
-            amount: '50', // Way below $149 tier price
+            amount: '50', // Way below $189 tier price
         };
         const bodyStr = JSON.stringify(body);
         const sig = sign(bodyStr);
@@ -229,13 +229,13 @@ describe('API Routes: Confirmo Webhook', () => {
     it('uses DB-derived discount amount, ignores inflated reference string value', async () => {
         // Reference claims discountAmount: 999 (attacker-supplied large value)
         // DB has value: 50 for TESTDISCOUNT50
-        // Effective expected price should be $149 - $50 = $99, NOT $149 - $999 = 0
+        // Effective expected price should be $189 - $50 = $139, NOT $189 - $999 = 0
         const body = {
             id: makeInvoiceId(),
             status: 'paid',
-            // discountAmount in ref is 999 (inflated), originalPrice is 149
-            reference: `${fixture.userId}:10k:polymarket:TESTDISCOUNT50:999:149`,
-            amount: '99', // $149 - $50 (DB value) = $99
+            // discountAmount in ref is 999 (inflated), originalPrice is 189
+            reference: `${fixture.userId}:10k:polymarket:TESTDISCOUNT50:999:189`,
+            amount: '139', // $189 - $50 (DB value) = $139
         };
         const bodyStr = JSON.stringify(body);
         const sig = sign(bodyStr);
@@ -269,8 +269,8 @@ describe('API Routes: Confirmo Webhook', () => {
         const body = {
             id: makeInvoiceId(),
             status: 'paid',
-            reference: `${fixture.userId}:10k:polymarket:TESTDISCOUNT50:50:149`,
-            amount: '99', // $149 - $50 discount = $99
+            reference: `${fixture.userId}:10k:polymarket:TESTDISCOUNT50:50:189`,
+            amount: '139', // $189 - $50 discount = $139
         };
         const bodyStr = JSON.stringify(body);
         const sig = sign(bodyStr);
@@ -305,7 +305,7 @@ describe('API Routes: Confirmo Webhook', () => {
             id: makeInvoiceId(),
             status: 'pending',
             reference: `${fixture.userId}:10k:polymarket`,
-            amount: '149',
+            amount: '189',
         };
         const bodyStr = JSON.stringify(body);
         const sig = sign(bodyStr);

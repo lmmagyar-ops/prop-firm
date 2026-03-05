@@ -8,6 +8,67 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 > **New agent? Read this section before doing anything else.**
 > This is the single source of truth for what actually works. Do NOT trust individual journal entries — they reflect what the agent *believed*, not what the user confirmed.
 
+### Mar 5, 2026 (12:40 PM CT) — Option Text Added to Portfolio ✅ + Tier Pricing on Staging ✅
+
+| Change | Status |
+|--------|--------|
+| **Tier pricing update** — 29 files, commit `214ea56` | ✅ Pushed to `develop`, staging verified |
+| **Option text in Portfolio** — `groupItemTitle` plumbed through 4 files | ✅ Implemented, tsc clean, 1,299 tests pass |
+| **normalize-rules.ts** — fallback tightened from 0.08→0.06 (fail-closed) | ✅ Included in commit |
+| **NOT yet on `main`** — waiting for final go-ahead to merge to production | ⏳ Pending |
+
+**Option text details:**
+- `positions/route.ts` — fetches `groupItemTitle` from event data (same pattern as `trades/history`)
+- `LivePositions.tsx` → `OpenPositions.tsx` → displays `↑ {groupItemTitle}` under market title
+- `PortfolioPanel.tsx` — displays `↑ {groupItemTitle}` under market title in position cards
+- Graceful degradation: null for binary markets, resolved markets, or worker-down
+- Variable shadowing fix: `allMarketData` vs inner `marketData` (for price map entry)
+
+### 🔜 Next Steps
+1. **Push option text changes to `develop`** (push 1/2 if not already pushed today)
+2. **Browser smoke test on staging** — verify `groupItemTitle` shows in Portfolio and OpenPositions
+3. **Merge `develop` → `main`** after visual confirmation (push 2/2)
+
+### 🔜 Tomorrow Morning — Prioritized by Leverage × Risk
+
+> [!IMPORTANT]
+> **Nothing has been pushed yet.** All changes are local only. Follow `/deploy` workflow when ready.
+
+1. **🟥 Browser Smoke Test (HIGH — blocks push)**
+   - Kill any stale `next dev` process (`lsof -ti:3000 | xargs kill`), then `npm run dev`
+   - Verify on localhost:
+     - Landing page (`/`) — 3 pricing cards show $99 / $189 / $359
+     - FAQ page (`/dashboard/faq`) — no stale $79/$149/$299 references
+     - Buy Evaluation flow (`/buy-evaluation`) — correct prices in Confirmo checkout
+   - Use browser subagent against **staging** URL after push to `develop` for final visual proof
+
+2. **🟧 Push to `develop` (MEDIUM — after smoke test passes)**
+   - `git add -A && git commit -m "feat: update tier pricing and risk params (Mat's new numbers)"` 
+   - `git push origin develop` (counts as push 1/2 for the day)
+   - Verify staging deployment at `https://prop-firmx-git-develop-oversightresearch-4292s-projects.vercel.app`
+   - Browser smoke test on staging URL (browser agent CAN reach this)
+
+3. **🟨 Merge to `main` (LOWER — after Mat confirms staging looks good)**
+   - Get Mat's visual confirmation on staging
+   - Merge `develop` → `main` (push 2/2)
+   - Verify production at `https://prop-firmx.vercel.app`
+
+4. **🟩 Seed DB rules if needed (LOW)**
+   - `seed-rules.ts` was updated but the DB isn't auto-seeded — new challenges will pick up the canonical config from `tiers.ts` / `buildRulesConfig()`, so seeding is only needed if admin manually queries `businessRules` table
+   - Run `npx tsx src/db/seed-rules.ts` if needed after deploy
+
+### ⚠️ What the Next Agent Must Know
+
+- **22 files were changed** — all local, no commits yet. Run `git diff --stat` to see full list.
+- **All 85 test files pass** (1,299 tests). Run `npx vitest run` to re-verify.
+- **`tsc --noEmit` is clean** — no type errors.
+- **The dev server was left running on port 3000** — user is restarting laptop to clear it. Start fresh with `npm run dev`.
+- **Browser agent CANNOT reach localhost** — use staging URL for browser verification per `.agents/skills/browser-agent/SKILL.md`.
+- **Deployment rules**: Max 2 pushes/day (`develop` then `main`). Never push just to "see if it looks right" — verify locally first.
+- **Confirmo webhook test** (`api-routes-webhook.test.ts`) requires a real DB connection — it uses the test DB, not mocks. If it fails on a fresh machine, ensure `.env.local` has `DATABASE_URL` set.
+
+---
+
 ### Mar 4, 2026 (5:30 PM CT) — Production Canary + E2E Breach Test ✅
 
 | Change | File |

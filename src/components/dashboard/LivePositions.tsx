@@ -12,6 +12,7 @@ interface Position {
     currentPrice: number;
     shares: number;
     unrealizedPnL: number;
+    groupItemTitle?: string | null;
 }
 
 interface LivePositionsProps {
@@ -63,6 +64,7 @@ export function LivePositions({ initialPositions }: LivePositionsProps) {
                 currentPrice: number;
                 shares: number;
                 unrealizedPnL: number;
+                groupItemTitle?: string | null;
             }) => ({
                 id: p.id,
                 marketId: p.marketId,
@@ -72,6 +74,7 @@ export function LivePositions({ initialPositions }: LivePositionsProps) {
                 currentPrice: p.currentPrice,
                 shares: p.shares,
                 unrealizedPnL: p.unrealizedPnL,
+                groupItemTitle: p.groupItemTitle,
             }));
 
             setPositions(mapped);

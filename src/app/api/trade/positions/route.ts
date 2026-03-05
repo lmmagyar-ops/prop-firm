@@ -4,6 +4,7 @@ import { challenges, positions } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { MarketService } from "@/lib/market";
+import { getAllMarketData } from "@/lib/worker-client";
 import { createLogger } from "@/lib/logger";
 import { calculatePositionMetrics } from "@/lib/position-utils";
 import { isValidMarketPrice } from "@/lib/price-validation";
@@ -53,6 +54,20 @@ export async function GET() {
         // (Redis event lists + DB fallback for resolved markets)
         const titleMap = await MarketService.getBatchTitles(marketIds);
 
+        // Build groupItemTitle map from event data (display-only, same pattern as trades/history)
+        // Uses getCachedMarketData() internally — no redundant fetch.
+        // Returns null for binary markets, resolved markets, or worker-down scenarios.
+        const allMarketData = await getAllMarketData();
+        const events = allMarketData?.events ? (allMarketData.events as { markets?: { id: string; groupItemTitle?: string }[] }[]) : [];
+        const groupItemTitles: Record<string, string> = {};
+        for (const event of events) {
+            for (const market of event.markets || []) {
+                if (market.groupItemTitle) {
+                    groupItemTitles[market.id] = market.groupItemTitle;
+                }
+            }
+        }
+
         // Map positions with pre-fetched prices and titles
         const mapped = openPositions.map((pos) => {
             const entry = parseFloat(pos.entryPrice);
@@ -93,6 +108,7 @@ export async function GET() {
                 avgPrice: entry,
                 currentPrice: effectiveCurrentPrice,
                 unrealizedPnL,
+                groupItemTitle: groupItemTitles[pos.marketId] || null,
                 priceSource: marketData?.source || 'stored'
             };
         });

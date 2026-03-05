@@ -3,32 +3,32 @@
 ## Evaluation Tiers
 
 ### Scout (5k Account)
-- **Cost**: $79 one-time fee
+- **Cost**: $99 one-time fee
 - **Starting Capital**: $5,000
 - **Profit Target**: $500 (10%)
-- **Max Drawdown**: 8%
-- **Daily Loss Limit**: 4%
+- **Max Drawdown**: 6%
+- **Daily Loss Limit**: 3%
 - **Minimum Trading Days**: 5 days
 - **Profit Split**: 80% to trader (90% upgrade available)
 - **Best For**: Learning market mechanics with minimal risk
 
 ### Grinder (10k Account) - MOST POPULAR
-- **Cost**: $149 one-time fee
+- **Cost**: $189 one-time fee
 - **Starting Capital**: $10,000
-- **Profit Target**: $1,000 (10%)
-- **Max Drawdown**: 10%
-- **Daily Loss Limit**: 5%
+- **Profit Target**: $1,200 (12%)
+- **Max Drawdown**: 8%
+- **Daily Loss Limit**: 4%
 - **Minimum Trading Days**: 5 days
 - **Profit Split**: 80% to trader (90% upgrade available)
 - **Payout Cap**: Unlimited
 - **Best For**: The standard for serious traders looking to scale up
 
 ### Executive (25k Account)
-- **Cost**: $299 one-time fee
+- **Cost**: $359 one-time fee
 - **Starting Capital**: $25,000
-- **Profit Target**: $3,000 (12%)
-- **Max Drawdown**: 10%
-- **Daily Loss Limit**: 5%
+- **Profit Target**: $2,500 (10%)
+- **Max Drawdown**: 6%
+- **Daily Loss Limit**: 3%
 - **Minimum Trading Days**: 5 days
 - **Profit Split**: 80% to trader (90% upgrade available)
 - **Payout Cap**: $2,000 (first payout only)
@@ -45,8 +45,8 @@
 
 ### Evaluation Rules
 1. **Profit Target**: Hit your tier's profit target (10-12% depending on account size)
-2. **Drawdown Limit**: Never exceed your tier's drawdown limit (varies by tier: 8-10%)
-3. **Daily Loss Limit**: Cannot lose more than your tier's daily limit in a single trading day (varies by tier: 4-5%)
+2. **Drawdown Limit**: Never exceed your tier's drawdown limit (varies by tier: 6-8%)
+3. **Daily Loss Limit**: Cannot lose more than your tier's daily limit in a single trading day (varies by tier: 3-4%)
 4. **Minimum Days**: Must trade at least 5 days to pass evaluation
 5. **No Time Limit**: Take as long as you need to hit your target (60 day suggested maximum)
 6. **Minimum Trade Size**: $10 per trade
@@ -82,7 +82,7 @@
 
 ### Fee Refund
 - Your one-time evaluation fee is fully refunded with your first payout
-- Example: Pay $149 for 10k evaluation → First payout includes $149 refund + your profits
+- Example: Pay $189 for 10k evaluation → First payout includes $189 refund + your profits
 
 ### Payout Caps
 - **Scout (5k) & Grinder (10k)**: Unlimited payouts
