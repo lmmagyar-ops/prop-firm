@@ -18,6 +18,7 @@ interface Position {
     avgPrice: number;
     currentPrice: number;
     unrealizedPnL: number;
+    groupItemTitle?: string | null;
 }
 
 interface AccountSummary {
@@ -344,6 +345,9 @@ export function PortfolioPanel() {
                                                             <h3 className="text-sm font-medium text-white line-clamp-2">
                                                                 {pos.marketTitle || pos.marketId?.slice(0, 20) + "..."}
                                                             </h3>
+                                                            {pos.groupItemTitle && (
+                                                                <span className="text-xs text-zinc-500 mt-0.5 block">↑ {pos.groupItemTitle}</span>
+                                                            )}
                                                         </div>
                                                         <div className="text-right">
                                                             <p className={cn(

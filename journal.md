@@ -8,20 +8,26 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 > **New agent? Read this section before doing anything else.**
 > This is the single source of truth for what actually works. Do NOT trust individual journal entries — they reflect what the agent *believed*, not what the user confirmed.
 
-### Mar 5, 2026 (1:28 AM CT) — Tier Pricing & Risk Update (Mat's New Numbers)
+### Mar 5, 2026 (12:40 PM CT) — Option Text Added to Portfolio ✅ + Tier Pricing on Staging ✅
 
-| Change | File(s) |
-|--------|---------|
-| **Prices** — $79→$99, $149→$189, $299→$359 | `plans.ts`, `tiers.ts`, `seed-rules.ts`, `LandingPage.tsx`, `LandingContent.tsx`, `BuyEvaluationButton.tsx`, `dashboard/page.tsx`, `faq/page.tsx` |
-| **Max DD** — 5k: 8%→6%, 10k: 10%→8%, 25k: 10%→6% | `tiers.ts`, `funded-rules.ts`, `challenges.ts`, `account-tiers.ts`, `simulation/config.ts` |
-| **Daily DD** — 5k: 4%→3%, 10k: 5%→4%, 25k: 5%→3% | Same config files |
-| **Profit Targets** — 10k: 10%→12% ($1,200), 25k: 12%→10% ($2,500) | Same config files |
-| **Docs** — `CLAUDE.md` pricing table, `RISK_RULES.md` Rules 1&2 now tier-dependent | `CLAUDE.md`, `docs/RISK_RULES.md` |
-| **Tests** — Updated 7 test files (22 total files touched) | `trade-flow.test.ts`, `funded-rules.test.ts`, `audit-regression.test.ts`, `evaluator-integration.test.ts`, `evaluator.test.ts`, `multi-tier-analysis.test.ts`, `api-routes-webhook.test.ts` |
+| Change | Status |
+|--------|--------|
+| **Tier pricing update** — 29 files, commit `214ea56` | ✅ Pushed to `develop`, staging verified |
+| **Option text in Portfolio** — `groupItemTitle` plumbed through 4 files | ✅ Implemented, tsc clean, 1,299 tests pass |
+| **normalize-rules.ts** — fallback tightened from 0.08→0.06 (fail-closed) | ✅ Included in commit |
+| **NOT yet on `main`** — waiting for final go-ahead to merge to production | ⏳ Pending |
 
-**Root cause:** Mat wants higher prices to fund 30% affiliate/discount program (15% discount + 15% rev share).
-**Grandfathering:** Existing challenges use snapshotted `rulesConfig` — unaffected.
-**Verification:** tsc clean ✅, 85/85 test files ✅, 1,299/1,299 tests ✅
+**Option text details:**
+- `positions/route.ts` — fetches `groupItemTitle` from event data (same pattern as `trades/history`)
+- `LivePositions.tsx` → `OpenPositions.tsx` → displays `↑ {groupItemTitle}` under market title
+- `PortfolioPanel.tsx` — displays `↑ {groupItemTitle}` under market title in position cards
+- Graceful degradation: null for binary markets, resolved markets, or worker-down
+- Variable shadowing fix: `allMarketData` vs inner `marketData` (for price map entry)
+
+### 🔜 Next Steps
+1. **Push option text changes to `develop`** (push 1/2 if not already pushed today)
+2. **Browser smoke test on staging** — verify `groupItemTitle` shows in Portfolio and OpenPositions
+3. **Merge `develop` → `main`** after visual confirmation (push 2/2)
 
 ### 🔜 Tomorrow Morning — Prioritized by Leverage × Risk
 
