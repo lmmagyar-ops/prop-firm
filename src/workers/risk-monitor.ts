@@ -353,6 +353,16 @@ export class RiskMonitor {
                 // Close all positions + settle proceeds (atomic)
                 await this.closeAllPositions(tx, challenge.id, openPositions, livePrices, 'pass_liquidation');
 
+                // CRITICAL: Reset balance AFTER closing positions.
+                // closeAllPositions credits liquidation proceeds to currentBalance,
+                // but funded phase must start fresh at startingBalance.
+                // Without this reset, funded traders start with
+                // startingBalance + proceeds = inflated balance.
+                // Mirrors evaluator.ts line 381 which also calls resetBalance.
+                await BalanceManager.resetBalance(
+                    tx, challenge.id, startingBalance, 'funded_transition'
+                );
+
                 // Audit log
                 await tx.insert(auditLogs).values({
                     adminId: 'SYSTEM:RiskMonitor',

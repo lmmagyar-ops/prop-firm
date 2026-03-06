@@ -8,68 +8,109 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 > **New agent? Read this section before doing anything else.**
 > This is the single source of truth for what actually works. Do NOT trust individual journal entries — they reflect what the agent *believed*, not what the user confirmed.
 
-### Mar 5, 2026 (12:40 PM CT) — Option Text Added to Portfolio ✅ + Tier Pricing on Staging ✅
+### Mar 6, 2026 (10:00 AM CT) — Balance Inflation Bug Fixed, Invariant Tests IN PROGRESS
 
 | Change | Status |
 |--------|--------|
-| **Tier pricing update** — 29 files, commit `214ea56` | ✅ Pushed to `develop`, staging verified |
-| **Option text in Portfolio** — `groupItemTitle` plumbed through 4 files | ✅ Implemented, tsc clean, 1,299 tests pass |
-| **normalize-rules.ts** — fallback tightened from 0.08→0.06 (fail-closed) | ✅ Included in commit |
-| **NOT yet on `main`** — waiting for final go-ahead to merge to production | ⏳ Pending |
-
-**Option text details:**
-- `positions/route.ts` — fetches `groupItemTitle` from event data (same pattern as `trades/history`)
-- `LivePositions.tsx` → `OpenPositions.tsx` → displays `↑ {groupItemTitle}` under market title
-- `PortfolioPanel.tsx` — displays `↑ {groupItemTitle}` under market title in position cards
-- Graceful degradation: null for binary markets, resolved markets, or worker-down
-- Variable shadowing fix: `allMarketData` vs inner `marketData` (for price map entry)
-
-### 🔜 Next Steps
-1. **Push option text changes to `develop`** (push 1/2 if not already pushed today)
-2. **Browser smoke test on staging** — verify `groupItemTitle` shows in Portfolio and OpenPositions
-3. **Merge `develop` → `main`** after visual confirmation (push 2/2)
-
-### 🔜 Tomorrow Morning — Prioritized by Leverage × Risk
-
-> [!IMPORTANT]
-> **Nothing has been pushed yet.** All changes are local only. Follow `/deploy` workflow when ready.
-
-1. **🟥 Browser Smoke Test (HIGH — blocks push)**
-   - Kill any stale `next dev` process (`lsof -ti:3000 | xargs kill`), then `npm run dev`
-   - Verify on localhost:
-     - Landing page (`/`) — 3 pricing cards show $99 / $189 / $359
-     - FAQ page (`/dashboard/faq`) — no stale $79/$149/$299 references
-     - Buy Evaluation flow (`/buy-evaluation`) — correct prices in Confirmo checkout
-   - Use browser subagent against **staging** URL after push to `develop` for final visual proof
-
-2. **🟧 Push to `develop` (MEDIUM — after smoke test passes)**
-   - `git add -A && git commit -m "feat: update tier pricing and risk params (Mat's new numbers)"` 
-   - `git push origin develop` (counts as push 1/2 for the day)
-   - Verify staging deployment at `https://prop-firmx-git-develop-oversightresearch-4292s-projects.vercel.app`
-   - Browser smoke test on staging URL (browser agent CAN reach this)
-
-3. **🟨 Merge to `main` (LOWER — after Mat confirms staging looks good)**
-   - Get Mat's visual confirmation on staging
-   - Merge `develop` → `main` (push 2/2)
-   - Verify production at `https://prop-firmx.vercel.app`
-
-4. **🟩 Seed DB rules if needed (LOW)**
-   - `seed-rules.ts` was updated but the DB isn't auto-seeded — new challenges will pick up the canonical config from `tiers.ts` / `buildRulesConfig()`, so seeding is only needed if admin manually queries `businessRules` table
-   - Run `npx tsx src/db/seed-rules.ts` if needed after deploy
+| **Tier pricing + option text** | ✅ On `main`, production verified |
+| **Risk-monitor triggerPass fix** — `resetBalance()` after `closeAllPositions()` | ✅ Committed `0a8cd13`, NOT pushed |
+| **funded-transition.test.ts** — 16 tests covering both pass paths | ✅ All 1,315 tests pass |
+| **CLAUDE.md** — Dual-Path Verification Rule added | ✅ Committed |
+| **Mat's funded balance** — inflated to $29,147, needs reset to $25,000 | ⏳ Script ready at `src/scripts/reset-mat-funded-balance.ts` |
+| **State transition invariant tests** — dual-path parity, accounting equation | ❌ NOT DONE — session ended before completion |
 
 ### ⚠️ What the Next Agent Must Know
 
-- **22 files were changed** — all local, no commits yet. Run `git diff --stat` to see full list.
-- **All 85 test files pass** (1,299 tests). Run `npx vitest run` to re-verify.
-- **`tsc --noEmit` is clean** — no type errors.
-- **The dev server was left running on port 3000** — user is restarting laptop to clear it. Start fresh with `npm run dev`.
-- **Browser agent CANNOT reach localhost** — use staging URL for browser verification per `.agents/skills/browser-agent/SKILL.md`.
-- **Deployment rules**: Max 2 pushes/day (`develop` then `main`). Never push just to "see if it looks right" — verify locally first.
-- **Confirmo webhook test** (`api-routes-webhook.test.ts`) requires a real DB connection — it uses the test DB, not mocks. If it fails on a fresh machine, ensure `.env.local` has `DATABASE_URL` set.
+1. **There is an unpushed commit on `develop`** (`0a8cd13`). Run `git log --oneline -5` to verify. Do NOT push until you've completed the invariant tests and batched everything.
+2. **Mat's funded balance is WRONG in prod.** It shows $29,147.64 but should be $25,000. The fix (in the unpushed commit) prevents future occurrences. To fix Mat's data: `DRY_RUN=false npx tsx src/scripts/reset-mat-funded-balance.ts` — needs production DATABASE_URL.
+3. **The #1 priority is writing state transition invariant tests.** These are NOT done. The field-level audit IS done. See details below.
+4. **86 test files, 1,315 tests pass. tsc clean.** Re-verify with `npx vitest run` after any changes.
+5. **Deployment rules**: Max 2 pushes/day. Follow `.agents/workflows/deploy.md`. No mid-session pushes.
+6. **Read the new "Dual-Path Verification Rule"** in `CLAUDE.md`. It exists because this session's agent confidently declared Mat's pass "clean" without checking the risk-monitor path. That overconfidence delayed the fix.
+
+### Mar 6, 2026 (9:00–10:00 AM CT) — Session: Admin Audit → Balance Inflation Bug
+
+**Context:** User asked us to verify Mat's rapid challenge pass ($25K, passed in <90 min) via admin panel.
+
+**What happened:**
+1. Agent (me) audited admin panel UX and reviewed trade data
+2. Agent **incorrectly declared** Mat's pass "clean" based on reading evaluator code only
+3. Mat messaged in Discord: "I shouldn't be up at all, it should've reset"
+4. User challenged the "clean" declaration
+5. On closer inspection: **risk-monitor's `triggerPass` credits position proceeds AFTER setting balance = startingBalance**, inflating funded balance to $29,147 instead of $25,000
+6. The evaluator path was correct (explicit comment saying "we do NOT credit proceeds here")
+
+**Root cause:** Two code paths (`evaluator.ts` + `risk-monitor.ts`) do the same funded transition differently. The evaluator skips proceeds credit, the risk-monitor credits then doesn't reset. Classic split-brain bug.
+
+**Fix:** Added `BalanceManager.resetBalance()` after `closeAllPositions()` in `risk-monitor.ts` triggerPass. Committed as `0a8cd13`, NOT pushed.
+
+**Anti-regression:** Added "Dual-Path Verification Rule" to `CLAUDE.md` and `funded-transition.test.ts` (16 tests).
+
+**Incomplete work:** State transition invariant tests. The field-level audit is done (below). The test file was not written before session ended.
+
+### 🌅 Tomorrow Morning — Handoff for Next Agent
+
+> **Read `CLAUDE.md` (especially the new Dual-Path Verification Rule) before doing anything.**
+
+**Ranked by leverage × risk:**
+
+#### 1. 🟥 Write State Transition Invariant Tests (HIGHEST — this is why bugs keep slipping through)
+
+The field-level audit is DONE. Here's exactly what each test should verify:
+
+**Test: triggerPass field parity (evaluator vs risk-monitor)**
+
+Both paths MUST produce identical challenge state after funded transition:
+
+| Field | Evaluator | Risk-Monitor | Match? |
+|-------|-----------|-------------|--------|
+| `status` | `'active'` | `'active'` | ✅ |
+| `phase` | `'funded'` | `'funded'` | ✅ |
+| `currentBalance` | `startingBalance` (via resetBalance) | `startingBalance` (via resetBalance — OUR FIX) | ✅ |
+| `highWaterMark` | `startingBalance` | `startingBalance` | ✅ |
+| `profitSplit` | from `FUNDED_RULES[tier]` | from `FUNDED_RULES[tier]` | ✅ |
+| `payoutCap` | from `FUNDED_RULES[tier]` | from `FUNDED_RULES[tier]` | ✅ |
+| `payoutCycleStart` | `new Date()` | `new Date()` | ✅ |
+| `activeTradingDays` | `0` | `0` | ✅ |
+| `startOfDayBalance` | `startingBalance` | `startingBalance` | ✅ |
+| `startOfDayEquity` | `startingBalance` | `startingBalance` | ✅ |
+| `endsAt` | `null` | `null` | ✅ |
+| Position close | Inline loop, NO creditProceeds | `closeAllPositions()` WITH creditProceeds, then resetBalance | ✅ (different implementation, same result) |
+| SELL trade records | ✅ Created | ✅ Created | ✅ |
+| Status guard | `eq(status, 'active'), eq(phase, 'challenge')` | Same | ✅ |
+
+**Test: triggerBreach field parity**
+
+| Field | Evaluator | Risk-Monitor | Match? |
+|-------|-----------|-------------|--------|
+| `status` | `'failed'` | `'failed'` | ✅ |
+| `endsAt` | `new Date()` | NOT SET | ⚠️ POTENTIAL GAP |
+| Position close | NOT done by evaluator breach | Done via `closeAllPositions()` | ⚠️ DESIGN DIFFERENCE |
+| Proceeds credit | N/A (no close) | YES (via closeAllPositions) | ⚠️ |
+
+The `endsAt` omission in risk-monitor breach is worth investigating — it may cause "when did this challenge end?" queries to return null for risk-monitor-detected breaches.
+
+The position close difference is BY DESIGN: evaluator breach runs per-trade (position may already be closed), risk-monitor breach runs on polling cycle (positions must be force-closed).
+
+**Test: Accounting equation**
+After any trade sequence: `startingBalance + sum(realizedPnL) == currentBalance + sum(openPositionCost)`
+
+**Test: Breach state invariants**
+After breach: `status == 'failed'` AND no `OPEN` positions remain AND audit log exists.
+
+#### 2. 🟧 Push + Reset Mat's Balance (AFTER tests are written)
+- Push `develop`: `git push origin develop`
+- Verify staging
+- Merge to `main`
+- Run: `DRY_RUN=false npx tsx src/scripts/reset-mat-funded-balance.ts` with production DATABASE_URL
+
+#### 3. 🟨 Lifecycle Emails (after financial integrity is solid)
+Plan approved in previous session's `implementation_plan.md`. Three emails: purchase confirmation, challenge passed, challenge failed.
+
+#### 4. 🟩 Global Error Pages
+`not-found.tsx`, `error.tsx`, `loading.tsx` — ~1 hour.
 
 ---
-
-### Mar 4, 2026 (5:30 PM CT) — Production Canary + E2E Breach Test ✅
 
 | Change | File |
 |--------|------|
