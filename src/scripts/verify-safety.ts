@@ -292,8 +292,9 @@ async function test3_riskMonitorFundedPhaseRules() {
     const challengeMaxDrawdown = (challengeRules.maxTotalDrawdownPercent as number) * startingBalance;
     const fundedMaxDrawdown = fundedRules.maxTotalDrawdown;
 
-    assert(challengeMaxDrawdown === 1000, `Challenge maxDrawdown = $${challengeMaxDrawdown}`);
-    assert(fundedMaxDrawdown === 1000, `Funded maxDrawdown = $${fundedMaxDrawdown}`);
+    // 10k tier: maxTotalDrawdownPercent = 0.08 → $800 (updated from 10% when Mat revised tier params)
+    assert(challengeMaxDrawdown === 800, `Challenge maxDrawdown = $${challengeMaxDrawdown}`);
+    assert(fundedMaxDrawdown === 800, `Funded maxDrawdown = $${fundedMaxDrawdown}`);
 
     // FUNDED PHASE: Static drawdown — floor = $10k - $1k = $9k
     // Equity $10,900 > $9k → should be SAFE
