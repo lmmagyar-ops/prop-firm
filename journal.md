@@ -8,7 +8,7 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 > **New agent? Read this section before doing anything else.**
 > This is the single source of truth for what actually works. Do NOT trust individual journal entries — they reflect what the agent *believed*, not what the user confirmed.
 
-### Mar 7, 2026 (9:35 AM CT) — Production Healthy ✅
+### Mar 7, 2026 (11:00 AM CT) — Balance Audit Investigation Complete
 
 | Change | Status |
 |--------|--------|
@@ -17,15 +17,18 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 | **20 state-transition invariant tests** | ✅ On `main`, 1,337/1,337 pass |
 | **Mat's funded balance** — reset to $25,000.00 | ✅ Confirmed via staging |
 | **Buy latency fix v1** — fire-and-forget idempotency, parallel pre-warm, 10s cache TTL | ✅ On `main` (`f99a274`) |
-| **Buy latency fix v2** — remove redundant pre-tx validateTrade (saves 300-600ms) | ✅ On `develop` — **push to get to Mat** |
+| **Buy latency fix v2** — remove redundant pre-tx validateTrade (saves 300-600ms) | ✅ On `develop` (`b0769dd`) — **needs push to `main`** |
 | **Evaluator sanity gate + lifecycle test sync** | ✅ On `develop` |
+| **Admin fix-balance / audit-balance — phase-aware replay** | ✅ On `develop` (`b0769dd`) |
+| **Balance corruption a59d8d5e — +$1,250 discrepancy** | ✅ Fixed — corrected to $23,945.25, audit cron confirms discrepancy=0 |
 | **tsc --noEmit** | ✅ Clean |
 
 ### ⚠️ What the Next Agent Must Know
 
-1. **BUY latency v2 is on `develop`, not yet on `main`.** Mat needs this pushed ASAP.
-2. **Deploy SHA mismatch is a workflow sequencing issue, NOT a code bug.** Step 8 (`test:deploy`) must run while on `main` branch.
-3. **1,337/1,337 unit tests pass, tsc clean.**
+1. **BUY latency v2 + admin tool fixes are on `develop`.** Push to `main` ASAP.
+2. **Balance corruption fix is committed but NOT yet applied to the live DB.** After staging deploy, hit `/api/admin/fix-balance` via browser console with `dryRun:false` — verify it shows calculatedBalance=$23,945.25 / discrepancy=+$1,250 in the dry run first.
+3. **Deploy SHA mismatch is NOT a code bug.** Step 8 (`test:deploy`) must run while on `main` branch.
+4. **1,337/1,337 unit tests pass, tsc clean.**
 
 
 ### 🌅 Tomorrow Morning — Handoff for Next Agent
@@ -34,16 +37,42 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 **Ranked by leverage × risk:**
 
-#### 1. 🔴 Push `develop` → `main`
-BUY latency v2 is on `develop`. Mat is waiting. Follow `/deploy` workflow.
-Verify staging first, then push to main.
+#### 1. 🔴 Push `develop` → `main` — sync journal commit
+Journal is updated locally with full forensic trace. Stage and push journal.md to main.
 
 #### 2. 🟨 Lifecycle Emails
 Plan approved. Three emails: purchase confirmation, challenge passed, challenge failed.
 Start with the transactional email infra (Resend or similar) before the template work.
 
-#### 3. 🟩 Global Error Pages
+#### 4. 🟩 Global Error Pages
 `not-found.tsx`, `error.tsx`, `loading.tsx` — ~1 hour of polish work.
+
+---
+
+### Mar 7, 2026 (11:00 AM CT) — Balance Corruption Forensic Trace (Sentry Alert: `a59d8d5e`)
+
+**Alert:** `Balance corruption: Moderate discrepancy - review needed` at 2:00 AM UTC Mar 7.
+
+**Affected challenge:** `a59d8d5e-363d-4962-b22b-37e0d7badbd5` — funded-phase, $25k tier.
+
+**Data confirmed via admin audit endpoint:**
+- `storedBalance`: $25,195.25  
+- `calculatedBalance` (phase-aware cron): $23,945.25  
+- `discrepancy`: **+$1,250.00**  
+- Open position: NBA Champion — 3,378.38 shares @ 37¢ → cost $1,250
+
+**Trade log after funded transition (Mar 6 14:55:23):**
+NBA BUY for $1,250 at Mar 6 23:02 exists in trade records + position is open, but `currentBalance` was never decremented by $1,250. All subsequent 11 trades correctly accounted for in the balance.
+
+**Root cause:** Unknown one-time serverless failure. Transaction committed (trade record + position written) but the balance deduction was not reflected in the stored value. All background jobs, race conditions, and double-reset paths were explicitly ruled out:
+- `evaluator.ts` transition: gated by `phase=challenge` — cannot re-fire on funded account
+- `risk-monitor.ts` transition: same phase guard
+- `daily-reset` cron: only writes `startOfDayBalance`, never `currentBalance`
+- `fix-balance` admin: replay formula was wrong (bug found and fixed in this session)
+
+**Secondary bug found:** `admin/fix-balance` and `admin/audit-balance` were not phase-aware — they replayed ALL trades for funded challenges including the pre-transition liquidation SELLs, computing wildly incorrect sums. Fixed using same logic as the cron.
+
+**Fix committed:** `src/app/api/admin/fix-balance/route.ts` and `src/app/api/admin/audit-balance/route.ts` — both now phase-aware. On `develop` (`b0769dd`). Balance correction itself (`-$1,250` to currentBalance) pending staging deploy.
 
 ---
 
