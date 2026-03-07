@@ -43,11 +43,23 @@ If you push more than once to `develop` in a session, you have failed. See `.age
 - **Grep guard:** `unrealizedPnL =` must never appear in `src/components/`. CI will enforce this.
 - **One endpoint, one source of truth:** Every component that displays position PnL must consume `/api/trade/positions`. No component may compute PnL from an alternative price source (SSE, WebSocket, or local state).
 
+### Dual-Path Verification Rule
+> This rule exists because an agent declared a funded transition "clean" after reading the evaluator code path, without checking the risk-monitor code path. The risk-monitor had a balance-inflation bug that gave funded traders free money. The agent's confident "not a mirage" declaration delayed the fix.
+
+- **Every financial operation has multiple code paths.** Before declaring ANY financial flow correct, `grep` for ALL callers. If a function is called from 2 places, both must be verified.
+- **Known dual paths in this codebase:**
+  - Challenge pass: `evaluator.ts` (on trade close) AND `risk-monitor.ts` (30s polling)
+  - Challenge fail: `evaluator.ts` (time/drawdown) AND `risk-monitor.ts` (real-time breach)
+  - Balance mutations: `BalanceManager.creditProceeds` AND `BalanceManager.deductCost` AND `BalanceManager.resetBalance`
+- **When auditing a user's account:** NEVER declare "this is legitimate" or "not a mirage" based on reading code alone. Compute expected balance from trade records and compare to stored balance. The `/api/admin/investigate` endpoint does this — use it.
+- **If two code paths do the same thing slightly differently, that IS the bug.** Identical operations must use identical code (shared function), not copy-pasted logic.
+
 ### Verification Discipline
 - Run the full test suite after every change, not just the file you edited.
 - Browser smoke test any UI change — screenshots prove more than type-checks.
 - Cross-reference numbers: if a value appears in the API response AND the DB AND the UI, verify all three match.
 - **"Tests pass" is NOT a success signal.** Tests verify implementation, not product behavior. Mat seeing correct numbers on his screen is the only success signal.
+- **Never say "this is correct" on financial data without computing the expected value independently.** Reading code that looks right is not verification. Running `startingBalance + sum(realized PnL)` and comparing to `currentBalance` is verification.
 
 ### Deployment Discipline (Cost-Aware)
 > This rule exists because 464 builds in one billing cycle caused a $43 overage that took production down for 4 hours.
