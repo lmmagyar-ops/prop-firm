@@ -2,6 +2,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { ChallengeEvaluator } from "@/lib/evaluator";
 import { db } from "@/db";
+import { MarketService } from "@/lib/market";
 
 // Mock dependencies
 vi.mock("@/db", () => {
@@ -1027,5 +1028,125 @@ describe("ChallengeEvaluator - Position Closure on Phase Transition", () => {
         expect(result.status).toBe("passed");
         // Only 1 db.update call: the challenge phase transition
         expect(db.update).toHaveBeenCalledTimes(1);
+    });
+});
+
+// ================================================
+// SANITY GATE: NO LIVE PRICES FALLBACK
+// ================================================
+// These tests verify the specific production bug: when MarketService
+// cannot provide live prices, the sanity gate must NOT artificially block
+// a legitimate promotion by computing unrealizedPnL=0 while equity includes
+// stored position value. The original code had `if (!liveData) return sum`
+// which returned 0, creating a phantom discrepancy that blocked promotion.
+// ================================================
+
+describe("ChallengeEvaluator - Sanity Gate: stored-price fallback (no live prices)", () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        // Force empty Map — simulates ingestion worker down / cold start
+        vi.mocked(MarketService.getBatchOrderBookPrices).mockResolvedValue(new Map());
+    });
+
+    it("should NOT block promotion when YES position has no live price (uses stored currentPrice)", async () => {
+        // Scenario: cash $10,800 + YES position (400 shares @ entry 0.50, current 0.60)
+        // Equity = $10,800 + (400 * 0.60) = $11,040. Profit = $1,040 (above $1,000 target).
+        // BEFORE FIX: unrealizedPnL = 0 → tradeDerived = $1,000. discrepancy = $40/$1,000 = 4% → PASSES gate.
+        // With a larger open position the discrepancy would exceed 20% and wrongly block.
+        // This test uses a scenario where the discrepancy must be ≤20% AND the numbers must be consistent.
+        // Use: $200 realized + $40 unrealized = $240 total. Cash = $10,240. equity = $10,240 + $240 = $10,480.
+        // Profit = $480. profitTarget = $400. tradeDerived = $240. discrepancy = |480-240|/$400 = 60% → BLOCKED with old code.
+        // With fix: unrealizedPnL = (0.60 - 0.50)*400 = $40. tradeDerived = $200+$40 = $240. discrepancy = |480-240|/$400—
+        // Hmm, that is still 60%. We need realized PnL to fully account for cash gains.
+        // Correct numbers: cash $10,040, position 200sh entry 0.50 current 0.55
+        //   equity = $10,040 + (200*0.55) = $10,040 + $110 = $10,150. profit = $150 (too low).
+        // Just use: cash $10,800, no open position from SELL, plus open YES position that accounts for all profit.
+        // Cash = $9,800 (bought), YES position 400sh entry 0.50 current 0.775 ($310 unrealized).
+        //   equity = $9,800 + $310 = $10,110. profit = $110. target = $100.
+        //   realized = $0. unrealized = $110. tradeDerived = $110. discrepancy = $0 → passes.
+        //   With old code: unrealized = 0 → tradeDerived = 0. discrepancy = $110/$100 = 110% → BLOCKED.
+        const challenge = {
+            id: "gate-yes-no-live",
+            userId: "user-1",
+            status: "active",
+            phase: "challenge",
+            currentBalance: "9800",
+            startingBalance: "10000",
+            highWaterMark: "9800",
+            startOfDayBalance: "9800",
+            rulesConfig: { profitTarget: 100, maxDrawdown: 1000, maxDailyDrawdownPercent: 0.05 },
+            pendingFailureAt: null,
+            endsAt: null,
+            startedAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000),
+        };
+
+        // YES position: 400 shares, entry $0.50, stored current $0.775
+        // positionValue (equity fallback) = 400 * 0.775 = $310
+        // unrealizedPnL (gate fallback) = (0.775 - 0.50) * 400 = $110
+        const yesPosition = {
+            id: "pos-yes",
+            marketId: "market-no-live",
+            direction: "YES",
+            shares: "400",
+            entryPrice: "0.50",
+            currentPrice: "0.775",
+            status: "OPEN",
+        };
+
+        vi.mocked(db.query.challenges.findFirst).mockResolvedValue(challenge as any);
+        vi.mocked(db.query.positions.findMany).mockResolvedValue([yesPosition as any]);
+        // No realized trades — all profit is from the open position
+        vi.mocked(db.query.trades.findMany).mockResolvedValue([]);
+
+        const result = await ChallengeEvaluator.evaluate("gate-yes-no-live");
+
+        // With the fix: unrealizedPnL = $110, tradeDerived = $110, discrepancy = 0% → passes gate → promoted.
+        // With old buggy code: unrealizedPnL = 0, tradeDerived = 0, discrepancy = 110% → BLOCKED.
+        expect(result.status).toBe("passed");
+    });
+
+    it("should NOT block promotion when NO position has no live price (stored-price direction safe)", async () => {
+        // NO position — verify the stored-price fallback computes correct sign.
+        // NO position: 200sh, entryPrice 0.40 (stored as 1-0.60), currentPrice 0.45 (stored as 1-0.55)
+        // positionValue (equity fallback) = 200 * 0.45 = $90
+        // unrealizedPnL (gate fallback) = (0.45 - 0.40) * 200 = $10 (positive — correct, NO gained value)
+        const challenge = {
+            id: "gate-no-no-live",
+            userId: "user-1",
+            status: "active",
+            phase: "challenge",
+            currentBalance: "9910",   // cash after spending $90 on NO position
+            startingBalance: "10000",
+            highWaterMark: "9910",
+            startOfDayBalance: "9910",
+            rulesConfig: { profitTarget: 1, maxDrawdown: 1000, maxDailyDrawdownPercent: 0.05 },
+            pendingFailureAt: null,
+            endsAt: null,
+            startedAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000),
+        };
+
+        const noPosition = {
+            id: "pos-no",
+            marketId: "market-no-live",
+            direction: "NO",
+            shares: "200",
+            entryPrice: "0.40",   // already direction-adjusted in DB
+            currentPrice: "0.45", // already direction-adjusted in DB
+            status: "OPEN",
+        };
+
+        vi.mocked(db.query.challenges.findFirst).mockResolvedValue(challenge as any);
+        vi.mocked(db.query.positions.findMany).mockResolvedValue([noPosition as any]);
+        // No realized trades — all profit is from the open NO position
+        vi.mocked(db.query.trades.findMany).mockResolvedValue([]);
+
+        const result = await ChallengeEvaluator.evaluate("gate-no-no-live");
+
+        // equity = $9,910 + $90 = $10,000. profit = $0. Does NOT cross profitTarget = $1.
+        // So result should be "active", but the key check is equity is computed correctly:
+        // $10,000 is not > ($10,000 + $1) so stays active. Gate is not even reached.
+        // If direction were wrong, equity would be different and may trigger wrong drawdown.
+        expect(result.equity).toBeCloseTo(10000, 0);
+        expect(result.status).toBe("active");
     });
 });

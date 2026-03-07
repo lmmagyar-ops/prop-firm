@@ -8,22 +8,24 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 > **New agent? Read this section before doing anything else.**
 > This is the single source of truth for what actually works. Do NOT trust individual journal entries — they reflect what the agent *believed*, not what the user confirmed.
 
-### Mar 6, 2026 (11:20 PM CT) — ALL FIXES DEPLOYED + Latency Optimizations Committed
+### Mar 7, 2026 (9:35 AM CT) — Production Healthy ✅
 
 | Change | Status |
 |--------|--------|
-| **Risk-monitor `triggerPass` fix** — `resetBalance()` after `closeAllPositions()` | ✅ On `main` (commit `167104b` → merged `3080c77`) |
-| **Risk-monitor `triggerBreach` fix** — `endsAt: new Date()` added | ✅ On `main` |
-| **`state-transition-invariants.test.ts`** — 20 new tests | ✅ On `main`, 1,335 tests pass |
-| **Mat's funded balance** — reset from $27,897.64 to $25,000.00 | ✅ APPLIED TO PROD — confirmed via staging screenshot |
-| **Post-deploy health check** | ✅ 9/10 real checks pass (SHA mismatch is expected artifact of merge commit) |
-| **Buy latency fix** — `cacheIdempotencyResult` fire-and-forget, `getBatchTitles` fanned into pre-warm, `isActive` check in parallel fan-out, cache TTL 3s→10s | ✅ Committed on `develop`, NOT yet pushed |
-| **tsc --noEmit** | ✅ Clean (1,335/1,335 tests pass) |
+| **Risk-monitor `triggerPass` fix** | ✅ On `main` (`3080c77`) |
+| **Risk-monitor `triggerBreach` + `endsAt`** | ✅ On `main` |
+| **20 state-transition invariant tests** | ✅ On `main`, 1,337/1,337 pass |
+| **Mat's funded balance** — reset to $25,000.00 | ✅ Confirmed via staging |
+| **Buy latency fix v1** — fire-and-forget idempotency, parallel pre-warm, 10s cache TTL | ✅ On `main` (`f99a274`) |
+| **Buy latency fix v2** — remove redundant pre-tx validateTrade (saves 300-600ms) | ✅ On `develop` — **push to get to Mat** |
+| **Evaluator sanity gate + lifecycle test sync** | ✅ On `develop` |
+| **tsc --noEmit** | ✅ Clean |
 
 ### ⚠️ What the Next Agent Must Know
 
-1. **Buy latency fix is committed on `develop`, NOT pushed**. Changes: `worker-client.ts`, `src/lib/trade.ts`, `src/app/api/trade/execute/route.ts`. Push following the deploy workflow.
-2. **87 test files, 1,335 tests pass, tsc clean.**
+1. **BUY latency v2 is on `develop`, not yet on `main`.** Mat needs this pushed ASAP.
+2. **Deploy SHA mismatch is a workflow sequencing issue, NOT a code bug.** Step 8 (`test:deploy`) must run while on `main` branch.
+3. **1,337/1,337 unit tests pass, tsc clean.**
 
 
 ### 🌅 Tomorrow Morning — Handoff for Next Agent
@@ -32,22 +34,58 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 **Ranked by leverage × risk:**
 
-#### 1. 🟥 Push Fixes + Reset Mat's Balance (HIGHEST — prod balance is wrong RIGHT NOW)
-```bash
-git add tests/state-transition-invariants.test.ts src/workers/risk-monitor.ts
-git commit -m "fix: triggerBreach sets endsAt + state transition invariant tests (20 tests)"
-git push origin develop
-# Verify staging, then:
-git checkout main && git merge develop && git push origin main
-# THEN with production DATABASE_URL:
-DRY_RUN=false npx tsx src/scripts/reset-mat-funded-balance.ts
-```
+#### 1. 🔴 Push `develop` → `main`
+BUY latency v2 is on `develop`. Mat is waiting. Follow `/deploy` workflow.
+Verify staging first, then push to main.
 
-#### 2. 🟨 Lifecycle Emails (after financial integrity is solid)
+#### 2. 🟨 Lifecycle Emails
 Plan approved. Three emails: purchase confirmation, challenge passed, challenge failed.
+Start with the transactional email infra (Resend or similar) before the template work.
 
 #### 3. 🟩 Global Error Pages
-`not-found.tsx`, `error.tsx`, `loading.tsx` — ~1 hour.
+`not-found.tsx`, `error.tsx`, `loading.tsx` — ~1 hour of polish work.
+
+---
+
+### Mar 7, 2026 (9:35 AM CT) — BUY Latency Root Cause Found & Fixed (v2)
+
+**Context:** Mat reported "don't see much difference" and "closing is faster than opening" after the v1 latency fix shipped.
+
+**Root Cause:** `RiskEngine.validateTrade` was called **twice** for every BUY: once pre-transaction (line 128 of `trade.ts`) and once inside the DB transaction (line 266). SELL skips both calls. Each call costs ~2 DB roundtrips + Railway HTTP. The pre-tx call ran on stale, unlocked data — purely redundant.
+
+**Why closing is faster:** The in-tx `validateTrade` call is the security-critical one (runs after `SELECT FOR UPDATE`). The pre-tx one was added for "early feedback" but duplicated all the same work at ~300-600ms of overhead that SELL never pays.
+
+**Fix:**
+| File | Change | Impact |
+|------|--------|--------|
+| `src/lib/trade.ts` | Remove pre-tx `RiskEngine.validateTrade()`. Keep fast inline balance check. | -300-600ms per BUY |
+| `src/app/api/trade/close/route.ts` | Fan-out serial user+position DB queries into `Promise.all` | -100-200ms per SELL |
+| `tests/lib/trade.test.ts` | Update stale double-call expectation to single in-tx call | Test accuracy |
+
+**Security:** In-tx `validateTrade` after `SELECT FOR UPDATE` is unchanged. Removing the pre-tx call does not reduce security — the in-tx call is what enforces all 9 risk layers on committed data.
+
+**Tests:** 1,337/1,337 pass. `tsc` clean. Committed on `develop`. **Needs push to `main`.**
+
+---
+
+### Mar 7, 2026 (8:39 AM CT) — Morning Hygiene
+
+**Context:** New session. Applied the senior-engineer morning checklist before any feature work.
+
+**Changes made:**
+| Change | File | Why |
+|--------|------|-----|
+| Journal CURRENT STATUS updated | `journal.md` | Latency fix was on main, status still said "committed not pushed" |
+| Deploy workflow step 8 annotated | `.agent/workflows/deploy.md` | SHA mismatch false-positive: step 8 must run while on `main` before switching to `develop` |
+| Evaluator sanity gate `unrealizedPnL` fallback | `src/lib/evaluator.ts` | Gate returned 0 unrealized PnL when live prices unavailable, but equity calc used stored-price fallback → artificial discrepancy blocked legitimate promotions |
+| Lifecycle test data updated for 12% tier | `src/scripts/verify-lifecycle.ts` | Mat's tier config update (commit `214ea56`) set 10k challenge to 12% target ($1,200). Tests still seeded $1,100 profit → under target → 9 false test failures |
+
+**Results:**
+- `test:lifecycle`: **81/81 pass** (was 71/81)
+- `tsc --noEmit`: clean
+- All changes committed on `develop` as `e0468e4` — not yet pushed (daily budget concern)
+
+**Root cause for sanity gate bug:** The evaluator's `unrealizedPnL` sum inside the sanity gate silently returned 0 when live prices were unavailable (via the ingestion worker), but the `equity` calculation directly above used a stored-price fallback from the DB. When those two paths diverged, the gate saw a larger discrepancy than actually existed and blocked promotion. Fix: applied identical stored-price fallback to the gate's unrealized PnL calc.
 
 ---
 

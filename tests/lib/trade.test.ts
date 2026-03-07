@@ -119,6 +119,9 @@ describe("TradeExecutor", () => {
         const result = await TradeExecutor.executeTrade("user-1", "challenge-123", "asset-123", "BUY", 1000);
 
         expect(MarketService.getCanonicalPrice).toHaveBeenCalledWith("asset-123");
+        // validateTrade is called once — inside the DB transaction (the security-critical gate).
+        // The redundant pre-tx call was removed to save ~300-600ms per BUY.
+        expect(RiskEngine.validateTrade).toHaveBeenCalledTimes(1);
         expect(RiskEngine.validateTrade).toHaveBeenCalledWith("challenge-123", "asset-123", 1000, 0, "YES");
         expect(result.id).toBe("trade-123");
         expect(result.priceSource).toBe("canonical");
@@ -644,23 +647,22 @@ describe("TradeExecutor - Orchestration", () => {
         expect(callOrder[2]).toBe("SELECT");
     });
 
-    it("re-validates risk inside transaction (double-check pattern)", async () => {
-        // First call: outside tx (passes), second call: inside tx (fails)
-        let callCount = 0;
-        vi.mocked(RiskEngine.validateTrade).mockImplementation(async () => {
-            callCount++;
-            if (callCount >= 2) {
-                return { allowed: false, reason: "Concurrent trade exceeded limit" };
-            }
-            return { allowed: true };
+    it("in-transaction risk check blocks concurrent/race trades", async () => {
+        // The only validateTrade call is INSIDE the DB transaction (after SELECT FOR UPDATE).
+        // This tests that the in-tx security gate correctly rejects a race-scenario trade.
+        // (The redundant pre-tx call was removed to save ~300-600ms per BUY — the in-tx
+        // call is the security-critical one that sees post-commit position state.)
+        vi.mocked(RiskEngine.validateTrade).mockResolvedValue({
+            allowed: false,
+            reason: "Concurrent trade exceeded limit"
         });
 
         await expect(
             TradeExecutor.executeTrade("user-1", "challenge-123", "mkt-1", "BUY", 1000)
         ).rejects.toThrow("Concurrent trade exceeded limit");
 
-        // Risk check should have been called twice
-        expect(callCount).toBe(2);
+        // Risk check should have been called exactly once (in-tx only)
+        expect(RiskEngine.validateTrade).toHaveBeenCalledTimes(1);
     });
 });
 

@@ -79,8 +79,9 @@ git push origin main
 
 ### 8. Post-Deploy Verification (Deep Health)
 ```bash
+# ⚠️  MUST run while on `main` branch (before `git checkout develop` in step 10).
+# HEAD must equal the merge commit that Vercel deployed — otherwise SHA check false-fails.
 # Wait ~90s for Vercel build to complete, then run deep health verification.
-# Pass the merge commit SHA to verify the correct code is deployed.
 # Requires CRON_SECRET in .env.local for deep checks (DB, Sentry, worker, daily reset).
 npm run test:deploy -- https://prop-firmx.vercel.app $(git rev-parse --short HEAD)
 ```

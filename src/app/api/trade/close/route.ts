@@ -19,12 +19,6 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // SECURITY: Check if user account is suspended before allowing trades
-    const [user] = await db.select({ isActive: users.isActive }).from(users).where(eq(users.id, userId));
-    if (user && user.isActive === false) {
-        return NextResponse.json({ error: "Account suspended" }, { status: 403 });
-    }
-
     const body = await req.json();
     const { positionId, idempotencyKey } = body;
     // NOTE: userId intentionally NOT destructured from body - security fix
@@ -44,17 +38,26 @@ export async function POST(req: NextRequest) {
         }
     }
 
+    // FAN-OUT: fetch user suspension flag + position simultaneously — they're independent.
+    // Both are needed before we proceed; neither depends on the other.
+    // Challenge fetch must follow position (we need position.challengeId).
+    const [userRecord, position] = await Promise.all([
+        db.select({ isActive: users.isActive }).from(users).where(eq(users.id, userId)),
+        db.query.positions.findFirst({ where: eq(positions.id, positionId) }),
+    ]);
+
+    const user = userRecord[0];
+    if (user && user.isActive === false) {
+        return NextResponse.json({ error: "Account suspended" }, { status: 403 });
+    }
+
+    if (!position) {
+        return NextResponse.json({ error: "Position not found" }, { status: 404 });
+    }
+
     try {
-        // Fetch the position
-        const position = await db.query.positions.findFirst({
-            where: eq(positions.id, positionId),
-        });
 
-        if (!position) {
-            return NextResponse.json({ error: "Position not found" }, { status: 404 });
-        }
-
-        // Fetch the challenge
+        // Fetch the challenge (needs position.challengeId — can't be parallelized further up)
         const challenge = await db.query.challenges.findFirst({
             where: eq(challenges.id, String(position.challengeId)),
         });
@@ -65,6 +68,7 @@ export async function POST(req: NextRequest) {
         }
 
         // Close the position by selling all shares
+
         const shares = parseFloat(position.shares);
         // Derive cost basis from entry price × shares (immune to sizeAmount drift)
         const costBasis = shares * parseFloat(position.entryPrice);

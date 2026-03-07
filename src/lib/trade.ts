@@ -119,15 +119,16 @@ export class TradeExecutor {
 
         const currentPrice = canonicalPrice;
 
-        // 3. Risk Check
+        // 3. Fast balance pre-check (stale data, not locked — purely UX: fail early before
+        // pre-warm and DB transaction overhead if obviously insufficient funds).
+        // SECURITY: The full 9-layer risk check runs INSIDE the DB transaction below
+        // (after SELECT ... FOR UPDATE) where it sees post-commit position state.
+        // The full pre-tx validateTrade was removed because it duplicated ~3 DB roundtrips
+        // + 1 Railway call on stale, unlocked data — adding 300-600ms to every BUY. The
+        // in-tx call is the security-critical gate; this is just a fast early exit.
         if (side === "BUY") {
             if (parseFloat(challenge.currentBalance) < amount) {
                 throw new InsufficientFundsError(userId, amount, parseFloat(challenge.currentBalance));
-            }
-
-            const riskCheck = await RiskEngine.validateTrade(challenge.id, marketId, amount, 0, direction);
-            if (!riskCheck.allowed) {
-                throw new RiskLimitExceededError(riskCheck.reason || "Risk Check Failed");
             }
         }
 
