@@ -26,29 +26,44 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 3. **1,335/1,335 unit tests pass, tsc clean.**
 
 
-
 ### 🌅 Tomorrow Morning — Handoff for Next Agent
 
 > **Read `CLAUDE.md` and `journal.md` CURRENT STATUS before doing anything.**
 
 **Ranked by leverage × risk:**
 
-#### 1. 🟥 Push Fixes + Reset Mat's Balance (HIGHEST — prod balance is wrong RIGHT NOW)
-```bash
-git add tests/state-transition-invariants.test.ts src/workers/risk-monitor.ts
-git commit -m "fix: triggerBreach sets endsAt + state transition invariant tests (20 tests)"
-git push origin develop
-# Verify staging, then:
-git checkout main && git merge develop && git push origin main
-# THEN with production DATABASE_URL:
-DRY_RUN=false npx tsx src/scripts/reset-mat-funded-balance.ts
-```
-
-#### 2. 🟨 Lifecycle Emails (after financial integrity is solid)
+#### 1. 🟨 Lifecycle Emails
 Plan approved. Three emails: purchase confirmation, challenge passed, challenge failed.
+Start with the transactional email infra (Resend or similar) before the template work.
 
-#### 3. 🟩 Global Error Pages
-`not-found.tsx`, `error.tsx`, `loading.tsx` — ~1 hour.
+#### 2. 🟩 Global Error Pages
+`not-found.tsx`, `error.tsx`, `loading.tsx` — ~1 hour of polish work.
+
+#### 3. 🟩 Deploy hygiene fixes to prod
+Commit `e0468e4` (evaluator sanity gate fix + lifecycle test sync) is on `develop` but not pushed.
+Push following the deploy workflow when ready.
+
+---
+
+
+### Mar 7, 2026 (8:39 AM CT) — Morning Hygiene
+
+**Context:** New session. Applied the senior-engineer morning checklist before any feature work.
+
+**Changes made:**
+| Change | File | Why |
+|--------|------|-----|
+| Journal CURRENT STATUS updated | `journal.md` | Latency fix was on main, status still said "committed not pushed" |
+| Deploy workflow step 8 annotated | `.agent/workflows/deploy.md` | SHA mismatch false-positive: step 8 must run while on `main` before switching to `develop` |
+| Evaluator sanity gate `unrealizedPnL` fallback | `src/lib/evaluator.ts` | Gate returned 0 unrealized PnL when live prices unavailable, but equity calc used stored-price fallback → artificial discrepancy blocked legitimate promotions |
+| Lifecycle test data updated for 12% tier | `src/scripts/verify-lifecycle.ts` | Mat's tier config update (commit `214ea56`) set 10k challenge to 12% target ($1,200). Tests still seeded $1,100 profit → under target → 9 false test failures |
+
+**Results:**
+- `test:lifecycle`: **81/81 pass** (was 71/81)
+- `tsc --noEmit`: clean
+- All changes committed on `develop` as `e0468e4` — not yet pushed (daily budget concern)
+
+**Root cause for sanity gate bug:** The evaluator's `unrealizedPnL` sum inside the sanity gate silently returned 0 when live prices were unavailable (via the ingestion worker), but the `equity` calculation directly above used a stored-price fallback from the DB. When those two paths diverged, the gate saw a larger discrepancy than actually existed and blocked promotion. Fix: applied identical stored-price fallback to the gate's unrealized PnL calc.
 
 ---
 
