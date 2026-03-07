@@ -31,18 +31,40 @@ export async function GET(req: Request) {
 
     const startingBalance = parseFloat(challenge.startingBalance || '10000');
     const currentBalance = parseFloat(challenge.currentBalance);
+    const isFunded = challenge.phase === 'funded';
 
-    // Get all trades
+    // Get all trades in chronological order (oldest first for replay)
     const allTrades = await db.query.trades.findMany({
         where: eq(trades.challengeId, challengeId),
         orderBy: [desc(trades.executedAt)]
     });
+    const chronTrades = [...allTrades].reverse();
+
+    // PHASE-AWARE RECONSTRUCTION: Mirrors balance-audit cron logic exactly.
+    // Funded challenges had a hard resetBalance() to startingBalance at transition.
+    // Only replay trades that occurred AFTER the funded transition.
+    let tradesToReplay = chronTrades;
+    let preTransitionCount = 0;
+    if (isFunded) {
+        let transitionIndex = -1;
+        for (let i = chronTrades.length - 1; i >= 0; i--) {
+            if (chronTrades[i].closureReason === 'pass_liquidation') {
+                transitionIndex = i;
+                break;
+            }
+        }
+        if (transitionIndex >= 0) {
+            preTransitionCount = transitionIndex + 1;
+            tradesToReplay = chronTrades.slice(preTransitionCount);
+        }
+    }
 
     // Calculate what balance SHOULD be
     let calculatedBalance = startingBalance;
     const tradeLog: { type: string; amount: number; balanceAfter: number; shares: number; price: number; time: Date | null }[] = [];
 
-    for (const trade of allTrades.reverse()) { // Process in chronological order
+    // Use trade.amount for both BUY and SELL — matches BalanceManager exactly.
+    for (const trade of tradesToReplay) { // Process in chronological order
         const amount = parseFloat(trade.amount);
         const shares = parseFloat(trade.shares);
         const price = parseFloat(trade.price);
@@ -58,11 +80,10 @@ export async function GET(req: Request) {
                 time: trade.executedAt
             });
         } else if (trade.type === "SELL") {
-            const proceeds = shares * price;
-            calculatedBalance += proceeds;
+            calculatedBalance += amount;  // trade.amount == shares * executionPrice (set at trade time)
             tradeLog.push({
                 type: "SELL",
-                amount: proceeds,
+                amount,
                 balanceAfter: calculatedBalance,
                 shares,
                 price,
@@ -75,6 +96,7 @@ export async function GET(req: Request) {
 
     return NextResponse.json({
         challengeId,
+        phase: challenge.phase,
         startingBalance,
         currentBalance,
         calculatedBalance,
@@ -82,8 +104,9 @@ export async function GET(req: Request) {
         discrepancyExplanation: discrepancy === 0
             ? "Balance matches trades ✅"
             : `⚠️ Balance is $${discrepancy.toFixed(2)} off from expected`,
-        totalBuys: allTrades.filter(t => t.type === "BUY").length,
-        totalSells: allTrades.filter(t => t.type === "SELL").length,
+        totalBuys: tradesToReplay.filter(t => t.type === "BUY").length,
+        totalSells: tradesToReplay.filter(t => t.type === "SELL").length,
+        preTransitionTradesSkipped: preTransitionCount,
         tradeLog
     });
 }

@@ -34,25 +34,45 @@ export async function POST(req: Request) {
 
     const startingBalance = parseFloat(challenge.startingBalance || '10000');
     const currentBalance = parseFloat(challenge.currentBalance);
+    const isFunded = challenge.phase === 'funded';
 
-    // Get all trades and recalculate
+    // Get all trades in chronological order
     const allTrades = await db.query.trades.findMany({
         where: eq(trades.challengeId, challengeId),
         orderBy: [desc(trades.executedAt)]
     });
+    const chronTrades = [...allTrades].reverse();
+
+    // PHASE-AWARE RECONSTRUCTION: Mirrors balance-audit cron logic exactly.
+    // Funded challenges had a hard resetBalance() to startingBalance at transition.
+    // All pre-transition trades are irrelevant to the current balance — skip them.
+    let tradesToReplay = chronTrades;
+    if (isFunded) {
+        let transitionIndex = -1;
+        for (let i = chronTrades.length - 1; i >= 0; i--) {
+            if (chronTrades[i].closureReason === 'pass_liquidation') {
+                transitionIndex = i;
+                break;
+            }
+        }
+        if (transitionIndex >= 0) {
+            tradesToReplay = chronTrades.slice(transitionIndex + 1);
+            logger.info(`[FixBalance] Funded challenge: skipping ${transitionIndex + 1} pre-transition trades, replaying ${tradesToReplay.length}`);
+        }
+    }
 
     let calculatedBalance = startingBalance;
 
-    for (const trade of allTrades.reverse()) {
+    // Use trade.amount for both BUY and SELL — this is exactly what BalanceManager
+    // deducts/credits, so it's the authoritative source. For SELLs, trade.amount is
+    // set to shares * executionPrice at trade time (same as creditProceeds receives).
+    for (const trade of tradesToReplay) {
         const amount = parseFloat(trade.amount);
-        const shares = parseFloat(trade.shares);
-        const price = parseFloat(trade.price);
 
         if (trade.type === "BUY") {
             calculatedBalance -= amount;
         } else if (trade.type === "SELL") {
-            const proceeds = shares * price;
-            calculatedBalance += proceeds;
+            calculatedBalance += amount;
         }
     }
 
