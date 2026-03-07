@@ -110,6 +110,14 @@ export default async function DashboardPage() {
     // which caused the equity display to flash to the wrong value on load.
     const trueEquity = activeChallenge?.equity ?? (activeChallenge?.currentBalance ?? 0);
 
+    // Pre-compute rulesConfig-derived values to keep JSX clean.
+    // rulesConfig is stored as JSON — fields may use either naming convention
+    // (maxDrawdownPercent vs maxTotalDrawdownPercent, dailyLossPercent vs maxDailyDrawdownPercent).
+    const rc = activeChallenge?.rulesConfig as Record<string, number> | null | undefined;
+    const riskMaxDrawdownPct = (() => { const v = rc?.maxDrawdownPercent ?? rc?.maxTotalDrawdownPercent ?? 0.08; return v < 1 ? v * 100 : v; })();
+    const riskDailyDrawdownPct = (() => { const v = rc?.dailyLossPercent ?? rc?.maxDailyDrawdownPercent ?? 0.04; return v < 1 ? v * 100 : v; })();
+    const riskDailyDrawdownDollars = (rc?.maxDailyDrawdownPercent ?? 0.04) * (activeChallenge?.startingBalance ?? 0);
+
     return (
         <div className="space-y-6">
             <WelcomeTour />
@@ -258,18 +266,10 @@ export default async function DashboardPage() {
                                 dailyDrawdownUsage={stats.dailyDrawdownUsage}
                                 startOfDayBalance={activeChallenge.startOfDayBalance}
                                 startingBalance={activeChallenge.startingBalance}
-                                maxDrawdownPercent={(() => {
-                                    const rc = activeChallenge.rulesConfig as Record<string, number> | null;
-                                    const raw = rc?.maxDrawdownPercent ?? rc?.maxTotalDrawdownPercent ?? 0.08;
-                                    return raw < 1 ? raw * 100 : raw; // 0.08 → 8, already 8 → 8
-                                })()}
-                                dailyDrawdownPercent={(() => {
-                                    const rc = activeChallenge.rulesConfig as Record<string, number> | null;
-                                    const raw = rc?.dailyLossPercent ?? rc?.maxDailyDrawdownPercent ?? 0.04;
-                                    return raw < 1 ? raw * 100 : raw; // 0.05 → 5, already 5 → 5
-                                })()}
+                                maxDrawdownPercent={riskMaxDrawdownPct}
+                                dailyDrawdownPercent={riskDailyDrawdownPct}
                                 maxDrawdownDollars={stats.maxDrawdownLimit}
-                                dailyDrawdownDollars={((activeChallenge.rulesConfig as Record<string, number>)?.maxDailyDrawdownPercent ?? 0.04) * activeChallenge.startingBalance}
+                                dailyDrawdownDollars={riskDailyDrawdownDollars}
                                 drawdownUsedDollars={stats.drawdownAmount}
                                 dailyDrawdownUsedDollars={stats.dailyDrawdownAmount}
                                 equity={trueEquity}
