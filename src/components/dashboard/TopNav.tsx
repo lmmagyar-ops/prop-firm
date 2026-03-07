@@ -41,46 +41,50 @@ export function TopNav({ userId }: TopNavProps) {
             <header className="sticky top-0 z-50 w-full border-b border-[#2E3A52] bg-[#0E1217]/80 backdrop-blur-md">
                 <div className="max-w-[1800px] mx-auto px-3 md:px-6 h-14 md:h-16 flex items-center justify-between">
 
-                    {/* Left: Mobile only — Logo, Navigation, New Evaluation (sidebar covers desktop) */}
-                    <div className="flex md:hidden items-center gap-2">
-                        <Link href="/dashboard/trade" className="flex items-center gap-2">
+                    {/* Left: Mobile only — Logo, Navigation, New Evaluation */}
+                    <div className="flex md:hidden items-center gap-2 min-w-0 flex-1">
+                        <Link href="/dashboard/trade" className="flex items-center gap-2 shrink-0">
                             <img src="/icon.png" alt="Predictions Firm" className="w-8 h-8 rounded-lg" />
                         </Link>
 
-                        <nav className="flex items-center gap-1">
-                            <Link href="/dashboard">
-                                <Button
-                                    variant="ghost"
-                                    className={cn(
-                                        "h-8 px-3 text-sm font-medium",
-                                        pathname === "/dashboard"
-                                            ? "bg-[#1E293B] text-white"
-                                            : "text-zinc-400 hover:text-white hover:bg-[#1E293B]"
-                                    )}
-                                >
-                                    Dashboard
-                                </Button>
-                            </Link>
-                            <Link href="/dashboard/trade">
-                                <Button
-                                    variant="ghost"
-                                    className={cn(
-                                        "h-8 px-3 text-sm font-medium",
-                                        pathname === "/dashboard/trade"
-                                            ? "bg-[#1E293B] text-white"
-                                            : "text-zinc-400 hover:text-white hover:bg-[#1E293B]"
-                                    )}
-                                >
-                                    Trade
-                                </Button>
-                            </Link>
-                        </nav>
-
-                        <Link href="/buy-evaluation">
-                            <Button className="bg-[#29af73] hover:bg-[#1e8a5a] text-white font-bold h-8 px-3 text-sm shadow-lg shadow-green-900/20">
-                                New Evaluation
-                            </Button>
-                        </Link>
+                        {/* Scrollable nav row + right-edge fade affordance */}
+                        <div className="relative flex-1 min-w-0">
+                            <nav className="flex items-center gap-1 overflow-x-auto scrollbar-hide pr-8">
+                                <Link href="/dashboard">
+                                    <Button
+                                        variant="ghost"
+                                        className={cn(
+                                            "h-8 px-3 text-sm font-medium shrink-0",
+                                            pathname === "/dashboard"
+                                                ? "bg-[#1E293B] text-white"
+                                                : "text-zinc-400 hover:text-white hover:bg-[#1E293B]"
+                                        )}
+                                    >
+                                        Dashboard
+                                    </Button>
+                                </Link>
+                                <Link href="/dashboard/trade">
+                                    <Button
+                                        variant="ghost"
+                                        className={cn(
+                                            "h-8 px-3 text-sm font-medium shrink-0",
+                                            pathname === "/dashboard/trade"
+                                                ? "bg-[#1E293B] text-white"
+                                                : "text-zinc-400 hover:text-white hover:bg-[#1E293B]"
+                                        )}
+                                    >
+                                        Trade
+                                    </Button>
+                                </Link>
+                                <Link href="/buy-evaluation" className="shrink-0">
+                                    <Button className="bg-[#29af73] hover:bg-[#1e8a5a] text-white font-bold h-8 px-2.5 text-sm shadow-lg shadow-green-900/20">
+                                        + Eval
+                                    </Button>
+                                </Link>
+                            </nav>
+                            {/* Right-edge scroll affordance — fades out to signal more content */}
+                            <div className="pointer-events-none absolute right-0 top-0 h-full w-8 bg-gradient-to-l from-[#0E1217] to-transparent" />
+                        </div>
                     </div>
 
                     {/* Center: Search trigger (desktop only) */}
