@@ -50,6 +50,5 @@ postgres-data
 Branding/_Archive/*
 scripts/check-risk-monitor.ts
 
-# dev artifacts — not part of the codebase
-journal.md
-email-preview.html
+# AI tooling (internal agent workflows and skills — not project source)
+.agents/
