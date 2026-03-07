@@ -245,7 +245,7 @@ After every fix:
 2. **Read this file** — full architecture, risk rules, debugging protocols
 3. **If fixing a bug**, follow the `/fix-bug` workflow (`.agent/workflows/fix-bug.md`)
 4. **Run `npm run test:engine`** — 53 assertions across 11 phases prove the trading engine works
-5. **Run `npm run test:lifecycle`** — 73 assertions across 7 phases prove the full challenge lifecycle
+5. **Run `npm run test:lifecycle`** — 81 assertions across 7 phases prove the full challenge lifecycle
 6. **Run `npm run test:safety`** — 54 assertions proving each critical exploit path (payout, drawdown, transitions) is blocked
 7. **Run `npm run test:financial`** — Financial consistency verification (share counts, PnL cross-checks, risk limit messages)
 8. **If debugging**, follow the "Number Discrepancy Audit" section — step-by-step protocol with symptom → cause lookup
@@ -281,8 +281,8 @@ npm run db:check     # Detect schema drift (dry-run push — exits 1 if drift fo
 # Testing
 npm run test                                    # All Vitest unit tests
 npm run test:engine                             # Trading engine verification (53 assertions)
-npm run test:lifecycle                          # Full lifecycle simulator (73 assertions)
-npm run test:safety                             # Exploit scenario tests (44 assertions)
+npm run test:lifecycle                          # Full lifecycle simulator (81 assertions)
+npm run test:safety                             # Exploit scenario tests (54 assertions)
 npm run test:financial                          # Financial consistency verification (share counts, PnL, risk limits)
 npm run test:deploy -- https://prop-firmx.vercel.app  # Post-deploy smoke test (HTTP-only, no DB writes)
 npm run test:markets                            # Market data quality audit (22 assertions) — OPTIONAL, requires worker running
@@ -332,7 +332,7 @@ DATABASE_URL="..." npx tsx scripts/grant-admin.ts email@example.com
 | Layer | Technology |
 |-------|------------|
 | **Framework** | Next.js 16 (App Router), React 19 |
-| **Database** | Prisma Postgres (Vercel), Drizzle ORM |
+| **Database** | Neon Postgres (Vercel), Drizzle ORM |
 | **Cache** | Railway Redis (flat-rate, via REDIS_URL) |
 | **Auth** | NextAuth v5 (email/password + Google OAuth) |
 | **UI** | Tailwind v4, Shadcn/ui, Framer Motion |
@@ -710,7 +710,7 @@ REDIS_URL=${{Redis.REDIS_URL}}
 
 | Component | Platform | Branch | Config |
 |-----------|----------|--------|--------|
-| Main App | Vercel | `main` (auto-deploy) | Prisma Postgres |
+| Main App | Vercel | `main` (auto-deploy) | Neon Postgres |
 | Staging | Vercel | `develop` (preview) | Same DB |
 | Worker | Railway | `main` | `railway.json`, health: `/health:3001` |
 
@@ -731,8 +731,8 @@ npm run db:push    # Review diff output before confirming destructive changes
 
 ```bash
 npm run test:engine      # 53 assertions — core trading engine
-npm run test:lifecycle   # 74 assertions — full challenge lifecycle
-npm run test:safety      # 44 assertions — exploit scenario proofs
+npm run test:lifecycle   # 81 assertions — full challenge lifecycle
+npm run test:safety      # 54 assertions — exploit scenario proofs
 npm run test:financial   # Financial consistency (PnL, shares, risk messages)
 npx tsc --noEmit         # Zero type errors
 ```
@@ -769,7 +769,7 @@ See `.agent/workflows/deploy.md` for the full deployment workflow.
 | **Payout Logic** | `tests/payout-logic.test.ts` | Profit splits, eligibility |
 | **Trade Engine** | `npm run test:engine` | 53 assertions, 11 phases |
 | **Lifecycle** | `npm run test:lifecycle` | 81 assertions, 7 phases (full user journey) |
-| **Safety** | `npm run test:safety` | 44 assertions — exploit scenario tests (payout deduction, transaction atomicity, funded-phase drawdown, position leak on transition) |
+| **Safety** | `npm run test:safety` | 54 assertions — exploit scenario tests (payout deduction, transaction atomicity, funded-phase drawdown, position leak on transition) |
 | **Deploy Smoke** | `npm run test:deploy -- <url>` | HTTP-only production smoke: homepage, cron status, heartbeat, login |
 | **Balance Integrity** | `npm run test:balances` | Balance audit checks |
 | **Financial Consistency** | `npm run test:financial` | Share count, PnL cross-check, risk limit messages, equity sync |
