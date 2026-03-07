@@ -33,7 +33,7 @@ interface LivePositionsProps {
  * polling /api/trade/positions, which computes PnL server-side using
  * position-utils.ts and order book mid-prices. No client-side PnL computation.
  * 
- * See CLAUDE.md "Financial Display Rule" for the guardrail preventing regression.
+ * See ARCHITECTURE.md "Financial Display Rule" for the guardrail preventing regression.
  */
 
 const POLL_INTERVAL_MS = 5_000;

@@ -49,3 +49,7 @@ postgres-data
 .env*.local
 Branding/_Archive/*
 scripts/check-risk-monitor.ts
+
+# dev artifacts — not part of the codebase
+journal.md
+email-preview.html

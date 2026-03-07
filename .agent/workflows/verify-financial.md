@@ -73,4 +73,4 @@ If all pass, note in `journal.md`:
 **Financial verification:** ✅ All N assertions passed, browser checks clean
 ```
 
-If any fail, investigate using the Number Discrepancy Audit Protocol in CLAUDE.md before deploying.
+If any fail, investigate using the Number Discrepancy Audit Protocol in ARCHITECTURE.md before deploying.

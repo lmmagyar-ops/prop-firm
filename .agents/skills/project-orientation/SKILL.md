@@ -1,6 +1,6 @@
 ---
 name: project-orientation
-description: Read this skill FIRST before doing ANY work on the Funded Prediction platform. It summarizes the mandatory rules from CLAUDE.md and the current system state. Failure to read this before working is the root cause of most agent regressions.
+description: Read this skill FIRST before doing ANY work on the Funded Prediction platform. It summarizes the mandatory rules from ARCHITECTURE.md and the current system state. Failure to read this before working is the root cause of most agent regressions.
 ---
 
 # Project Orientation Skill
@@ -127,4 +127,4 @@ After every session, update `journal.md`:
 | Trade rejected | Check risk engine logs in `src/lib/risk.ts` |
 | Prices stale | `GET /api/cron/heartbeat-check` → Railway worker logs |
 | NaN in UI | Search for `parseFloat` without guard → use `safeParseFloat()` |
-| Number discrepancy | Follow Number Discrepancy Audit Protocol in CLAUDE.md |
+| Number discrepancy | Follow Number Discrepancy Audit Protocol in ARCHITECTURE.md |

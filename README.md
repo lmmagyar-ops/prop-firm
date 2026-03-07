@@ -21,7 +21,7 @@ Visit [localhost:3000](http://localhost:3000)
 
 ## Tech Stack
 
-- **Framework:** Next.js 16, React 19
+- **Framework:** Next.js 15, React 19
 - **Database:** Prisma Postgres (Drizzle ORM)
 - **Cache:** Railway Redis
 - **Auth:** NextAuth v5
@@ -31,7 +31,7 @@ Visit [localhost:3000](http://localhost:3000)
 
 | Document | Description |
 |----------|-------------|
-| [CLAUDE.md](./CLAUDE.md) | **Complete technical reference** - architecture, systems, debugging |
+| [ARCHITECTURE.md](./ARCHITECTURE.md) | **Complete technical reference** - architecture, systems, debugging |
 | [docs/platforms.md](./docs/platforms.md) | Polymarket vs Kalshi platform details |
 | [docs/roadmap.md](./docs/roadmap.md) | Pre-launch checklist and tasks |
 | [docs/trading_rules.md](./docs/trading_rules.md) | User-facing trading rules |

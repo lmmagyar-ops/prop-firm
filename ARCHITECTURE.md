@@ -1,4 +1,4 @@
-# CLAUDE.md — Funded Prediction
+# Funded Prediction
 
 > **Funded Prediction** — A simulated trading platform where users trade on Polymarket data with firm capital.
 

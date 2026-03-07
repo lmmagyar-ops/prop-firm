@@ -6,7 +6,7 @@ description: Mandatory verification workflow after any UI or presentation-layer 
 
 **When to run:** After ANY change to components in `src/components/`, styling, or display formatting.
 
-## 1. Read CLAUDE.md
+## 1. Read ARCHITECTURE.md
 // turbo
 Confirm you understand the project's formatting conventions (`formatPrice()`, `formatCurrency()`, etc.) and testing standards before making changes.
 
@@ -69,7 +69,7 @@ Pick one live value and trace it across all 3 layers:
 2. **API**: What does `/api/trades/history` return?  
 3. **UI**: What does the component render?
 
-All three MUST match. If they don't, follow the Number Discrepancy Audit Protocol in CLAUDE.md.
+All three MUST match. If they don't, follow the Number Discrepancy Audit Protocol in ARCHITECTURE.md.
 
 ## 7. Update journal.md
 
