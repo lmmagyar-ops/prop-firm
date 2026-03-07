@@ -110,7 +110,7 @@ Use these accounts to reproduce user-reported bugs and perform browser smoke tes
 
 | Account | Email | Password | Notes |
 |---------|-------|----------|-------|
-| Mat's test account | `forexampletrader@gmail.com` | `123456rR` | Has funded account history, used for QA reproduction |
+| Mat's test account | `forexampletrader@gmail.com` | _(see team 1Password)_ | Has funded account history, used for QA reproduction |
 
 **Login flow:** Navigate to `https://prop-firmx.vercel.app/login` → Use the email/password form below "OR CONTINUE WITH EMAIL" → Enter email and password → Click "Sign In".
 
@@ -810,7 +810,7 @@ See `.agent/workflows/deploy.md` for the full deployment workflow.
 
 | Account | Email | Password | Auth Method | Purpose |
 |---------|-------|----------|-------------|---------|
-| **Mat (trader)** | `forexampletrader@gmail.com` | `123456rR` | Email/Password | Real trader account with funded history |
+| **Mat (trader)** | `forexampletrader@gmail.com` | _(see team 1Password)_ | Email/Password | Real trader account with funded history |
 | **E2E Bot** | `e2e-test@propshot.io` | (see GitHub secret) | Email/Password | Automated E2E tests |
 
 > **Login flow:** Navigate to `/login` → use the email/password form below "OR CONTINUE WITH EMAIL" → Enter email and password → Click "Sign In". Set browser to **desktop width (1280px+)** before testing.
