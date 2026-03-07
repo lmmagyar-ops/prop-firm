@@ -8,22 +8,24 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 > **New agent? Read this section before doing anything else.**
 > This is the single source of truth for what actually works. Do NOT trust individual journal entries — they reflect what the agent *believed*, not what the user confirmed.
 
-### Mar 7, 2026 (8:39 AM CT) — Production Healthy ✅
+### Mar 7, 2026 (9:35 AM CT) — Production Healthy ✅
 
 | Change | Status |
 |--------|--------|
 | **Risk-monitor `triggerPass` fix** | ✅ On `main` (`3080c77`) |
 | **Risk-monitor `triggerBreach` + `endsAt`** | ✅ On `main` |
-| **20 state-transition invariant tests** | ✅ On `main`, 1,335/1,335 pass |
+| **20 state-transition invariant tests** | ✅ On `main`, 1,337/1,337 pass |
 | **Mat's funded balance** — reset to $25,000.00 | ✅ Confirmed via staging |
-| **Buy latency fix** — fire-and-forget idempotency, parallel pre-warm, 10s cache TTL | ✅ On `main` (`f99a274`), ~40% improvement measured |
+| **Buy latency fix v1** — fire-and-forget idempotency, parallel pre-warm, 10s cache TTL | ✅ On `main` (`f99a274`) |
+| **Buy latency fix v2** — remove redundant pre-tx validateTrade (saves 300-600ms) | ✅ On `develop` — **push to get to Mat** |
+| **Evaluator sanity gate + lifecycle test sync** | ✅ On `develop` |
 | **tsc --noEmit** | ✅ Clean |
 
 ### ⚠️ What the Next Agent Must Know
 
-1. **Deploy SHA mismatch is a workflow sequencing issue, NOT a code bug.** Step 8 (`test:deploy`) must run while on `main` branch. If you've already switched to `develop` (step 10), the script passes the develop SHA and gets a false-positive mismatch. Run health check before `git checkout develop`.
-2. **Pre-existing `test:lifecycle` failures** — ~9 failures existed before our changes. Root cause TBD (DB timeouts or timing sensitivity). See journal entry below for classification.
-3. **1,335/1,335 unit tests pass, tsc clean.**
+1. **BUY latency v2 is on `develop`, not yet on `main`.** Mat needs this pushed ASAP.
+2. **Deploy SHA mismatch is a workflow sequencing issue, NOT a code bug.** Step 8 (`test:deploy`) must run while on `main` branch.
+3. **1,337/1,337 unit tests pass, tsc clean.**
 
 
 ### 🌅 Tomorrow Morning — Handoff for Next Agent
@@ -32,19 +34,39 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 **Ranked by leverage × risk:**
 
-#### 1. 🟨 Lifecycle Emails
+#### 1. 🔴 Push `develop` → `main`
+BUY latency v2 is on `develop`. Mat is waiting. Follow `/deploy` workflow.
+Verify staging first, then push to main.
+
+#### 2. 🟨 Lifecycle Emails
 Plan approved. Three emails: purchase confirmation, challenge passed, challenge failed.
 Start with the transactional email infra (Resend or similar) before the template work.
 
-#### 2. 🟩 Global Error Pages
+#### 3. 🟩 Global Error Pages
 `not-found.tsx`, `error.tsx`, `loading.tsx` — ~1 hour of polish work.
-
-#### 3. 🟩 Deploy hygiene fixes to prod
-Commit `e0468e4` (evaluator sanity gate fix + lifecycle test sync) is on `develop` but not pushed.
-Push following the deploy workflow when ready.
 
 ---
 
+### Mar 7, 2026 (9:35 AM CT) — BUY Latency Root Cause Found & Fixed (v2)
+
+**Context:** Mat reported "don't see much difference" and "closing is faster than opening" after the v1 latency fix shipped.
+
+**Root Cause:** `RiskEngine.validateTrade` was called **twice** for every BUY: once pre-transaction (line 128 of `trade.ts`) and once inside the DB transaction (line 266). SELL skips both calls. Each call costs ~2 DB roundtrips + Railway HTTP. The pre-tx call ran on stale, unlocked data — purely redundant.
+
+**Why closing is faster:** The in-tx `validateTrade` call is the security-critical one (runs after `SELECT FOR UPDATE`). The pre-tx one was added for "early feedback" but duplicated all the same work at ~300-600ms of overhead that SELL never pays.
+
+**Fix:**
+| File | Change | Impact |
+|------|--------|--------|
+| `src/lib/trade.ts` | Remove pre-tx `RiskEngine.validateTrade()`. Keep fast inline balance check. | -300-600ms per BUY |
+| `src/app/api/trade/close/route.ts` | Fan-out serial user+position DB queries into `Promise.all` | -100-200ms per SELL |
+| `tests/lib/trade.test.ts` | Update stale double-call expectation to single in-tx call | Test accuracy |
+
+**Security:** In-tx `validateTrade` after `SELECT FOR UPDATE` is unchanged. Removing the pre-tx call does not reduce security — the in-tx call is what enforces all 9 risk layers on committed data.
+
+**Tests:** 1,337/1,337 pass. `tsc` clean. Committed on `develop`. **Needs push to `main`.**
+
+---
 
 ### Mar 7, 2026 (8:39 AM CT) — Morning Hygiene
 
