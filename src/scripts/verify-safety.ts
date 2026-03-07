@@ -282,8 +282,10 @@ async function test3_riskMonitorFundedPhaseRules() {
     //   Challenge: Trailing — drawdownBase = highWaterMark (stricter)
     //
     // Scenario: Trader profits to $12,000 (HWM=$12k), then drops to $10,900
-    //   - Funded static floor:               $10k - $1k = $9k → equity $10,900 > $9k → SAFE ✅
-    //   - Challenge trailing floor (from HWM): $12k - $1k = $11k → equity $10,900 < $11k → BREACH ❌
+    //   - Funded static floor:               $10k - $800 = $9,200 → equity $10,900 > $9,200 → SAFE ✅
+    //   - Challenge trailing floor (from HWM): $12k - $800 = $11,200 → equity $10,900 < $11,200 → BREACH ❌
+    //
+    // 10k tier: maxTotalDrawdownPercent = 8% → $800 absolute (both challenge + funded phases)
 
     const startingBalance = 10000;
     const challengeRules = tier10k;
@@ -292,8 +294,8 @@ async function test3_riskMonitorFundedPhaseRules() {
     const challengeMaxDrawdown = (challengeRules.maxTotalDrawdownPercent as number) * startingBalance;
     const fundedMaxDrawdown = fundedRules.maxTotalDrawdown;
 
-    assert(challengeMaxDrawdown === 1000, `Challenge maxDrawdown = $${challengeMaxDrawdown}`);
-    assert(fundedMaxDrawdown === 1000, `Funded maxDrawdown = $${fundedMaxDrawdown}`);
+    assert(challengeMaxDrawdown === 800, `Challenge maxDrawdown = $${challengeMaxDrawdown}`);
+    assert(fundedMaxDrawdown === 800, `Funded maxDrawdown = $${fundedMaxDrawdown}`);
 
     // FUNDED PHASE: Static drawdown — floor = $10k - $1k = $9k
     // Equity $10,900 > $9k → should be SAFE
