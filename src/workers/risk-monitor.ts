@@ -250,8 +250,11 @@ export class RiskMonitor {
 
             await db.transaction(async (tx) => {
                 // 1. Status guard prevents double-firing on already-failed challenges
+                // endsAt mirrors evaluator.ts breach path (line 135) — both must set this
+                // so audit queries for "when did this challenge end?" return a real timestamp.
+                // Confirmed gap: $10K challenge (056d254d) has endsAt=null in production.
                 const result = await tx.update(challenges)
-                    .set({ status: 'failed' })
+                    .set({ status: 'failed', endsAt: new Date() })
                     .where(and(
                         eq(challenges.id, challenge.id),
                         eq(challenges.status, 'active')
