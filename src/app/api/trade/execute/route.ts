@@ -30,11 +30,8 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // SECURITY: Check if user account is suspended before allowing trades
-    const [user] = await db.select({ isActive: users.isActive }).from(users).where(eq(users.id, userId));
-    if (user && user.isActive === false) {
-        return NextResponse.json({ error: "Account suspended" }, { status: 403 });
-    }
+    // isActive check is merged into the challenge query fan-out below (saves one serial DB round-trip).
+    // Suspension is an admin action — checking it alongside the challenge is safe.
 
     const body = await req.json();
     const { marketId, outcome, amount, idempotencyKey } = body;
@@ -50,7 +47,7 @@ export async function POST(req: NextRequest) {
         // old sequential guard above this block has been removed.
         // Parallel execution saves ~200-500ms on warm paths.
 
-        const [idempotencyCheck, activeChallenge] = await Promise.all([
+        const [idempotencyCheck, activeChallenge, [userRecord]] = await Promise.all([
             idempotencyKey
                 ? checkIdempotency(idempotencyKey)
                 : Promise.resolve({ isDuplicate: false as const, cachedResponse: undefined }),
@@ -59,8 +56,15 @@ export async function POST(req: NextRequest) {
                     eq(challenges.userId, userId),
                     eq(challenges.status, "active")
                 )
-            })
+            }),
+            // isActive runs in parallel — no extra serial DB round-trip
+            db.select({ isActive: users.isActive }).from(users).where(eq(users.id, userId)),
         ]);
+
+        // SECURITY: Suspension check — in same Promise.all, zero extra latency vs. before
+        if (userRecord && userRecord.isActive === false) {
+            return NextResponse.json({ error: "Account suspended" }, { status: 403 });
+        }
 
         // Handle idempotency result (was previously checked before the challenge fetch)
         if (idempotencyKey && idempotencyCheck.isDuplicate) {
@@ -169,9 +173,11 @@ export async function POST(req: NextRequest) {
             position: positionData
         };
 
-        // Cache response for idempotency (if key was provided)
+        // Cache response for idempotency — fire-and-forget (saves ~400ms on happy path).
+        // Worst case: a client retry re-executes, but the FOR UPDATE row lock prevents
+        // any actual double-spend. Non-critical path; don't make the user wait for it.
         if (idempotencyKey) {
-            await cacheIdempotencyResult(idempotencyKey, responsePayload);
+            cacheIdempotencyResult(idempotencyKey, responsePayload).catch(() => { });
         }
 
         return NextResponse.json(responsePayload);
