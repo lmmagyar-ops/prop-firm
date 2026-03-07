@@ -205,25 +205,30 @@ export class ChallengeEvaluator {
             // CRITICAL: Use the same stored-price fallback as the equity calculation above (lines ~99-110).
             // If live prices are unavailable and we return 0 here, but equity counted stored-price value,
             // the discrepancy is artificial → sanity gate blocks a legitimate promotion. They must be consistent.
+            //
+            // DIRECTION NOTE: entryPrice and currentPrice stored in DB are ALREADY direction-adjusted.
+            // calculatePositionMetrics() expects a raw YES price and adjusts internally.
+            // So: when using live prices, pass the raw YES price to calculatePositionMetrics.
+            //     when using stored prices, compute (storedPrice - entryPrice) * shares directly
+            //     to avoid double-adjusting NO positions.
             const unrealizedPnL = openPositions.reduce((sum, pos) => {
                 const shares = parseFloat(pos.shares);
                 const entry = parseFloat(pos.entryPrice);
-                const direction = (pos.direction as 'YES' | 'NO') || 'YES';
                 const liveData = livePrices.get(pos.marketId);
 
-                let yesPrice: number;
                 if (liveData) {
-                    yesPrice = parseFloat(liveData.price);
+                    // Live path: calculatePositionMetrics direction-adjusts the raw YES price internally.
+                    const yesPrice = parseFloat(liveData.price);
+                    const { unrealizedPnL: uPnL } = calculatePositionMetrics(shares, entry, yesPrice, (pos.direction as 'YES' | 'NO') || 'YES');
+                    return sum + uPnL;
                 } else {
-                    // Fallback: stored prices are already direction-adjusted in DB.
-                    // Mirror the equity calculation fallback exactly.
+                    // Fallback path: stored prices are already direction-adjusted — compute directly.
+                    // Mirrors equity fallback (lines ~106-109) and getPortfolioValue in position-utils.ts.
                     const storedPrice = pos.currentPrice ? parseFloat(pos.currentPrice) : entry;
-                    yesPrice = direction === 'NO' ? 1 - storedPrice : storedPrice;
+                    return sum + (storedPrice - entry) * shares;
                 }
-
-                const { unrealizedPnL: uPnL } = calculatePositionMetrics(shares, entry, yesPrice, direction);
-                return sum + uPnL;
             }, 0);
+
 
             const tradeDerivedProfit = realizedPnLSum + unrealizedPnL;
             const discrepancy = Math.abs(profit - tradeDerivedProfit);
