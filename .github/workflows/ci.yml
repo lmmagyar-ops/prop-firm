@@ -72,7 +72,7 @@ jobs:
             echo ""
             echo "Client components must DISPLAY financial values, never COMPUTE them."
             echo "PnL must be computed server-side via /api/trade/positions."
-            echo "See CLAUDE.md 'Financial Display Rule' for details."
+            echo "See ARCHITECTURE.md 'Financial Display Rule' for details."
             exit 1
           fi
 
@@ -192,13 +192,6 @@ jobs:
           REDIS_URL: redis://localhost:6379
           AUTH_SECRET: ci-test-secret
 
-      - name: Run engine verification
-        run: npx tsx src/scripts/verify-engine.ts
-        env:
-          DATABASE_URL: postgres://test:test@localhost:5432/propfirm_test
-          REDIS_URL: redis://localhost:6379
-          AUTH_SECRET: ci-test-secret
-
       - name: Run safety verification
         run: npx tsx src/scripts/verify-safety.ts
         env:
@@ -206,12 +199,10 @@ jobs:
           REDIS_URL: redis://localhost:6379
           AUTH_SECRET: ci-test-secret
 
-      - name: Run lifecycle verification
-        run: npx tsx src/scripts/verify-lifecycle.ts
-        env:
-          DATABASE_URL: postgres://test:test@localhost:5432/propfirm_test
-          REDIS_URL: redis://localhost:6379
-          AUTH_SECRET: ci-test-secret
+      # NOTE: verify-engine.ts and verify-lifecycle.ts are intentionally excluded from CI.
+      # Both scripts exercise live trade execution against the Gamma prediction market API,
+      # which is unavailable in the CI ephemeral environment. They run locally via
+      # `npm run test:engine` and `npm run test:lifecycle` against the real Railway DB + Redis.
 
   # Heavy simulation tests - only run on schedule or manual trigger
   simulation:
