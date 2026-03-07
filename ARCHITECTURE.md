@@ -1,4 +1,4 @@
-# Funded Prediction
+# ARCHITECTURE.md — Funded Prediction
 
 > **Funded Prediction** — A simulated trading platform where users trade on Polymarket data with firm capital.
 
@@ -24,7 +24,7 @@ If you push more than once to `develop` in a session, you have failed. See `.age
 - **No dead code.** Don't comment things out "for later." Delete it. Git remembers.
 
 ### Before Writing Code
-- Always read CLAUDE.md (or equivalent project docs) before making changes.
+- Always read ARCHITECTURE.md before making changes.
 - Grep for existing patterns before inventing new ones. If there's a `formatPrice()`, use it — don't write `Math.round(price * 100)`.
 - Check if the thing you're about to build already exists but isn't wired up (like an orphaned component).
 
@@ -236,25 +236,22 @@ After every fix:
 
 ---
 
-## 🧠 New Agent? Start Here
+## 🧠 New Contributors: Start Here
 
-> [!CAUTION]
-> **Read the `⚠️ CURRENT STATUS` section at the top of `journal.md` FIRST.**
-> This tells you what actually works, what's broken, and what's unverified.
-> Do NOT trust the latest journal entry's optimism — it may say "✅ Done" for things the user hasn't confirmed.
+> [!IMPORTANT]
+> **Read `journal.md` FIRST.** It contains the current system status, recent changes, and any open issues. Do not rely solely on this document for current state.
 
-1. **Read journal.md's `⚠️ CURRENT STATUS`** — the actual state of the product, not the latest agent's opinion
+1. **Read `journal.md`** — current system status, recent incidents, and open issues
 2. **Read this file** — full architecture, risk rules, debugging protocols
-3. **If fixing a bug**, you MUST follow the `/fix-bug` workflow (`.agent/workflows/fix-bug.md`) — this is mandatory, not optional
+3. **If fixing a bug**, follow the `/fix-bug` workflow (`.agent/workflows/fix-bug.md`)
 4. **Run `npm run test:engine`** — 53 assertions across 11 phases prove the trading engine works
 5. **Run `npm run test:lifecycle`** — 73 assertions across 7 phases prove the full challenge lifecycle
-6. **Run `npm run test:safety`** — 44 assertions proving each critical exploit path (payout, drawdown, transitions) is blocked
+6. **Run `npm run test:safety`** — 54 assertions proving each critical exploit path (payout, drawdown, transitions) is blocked
 7. **Run `npm run test:financial`** — Financial consistency verification (share counts, PnL cross-checks, risk limit messages)
 8. **If debugging**, follow the "Number Discrepancy Audit" section — step-by-step protocol with symptom → cause lookup
 9. **If data looks wrong**, run `npx tsx scripts/reconcile-positions.ts` to validate positions against trade history
-10. **If using the browser subagent**, read `.agent/workflows/browser-agent.md` first — mandatory constraints to prevent spiraling
-11. **For manual testing**, see `docs/SMOKE_TEST.md` — 15-minute end-to-end checklist
-12. **When done**, complete the Pre-Close Checklist (above) — you MUST paste it into your journal entry
+10. **For manual testing**, see `docs/SMOKE_TEST.md` — 15-minute end-to-end checklist
+11. **When done**, complete the Pre-Close Checklist (above)
 
 | Symptom | First Action | Key File |
 |---------|-------------|----------|
@@ -310,7 +307,7 @@ DATABASE_URL="..." npx tsx scripts/grant-admin.ts email@example.com
 │  ┌─────────────────────────┐     ┌───────────────────────────┐  │
 │  │   Funded Prediction     │     │   Landing Page (Waitlist) │  │
 │  │   (Main App / Dashboard)│     │   (propshot-waitlist)     │  │
-│  │   Next.js 16            │     │   Next.js                 │  │
+│  │   Next.js 15            │     │   Next.js                 │  │
 │  │   :3000                 │     │   :3002                   │  │
 │  └─────────────┬───────────┘     └───────────────────────────┘  │
 │                │                                                │
@@ -815,9 +812,7 @@ See `.agent/workflows/deploy.md` for the full deployment workflow.
 | **Mat (trader)** | `forexampletrader@gmail.com` | `123456rR` | Email/Password | Real trader account with funded history |
 | **E2E Bot** | `e2e-test@propshot.io` | (see GitHub secret) | Email/Password | Automated E2E tests |
 
-> **Login flow:** Navigate to `/login` → use the email/password form below "OR CONTINUE WITH EMAIL" → Enter email and password → Click "Sign In".
-
-> **Browser agent note:** Do NOT click "Continue with Google" — use the email/password fields directly. Set the browser to **desktop width (1280px+)** before testing.
+> **Login flow:** Navigate to `/login` → use the email/password form below "OR CONTINUE WITH EMAIL" → Enter email and password → Click "Sign In". Set browser to **desktop width (1280px+)** before testing.
 
 ---
 
