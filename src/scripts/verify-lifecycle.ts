@@ -215,7 +215,7 @@ async function phase3() {
 
     const uid = await createTestUser('p3-profit');
     const cid = await createTestChallenge(uid, 10000, {
-        currentBalance: '11100', // $1,100 profit — above $1,000 target
+        currentBalance: '11300', // $1,300 profit — above 12% target ($1,200)
     });
 
     // Seed trade history so the evaluator's PnL sanity gate can cross-reference.
@@ -231,7 +231,7 @@ async function phase3() {
         currentPrice: '1.0000',
         closedPrice: '1.0000',
         closedAt: new Date(Date.now() - 3600_000),
-        pnl: '1100.00',
+        pnl: '1300.00',
         status: 'CLOSED',
     }).returning();
 
@@ -254,14 +254,14 @@ async function phase3() {
         type: 'SELL',
         direction: 'YES',
         price: '1.0000',
-        amount: '2000.00',
+        amount: '2200.00',
         shares: '2000.00',
-        realizedPnL: '1100.00',
+        realizedPnL: '1300.00',
         closureReason: 'user_close',
         executedAt: new Date(Date.now() - 3600_000),
     });
 
-    // Evaluator should detect profit target hit
+    // Evaluator should detect profit target hit (12% = $1,200 for 10k tier, we seeded $1,300)
     const result = await ChallengeEvaluator.evaluate(cid);
     assert(result.status === 'passed', `Evaluator returned '${result.status}' (expected 'passed')`);
     assert(result.reason?.toLowerCase().includes('funded') === true, `Reason mentions funded: "${result.reason}"`);
@@ -369,7 +369,9 @@ async function phase5() {
     // The sanity gate cross-references realized PnL from trade records against
     // equity-derived profit. Raw balance manipulation without trade records
     // triggers the gate (correctly). Add a closed position with trades to explain
-    // the cash increase from ~$9,800 → $10,900 ($1,100 profit).
+    // the cash increase from ~$9,800 → $11,100 ($1,300 realized profit).
+    // 12% profit target for 10k tier = $1,200. We seed $1,300 realized + open position ≈ $200
+    // so equity ≈ $11,100 + $200 = $11,300. Profit = $1,300 > $1,200 target → should pass.
     const [closedPos5] = await db.insert(positions).values({
         challengeId: cid,
         marketId: 'lifecycle-p5-prior-market',
@@ -380,7 +382,7 @@ async function phase5() {
         currentPrice: '1.0000',
         closedPrice: '1.0000',
         closedAt: new Date(Date.now() - 3600_000),
-        pnl: '1100.00',
+        pnl: '1300.00',
         status: 'CLOSED',
     }).returning();
 
@@ -403,16 +405,16 @@ async function phase5() {
         type: 'SELL',
         direction: 'YES',
         price: '1.0000',
-        amount: '2000.00',
+        amount: '2200.00',
         shares: '2000.00',
-        realizedPnL: '1100.00',
+        realizedPnL: '1300.00',
         closureReason: 'user_close',
         executedAt: new Date(Date.now() - 3600_000),
     });
 
-    // Cash $10,800 + position ~$200 ≈ $11,000 → target hit ($1,000 profit)
+    // Cash $11,100 + open position ~$200 ≈ $11,300 equity → profit $1,300 > $1,200 target
     await db.update(challenges)
-        .set({ currentBalance: '10900' })
+        .set({ currentBalance: '11100' })
         .where(eq(challenges.id, cid));
 
     // Evaluator should detect profit target and trigger funded transition

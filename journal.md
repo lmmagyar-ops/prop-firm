@@ -8,22 +8,23 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 > **New agent? Read this section before doing anything else.**
 > This is the single source of truth for what actually works. Do NOT trust individual journal entries — they reflect what the agent *believed*, not what the user confirmed.
 
-### Mar 6, 2026 (11:20 PM CT) — ALL FIXES DEPLOYED + Latency Optimizations Committed
+### Mar 7, 2026 (8:39 AM CT) — Production Healthy ✅
 
 | Change | Status |
 |--------|--------|
-| **Risk-monitor `triggerPass` fix** — `resetBalance()` after `closeAllPositions()` | ✅ On `main` (commit `167104b` → merged `3080c77`) |
-| **Risk-monitor `triggerBreach` fix** — `endsAt: new Date()` added | ✅ On `main` |
-| **`state-transition-invariants.test.ts`** — 20 new tests | ✅ On `main`, 1,335 tests pass |
-| **Mat's funded balance** — reset from $27,897.64 to $25,000.00 | ✅ APPLIED TO PROD — confirmed via staging screenshot |
-| **Post-deploy health check** | ✅ 9/10 real checks pass (SHA mismatch is expected artifact of merge commit) |
-| **Buy latency fix** — `cacheIdempotencyResult` fire-and-forget, `getBatchTitles` fanned into pre-warm, `isActive` check in parallel fan-out, cache TTL 3s→10s | ✅ Committed on `develop`, NOT yet pushed |
-| **tsc --noEmit** | ✅ Clean (1,335/1,335 tests pass) |
+| **Risk-monitor `triggerPass` fix** | ✅ On `main` (`3080c77`) |
+| **Risk-monitor `triggerBreach` + `endsAt`** | ✅ On `main` |
+| **20 state-transition invariant tests** | ✅ On `main`, 1,335/1,335 pass |
+| **Mat's funded balance** — reset to $25,000.00 | ✅ Confirmed via staging |
+| **Buy latency fix** — fire-and-forget idempotency, parallel pre-warm, 10s cache TTL | ✅ On `main` (`f99a274`), ~40% improvement measured |
+| **tsc --noEmit** | ✅ Clean |
 
 ### ⚠️ What the Next Agent Must Know
 
-1. **Buy latency fix is committed on `develop`, NOT pushed**. Changes: `worker-client.ts`, `src/lib/trade.ts`, `src/app/api/trade/execute/route.ts`. Push following the deploy workflow.
-2. **87 test files, 1,335 tests pass, tsc clean.**
+1. **Deploy SHA mismatch is a workflow sequencing issue, NOT a code bug.** Step 8 (`test:deploy`) must run while on `main` branch. If you've already switched to `develop` (step 10), the script passes the develop SHA and gets a false-positive mismatch. Run health check before `git checkout develop`.
+2. **Pre-existing `test:lifecycle` failures** — ~9 failures existed before our changes. Root cause TBD (DB timeouts or timing sensitivity). See journal entry below for classification.
+3. **1,335/1,335 unit tests pass, tsc clean.**
+
 
 
 ### 🌅 Tomorrow Morning — Handoff for Next Agent

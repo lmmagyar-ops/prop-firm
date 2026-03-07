@@ -201,14 +201,27 @@ export class ChallengeEvaluator {
                 .filter(t => t.type === 'SELL' && t.realizedPnL)
                 .reduce((sum, t) => sum + parseFloat(t.realizedPnL!), 0);
 
-            // Unrealized PnL from open positions
+            // Unrealized PnL from open positions.
+            // CRITICAL: Use the same stored-price fallback as the equity calculation above (lines ~99-110).
+            // If live prices are unavailable and we return 0 here, but equity counted stored-price value,
+            // the discrepancy is artificial → sanity gate blocks a legitimate promotion. They must be consistent.
             const unrealizedPnL = openPositions.reduce((sum, pos) => {
                 const shares = parseFloat(pos.shares);
                 const entry = parseFloat(pos.entryPrice);
+                const direction = (pos.direction as 'YES' | 'NO') || 'YES';
                 const liveData = livePrices.get(pos.marketId);
-                if (!liveData) return sum;
-                const yesPrice = parseFloat(liveData.price);
-                const { unrealizedPnL: uPnL } = calculatePositionMetrics(shares, entry, yesPrice, (pos.direction as 'YES' | 'NO') || 'YES');
+
+                let yesPrice: number;
+                if (liveData) {
+                    yesPrice = parseFloat(liveData.price);
+                } else {
+                    // Fallback: stored prices are already direction-adjusted in DB.
+                    // Mirror the equity calculation fallback exactly.
+                    const storedPrice = pos.currentPrice ? parseFloat(pos.currentPrice) : entry;
+                    yesPrice = direction === 'NO' ? 1 - storedPrice : storedPrice;
+                }
+
+                const { unrealizedPnL: uPnL } = calculatePositionMetrics(shares, entry, yesPrice, direction);
                 return sum + uPnL;
             }, 0);
 
