@@ -349,12 +349,12 @@ export default async function DashboardPage() {
                                         <Trophy className="w-8 h-8 text-yellow-500" />
                                     </div>
                                     <h2 className="text-2xl font-bold text-white mb-3">
-                                        Phase 1 Completed
+                                        Evaluation Passed
                                     </h2>
                                     <p className="text-zinc-400 mb-8 leading-relaxed">
-                                        Congratulations! You have passed the evaluation phase.
+                                        Congratulations — you hit your profit target. Your funded account is being set up.
                                         <br />
-                                        <span className="text-yellow-500/80 text-sm mt-2 block">Next Phase Coming Soon</span>
+                                        <span className="text-yellow-500/80 text-sm mt-2 block">Contact support to complete your funded account setup.</span>
                                     </p>
                                     <div className="space-y-4">
                                         {/* Optional: Allow buying another evaluation if they want multiple accounts */}

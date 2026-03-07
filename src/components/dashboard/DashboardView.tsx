@@ -11,6 +11,11 @@ import { ProbabilityChart } from "@/components/trading/ProbabilityChart";
 import { useRouter } from "next/navigation";
 import { getActiveEvents, type EventMetadata } from "@/app/actions/market";
 import { useEquityPolling } from "@/hooks/useEquityPolling";
+import { PLANS } from "@/config/plans";
+
+// Demo defaults — mirrors PLANS.grinder (10k tier) so the public landing page
+// shows realistic risk parameters rather than arbitrary hardcoded constants.
+const DEMO_PLAN = PLANS.grinder;
 
 import { ChallengeFailedModal } from "@/components/dashboard/ChallengeFailedModal";
 import { ChallengePassedModal } from "@/components/dashboard/ChallengePassedModal";
@@ -91,13 +96,9 @@ export function DashboardView({ initialBalance = null, demoMode = false, userId 
     }, [demoMode]);
 
     // Derived states — use equity polling for live equity (matches header)
-    const ssrEquity = balance || 10000;
+    const ssrEquity = balance || DEMO_PLAN.size;
     const { equity: polledEquity } = useEquityPolling(ssrEquity);
-    const currentEquity = demoMode ? 10000 : polledEquity;
-
-    const MAX_DRAWDOWN = 10000 * 0.10;
-    const drawdownAmount = 10000 - currentEquity;
-    const drawdownPercent = Math.max(0, drawdownAmount / MAX_DRAWDOWN);
+    const currentEquity = demoMode ? DEMO_PLAN.size : polledEquity;
 
     return (
         <div className="font-sans text-white">
@@ -109,14 +110,14 @@ export function DashboardView({ initialBalance = null, demoMode = false, userId 
             {/* Main Content */}
             <div className="pt-4 md:pt-16 p-4 md:p-6 max-w-[1800px] mx-auto space-y-6 pb-32 md:pb-6">
 
-                {/* 2. HUD / Mission Tracker */}
+                {/* 2. HUD / Mission Tracker — demo values sourced from PLANS.grinder */}
                 <MissionTracker
-                    startingBalance={10000}
+                    startingBalance={DEMO_PLAN.size}
                     currentBalance={currentEquity}
-                    profitTarget={1000} // 10%
-                    maxDrawdown={800} // 8%
-                    dailyLossLimit={400} // 4%
-                    dailyPnL={0} // Default for demo/fallback view
+                    profitTarget={DEMO_PLAN.profitTarget}
+                    maxDrawdown={(DEMO_PLAN.maxDrawdownPercent / 100) * DEMO_PLAN.size}
+                    dailyLossLimit={(DEMO_PLAN.dailyLossPercent / 100) * DEMO_PLAN.size}
+                    dailyPnL={0}
                 />
 
                 {/* 3. Featured Market Card (Real data or CTA) */}
