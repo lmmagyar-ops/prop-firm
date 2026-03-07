@@ -1,36 +1,36 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Funded Prediction — Waitlist / Landing Page
 
-## Getting Started
+Standalone Next.js application serving the public-facing landing page and waitlist signup at `predictionsfirm.com`. Deployed independently to Vercel.
 
-First, run the development server:
+## Overview
+
+This app is co-located with the main platform in this repository for shared context, but deployed as a separate Vercel project. It does not share code or infrastructure with the main app (`src/`).
+
+**Production URL:** `predictionsfirm.com`
+
+## Features
+
+- Public landing page
+- Waitlist email capture via [Resend](https://resend.com)
+- Welcome email on signup
+
+## Development
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cd propshot-waitlist
+npm install
+npm run dev   # runs on :3002 to avoid conflict with main app (:3000)
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Environment Variables
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```env
+RESEND_API_KEY=re_...          # Resend API key
+RESEND_AUDIENCE_ID=...         # Resend audience UUID for waitlist contacts
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Deployment
 
-## Learn More
+Deployed to its own Vercel project. DNS, SPF, DKIM, and MX records are configured on `predictionsfirm.com` separately from the main app domain.
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+See [`ARCHITECTURE.md`](../ARCHITECTURE.md#7-waitlist-system) at the root for full system context.
