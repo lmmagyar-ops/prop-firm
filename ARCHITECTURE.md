@@ -346,7 +346,7 @@ DATABASE_URL="..." npx tsx scripts/grant-admin.ts email@example.com
 src/
 ├── app/                    # Next.js App Router
 │   ├── admin/              # Admin dashboard (role-protected)
-│   ├── api/                # 70+ API routes
+│   ├── api/                # 89+ API routes
 │   ├── dashboard/          # Trader dashboard
 │   └── (auth)/             # Login, signup, password reset
 ├── components/
@@ -482,7 +482,7 @@ Trade Request → RiskEngine.validate() → MarketService.calculateImpact()
 > | **BUY NO** | **BIDS** | YES buyers implicitly sell NO at (1 - bid) |
 > | **SELL NO** | **ASKS** | YES sellers implicitly buy NO at (1 - ask) |
 >
-> Handled by `effectiveSide` in `trade.ts` (~line 153). Getting this wrong makes entire markets untradeable.
+> Handled by `effectiveSide` in `trade.ts` (~line 150). Getting this wrong makes entire markets untradeable.
 
 ### 2. Risk Engine (9-Layer Protocol)
 
@@ -498,7 +498,7 @@ Pre-trade validation in `RiskEngine.validateTrade()`:
 | 6 | Liquidity Enforcement | 10% of 24h volume | Prevents market impact |
 | 7 | Minimum Volume Filter | $100k | Blocks illiquid markets |
 | 8 | Position Limits | Tier-based (10-50) | Prevents over-diversification |
-| 9 | Trade Frequency | 60/hour | Rate limiting |
+| 9 | Arbitrage Block | — | Detects cross-market arbitrage via `ArbitrageDetector` |
 
 **Key files:** `src/lib/risk.ts`, `docs/RISK_RULES.md`, `src/lib/risk.test.ts` (13 tests), `src/lib/trade-flow.integration.test.ts` (6 tests)
 
@@ -644,11 +644,12 @@ Redis-based tiered rate limiting in middleware (works across serverless instance
 | Tier | Limit | Endpoints |
 |------|-------|-----------|
 | TRADE_EXECUTE | 10/min | `/api/trade/buy`, `/api/trade/sell`, `/api/trade/close` |
-| TRADE_READ | 60/min | `/api/trade/positions`, `/api/trades/history` |
+| TRADE_READ | 600/min | `/api/trade/positions`, `/api/trades/history` |
 | PAYOUT | 5/min | `/api/payout/*` |
 | AUTH_SIGNUP | 5/5min | `/signup`, `/register` |
 | AUTH_LOGIN | 10/min | `/login`, `/nextauth` |
-| MARKETS | 60/min | `/api/markets/*` |
+| MARKETS | 600/min | `/api/markets/*` |
+| DASHBOARD | 600/min | Dashboard data endpoints |
 | DEFAULT | 100/min | Everything else |
 
 **Fails open** on Redis errors — never blocks legitimate users.
