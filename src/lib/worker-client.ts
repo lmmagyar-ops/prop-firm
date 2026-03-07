@@ -26,7 +26,8 @@ interface CacheEntry<T> {
 }
 
 const cache = new Map<string, CacheEntry<unknown>>();
-const CACHE_TTL = 3000; // 3 seconds — matches SSE poll interval
+const CACHE_TTL = 10_000; // 10 seconds — guarantees pre-warm covers all downstream calls
+// (was 3s to match SSE polling, but trade execution needs the full Lambda invocation window)
 
 function getCached<T>(key: string): T | null {
     const entry = cache.get(key);
