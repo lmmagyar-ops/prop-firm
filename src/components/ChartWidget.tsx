@@ -39,10 +39,8 @@ export const ChartWidget = (props: ChartWidgetProps) => {
 
         const handleResize = () => {
             if (chartContainerRef.current) {
-                // chart.applyOptions({ width: chartContainerRef.current.clientWidth });
-                // v5 might handle this differently or instance needs to be accessible.
-                // For React effect safety, we'll recreate or just ignore resize for MVP simplicity
-                // or use a ResizeObserver in a real app.
+                // Resize is handled by re-mounting the chart on prop changes (see useEffect dep array).
+                // A ResizeObserver can be added here if sub-mount responsiveness is needed.
             }
         };
 

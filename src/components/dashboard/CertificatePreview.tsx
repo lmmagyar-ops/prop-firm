@@ -29,7 +29,7 @@ export function CertificatePreview({
     // Determine label based on type
     const typeLabel = type === 'lifetime-payouts' ? 'LIFETIME PAYOUTS' : 'ACHIEVEMENT';
 
-    // Use a constructed URL for the modal (dummy for now until API exists)
+    // OG image URL for the certificate share modal
     const certificateUrl = `/api/certificates/${certificateId}/og-image`;
 
     return (

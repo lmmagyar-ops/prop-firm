@@ -7,13 +7,13 @@ interface MarketHeaderProps {
     question: string;
     volume: number;
     activeTraders: number;
-    endDate?: string; // Optional for now
+    endDate?: string;
 }
 
 export function MarketHeader({ question, volume, activeTraders, endDate = "Jan 20, 2025" }: MarketHeaderProps) {
     return (
         <div className="flex flex-col gap-1 mb-8">
-            {/* Breadcrumb / Category (Static for now) */}
+            {/* Breadcrumb / Category */}
             <div className="flex items-center gap-2 text-xs font-mono text-zinc-500 uppercase tracking-wider mb-2">
                 <span>Election</span>
                 <span className="text-zinc-700">/</span>

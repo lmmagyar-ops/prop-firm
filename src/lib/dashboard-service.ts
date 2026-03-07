@@ -434,7 +434,7 @@ export async function getDashboardData(userId: string) {
             pendingChallenge: pendingChallenge ? {
                 id: pendingChallenge.id,
                 status: pendingChallenge.status,
-                type: "10k Challenge" // hardcoded for MVP or derived
+                type: `$${safeParseFloat(pendingChallenge.startingBalance).toLocaleString()} Challenge`
             } : null,
             // Return empty structures for safety if UI expects them
             activeChallenge: undefined,

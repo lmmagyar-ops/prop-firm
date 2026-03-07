@@ -79,7 +79,6 @@ export class CLVCalculator {
         const clvPercent = ((closingPrice - entryPrice) / entryPrice) * 100;
 
         // FUTURE(v2): Add closingPrice and clvPercent columns to trades schema to persist CLV data
-        // For now, we calculate but don't persist (schema migration needed)
         // await db.update(trades)
         //     .set({
         //         closingPrice: closingPrice.toString(),
@@ -107,8 +106,7 @@ export class CLVCalculator {
 
         const closingPrice = parseFloat(marketData.price);
 
-        // FUTURE(v2): clvPercent column doesn't exist in trades schema yet
-        // For now, calculate CLV for all trades in this market (no filtering by null clvPercent)
+        // FUTURE(v2): Filter by null clvPercent once the column is added to the trades schema
         const pendingTrades = await db.query.trades.findMany({
             where: eq(trades.marketId, marketId),
         });

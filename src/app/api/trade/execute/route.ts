@@ -84,7 +84,7 @@ export async function POST(req: NextRequest) {
             userId,
             activeChallenge.id,
             marketId,
-            "BUY", // Always BUY for now (SELL is handled by close endpoint)
+            "BUY", // BUY only — SELL is handled by the /api/trade/close endpoint
             parseFloat(amount),
             outcome as "YES" | "NO" // Pass direction to create correct position
         );

@@ -5,7 +5,7 @@ import { addDays } from "date-fns";
 import { createLogger } from "@/lib/logger";
 const logger = createLogger("Challenges");
 
-// Default config for the MVP $10k Challenge
+// Default challenge configuration
 const DEFAULT_RULES = {
     tier: "10k",
     startingBalance: 10000,
@@ -43,7 +43,7 @@ export class ChallengeManager {
      */
     static async createChallenge(userId: string) {
         // 1. Fetch active rulesConfig from DB or use defaults.
-        // For MVP, we use defaults but structured to load from DB later.
+        // Defaults are defined here; future versions may load per-tier config from DB.
         const rules = DEFAULT_RULES;
 
         // 2. Insert new challenge

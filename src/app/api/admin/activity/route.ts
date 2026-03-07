@@ -21,9 +21,8 @@ export async function GET() {
                 type: trades.type,         // 'BUY' or 'SELL'
                 amount: trades.amount,
                 price: trades.price,
-                // trades table doesn't have PnL. We can show position PnL or null. 
-                // For a feed of *executions*, PnL isn't always relevant (e.g. opening trade).
-                // We'll return null for now to avoid misleading "0" PnL.
+                // Opening trades have no realized PnL — only SELL trades close positions.
+                // Returning realizedPnL directly (null for open trades) is the correct behavior here.
                 pnl: trades.realizedPnL,
                 timestamp: trades.executedAt,
                 phase: challenges.phase

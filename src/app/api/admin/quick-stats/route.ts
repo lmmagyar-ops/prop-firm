@@ -32,7 +32,6 @@ export async function GET() {
         }
 
 
-
         // Run all queries concurrently for speed
         const [
             pendingPayoutsResult,
@@ -78,8 +77,8 @@ export async function GET() {
                 .where(gte(users.createdAt, yesterday))
                 .catch(() => [{ count: 0 }]),
 
-            // Risk alerts - placeholder (unrealized PnL requires live price calculation)
-            // For now, return 0 - live risk alerts would require Redis price lookups
+            // FUTURE(v2): Real-time risk alerts — requires Redis price lookups to compute
+            // unrealized PnL across all open positions. Deferred until monitoring dashboard.
             Promise.resolve([{ count: 0 }]),
 
             // My active challenge — single challenge per user, no cookie selection needed

@@ -39,9 +39,7 @@ export function BadgesGrid({ badges }: BadgesGridProps) {
 
             <div className="grid grid-cols-4 gap-4">
                 {badges.map((badge) => {
-                    // Fallback to Star if icon name doesn't match
-                    // In a real app we'd likely store the icon name in the DB
-                    // For now, let's just use Trophy as default if mapping fails, or try to map 'trophy'
+                    // Falls back to Trophy if the icon name isn't in ICON_MAP
                     const IconComponent = ICON_MAP[badge.icon.toLowerCase()] || Trophy;
 
                     return (

@@ -60,11 +60,9 @@ export async function GET(
             .where(eq(trades.challengeId, challengeId))
             .orderBy(desc(trades.executedAt));
 
-        // 3. Construct Timeline Data (Mocking daily snapshots from trades for now)
-        // In a real app, you'd have a 'daily_snapshots' table. 
-        // Here we'll simulate it by aggregating trades by day.
-        const timelineData = [];
-        // Simpler approach for MVP: Start from 'startingBalance' and apply trades.
+        // Reconstruct balance timeline by replaying realized PnL per day.
+        // Aggregates from the trades table rather than a dedicated snapshots table.
+        const timelineData: { date: string; balance: number }[] = [];
         const startingBalance = Number(challenge.startingBalance || 10000);
         let simBalance = startingBalance;
         const tradesAsc = [...tradeHistory].reverse();

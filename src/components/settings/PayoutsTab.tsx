@@ -39,7 +39,6 @@ export function PayoutsTab({ existingMethods = [] }: PayoutsTabProps) {
     });
 
     const handleAddMethod = () => {
-        // For now, just show "Coming Soon" message
         toast.info("Payout integration coming soon! Your preferences will be saved once we've registered the business.");
         setShowAdd(false);
     };

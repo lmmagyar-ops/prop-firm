@@ -32,10 +32,9 @@ export function LiveTraderFeed() {
             if (!res.ok) throw new Error("Failed to fetch activity");
             const data = await res.json();
             if (data.trades) {
-                setTrades(prev => {
-                    // Simple dedup check if we wanted to be fancy, but replacing is fine for polling snapshot
-                    // Or determining if there are new ones to toast.
-                    // For now, just replace list.
+                setTrades(() => {
+                    // Polling snapshot — replaces full list each interval.
+                    // SSE or WebSocket events can be added here when real-time granularity is needed.
                     return data.trades;
                 });
             }
