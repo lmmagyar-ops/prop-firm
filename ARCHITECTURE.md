@@ -332,7 +332,7 @@ DATABASE_URL="..." npx tsx scripts/grant-admin.ts email@example.com
 | Layer | Technology |
 |-------|------------|
 | **Framework** | Next.js 16 (App Router), React 19 |
-| **Database** | Neon Postgres (Vercel), Drizzle ORM |
+| **Database** | Neon Postgres (Vercel), Drizzle ORM — two drivers: `neon-http` for reads (stateless, no TCP pool), `neon-serverless Pool` for transactions |
 | **Cache** | Railway Redis (flat-rate, via REDIS_URL) |
 | **Auth** | NextAuth v5 (email/password + Google OAuth) |
 | **UI** | Tailwind v4, Shadcn/ui, Framer Motion |
@@ -516,7 +516,9 @@ Runs every 30 seconds in the ingestion worker (`CHECK_INTERVAL_MS = 30000`):
 > **INCIDENT 2026-03-04:** The risk monitor had ZERO prices from launch because `market:prices:all` (WS stream) was always empty. The fail-closed guard silently skipped all checks — Mat's 133% drawdown went undetected. Fixed by delegating to `MarketService.getBatchOrderBookPrices()` (same chain as dashboard). **E2E verified:** controlled breach test auto-failed within 30s.
 
 > [!IMPORTANT]
-> **Transaction safety:** `triggerBreach`, `triggerPass`, and `closeAllPositions` run inside `db.transaction()`. Status update + position closes + balance credit + audit log are fully atomic — if any step crashes, everything rolls back. Redis reads happen before the transaction (not transactional).
+> **Transaction safety:** `triggerBreach`, `triggerPass`, and `closeAllPositions` run inside `dbPool.transaction()` (neon-serverless WebSocket client). Status update + position closes + balance credit + audit log are fully atomic — if any step crashes, everything rolls back. Redis reads happen before the transaction (not transactional).
+>
+> **DB client split (2026-03-08):** `db` (neon-http, stateless HTTPS) is used for all reads. `dbPool` (neon-serverless Pool) is used specifically for `dbPool.transaction()` call sites. This was changed from postgres.js TCP after 581 "Failed to connect to upstream database" (TLSWrap.onStreamRead) errors in 7 days — Neon kills idle TCP connections server-side on Vercel. See `src/db/index.ts` for the full rationale.
 
 > [!IMPORTANT]
 > On breach, `currentBalance` is stored as-is — equity is **not** written to currentBalance (prevents double-counting unrealized P&L).

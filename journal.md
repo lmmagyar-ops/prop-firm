@@ -2,6 +2,45 @@
 
 This journal tracks daily progress, issues encountered, and resolutions for the Prop-Firm project.
 
+---
+
+## 2026-03-08 — DB Driver Migration: postgres.js TCP → Neon HTTP+WS
+
+**Branch:** `develop` | **Commit:** `87b250b`
+
+### What broke
+Sentry weekly report showed 712 errors for the week, 581 (81%) from 3 ongoing "Failed query" issues:
+- `select "id" from "challenges"` — 211 occurrences
+- `select "id", "user_id"... from "challenges"` — 190 occurrences
+- `select "display_name", "email" from "users"` — 180 occurrences
+
+Sentry stack trace: **`TLSWrap.onStreamRead`** → `"Failed to connect to upstream database. Please contact Prisma support."`
+
+### Root cause
+`postgres.js` maintains a persistent TCP/TLS pool. Neon kills idle connections server-side. When a query fires on a dead socket, the driver throws the above error. The `idle_timeout: 20` was far too short for the 30-second polling cycle — Neon drops the connection before the next poll, and the query arrives on a dead socket.
+
+### Fix (commit 87b250b)
+Replaced `postgres.js` with two Neon-native drivers in `src/db/index.ts`:
+- **`db`** (`neon-http`): Stateless HTTPS POST per query. No pool, no connection lifecycle. Used for all read queries (~95% of call sites). Eliminates the error class entirely.
+- **`dbPool`** (`neon-serverless Pool`): WebSocket, scoped to the invocation. Supports `db.transaction()`. Used in 12 files that call `dbPool.transaction()`.
+
+Collateral fixes required by the driver swap:
+- `result.count` → `result.rowCount` in `evaluator.ts`, `risk-monitor.ts`, `outage-manager.ts`
+- `db.execute()` result shape changes: `leaderboard/route.ts` needed `.rows[]` accessor
+- `Transaction` type in `db/types.ts` re-derived from `typeof dbPool`
+
+**tsc + eslint passed cleanly. 18 files changed.**
+
+### Expected impact
+Near-zero "Failed query" Sentry errors next week. The 1.8% error rate on `/api/trade/positions` should also drop (those Postgres fallback errors were caused by the same TCP drop pattern).
+
+### Tomorrow Morning
+1. **Deploy** — merge `develop` → `main` and watch Sentry next 24h for the "Failed query" issues
+2. **Monitor** — check if `/api/trade/positions` error rate drops from 1.8%
+3. **Verify evaluator status guards** — `result.rowCount` is the correct pg QueryResult field; confirm in production that the funded transition idempotency guard still works (the `.count` fix is a correctness improvement, not a regression)
+
+
+
 ## ⚠️ CURRENT STATUS — Read This First
 
 > [!CAUTION]
