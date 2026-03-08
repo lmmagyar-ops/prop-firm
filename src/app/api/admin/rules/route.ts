@@ -1,4 +1,4 @@
-import { db } from "@/db";
+import { db, dbPool } from "@/db";
 import { businessRules, auditLogs } from "@/db/schema"; // users table might be needed for admin ID validation if we had auth
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
@@ -61,7 +61,7 @@ export async function PUT(req: Request) {
         }
 
         // 2. Transaction: Update Rule + Insert Audit Log
-        await db.transaction(async (tx) => {
+        await dbPool.transaction(async (tx) => {
             // Update Rule
             await tx.update(businessRules)
                 .set({

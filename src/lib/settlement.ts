@@ -12,7 +12,7 @@
  * Designed to be called from a cron endpoint or worker loop.
  */
 
-import { db } from "@/db";
+import { db, dbPool } from "@/db";
 import { positions, challenges, trades } from "@/db/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { PolymarketOracle } from "@/lib/polymarket-oracle";
@@ -97,7 +97,7 @@ export async function settleResolvedPositions(): Promise<SettlementResult> {
             try {
                 // ATOMIC: Lock position row → verify still OPEN → close → credit balance
                 // Prevents double-settlement when concurrent settlement runs overlap
-                await db.transaction(async (tx) => {
+                await dbPool.transaction(async (tx) => {
                     // Lock the position row to prevent concurrent settlement
                     const lockedRows = await tx.execute(
                         sql`SELECT id, status FROM positions WHERE id = ${pos.id} FOR UPDATE`

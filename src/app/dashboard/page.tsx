@@ -110,6 +110,14 @@ export default async function DashboardPage() {
     // which caused the equity display to flash to the wrong value on load.
     const trueEquity = activeChallenge?.equity ?? (activeChallenge?.currentBalance ?? 0);
 
+    // Pre-compute rulesConfig-derived values to keep JSX clean.
+    // rulesConfig is stored as JSON — fields may use either naming convention
+    // (maxDrawdownPercent vs maxTotalDrawdownPercent, dailyLossPercent vs maxDailyDrawdownPercent).
+    const rc = activeChallenge?.rulesConfig as Record<string, number> | null | undefined;
+    const riskMaxDrawdownPct = (() => { const v = rc?.maxDrawdownPercent ?? rc?.maxTotalDrawdownPercent ?? 0.08; return v < 1 ? v * 100 : v; })();
+    const riskDailyDrawdownPct = (() => { const v = rc?.dailyLossPercent ?? rc?.maxDailyDrawdownPercent ?? 0.04; return v < 1 ? v * 100 : v; })();
+    const riskDailyDrawdownDollars = (rc?.maxDailyDrawdownPercent ?? 0.04) * (activeChallenge?.startingBalance ?? 0);
+
     return (
         <div className="space-y-6">
             <WelcomeTour />
@@ -258,18 +266,10 @@ export default async function DashboardPage() {
                                 dailyDrawdownUsage={stats.dailyDrawdownUsage}
                                 startOfDayBalance={activeChallenge.startOfDayBalance}
                                 startingBalance={activeChallenge.startingBalance}
-                                maxDrawdownPercent={(() => {
-                                    const rc = activeChallenge.rulesConfig as Record<string, number> | null;
-                                    const raw = rc?.maxDrawdownPercent ?? rc?.maxTotalDrawdownPercent ?? 0.08;
-                                    return raw < 1 ? raw * 100 : raw; // 0.08 → 8, already 8 → 8
-                                })()}
-                                dailyDrawdownPercent={(() => {
-                                    const rc = activeChallenge.rulesConfig as Record<string, number> | null;
-                                    const raw = rc?.dailyLossPercent ?? rc?.maxDailyDrawdownPercent ?? 0.04;
-                                    return raw < 1 ? raw * 100 : raw; // 0.05 → 5, already 5 → 5
-                                })()}
+                                maxDrawdownPercent={riskMaxDrawdownPct}
+                                dailyDrawdownPercent={riskDailyDrawdownPct}
                                 maxDrawdownDollars={stats.maxDrawdownLimit}
-                                dailyDrawdownDollars={((activeChallenge.rulesConfig as Record<string, number>)?.maxDailyDrawdownPercent ?? 0.04) * activeChallenge.startingBalance}
+                                dailyDrawdownDollars={riskDailyDrawdownDollars}
                                 drawdownUsedDollars={stats.drawdownAmount}
                                 dailyDrawdownUsedDollars={stats.dailyDrawdownAmount}
                                 equity={trueEquity}
@@ -349,12 +349,12 @@ export default async function DashboardPage() {
                                         <Trophy className="w-8 h-8 text-yellow-500" />
                                     </div>
                                     <h2 className="text-2xl font-bold text-white mb-3">
-                                        Phase 1 Completed
+                                        Evaluation Passed
                                     </h2>
                                     <p className="text-zinc-400 mb-8 leading-relaxed">
-                                        Congratulations! You have passed the evaluation phase.
+                                        Congratulations — you hit your profit target. Your funded account is being set up.
                                         <br />
-                                        <span className="text-yellow-500/80 text-sm mt-2 block">Next Phase Coming Soon</span>
+                                        <span className="text-yellow-500/80 text-sm mt-2 block">Contact support to complete your funded account setup.</span>
                                     </p>
                                     <div className="space-y-4">
                                         {/* Optional: Allow buying another evaluation if they want multiple accounts */}

@@ -98,7 +98,7 @@ export function FundedRiskMeters({
                                 </span>
                                 <div className="text-xs text-zinc-500 flex items-center gap-1">
                                     <span className="w-1.5 h-1.5 rounded-full bg-zinc-500" />
-                                    Static from $${startingBalance.toLocaleString()}
+                                    Static from ${startingBalance.toLocaleString()}
                                 </div>
                             </div>
                         </div>

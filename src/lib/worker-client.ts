@@ -142,6 +142,31 @@ export async function getAllMarketData(): Promise<AllMarketData | null> {
 }
 
 /**
+ * Extract groupItemTitle labels from the already-cached market data.
+ *
+ * Positions route uses this for display-only group labels (e.g. "Will X happen?").
+ * Piggybacking on getAllMarketData() cache means this is free when called in the
+ * same Lambda invocation — no extra HTTP call to the worker.
+ *
+ * Returns a map of { marketId → groupItemTitle }. Empty map on worker failure.
+ */
+export async function getGroupItemTitles(): Promise<Record<string, string>> {
+    const allMarketData = await getAllMarketData();
+    if (!allMarketData?.events) return {};
+
+    const events = allMarketData.events as { markets?: { id: string; groupItemTitle?: string }[] }[];
+    const result: Record<string, string> = {};
+    for (const event of events) {
+        for (const market of event.markets || []) {
+            if (market.groupItemTitle) {
+                result[market.id] = market.groupItemTitle;
+            }
+        }
+    }
+    return result;
+}
+
+/**
  * Fetch a single Redis key's data.
  */
 export async function getMarketKey(key: string): Promise<unknown | null> {

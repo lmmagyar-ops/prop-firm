@@ -1,4 +1,4 @@
-import { db } from "@/db";
+import { db, dbPool } from "@/db";
 import { trades, positions, challenges } from "@/db/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { isSameDay } from "date-fns";
@@ -241,7 +241,7 @@ export class TradeExecutor {
 
         // 5. DB Transaction (with Row Lock for Race Condition Prevention)
 
-        const tradeResult = await db.transaction(async (tx) => {
+        const tradeResult = await dbPool.transaction(async (tx) => {
             // A. Lock the challenge row to prevent concurrent trades.
             // SET LOCAL lock_timeout: if another transaction already holds this lock
             // (e.g. a previous Vercel function was killed mid-transaction leaving an

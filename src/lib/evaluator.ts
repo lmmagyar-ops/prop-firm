@@ -1,4 +1,4 @@
-import { db } from "@/db";
+import { db, dbPool } from "@/db";
 import { challenges, positions, trades } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { publishAdminEvent } from "./events";
@@ -299,7 +299,7 @@ export class ChallengeEvaluator {
 
             // TRANSACTION SAFETY: status guard + position closing + phase change + balance reset are atomic.
             // Status guard prevents race with risk-monitor's triggerPass.
-            await db.transaction(async (tx) => {
+            await dbPool.transaction(async (tx) => {
                 // 1. Status + phase guard: only transition active CHALLENGE-phase challenges.
                 //    The status guard alone is insufficient because funded transition keeps
                 //    status='active'. Without the phase guard, two concurrent evaluate() calls
@@ -327,7 +327,7 @@ export class ChallengeEvaluator {
                         eq(challenges.phase, 'challenge')
                     ));
 
-                if (!result.count || result.count === 0) {
+                if (!result.rowCount || result.rowCount === 0) {
                     logger.info('Challenge already transitioned, skipping funded transition', { challengeId: challengeId.slice(0, 8) });
                     return;
                 }

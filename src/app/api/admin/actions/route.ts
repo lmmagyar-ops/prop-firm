@@ -1,4 +1,4 @@
-import { db } from "@/db";
+import { db, dbPool } from "@/db";
 import { challenges, auditLogs } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
@@ -33,7 +33,7 @@ export async function POST(req: Request) {
         const endTime = new Date();
 
         // Transaction: Update challenge + insert audit log
-        const updated = await db.transaction(async (tx) => {
+        const updated = await dbPool.transaction(async (tx) => {
             const result = await tx
                 .update(challenges)
                 .set({

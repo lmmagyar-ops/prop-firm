@@ -305,7 +305,13 @@ export const payouts = pgTable("payouts", {
     profitSplit: decimal("profit_split", { precision: 4, scale: 2 }), // Split % at time of request
 
     metadata: jsonb("metadata"), // Gas fees, exchange rate, etc.
-});
+}, (table) => ({
+    // Payout history: WHERE userId = ? (getPayoutsHistory)
+    // Admin queue: WHERE status = 'pending'
+    // Composite covers both patterns.
+    payoutsUserStatusIdx: index("payouts_user_status_idx").on(table.userId, table.status),
+}));
+
 
 export const leaderboardSeasons = pgTable("leaderboard_seasons", {
     id: text("id").primaryKey(),

@@ -294,6 +294,7 @@ async function test3_riskMonitorFundedPhaseRules() {
     const challengeMaxDrawdown = (challengeRules.maxTotalDrawdownPercent as number) * startingBalance;
     const fundedMaxDrawdown = fundedRules.maxTotalDrawdown;
 
+    // 10k tier: maxTotalDrawdownPercent = 0.08 → $800 (updated from 10% when Mat revised tier params)
     assert(challengeMaxDrawdown === 800, `Challenge maxDrawdown = $${challengeMaxDrawdown}`);
     assert(fundedMaxDrawdown === 800, `Funded maxDrawdown = $${fundedMaxDrawdown}`);
 
