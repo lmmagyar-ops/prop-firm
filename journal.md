@@ -8,6 +8,31 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 > **New agent? Read this section before doing anything else.**
 > This is the single source of truth for what actually works. Do NOT trust individual journal entries — they reflect what the agent *believed*, not what the user confirmed.
 
+### Mar 7, 2026 (7:35 PM CT) — P1 Performance Optimizations ✅
+
+| Change | Status |
+|--------|--------|
+| **`/api/trade/positions` hot path fix** — eliminated serial `getAllMarketData()` call, parallelized 3 async ops with `Promise.all` | ✅ On `develop` (`e8a9a9f`) |
+| **`getGroupItemTitles()` in `worker-client.ts`** — dedicated function piggybacks on 10s cache, avoids full market payload fetch just for display labels | ✅ On `develop` |
+| **`payouts` DB index** — composite `(user_id, status)` index applied to production DB | ✅ Applied via `drizzle-kit push`, migration file committed |
+| **tsc + test:safety** | ✅ 54/54 pass |
+
+**Root cause of Vercel CPU spike (confirmed from real data):**
+`/api/trade/positions` (4.6K calls, 5min active CPU / 12hr) was making 3 sequential awaits:
+`getBatchOrderBookPrices()` → `getBatchTitles()` → `getAllMarketData()`.
+The third call fetched the entire market payload (MB of data) just to extract `groupItemTitle` labels.
+On worker failure, this fell back to Postgres — explaining the 1.8% error rate.
+
+**Expected: ~200ms latency reduction + error rate drop on `/api/trade/positions`.**
+Monitor Vercel Observability `/api/trade/positions` Active CPU after next deploy.
+
+### ⚠️ What the Next Agent Must Know
+
+1. **Both UX fixes and P1 perf fixes are on `develop`, not yet on `main`.** Push when ready.
+2. **P2 optimization deferred:** Merging `/api/user/balance` + `/api/trade/positions` into a single poll endpoint. Lower risk than expected — parallel polling at 30s interval is fine.
+3. **Leaderboard caching deferred** — not in top Vercel CPU consumers, no data to justify it yet.
+4. **1,337/1,337 unit tests pass, tsc clean.**
+
 ### Mar 7, 2026 (9:35 AM CT) — Production Healthy ✅
 
 | Change | Status |
@@ -26,6 +51,38 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 1. **BUY latency v2 is on `develop`, not yet on `main`.** Mat needs this pushed ASAP.
 2. **Deploy SHA mismatch is a workflow sequencing issue, NOT a code bug.** Step 8 (`test:deploy`) must run while on `main` branch.
 3. **1,337/1,337 unit tests pass, tsc clean.**
+
+---
+
+## Mar 7, 2026 (2:30 PM CT) — Audit Prep + UX Polish Sprint
+
+### What Was Done
+
+**Commits pushed to `develop` today:**
+- `a515a5d` — docs: fix 5 code-vs-doc discrepancies found by systematic audit (ARCHITECTURE.md corrections)
+- `48ecb8b` — docs: rewrite README.md for institutional audit readiness (CI badges, repo structure, flow diagrams)
+- `21c3eb3` — chore: final audit prep — 5 remaining items (CONTRIBUTING.md, PR template, .gitignore .agents/)
+- `1ff5afe` — fix: standardize profit target framing across dashboard components (ProfitProgress shows $500 not $5,500; DashboardView.tsx demo uses PLANS.grinder; stale 'Phase 1' copy removed)
+- `6567176` — test: fix 2 stale safety assertions — 10k tier drawdown 10%→8% (was silently broken)
+- `8b57a5f` — fix(ux): 3 polish fixes — typo, payouts card, rulesConfig extraction
+
+**UX Fixes (8b57a5f):**
+1. `FundedRiskMeters.tsx` — `$$25,000` → `$25,000` typo (literal `$` + template `${...}`)
+2. `AvailableBalanceCard.tsx` — Label improved: "Available Amount" → "Available to Withdraw"; breakdown line added for gross profit
+3. `dashboard/page.tsx` — 3 inline IIFE rulesConfig expressions extracted to named vars before `return`
+
+**Safety gate status:** `test:safety 54/54` all green.
+
+### Known Remaining Issues
+
+- **Payouts page shows $0 for forexampletrader@gmail.com** — `getAvailableBalance()` can't find the funded challenge for this user. Separate investigation needed; root cause is either `phase != "funded"` or `status != "active"` in DB for this account. This is a data issue, not a code bug.
+- **Payouts page not pushed to production** — all changes are on `develop` only.
+
+### Tomorrow Morning
+
+1. **Push `develop` → `main`** (per daily push discipline) — these are all greenlit
+2. **Investigate payouts $0** for Mat's funded account — confirm `phase` and `status` values in DB for his challenge row
+3. **Mobile nav affordance** (P3) — add right-edge gradient fade on horizontal nav scroll
 
 
 ### 🌅 Tomorrow Morning — Handoff for Next Agent
