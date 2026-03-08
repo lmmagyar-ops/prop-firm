@@ -9,7 +9,7 @@
  */
 
 import Redis from "ioredis";
-import { db } from "../db";
+import { db, dbPool } from "../db";
 import { challenges, positions, auditLogs, trades } from "../db/schema";
 import { eq, and } from "drizzle-orm";
 import { FUNDED_RULES } from "../lib/funded-rules";
@@ -248,7 +248,7 @@ export class RiskMonitor {
             });
             const livePrices = await this.batchFetchPrices(openPositions.map(p => p.marketId));
 
-            await db.transaction(async (tx) => {
+            await dbPool.transaction(async (tx) => {
                 // 1. Status guard prevents double-firing on already-failed challenges
                 // endsAt mirrors evaluator.ts breach path (line 135) — both must set this
                 // so audit queries for "when did this challenge end?" return a real timestamp.
@@ -260,7 +260,7 @@ export class RiskMonitor {
                         eq(challenges.status, 'active')
                     ));
 
-                if (!result.count || result.count === 0) {
+                if (!result.rowCount || result.rowCount === 0) {
                     logger.info('Challenge already transitioned, skipping breach', { challengeId: challenge.id });
                     return;
                 }
@@ -318,7 +318,7 @@ export class RiskMonitor {
                     : '5k' as const;
             const tierRules = FUNDED_RULES[tier];
 
-            await db.transaction(async (tx) => {
+            await dbPool.transaction(async (tx) => {
                 const updatePayload: Record<string, unknown> = {
                     status: 'active',
                     phase: 'funded',
@@ -348,7 +348,7 @@ export class RiskMonitor {
                         eq(challenges.phase, 'challenge')
                     ));
 
-                if (!result.count || result.count === 0) {
+                if (!result.rowCount || result.rowCount === 0) {
                     logger.info('Challenge already transitioned, skipping pass', { challengeId: challenge.id });
                     return;
                 }

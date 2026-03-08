@@ -1,4 +1,4 @@
-import { db } from "@/db";
+import { db, dbPool } from "@/db";
 import { challenges, trades, positions, paymentLogs, discountRedemptions, certificates, auditLogs } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
@@ -36,7 +36,7 @@ export async function DELETE(
             return NextResponse.json({ error: "Challenge not found" }, { status: 404 });
         }
 
-        const result = await db.transaction(async (tx) => {
+        const result = await dbPool.transaction(async (tx) => {
             // Cascade delete in FK order: dependents first, then the challenge
 
             // 1. Delete trades (references challenges)

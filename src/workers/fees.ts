@@ -1,4 +1,4 @@
-import { db } from "@/db";
+import { db, dbPool } from "@/db";
 import { positions, challenges, businessRules } from "@/db/schema";
 import { eq, and, lte, isNull } from "drizzle-orm";
 import { TRADING_CONFIG } from "@/config/trading";
@@ -69,7 +69,7 @@ export async function runFeeSweep() {
 
 async function chargeFee(position: typeof positions.$inferSelect) {
     // Transaction to ensure balance deduction and position update happen together
-    await db.transaction(async (tx) => {
+    await dbPool.transaction(async (tx) => {
         // Guard: challengeId is nullable in schema but required for fee deduction
         if (!position.challengeId) {
             logger.warn(`Skipping fee for position ${position.id}: no challengeId`);

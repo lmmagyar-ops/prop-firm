@@ -1,4 +1,4 @@
-import { db } from "@/db";
+import { db, dbPool } from "@/db";
 import {
     users, challenges, trades, positions, accounts, sessions,
     payouts, certificates, userBadges, affiliates, discountRedemptions, paymentLogs,
@@ -43,7 +43,7 @@ export async function DELETE(
 
         const challengeIds = userChallenges.map(c => c.id);
 
-        const result = await db.transaction(async (tx) => {
+        const result = await dbPool.transaction(async (tx) => {
             // ── Challenge-scoped deletes ──
             if (challengeIds.length > 0) {
                 // 1. Delete trades (FK → challenges)

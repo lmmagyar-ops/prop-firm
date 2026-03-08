@@ -1,4 +1,4 @@
-import { db } from "@/db";
+import { db, dbPool } from "@/db";
 import { challenges, positions, trades, paymentLogs, auditLogs } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
@@ -48,7 +48,7 @@ export async function POST(req: Request) {
         const previousBalance = challenge.currentBalance;
 
         // 2. Execute all mutations in a single transaction
-        const result = await db.transaction(async (tx) => {
+        const result = await dbPool.transaction(async (tx) => {
             // Delete trades
             const deletedTrades = await tx
                 .delete(trades)

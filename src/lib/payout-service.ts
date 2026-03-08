@@ -5,7 +5,7 @@
  * Ensures compliance with all funded stage rules before approving payouts.
  */
 
-import { db } from "@/db";
+import { db, dbPool } from "@/db";
 import { challenges, payouts } from "@/db/schema";
 import { eq, and, inArray } from "drizzle-orm";
 import { ResolutionDetector } from "./resolution-detector";
@@ -350,7 +350,7 @@ export class PayoutService {
         const totalPaid = safeParseFloat(challenge.totalPaidOut) + payoutAmount;
 
         // ATOMIC: balance deduction + challenge update + payout status update
-        await db.transaction(async (tx) => {
+        await dbPool.transaction(async (tx) => {
             // 1. Deduct gross profit from trader's balance via BalanceManager
             //    This is the critical fix — without it, the same profit could be
             //    paid out repeatedly.
