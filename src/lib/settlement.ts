@@ -179,6 +179,18 @@ export async function settleResolvedPositions(): Promise<SettlementResult> {
             errors: result.errors.length,
         });
 
+        // CANARY: If we found open positions on resolved markets but settled zero
+        // with no errors, something is silently broken (e.g. driver API change, FOR UPDATE
+        // guard always firing). This is the pattern from the March 8, 2026 incident.
+        // logger.error() triggers Sentry — this should NEVER happen in steady state.
+        if (result.positionsChecked > 0 && result.positionsSettled === 0 && result.errors.length === 0) {
+            logger.error(
+                'SETTLEMENT_SILENT_FAILURE: Positions were scanned and found resolved, but zero were settled with no errors. Possible driver/guard regression.',
+                null,
+                { positionsChecked: result.positionsChecked }
+            );
+        }
+
     } catch (error: unknown) {
         const msg = `Settlement service error: ${error instanceof Error ? error.message : 'Unknown error'}`;
         logger.error(msg);
