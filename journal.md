@@ -4,6 +4,34 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 
 ---
 
+## 2026-03-08 — PRODUCTION INCIDENT: Neon HTTP Driver Rollback
+
+**Branch:** `main` | **Commit:** `b36e212` | **Duration:** ~2h
+
+### Root Cause
+The `@neondatabase/serverless` neon-http driver requires a **direct neon.tech connection string**.
+Vercel's `DATABASE_URL` points to **Prisma Accelerate** (`db.prisma.io`) — the neon-http driver
+calls Neon's REST API directly and gets HTTP 404 "Resource Not Found" for any Prisma Accelerate URL.
+Every DB-dependent route returned a crash page immediately after deploy.
+
+### What We Did
+- Reverted `src/db/index.ts` back to `postgres.js` 
+- Added `max: 1`, `idle_timeout: 20s` to mitigate the original TLSWrap idle-drop issue
+- Fixed downstream type errors: `leaderboard/.rows`, `evaluator/risk-monitor/outage-manager .rowCount`
+- Pushed directly to `main` as emergency fix (bypassed normal PR flow)
+- Verified `{"status":"healthy"}` on `/api/system/status`
+
+### What We Learned
+The neon driver migration was a **driver-environment mismatch** — the driver and the URL format are
+incompatible. To properly adopt `@neondatabase/serverless`, Vercel must be switched from Prisma
+Accelerate to a direct Neon connection string first. That's a larger ops change for FUTURE(v2).
+
+### Prevention
+Before any db driver change, verify that `DATABASE_URL` format is compatible with the new driver.
+neon-http = neon.tech URL. postgres.js = any standard Postgres wire-protocol URL.
+
+---
+
 ## 2026-03-08 — DB Driver Migration: postgres.js TCP → Neon HTTP+WS
 
 **Branch:** `develop` | **Commit:** `87b250b`

@@ -332,7 +332,7 @@ DATABASE_URL="..." npx tsx scripts/grant-admin.ts email@example.com
 | Layer | Technology |
 |-------|------------|
 | **Framework** | Next.js 16 (App Router), React 19 |
-| **Database** | Neon Postgres (Vercel), Drizzle ORM — two drivers: `neon-http` for reads (stateless, no TCP pool), `neon-serverless Pool` for transactions |
+| **Database** | Neon Postgres (Vercel), Drizzle ORM — `postgres.js` driver (`max:1, idle_timeout:20s`) via Prisma Accelerate |
 | **Cache** | Railway Redis (flat-rate, via REDIS_URL) |
 | **Auth** | NextAuth v5 (email/password + Google OAuth) |
 | **UI** | Tailwind v4, Shadcn/ui, Framer Motion |
@@ -518,7 +518,7 @@ Runs every 30 seconds in the ingestion worker (`CHECK_INTERVAL_MS = 30000`):
 > [!IMPORTANT]
 > **Transaction safety:** `triggerBreach`, `triggerPass`, and `closeAllPositions` run inside `dbPool.transaction()` (neon-serverless WebSocket client). Status update + position closes + balance credit + audit log are fully atomic — if any step crashes, everything rolls back. Redis reads happen before the transaction (not transactional).
 >
-> **DB client split (2026-03-08):** `db` (neon-http, stateless HTTPS) is used for all reads. `dbPool` (neon-serverless Pool) is used specifically for `dbPool.transaction()` call sites. This was changed from postgres.js TCP after 581 "Failed to connect to upstream database" (TLSWrap.onStreamRead) errors in 7 days — Neon kills idle TCP connections server-side on Vercel. See `src/db/index.ts` for the full rationale.
+> **DB client (2026-03-08):** Both `db` and `dbPool` use `postgres.js` with `max:1, idle_timeout:20s`. The `idle_timeout` is set below Neon's ~30s server-side connection kill to prevent TLSWrap.onStreamRead drops (581 errors in 7 days). A migration to `@neondatabase/serverless` neon-http was attempted but reverted — the neon-http driver requires a direct `neon.tech` URL and is incompatible with the Prisma Accelerate proxy URL in Vercel's `DATABASE_URL`. See `src/db/index.ts` and `journal.md` (2026-03-08 incident) for full rationale. FUTURE(v2): switch Vercel integration to direct Neon URL, then adopt neon-http.
 
 > [!IMPORTANT]
 > On breach, `currentBalance` is stored as-is — equity is **not** written to currentBalance (prevents double-counting unrealized P&L).
