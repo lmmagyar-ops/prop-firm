@@ -137,11 +137,11 @@ export default async function DashboardPage() {
 
                     {/* DANGER BANNER: Daily loss limit breach pending */}
                     {activeChallenge.pendingFailureAt && (
-                        <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-red-950/60 border border-red-800/50 animate-pulse">
-                            <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0" />
+                        <div className="flex items-start gap-3 px-4 py-4 rounded-xl bg-red-950/60 border border-red-800/50">
+                            <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
                             <div className="flex-1">
-                                <p className="text-sm font-semibold text-red-400">Daily Loss Limit Breached</p>
-                                <p className="text-xs text-red-500/80">Trading is disabled. You can recover if you profit back before end of day.</p>
+                                <p className="text-sm font-bold text-red-300">Trading Paused Until Midnight UTC</p>
+                                <p className="text-xs text-red-400/90 mt-0.5">You hit today&apos;s daily loss limit. <span className="font-semibold text-red-300">Your account is NOT failed.</span> New trades are blocked for the rest of today. Open positions remain active. Trading automatically resumes at 00:00 UTC.</p>
                             </div>
                         </div>
                     )}
