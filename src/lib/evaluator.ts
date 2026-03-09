@@ -327,7 +327,7 @@ export class ChallengeEvaluator {
                         eq(challenges.phase, 'challenge')
                     ));
 
-                if (!result.rowCount || result.rowCount === 0) {
+                if ((result as unknown[]).length === 0) {
                     logger.info('Challenge already transitioned, skipping funded transition', { challengeId: challengeId.slice(0, 8) });
                     return;
                 }

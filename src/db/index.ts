@@ -1,42 +1,35 @@
-import { neon } from "@neondatabase/serverless";
-import { drizzle as drizzleHttp } from "drizzle-orm/neon-http";
-import { drizzle as drizzleWs } from "drizzle-orm/neon-serverless";
-import { Pool } from "@neondatabase/serverless";
+import postgres from "postgres";
+import { drizzle } from "drizzle-orm/postgres-js";
 import * as schema from "./schema";
 
-// ── WHY TWO CLIENTS ──────────────────────────────────────────────────────────
+// ── DB CLIENT ─────────────────────────────────────────────────────────────────
 //
-// PROBLEM (Sentry issue IDs e851b5f5, 1d30cd54, et al — 581/712 errors this week):
-//   postgres.js uses a persistent TCP/TLS pool. On Vercel serverless, Neon
-//   kills idle connections server-side. When a query fires on a dead TCP socket,
-//   postgres.js throws: "Failed to connect to upstream database" with
-//   TLSWrap.onStreamRead in the stack trace. This happened 581 times in 7 days.
+// DATABASE_URL points to Prisma Accelerate (db.prisma.io) which speaks standard
+// Postgres wire protocol over TCP. We use postgres.js which supports this.
 //
-// SOLUTION: Split into two clients based on use-case:
+// NOTE (2026-03-08): We attempted to migrate to @neondatabase/serverless to fix
+// idle TCP connection drops (581 errors in 7 days). That migration was reverted
+// because the Neon HTTP driver requires a direct neon.tech connection string, but
+// our Vercel environment only has the Prisma Accelerate proxy URL. Neon HTTP
+// cannot speak to a Prisma Accelerate endpoint — it calls Neon's REST API
+// directly, causing HTTP 404 "Resource Not Found" in production.
 //
-//   1. `db` — Neon HTTP driver (drizzle-orm/neon-http)
-//      • Stateless HTTPS POST per query. No pool, no idle timeout, no TCP drops.
-//      • Used by: ALL read queries, getDashboardData(), /api/user/balance,
-//        /api/trade/positions, leaderboard, settings, etc.
-//      • Eliminates the "Failed to connect" error class entirely for reads.
+// The original idle-connection problem (TLSWrap.onStreamRead) is mitigated here
+// by using max:1 and idle_timeout:20 so postgres.js recycles the connection
+// before Neon's ~30s server-side idle timeout can kill it.
 //
-//   2. `dbPool` — Neon WebSocket Pool (drizzle-orm/neon-serverless)
-//      • Maintains a connection for the duration of db.transaction() callbacks.
-//      • Required for: db.transaction() (13 call sites across trade, risk,
-//        admin, payout, settlement, evaluator, fees).
-//      • Serverless Pool is connection-scoped (not process-scoped like postgres.js),
-//        so it doesn't leak across Lambda invocations.
-//
-// USAGE:
-//   import { db } from "@/db";          ← for all normal queries (95% of code)
-//   import { dbPool } from "@/db";      ← for db.transaction() call sites only
-//
+// FUTURE(v2): To properly use @neondatabase/serverless, the Vercel integration
+// must be changed from Prisma Accelerate to a direct Neon connection string.
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Client 1: HTTP — stateless, no connection management needed
-const sql = neon(process.env.DATABASE_URL!);
-export const db = drizzleHttp(sql, { schema });
+const client = postgres(process.env.DATABASE_URL!, {
+    max: 1,
+    idle_timeout: 20,
+    connect_timeout: 10,
+});
 
-// Client 2: WebSocket Pool — scoped to this invocation, supports transactions
-const pool = new Pool({ connectionString: process.env.DATABASE_URL! });
-export const dbPool = drizzleWs(pool, { schema });
+export const db = drizzle(client, { schema });
+
+// `dbPool` alias — kept for compatibility with transaction call sites that
+// import { dbPool } from "@/db". Both point to the same client.
+export const dbPool = db;

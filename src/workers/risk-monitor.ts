@@ -260,8 +260,7 @@ export class RiskMonitor {
                         eq(challenges.status, 'active')
                     ));
 
-                if (!result.rowCount || result.rowCount === 0) {
-                    logger.info('Challenge already transitioned, skipping breach', { challengeId: challenge.id });
+                if ((result as unknown[]).length === 0) {
                     return;
                 }
 
@@ -348,8 +347,7 @@ export class RiskMonitor {
                         eq(challenges.phase, 'challenge')
                     ));
 
-                if (!result.rowCount || result.rowCount === 0) {
-                    logger.info('Challenge already transitioned, skipping pass', { challengeId: challenge.id });
+                if ((result as unknown[]).length === 0) {
                     return;
                 }
 
