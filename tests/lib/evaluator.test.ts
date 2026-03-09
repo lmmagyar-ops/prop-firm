@@ -20,17 +20,23 @@ vi.mock("@/db", () => {
         },
         update: vi.fn(() => ({
             set: vi.fn(() => ({
-                where: vi.fn().mockResolvedValue({ count: 1 })
+                where: vi.fn().mockResolvedValue({ rowCount: 1 })
             }))
         })),
         insert: vi.fn(() => ({
-            values: vi.fn().mockResolvedValue({ count: 1 })
+            values: vi.fn().mockResolvedValue({ rowCount: 1 })
         })),
         transaction: vi.fn(),
     };
     // transaction calls the callback with db itself as the tx context
     mockDb.transaction.mockImplementation(async (cb: (tx: typeof mockDb) => Promise<void>) => cb(mockDb));
-    return { db: mockDb };
+    // dbPool is the neon-serverless pool used for transactions in evaluator.ts.
+    // It shares the same mock object so test assertions on db.update still capture calls.
+    const mockDbPool = {
+        ...mockDb,
+        transaction: vi.fn(async (cb: (tx: typeof mockDb) => Promise<void>) => cb(mockDb)),
+    };
+    return { db: mockDb, dbPool: mockDbPool };
 });
 
 vi.mock("@/lib/events", () => ({
