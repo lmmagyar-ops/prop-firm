@@ -15,6 +15,7 @@ vi.mock('@/db', () => {
         query: {
             challenges: { findFirst: vi.fn() },
             positions: { findMany: vi.fn() },
+            trades: { findMany: vi.fn().mockResolvedValue([]) },
         },
         update: vi.fn(() => ({
             set: vi.fn(() => ({
@@ -27,8 +28,13 @@ vi.mock('@/db', () => {
         transaction: vi.fn(),
     };
     mockDb.transaction.mockImplementation(async (cb: (tx: typeof mockDb) => Promise<void>) => cb(mockDb));
-    return { db: mockDb };
+    const mockDbPool = {
+        ...mockDb,
+        transaction: vi.fn(async (cb: (tx: typeof mockDb) => Promise<void>) => cb(mockDb)),
+    };
+    return { db: mockDb, dbPool: mockDbPool };
 });
+
 
 vi.mock('@/lib/market', () => ({
     MarketService: {

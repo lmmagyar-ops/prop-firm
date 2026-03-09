@@ -4,8 +4,27 @@ import { MarketService } from "@/lib/market";
 import { RiskEngine } from "@/lib/risk";
 
 // Mock external dependencies
-vi.mock("@/db", () => ({
-    db: {
+vi.mock("@/db", () => {
+    const makeTxMock = () => ({
+        execute: vi.fn(), // FOR UPDATE lock
+        select: vi.fn(() => ({
+            from: vi.fn(() => ({
+                where: vi.fn(() => [{
+                    id: "challenge-123",
+                    currentBalance: "10000",
+                    rulesConfig: {}
+                }])
+            }))
+        })),
+        insert: vi.fn(() => ({ values: vi.fn(() => ({ returning: vi.fn(() => [{ id: "trade-123", marketId: "asset-123", price: "0.5025", shares: "1990" }]) })) })),
+        update: vi.fn(() => ({ set: vi.fn(() => ({ where: vi.fn() })) })),
+        query: {
+            positions: { findFirst: vi.fn(() => null) },
+            challenges: { findFirst: vi.fn(() => ({ id: "challenge-123", currentBalance: "10000" })) }
+        }
+    });
+
+    const mockDb = {
         select: vi.fn(() => ({
             from: vi.fn(() => ({
                 where: vi.fn(() => [{
@@ -17,36 +36,20 @@ vi.mock("@/db", () => ({
                 }])
             }))
         })),
-        transaction: vi.fn((callback) => callback({
-            execute: vi.fn(), // FOR UPDATE lock
-            select: vi.fn(() => ({
-                from: vi.fn(() => ({
-                    where: vi.fn(() => [{
-                        id: "challenge-123",
-                        currentBalance: "10000",
-                        rulesConfig: {}
-                    }])
-                }))
-            })),
-            insert: vi.fn(() => ({ values: vi.fn(() => ({ returning: vi.fn(() => [{ id: "trade-123", marketId: "asset-123", price: "0.5025", shares: "1990" }]) })) })),
-            update: vi.fn(() => ({ set: vi.fn(() => ({ where: vi.fn() })) })),
-            query: {
-                positions: {
-                    findFirst: vi.fn(() => null) // Default no position
-                },
-                challenges: {
-                    findFirst: vi.fn(() => ({
-                        id: "challenge-123",
-                        currentBalance: "10000"
-                    }))
-                }
-            }
-        }))
-    }
-}));
+        transaction: vi.fn((callback) => callback(makeTxMock())),
+    };
+
+    // dbPool is used for the core trade transaction in trade.ts (line 244).
+    // It shares the same callback pattern so orchestration mocks work via vi.mocked(db.transaction).
+    const mockDbPool = {
+        transaction: vi.fn((callback) => callback(makeTxMock())),
+    };
+
+    return { db: mockDb, dbPool: mockDbPool };
+});
 
 // Import after mocking
-import { db } from "@/db";
+import { db, dbPool } from "@/db";
 
 vi.mock("@/lib/challenges", () => ({
     ChallengeManager: {
@@ -91,6 +94,17 @@ vi.mock("@/lib/worker-client", () => ({
     kvGet: vi.fn().mockResolvedValue(null),
     kvSet: vi.fn().mockResolvedValue(undefined),
 }));
+
+// Mock OutageManager — trade.ts gates execution on outage status.
+vi.mock("@/lib/outage-manager", () => ({
+    OutageManager: {
+        getOutageStatus: vi.fn().mockResolvedValue({
+            isOutage: false,
+            isGraceWindow: false,
+        }),
+    },
+}));
+
 
 
 // CORE TRADE EXECUTION TESTS
@@ -526,7 +540,8 @@ describe("TradeExecutor - Orchestration", () => {
             }))
         } as any);
 
-        vi.mocked(db.transaction).mockImplementation(async (callback) => {
+        // trade.ts uses dbPool.transaction for its core transaction after the Neon migration
+        vi.mocked(dbPool.transaction).mockImplementation(async (callback) => {
             return callback(mockTx);
         });
     });

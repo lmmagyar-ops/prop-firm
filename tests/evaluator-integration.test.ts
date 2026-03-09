@@ -33,7 +33,12 @@ vi.mock('@/db', () => {
         transaction: vi.fn(),
     };
     mockDb.transaction.mockImplementation(async (cb: (tx: typeof mockDb) => Promise<void>) => cb(mockDb));
-    return { db: mockDb };
+    // dbPool is the neon-serverless pool used for transactions in evaluator.ts.
+    const mockDbPool = {
+        ...mockDb,
+        transaction: vi.fn(async (cb: (tx: typeof mockDb) => Promise<void>) => cb(mockDb)),
+    };
+    return { db: mockDb, dbPool: mockDbPool };
 });
 
 // Mock MarketService for live prices

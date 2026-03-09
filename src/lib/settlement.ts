@@ -102,7 +102,10 @@ export async function settleResolvedPositions(): Promise<SettlementResult> {
                     const lockedRows = await tx.execute(
                         sql`SELECT id, status FROM positions WHERE id = ${pos.id} FOR UPDATE`
                     );
-                    const locked = (lockedRows as unknown as { id: string; status: string }[])?.[0];
+                    // neon-serverless tx.execute() returns { rows: [...], rowCount, ... }
+                    // NOT a plain array — must access .rows
+                    type NeonResult = { rows: { id: string; status: string }[] };
+                    const locked = (lockedRows as unknown as NeonResult).rows?.[0];
 
                     if (!locked || locked.status !== 'OPEN') {
                         // Already settled by a concurrent run — skip silently

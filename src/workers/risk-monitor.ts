@@ -260,7 +260,7 @@ export class RiskMonitor {
                         eq(challenges.status, 'active')
                     ));
 
-                if ((result as unknown[]).length === 0) {
+                if (!(result as unknown as { rowCount: number }).rowCount) {
                     return;
                 }
 
@@ -347,7 +347,7 @@ export class RiskMonitor {
                         eq(challenges.phase, 'challenge')
                     ));
 
-                if ((result as unknown[]).length === 0) {
+                if (!(result as unknown as { rowCount: number }).rowCount) {
                     return;
                 }
 
