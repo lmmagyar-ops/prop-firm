@@ -276,4 +276,61 @@ describe("calculateImpact", () => {
         expect(result.filled).toBe(true);
         expect(result.slippagePercent).toBe(0);
     });
+
+    // ─── NaN Regression Tests (Mar 9 2026 Incident) ─────────────────
+    // Root cause: When all levels are skipped (price/size <= 0), totalSharesObj
+    // stays 0. If remainingAmount <= $1 (dust guard), we reach the division
+    // avgPrice = totalCostObj / totalSharesObj = 0 / 0 = NaN.
+
+    it("never returns NaN when all levels have zero price (MAR-9 regression)", () => {
+        const book = makeBook(
+            [],
+            [["0.00", "1000"], ["0.00", "500"]]  // All asks have price=0
+        );
+        const result = calculateImpact(book, "BUY", 0.50); // Small enough to pass dust guard
+
+        expect(result.filled).toBe(false);
+        expect(result.reason).toContain("No Valid Levels");
+        // The critical assertion: no NaN anywhere
+        expect(Number.isNaN(result.executedPrice)).toBe(false);
+        expect(Number.isNaN(result.totalShares)).toBe(false);
+        expect(Number.isNaN(result.slippagePercent)).toBe(false);
+    });
+
+    it("never returns NaN when all levels have zero size (MAR-9 regression)", () => {
+        const book = makeBook(
+            [],
+            [["0.50", "0"], ["0.60", "0"]]  // All asks have size=0
+        );
+        const result = calculateImpact(book, "BUY", 0.50);
+
+        expect(result.filled).toBe(false);
+        expect(Number.isNaN(result.executedPrice)).toBe(false);
+    });
+
+    it("never returns NaN when all levels have negative price (MAR-9 regression)", () => {
+        const book = makeBook(
+            [["-0.10", "1000"]],  // All bids have negative price
+            []
+        );
+        const result = calculateImpact(book, "SELL", 0.50);
+
+        expect(result.filled).toBe(false);
+        expect(Number.isNaN(result.executedPrice)).toBe(false);
+    });
+
+    it("never returns NaN with mix of invalid levels and small trade (MAR-9 regression)", () => {
+        // This is the exact scenario: book has levels, all invalid, trade amount
+        // is tiny enough to pass the $1 dust guard
+        const book = makeBook(
+            [],
+            [["0.00", "0"], ["-1.00", "100"], ["0.00", "999"]]
+        );
+        const result = calculateImpact(book, "BUY", 0.01);
+
+        expect(result.filled).toBe(false);
+        expect(result.reason).toContain("No Valid Levels");
+        expect(Number.isNaN(result.executedPrice)).toBe(false);
+        expect(Number.isNaN(result.totalShares)).toBe(false);
+    });
 });
