@@ -69,9 +69,18 @@ export function PayoutRequestForm({ availableBalance }: { availableBalance: numb
                 <div className="flex-1 p-4 bg-[#29af73]/10 border border-[#29af73]/30 rounded-xl text-center cursor-pointer relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-4 h-4 bg-[#29af73] rounded-bl-lg" />
                     <p className="text-sm text-[#29af73] font-bold">Predictions Firm Payout</p>
-                    <p className="text-2xl font-bold font-mono text-white">$300.00</p>
+                    <p className="text-2xl font-bold font-mono text-white">${availableBalance.toFixed(2)}</p>
                 </div>
             </div>
+
+            {availableBalance <= 0 && (
+                <div className="bg-yellow-900/10 border border-yellow-600/20 rounded-xl p-4 mb-4">
+                    <p className="text-sm text-yellow-400 font-medium">No profit available for withdrawal</p>
+                    <p className="text-xs text-zinc-500 mt-1">
+                        Your current balance is at or below your starting balance. Generate trading profits to unlock payouts.
+                    </p>
+                </div>
+            )}
 
             {/* Payout Amount */}
             <div>

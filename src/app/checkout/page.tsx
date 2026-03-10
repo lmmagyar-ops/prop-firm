@@ -44,6 +44,7 @@ function CheckoutContent() {
     const [profitSplit, setProfitSplit] = useState(false);
     const [agreedRules, setAgreedRules] = useState(false);
     const [agreedRefund, setAgreedRefund] = useState(false);
+    const [hasActiveChallenge, setHasActiveChallenge] = useState<boolean | null>(null); // null = checking
 
     // User identity - pre-filled from session
     const { data: session } = useSession();
@@ -96,6 +97,44 @@ function CheckoutContent() {
             router.push(`/login?callbackUrl=/checkout?tier=${tierId}&from_dashboard=true`);
         }
     }, [searchParams, router, tierId, basePrice, session]);
+
+    // SINGLE-CHALLENGE GATE: Check if user already has an active challenge
+    // The API also blocks this, but checking here prevents the confusing UX
+    // of filling out the entire payment form only to get rejected.
+    useEffect(() => {
+        if (!session?.user) return;
+        fetch("/api/challenge/active")
+            .then(res => res.json())
+            .then(data => {
+                setHasActiveChallenge(data.hasActive === true);
+            })
+            .catch(() => {
+                // On error, allow checkout (API will enforce the gate anyway)
+                setHasActiveChallenge(false);
+            });
+    }, [session]);
+
+    // If user has active challenge, show message and redirect
+    if (hasActiveChallenge === true) {
+        return (
+            <div className="min-h-screen bg-[#05101a] text-white flex items-center justify-center p-4">
+                <div className="max-w-md text-center space-y-4">
+                    <div className="bg-yellow-900/20 border border-yellow-600/30 rounded-xl p-6">
+                        <h2 className="text-xl font-bold text-yellow-400 mb-2">Active Evaluation Found</h2>
+                        <p className="text-sm text-zinc-400">
+                            You already have an active evaluation. Complete or fail your current challenge before purchasing a new one.
+                        </p>
+                    </div>
+                    <Button
+                        onClick={() => router.push("/dashboard")}
+                        className="bg-primary hover:bg-primary/90"
+                    >
+                        Go to Dashboard
+                    </Button>
+                </div>
+            </div>
+        );
+    }
 
     // Discount Code Validation
     const handleApplyDiscount = async () => {
