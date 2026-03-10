@@ -100,7 +100,7 @@ export async function POST(req: NextRequest) {
                     rulesConfig,
                     platform: selectedPlatform,
                     startedAt: new Date(),
-                    endsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+                    endsAt: new Date(Date.now() + tierConfig.durationDays * 24 * 60 * 60 * 1000)
                 });
 
                 // 4. Build redirect URL using request headers (works on Vercel)

@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { db } from "@/db";
 import { challenges } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
+import { getTierConfig } from "@/config/tiers";
 import { createLogger } from "@/lib/logger";
 const logger = createLogger("Start");
 
@@ -25,19 +26,32 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "No pending challenge found" }, { status: 404 });
         }
 
+        // Get duration from canonical tier config (NOT hardcoded)
+        const tier = pendingChallenge.rulesConfig
+            ? JSON.parse(pendingChallenge.rulesConfig as string)?.tier
+            : null;
+        const tierConfig = tier ? getTierConfig(tier) : null;
+        const durationDays = tierConfig?.durationDays ?? 60; // Default 60 if tier config unavailable
+
         // Activate it
         const now = new Date();
-        const durationDays = 30; // Hardcoded rules for MVp
         const endsAt = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000);
+        const startingBalance = pendingChallenge.startingBalance;
 
         await db.update(challenges)
             .set({
                 status: "active",
                 startedAt: now,
                 endsAt: endsAt,
-                // Ensure initial balances are confirmed if needed, but they were set on creation
+                startOfDayEquity: startingBalance, // Initialize SODEquity to prevent null on first day
             })
             .where(eq(challenges.id, pendingChallenge.id));
+
+        logger.info("Challenge activated", {
+            challengeId: pendingChallenge.id.slice(0, 8),
+            tier: tier || "unknown",
+            durationDays,
+        });
 
         return NextResponse.json({ success: true, challengeId: pendingChallenge.id });
 
