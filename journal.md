@@ -22,7 +22,8 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 | **Journal pruned** | ✅ Entries older than 7 days removed |
 | **Neon branching** | ✅ `develop` branch created (`ep-autumn-haze-adluhbxu`), Vercel `DATABASE_URL` scoped to Preview + `develop` |
 | **Sentry TLSWrap** | ✅ Zero errors since March 8. Neon migration confirmed working |
-| **Financial invariants** | ✅ Fixed fail-open bug — `hardInvariant()` now always throws on money paths (`005088f`) |
+| **Financial invariants** | ✅ Fixed fail-open bug — `hardInvariant()` now always throws on money paths (`ada65c9`) |
+| **DB CHECK constraints** | ✅ 7 constraints block NaN/Infinity at Postgres level on challenges, positions, trades (`db21a29`) |
 
 ### ⚠️ What the Next Agent Must Know
 

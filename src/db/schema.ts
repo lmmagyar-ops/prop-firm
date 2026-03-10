@@ -11,6 +11,7 @@ import {
     uuid,
     index,
     uniqueIndex,
+    check,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import type { AdapterAccount } from "next-auth/adapters";
@@ -184,6 +185,10 @@ export const challenges = pgTable("challenges", {
     uniqueActiveChallenge: uniqueIndex("challenges_unique_active_per_user")
         .on(table.userId)
         .where(sql`status = 'active'`),
+    // DB-LEVEL SAFETY: Prevent NaN/Infinity in financial columns.
+    // Defense-in-depth below hardInvariant() in the app layer.
+    balanceIsFinite: check("balance_is_finite", sql`${table.currentBalance}::text NOT IN ('NaN', 'Infinity', '-Infinity')`),
+    startingBalanceIsFinite: check("starting_balance_is_finite", sql`${table.startingBalance}::text NOT IN ('NaN', 'Infinity', '-Infinity')`),
 }));
 
 export const positions = pgTable("positions", {
@@ -210,6 +215,9 @@ export const positions = pgTable("positions", {
 }, (table) => ({
     // Dashboard + trade queries: WHERE challengeId = ? AND status = 'OPEN'
     positionChallengeStatusIdx: index("positions_challenge_status_idx").on(table.challengeId, table.status),
+    // DB-LEVEL SAFETY: Prevent NaN/Infinity in financial columns.
+    sharesIsFinite: check("position_shares_finite", sql`${table.shares}::text NOT IN ('NaN', 'Infinity', '-Infinity')`),
+    entryPriceIsFinite: check("position_entry_price_finite", sql`${table.entryPrice}::text NOT IN ('NaN', 'Infinity', '-Infinity')`),
 }));
 
 export const trades = pgTable("trades", {
@@ -231,6 +239,10 @@ export const trades = pgTable("trades", {
 }, (table) => ({
     // Trade history: WHERE challengeId = ?
     tradeChallengeIdx: index("trades_challenge_idx").on(table.challengeId),
+    // DB-LEVEL SAFETY: Prevent NaN/Infinity in financial columns.
+    priceIsFinite: check("trade_price_finite", sql`${table.price}::text NOT IN ('NaN', 'Infinity', '-Infinity')`),
+    amountIsFinite: check("trade_amount_finite", sql`${table.amount}::text NOT IN ('NaN', 'Infinity', '-Infinity')`),
+    tradeSharesIsFinite: check("trade_shares_finite", sql`${table.shares}::text NOT IN ('NaN', 'Infinity', '-Infinity')`),
 }));
 
 
