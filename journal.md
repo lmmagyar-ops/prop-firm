@@ -42,7 +42,7 @@ Neon `develop` branch created from `production`. Vercel `DATABASE_URL` scoped to
 ### ~~PRIORITY 2 — Check Sentry for TLSWrap Error Rate~~ ✅ DONE
 Zero TLSWrap errors since March 8. Last "Failed query" errors were on migration day (Mar 8, 4-64 events during transition). No connection errors since. The 581/week Prisma TCP drops are fully eliminated.
 
-### PRIORITY 3 — Verify Neon PITR Backup (30 min)
-We're fully on Neon with no tested restore procedure. Neon console → `prop-firm-direct` → Settings → confirm PITR is enabled. Note the retention window. Document restore procedure in ARCHITECTURE.md.
+### ~~PRIORITY 3 — Verify Neon PITR Backup~~ ✅ DONE
+PITR enabled, 6-hour retention window (Free plan). Restore: Neon Console → Branches → production → Backup & Restore → select timestamp. Documented in ARCHITECTURE.md.
 
 ---

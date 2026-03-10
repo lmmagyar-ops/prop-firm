@@ -520,6 +520,7 @@ Runs every 30 seconds in the ingestion worker (`CHECK_INTERVAL_MS = 30000`):
 >
 > **DB client (2026-03-08 — migrated):** `db` uses `@neondatabase/serverless` neon-http (stateless HTTPS POST per query, no connection pool). `dbPool` uses `@neondatabase/serverless` Pool (WebSocket, scoped per invocation, for transactions only). `DATABASE_URL` points directly to `ep-royal-lab-adny4asz.c-2.us-east-1.aws.neon.tech`. The old `postgres.js` via Prisma Accelerate proxy was removed March 8 to eliminate 581/week TLSWrap.onStreamRead drops caused by Neon killing idle TCP connections. Any new `tx.execute()` call must use `.rows[0]`, NOT `[0]` directly (neon-serverless returns `{ rows: [...], rowCount }`, not a plain array).
 
+> **Backup & Recovery (verified 2026-03-10):** Neon "Instant Restore" (PITR) is enabled with a **6-hour retention window** (Free plan limit; Pro extends to 30 days). To restore: Neon Console → Branches → `production` → Backup & Restore → select timestamp → Restore. This creates a new branch from the chosen point-in-time; you can then promote it or copy data. No manual snapshots currently configured. Storage: 0.03 / 0.5 GB.
 > [!IMPORTANT]
 > On breach, `currentBalance` is stored as-is — equity is **not** written to currentBalance (prevents double-counting unrealized P&L).
 
