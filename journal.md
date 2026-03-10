@@ -16,10 +16,11 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 |------|--------|
 | **BUY trade** | ✅ VERIFIED — $5 buy, 8.62 shares @ 58¢. UI, DB, API all match exactly |
 | **SELL trade** | ✅ VERIFIED — sold @ 54¢, $4.65 proceeds. Cash math exact to the penny |
-| **Checkout flow** | ⚠️ Backend blocks correctly, but frontend lets user reach payment form first |
-| **Payout flow** | ⚠️ Backend correctly rejects (no profit), but UI shows phantom $300 |
+| **Checkout flow** | ✅ FIXED — added frontend gate via `/api/challenge/active` (`4856a80`) |
+| **Payout flow** | ✅ FIXED — hardcoded $300 replaced with real data, zero-profit banner (`4856a80`) |
 | **Risk engine** | ✅ Drawdown bar and Today P&L updated after trade |
-| **Challenge duration** | ✅ FIXED — was hardcoded 30 days, now reads tier config (60 days) (`88e8538`) |
+| **Challenge duration** | ✅ FIXED — backend (`88e8538`) + all UI text 30→60 days (`1264642`) |
+| **StartChallengeButton** | ✅ FIXED — was redirecting to `/trade` (404), now `/dashboard/trade` (`1264642`) |
 | **Settlement cron** | ✅ Running. 3 positions still waiting for Polymarket resolution |
 | **Test suite** | ✅ 1341 passed, 0 failed |
 | **Mobile** | ✅ 9.5/10 — all flows usable at 390×844 |
