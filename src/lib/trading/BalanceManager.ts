@@ -2,7 +2,7 @@ import { challenges } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { createLogger } from '@/lib/logger';
 import { type Transaction } from '@/db/types';
-import { invariant, softInvariant } from '@/lib/invariant';
+import { hardInvariant, softInvariant } from '@/lib/invariant';
 
 const logger = createLogger('BalanceManager');
 
@@ -50,7 +50,7 @@ export class BalanceManager {
 
         // VALIDATION: Check for unexpected balance increases on DEDUCT
         if (operation === 'DEDUCT' && after > before) {
-            invariant(false, 'Balance INCREASED on DEDUCT operation', {
+            hardInvariant(false, 'Balance INCREASED on DEDUCT operation', {
                 before, after, amount, challengeId, source,
             });
         }
@@ -84,6 +84,12 @@ export class BalanceManager {
         amount: number,
         source: string = 'trade'
     ): Promise<number> {
+        hardInvariant(
+            Number.isFinite(amount) && amount > 0,
+            'Deduct amount must be finite and positive',
+            { amount, challengeId, source },
+        );
+
         const { currentBalance } = await this.readBalance(tx, challengeId);
         const newBalance = currentBalance - amount;
 
@@ -115,6 +121,12 @@ export class BalanceManager {
         amount: number,
         source: string = 'trade'
     ): Promise<number> {
+        hardInvariant(
+            Number.isFinite(amount) && amount > 0,
+            'Credit amount must be finite and positive',
+            { amount, challengeId, source },
+        );
+
         const { currentBalance, startingBalance } = await this.readBalance(tx, challengeId);
         const newBalance = currentBalance + amount;
 

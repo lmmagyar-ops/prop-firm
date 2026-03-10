@@ -21,6 +21,8 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 | **Vitest watch mode issue** | ✅ Diagnosed — `npm run test` hangs because Vitest defaults to watch mode. Use `npm run test -- --run` |
 | **Journal pruned** | ✅ Entries older than 7 days removed |
 | **Neon branching** | ✅ `develop` branch created (`ep-autumn-haze-adluhbxu`), Vercel `DATABASE_URL` scoped to Preview + `develop` |
+| **Sentry TLSWrap** | ✅ Zero errors since March 8. Neon migration confirmed working |
+| **Financial invariants** | ✅ Fixed fail-open bug — `hardInvariant()` now always throws on money paths (`005088f`) |
 
 ### ⚠️ What the Next Agent Must Know
 
@@ -37,8 +39,8 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 ### ~~PRIORITY 1 — Set Up Neon Branching for Preview Deployments~~ ✅ DONE
 Neon `develop` branch created from `production`. Vercel `DATABASE_URL` scoped to Preview + `develop` branch. No auto-delete. Endpoint: `ep-autumn-haze-adluhbxu`.
 
-### PRIORITY 2 — Check Sentry for TLSWrap Error Rate
-Go to Sentry → Issues → filter `TLSWrap` and `Failed query`. The 581/week TLS drop errors should be at or near zero since March 8. If any new ones appear, investigate immediately. If count = 0, mark done.
+### ~~PRIORITY 2 — Check Sentry for TLSWrap Error Rate~~ ✅ DONE
+Zero TLSWrap errors since March 8. Last "Failed query" errors were on migration day (Mar 8, 4-64 events during transition). No connection errors since. The 581/week Prisma TCP drops are fully eliminated.
 
 ### PRIORITY 3 — Verify Neon PITR Backup (30 min)
 We're fully on Neon with no tested restore procedure. Neon console → `prop-firm-direct` → Settings → confirm PITR is enabled. Note the retention window. Document restore procedure in ARCHITECTURE.md.

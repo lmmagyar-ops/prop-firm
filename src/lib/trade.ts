@@ -7,7 +7,7 @@ import { RiskEngine } from "./risk";
 import { PositionManager } from "./trading/PositionManager";
 import { BalanceManager } from "./trading/BalanceManager";
 import { createLogger } from "./logger";
-import { invariant } from "./invariant";
+import { hardInvariant } from "./invariant";
 import {
     TradingError,
     InsufficientFundsError,
@@ -209,22 +209,22 @@ export class TradeExecutor {
         // ================================================
         // INVARIANT ASSERTIONS — Catch impossible states
         // These guards ensure no corrupted data enters the DB.
-        // invariant() throws in dev, fires Sentry + logs in prod.
+        // hardInvariant() ALWAYS throws — even in production.
         // ================================================
 
-        invariant(
+        hardInvariant(
             Number.isFinite(shares) && shares > 0,
             'Invalid shares: must be positive and finite',
             { shares, amount, executionPrice }
         );
 
-        invariant(
+        hardInvariant(
             Number.isFinite(executionPrice) && executionPrice > 0 && executionPrice < 1,
             'Invalid execution price: must be 0 < p < 1',
             { executionPrice }
         );
 
-        invariant(
+        hardInvariant(
             Number.isFinite(finalAmount) && finalAmount > 0,
             'Invalid trade amount: must be positive and finite',
             { finalAmount }
@@ -232,7 +232,7 @@ export class TradeExecutor {
 
         if (side === 'BUY') {
             const preTradeBalance = parseFloat(challenge.currentBalance);
-            invariant(
+            hardInvariant(
                 Number.isFinite(preTradeBalance) && preTradeBalance >= finalAmount,
                 'Would create negative balance',
                 { preTradeBalance, finalAmount, difference: preTradeBalance - finalAmount }

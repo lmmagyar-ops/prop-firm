@@ -57,6 +57,38 @@ export function invariant(
 }
 
 /**
+ * Hard invariant — ALWAYS throws, even in production.
+ * Use for financial-critical guards where corrupted data must never reach the DB.
+ * Reports to Sentry at 'fatal' level before throwing.
+ * 
+ * Usage:
+ *   hardInvariant(Number.isFinite(price) && price > 0, "Invalid price", { price });
+ */
+export function hardInvariant(
+    condition: boolean,
+    message: string,
+    context?: Record<string, unknown>,
+): asserts condition {
+    if (condition) return;
+
+    const fullMessage = `INVARIANT VIOLATION: ${message}`;
+
+    logger.error(fullMessage, null, {
+        ...context,
+        invariant: true,
+        hard: true,
+    });
+
+    Sentry.captureMessage(fullMessage, {
+        level: 'fatal',
+        extra: context,
+        tags: { type: 'hard_invariant_violation' },
+    });
+
+    throw new Error(fullMessage);
+}
+
+/**
  * Soft invariant — warns but never throws, even in dev.
  * Use for "this shouldn't happen but isn't catastrophic" cases.
  * 
