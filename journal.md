@@ -10,20 +10,19 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 > **New agent? Read this section before doing anything else.**
 > This is the single source of truth for what actually works. Do NOT trust individual journal entries — they reflect what the agent *believed*, not what the user confirmed.
 
-### Mar 10, 2026 (1:45 PM CT) — Financial Hardening + Launch Readiness
+### Mar 10, 2026 (2:30 PM CT) — Live Execution Test Results
 
 | Item | Status |
 |------|--------|
-| **Production** | ✅ Healthy — `80a20ff` live, 10/10 deploy checks |
-| **Test suite** | ✅ 87 files, 1341 passed, 0 failed, 3 skipped |
-| **Financial invariants** | ✅ `hardInvariant()` always throws on money paths (`ada65c9`) |
-| **DB CHECK constraints** | ✅ 7 constraints block NaN/Infinity at Postgres level (`24b18e7`) |
-| **NaN root cause** | ✅ Fixed `calculateImpact` 0/0 division + 4 regression tests (`0453a73`) |
-| **Balance repair** | ✅ `a59d8d5e` corrected to `$24,610.33` (post-settlement). Audit: 6/6 HEALTHY |
-| **Settlement cron** | ✅ Added to `vercel.json` at `*/10` — was NEVER scheduled before! (`80a20ff`) |
-| **SODEquity repair** | ✅ `a59d8d5e` was `$946.43` → `$24,610.33`. Dashboard now shows `+$0.00 Today` |
-| **Route redirects** | ✅ `/markets` → `/dashboard/trade`, `/settings` → `/dashboard/settings` |
-| **Balance audit cron** | ✅ Bumped from daily to every 6 hours |
+| **BUY trade** | ✅ VERIFIED — $5 buy, 8.62 shares @ 58¢. UI, DB, API all match exactly |
+| **SELL trade** | ✅ VERIFIED — sold @ 54¢, $4.65 proceeds. Cash math exact to the penny |
+| **Checkout flow** | ⚠️ Backend blocks correctly, but frontend lets user reach payment form first |
+| **Payout flow** | ⚠️ Backend correctly rejects (no profit), but UI shows phantom $300 |
+| **Risk engine** | ✅ Drawdown bar and Today P&L updated after trade |
+| **Challenge duration** | ✅ FIXED — was hardcoded 30 days, now reads tier config (60 days) (`88e8538`) |
+| **Settlement cron** | ✅ Running. 3 positions still waiting for Polymarket resolution |
+| **Test suite** | ✅ 1341 passed, 0 failed |
+| **Mobile** | ✅ 9.5/10 — all flows usable at 390×844 |
 
 ### ⚠️ What the Next Agent Must Know
 
@@ -34,13 +33,16 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 5. **Neon branching is configured.** Preview deploys on `develop` use `ep-autumn-haze-adluhbxu`. Production uses `ep-royal-lab-adny4asz`.
 6. **Settlement cron now runs every 10 min.** If positions appear stale, check Vercel Cron logs first.
 7. **3 open positions remain** from March 9 (unsettled — markets not yet resolved on Polymarket).
+8. **Checkout frontend doesn't enforce single-challenge gate.** API blocks, but user sees payment form first.
+9. **Payout UI shows $300 when no profit exists.** Trace the `AvailableBalanceCard` data source.
 
 ---
 
 ## 🔜 Tomorrow Morning (ranked by leverage × risk)
 
-1. **Check 3 remaining open positions** — are the March 9 markets resolved now? If so, settlement will auto-close them.
-2. **Full end-to-end trade flow test** — buy a position, watch it update, sell it. Verify PnL, balance, trade history.
-3. **Payouts flow** — verify the payout request system works for funded accounts.
-4. **Stripe/checkout flow** — verify a new user can purchase an evaluation.
-5. **Mobile responsiveness check** — can users trade on phone?
+1. **Fix checkout frontend gate** — add active-challenge check before navigating to `/checkout`. Small fix, high UX impact.
+2. **Fix payout $300 phantom display** — trace where the `$300` comes from in `AvailableBalanceCard`. Backend is correct.
+3. **Check 3 remaining positions** — are the March 9 markets resolved on Polymarket?
+4. **Commit `88e8538` needs to be pushed** — challenge duration fix is on `develop`, not yet deployed.
+5. **Verify banner fix with Mat** — needs a real daily drawdown breach to confirm.
+
