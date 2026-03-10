@@ -23,7 +23,9 @@ This journal tracks daily progress, issues encountered, and resolutions for the 
 | **Neon branching** | ✅ `develop` branch created (`ep-autumn-haze-adluhbxu`), Vercel `DATABASE_URL` scoped to Preview + `develop` |
 | **Sentry TLSWrap** | ✅ Zero errors since March 8. Neon migration confirmed working |
 | **Financial invariants** | ✅ Fixed fail-open bug — `hardInvariant()` now always throws on money paths (`ada65c9`) |
-| **DB CHECK constraints** | ✅ 7 constraints block NaN/Infinity at Postgres level on challenges, positions, trades (`db21a29`) |
+| **DB CHECK constraints** | ✅ 7 constraints block NaN/Infinity at Postgres level on challenges, positions, trades (`24b18e7`) |
+| **NaN root cause** | ✅ Fixed `calculateImpact` 0/0 division when all order book levels have invalid price/size (`aeebe30`) |
+| **Balance repair** | ✅ `a59d8d5e` corrected to `$23,663.90` (phase-aware replay). Audit: 6/6 HEALTHY |
 
 ### ⚠️ What the Next Agent Must Know
 

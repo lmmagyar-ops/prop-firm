@@ -152,6 +152,13 @@ export function calculateImpact(book: OrderBook, side: "BUY" | "SELL", notionalA
         return { executedPrice: 0, totalShares: 0, slippagePercent: 0, filled: false, reason: `Insufficient Depth (Unfilled: $${remainingAmount.toFixed(2)})` };
     }
 
+    // Guard: If all levels were skipped (price <= 0 or size <= 0), totalSharesObj
+    // is still 0. Dividing by zero produces NaN — the root cause of the Mar 9
+    // balance corruption incident. Return unfilled instead.
+    if (totalSharesObj <= 0) {
+        return { executedPrice: 0, totalShares: 0, slippagePercent: 0, filled: false, reason: "No Valid Levels (all prices/sizes <= 0)" };
+    }
+
     const avgPrice = totalCostObj / totalSharesObj;
 
     // Slippage calc: Compare Avg vs Top of Book (best price, now sorted correctly)
