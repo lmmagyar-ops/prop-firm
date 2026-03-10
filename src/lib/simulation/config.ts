@@ -38,7 +38,7 @@ export const FIRM_CONFIG: FirmConfig = {
     payoutCap: 2.0,                  // 2x starting balance max payout
     minTradingDays: 5,               // Minimum days to trade
     consistencyFlagPercent: 0.50,    // 50% single-day profit triggers flag
-    maxChallengeDays: 30,            // 30 days to complete challenge
+    maxChallengeDays: 60,            // 60 days to complete challenge
 };
 
 /**

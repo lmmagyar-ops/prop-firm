@@ -27,7 +27,7 @@ export function StartChallengeButton() {
                 method: "POST"
             });
             if (res.ok) {
-                router.push("/trade");
+                router.push("/dashboard/trade");
             } else {
                 console.error("Failed to start");
                 setLoading(false);
@@ -46,14 +46,14 @@ export function StartChallengeButton() {
                     className="w-full h-14 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-bold text-lg tracking-wide shadow-[0_4px_20px_-5px_rgba(16,185,129,0.5)] transition-all transform hover:scale-[1.02]"
                 >
                     <Play className="mr-2 h-5 w-5 fill-current" />
-                    Start 30-Day Challenge
+                    Start 60-Day Challenge
                 </Button>
             </AlertDialogTrigger>
             <AlertDialogContent className="bg-[#1A232E] border-[#2E3A52] text-white">
                 <AlertDialogHeader>
                     <AlertDialogTitle>Ready to begin?</AlertDialogTitle>
                     <AlertDialogDescription className="text-zinc-400">
-                        Once you start, your 30-day evaluation timer will begin immediately. This action cannot be undone.
+                        Once you start, your 60-day evaluation timer will begin immediately. This action cannot be undone.
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>

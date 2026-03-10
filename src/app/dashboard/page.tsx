@@ -316,7 +316,7 @@ export default async function DashboardPage() {
                                         You&apos;re Almost There
                                     </h2>
                                     <p className="text-zinc-400 mb-8 leading-relaxed">
-                                        Your evaluation is ready. Once you click &quot;Start&quot;, your 30-day trading period begins immediately.
+                                        Your evaluation is ready. Once you click &quot;Start&quot;, your 60-day trading period begins immediately.
                                     </p>
                                     <div className="space-y-4">
                                         <StartChallengeButton />

@@ -149,7 +149,7 @@ export async function POST(req: NextRequest) {
             body: JSON.stringify({
                 product: {
                     name: `Evaluation Challenge - ${tier}`,
-                    description: "Phase 1: Trading Challenge. 30 Days.",
+                    description: "Phase 1: Trading Challenge. 60 Days.",
                 },
                 invoice: {
                     currency_from: "USD",
