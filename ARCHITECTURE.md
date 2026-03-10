@@ -312,8 +312,8 @@ DATABASE_URL="..." npx tsx scripts/grant-admin.ts email@example.com
 │  └─────────────┬───────────┘     └───────────────────────────┘  │
 │                │                                                │
 │  ┌─────────────┴─┐  ┌───────────────┐  ┌───────────────────┐    │
-│  │   API Routes  │  │  Prisma Pg    │  │   Railway Redis   │    │
-│  │   (Logic)     │  │  (Database)   │  │   (Cache/Queue)   │    │
+│  │   API Routes  │  │  Neon Postgres│  │   Railway Redis   │
+│  │   (Logic)     │  │  (Database)   │  │   (Cache/Queue)   │
 │  └───────────────┘  └───────────────┘  └───────────────────┘    │
 └─────────────────────────────────────────────────────────────────┘
                                ↕
@@ -331,8 +331,8 @@ DATABASE_URL="..." npx tsx scripts/grant-admin.ts email@example.com
 
 | Layer | Technology |
 |-------|------------|
-| **Framework** | Next.js 16 (App Router), React 19 |
-| **Database** | Neon Postgres (Vercel), Drizzle ORM — `postgres.js` driver (`max:1, idle_timeout:20s`) via Prisma Accelerate |
+| **Framework** | Next.js 15 (App Router), React 19 |
+| **Database** | Neon Postgres (direct), Drizzle ORM — `db` uses `neon-http` (stateless HTTPS), `dbPool` uses `neon-serverless` Pool (WebSocket, transactions only) |
 | **Cache** | Railway Redis (flat-rate, via REDIS_URL) |
 | **Auth** | NextAuth v5 (email/password + Google OAuth) |
 | **UI** | Tailwind v4, Shadcn/ui, Framer Motion |
@@ -518,7 +518,7 @@ Runs every 30 seconds in the ingestion worker (`CHECK_INTERVAL_MS = 30000`):
 > [!IMPORTANT]
 > **Transaction safety:** `triggerBreach`, `triggerPass`, and `closeAllPositions` run inside `dbPool.transaction()` (neon-serverless WebSocket client). Status update + position closes + balance credit + audit log are fully atomic — if any step crashes, everything rolls back. Redis reads happen before the transaction (not transactional).
 >
-> **DB client (2026-03-08):** Both `db` and `dbPool` use `postgres.js` with `max:1, idle_timeout:20s`. The `idle_timeout` is set below Neon's ~30s server-side connection kill to prevent TLSWrap.onStreamRead drops (581 errors in 7 days). A migration to `@neondatabase/serverless` neon-http was attempted but reverted — the neon-http driver requires a direct `neon.tech` URL and is incompatible with the Prisma Accelerate proxy URL in Vercel's `DATABASE_URL`. See `src/db/index.ts` and `journal.md` (2026-03-08 incident) for full rationale. FUTURE(v2): switch Vercel integration to direct Neon URL, then adopt neon-http.
+> **DB client (2026-03-08 — migrated):** `db` uses `@neondatabase/serverless` neon-http (stateless HTTPS POST per query, no connection pool). `dbPool` uses `@neondatabase/serverless` Pool (WebSocket, scoped per invocation, for transactions only). `DATABASE_URL` points directly to `ep-royal-lab-adny4asz.c-2.us-east-1.aws.neon.tech`. The old `postgres.js` via Prisma Accelerate proxy was removed March 8 to eliminate 581/week TLSWrap.onStreamRead drops caused by Neon killing idle TCP connections. Any new `tx.execute()` call must use `.rows[0]`, NOT `[0]` directly (neon-serverless returns `{ rows: [...], rowCount }`, not a plain array).
 
 > [!IMPORTANT]
 > On breach, `currentBalance` is stored as-is — equity is **not** written to currentBalance (prevents double-counting unrealized P&L).
@@ -703,7 +703,7 @@ NEXT_PUBLIC_SENTRY_DSN=...           # Same value, client-side
 
 **Railway (Ingestion Worker):**
 ```env
-DATABASE_URL=postgres://...@db.prisma.io:5432/postgres?sslmode=require
+DATABASE_URL=postgres://...@ep-royal-lab-adny4asz.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require
 REDIS_URL=${{Redis.REDIS_URL}}
 ```
 
