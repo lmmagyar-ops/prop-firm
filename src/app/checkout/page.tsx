@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, Check, ShieldCheck, Lock, CreditCard, Bitcoin, ArrowRight, Tag } from "lucide-react";
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion";
 import { useSession } from "next-auth/react";
 import { TIER_PRICE_BY_ID, TIER_SIZE_BY_ID } from "@/config/plans";
 
@@ -63,7 +63,7 @@ function CheckoutContent() {
     }, [session]);
 
     // Payment Method State
-    const [paymentMethod, setPaymentMethod] = useState<"card" | "crypto">("card");
+    const [paymentMethod, setPaymentMethod] = useState<"card" | "crypto">("crypto");
 
     // Referral Attribution — read ref cookie set by /ref/[code] landing route
     const [refCode, setRefCode] = useState<string | null>(null);
@@ -277,71 +277,36 @@ function CheckoutContent() {
 
                             <div className="grid grid-cols-2 gap-3">
                                 <button
-                                    onClick={() => setPaymentMethod("card")}
-                                    className={`p-4 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${paymentMethod === "card"
-                                        ? "bg-primary/10 border-primary text-primary shadow-[0_0_20px_-5px_rgba(41,175,115,0.3)]"
-                                        : "bg-[#162231] border-white/5 text-zinc-500 hover:bg-[#1e2d40] hover:text-white"
-                                        }`}
+                                    disabled
+                                    className="p-4 rounded-xl border flex flex-col items-center justify-center gap-2 bg-[#162231] border-white/5 text-zinc-600 cursor-not-allowed opacity-60 relative"
                                 >
-                                    <CreditCard className="w-6 h-6" />
+                                    <CreditCard className="w-5 h-5" />
                                     <span className="text-sm font-bold">Credit Card</span>
+                                    <span className="absolute -top-2 -right-2 bg-primary/90 text-[10px] text-white font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">Soon</span>
                                 </button>
 
                                 <button
                                     onClick={() => setPaymentMethod("crypto")}
-                                    className={`p-4 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${paymentMethod === "crypto"
-                                        ? "bg-orange-500/10 border-orange-500 text-orange-400 shadow-[0_0_20px_-5px_rgba(249,115,22,0.3)]"
-                                        : "bg-[#162231] border-white/5 text-zinc-500 hover:bg-[#1e2d40] hover:text-white"
-                                        }`}
+                                    className="p-4 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all bg-orange-500/10 border-orange-500 text-orange-400 shadow-[0_0_20px_-5px_rgba(249,115,22,0.3)]"
                                 >
                                     <Bitcoin className="w-6 h-6" />
                                     <span className="text-sm font-bold">Crypto (USDC)</span>
                                 </button>
                             </div>
 
-                            <AnimatePresence mode="wait">
-                                {paymentMethod === "card" ? (
-                                    <motion.div
-                                        key="card-info"
-                                        initial={{ opacity: 0, height: 0 }}
-                                        animate={{ opacity: 1, height: "auto" }}
-                                        exit={{ opacity: 0, height: 0 }}
-                                        className="mt-4 bg-primary/5 border border-primary/20 rounded-lg p-4"
-                                    >
-                                        <div className="flex items-start gap-3">
-                                            <div className="bg-primary/20 p-2 rounded-full mt-1">
-                                                <CreditCard className="w-4 h-4 text-primary" />
-                                            </div>
-                                            <div>
-                                                <p className="text-sm text-white font-medium">Powered by MoonPay</p>
-                                                <p className="text-xs text-zinc-400 mt-1">
-                                                    Use your Visa or Mastercard to purchase USDC directly. Fast verification, instant settlement.
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </motion.div>
-                                ) : (
-                                    <motion.div
-                                        key="crypto-info"
-                                        initial={{ opacity: 0, height: 0 }}
-                                        animate={{ opacity: 1, height: "auto" }}
-                                        exit={{ opacity: 0, height: 0 }}
-                                        className="mt-4 bg-orange-500/5 border border-orange-500/20 rounded-lg p-4"
-                                    >
-                                        <div className="flex items-start gap-3">
-                                            <div className="bg-orange-500/20 p-2 rounded-full mt-1">
-                                                <Bitcoin className="w-4 h-4 text-orange-400" />
-                                            </div>
-                                            <div>
-                                                <p className="text-sm text-white font-medium">Pay with Any Crypto</p>
-                                                <p className="text-xs text-zinc-400 mt-1">
-                                                    We accept USDC (Polygon, Eth, Base), ETH, BTC, LTC, and more.
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
+                            <div className="mt-4 bg-orange-500/5 border border-orange-500/20 rounded-lg p-4">
+                                <div className="flex items-start gap-3">
+                                    <div className="bg-orange-500/20 p-2 rounded-full mt-1">
+                                        <Bitcoin className="w-4 h-4 text-orange-400" />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm text-white font-medium">Pay with Any Crypto</p>
+                                        <p className="text-xs text-zinc-400 mt-1">
+                                            We accept USDC (Polygon, Eth, Base), ETH, BTC, LTC, and more.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -459,7 +424,7 @@ function CheckoutContent() {
                                 </div>
                                 <div className="text-right">
                                     <span className="text-xs text-zinc-500">Payable in</span>
-                                    <div className="font-bold text-primary">USD via {paymentMethod === "card" ? "MoonPay" : "Confirmo"}</div>
+                                    <div className="font-bold text-primary">USD via Confirmo</div>
                                 </div>
                             </div>
 
