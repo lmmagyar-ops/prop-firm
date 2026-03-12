@@ -109,7 +109,7 @@ const faqs: FAQItem[] = [
     {
         category: "Payouts",
         question: "Crypto or PayPal?",
-        answer: "Your choice. We support BTC, ETH, USDC via Confirmo, or traditional PayPal payouts. Moonpay is also available as a backup. (Integration launches after business registration—about 2 weeks.)"
+        answer: "Your choice. We support BTC, ETH, USDC via Confirmo, or traditional PayPal payouts. (Integration launches after business registration—about 2 weeks.)"
     },
 
     // Security

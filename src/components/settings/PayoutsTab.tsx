@@ -12,7 +12,7 @@ import { toast } from "sonner";
 interface PayoutMethod {
     id: string;
     type: "crypto" | "paypal";
-    provider: "confirmo" | "paypal" | "moonpay";
+    provider: "confirmo" | "paypal";
     label: string;
     details: {
         walletAddress?: string;
@@ -31,7 +31,7 @@ export function PayoutsTab({ existingMethods = [] }: PayoutsTabProps) {
     const [showAdd, setShowAdd] = useState(false);
     const [newMethod, setNewMethod] = useState({
         type: "crypto" as "crypto" | "paypal",
-        provider: "confirmo" as "confirmo" | "paypal" | "moonpay",
+        provider: "confirmo" as "confirmo" | "paypal",
         label: "",
         walletAddress: "",
         network: "ERC20",
@@ -57,7 +57,7 @@ export function PayoutsTab({ existingMethods = [] }: PayoutsTabProps) {
                         <ul className="text-zinc-400 text-sm space-y-1 ml-4">
                             <li>• <strong className="text-primary">Confirmo</strong> - Crypto payments (BTC, ETH, USDC)</li>
                             <li>• <strong className="text-primary">PayPal</strong> - Traditional payments</li>
-                            <li>• <strong className="text-primary">Moonpay</strong> - Alternative crypto processor</li>
+
                         </ul>
                         <p className="text-xs text-zinc-500 mt-3">
                             Expected integration: ~2 weeks
